@@ -26,7 +26,7 @@ namespace BitSharp.Common
         private readonly Logger logger;
 
         // the worker thread where the source will be read
-        private readonly WorkerMethod readWorker;
+        private WorkerMethod readWorker;
 
         // the pool of worker threads where the source items will be consumed
         private readonly WorkerMethod[] consumeWorkers;
@@ -46,6 +46,7 @@ namespace BitSharp.Common
 
         // the queue of read items that are waiting to be consumed
         private ConcurrentBlockingQueue<T> queue;
+        private bool queueOwned;
 
         // track consumer work thread completions
         private int consumeCompletedCount;
@@ -69,10 +70,6 @@ namespace BitSharp.Common
             this.name = name;
             this.logger = logger;
 
-            // initialize the read worker
-            this.readWorker = new WorkerMethod(name + ".ReadWorker", ReadWorker, initialNotify: false, minIdleTime: TimeSpan.Zero, maxIdleTime: TimeSpan.MaxValue, logger: logger);
-            this.readWorker.Start();
-
             // initialize a pool of consume workers
             this.consumeWorkers = new WorkerMethod[consumerThreadCount];
             for (var i = 0; i < this.consumeWorkers.Length; i++)
@@ -91,7 +88,8 @@ namespace BitSharp.Common
                 return;
 
             this.consumeWorkers.DisposeList();
-            this.readWorker.Dispose();
+            if (this.readWorker != null)
+                this.readWorker.Dispose();
             this.completedReadingEvent.Dispose();
             this.completedConsumingEvent.Dispose();
             if (this.queue != null)
@@ -117,6 +115,13 @@ namespace BitSharp.Common
             if (this.isStarted)
                 throw new InvalidOperationException();
 
+            // initialize the read worker
+            if (this.readWorker == null)
+            {
+                this.readWorker = new WorkerMethod(name + ".ReadWorker", ReadWorker, initialNotify: false, minIdleTime: TimeSpan.Zero, maxIdleTime: TimeSpan.MaxValue, logger: logger);
+                this.readWorker.Start();
+            }
+
             // store the source enumerable and actions
             this.source = source;
             this.consumeAction = consumeAction;
@@ -124,6 +129,7 @@ namespace BitSharp.Common
 
             // initialize queue and exceptions and reset completed count
             this.queue = new ConcurrentBlockingQueue<T>();
+            this.queueOwned = true;
             this.exceptions = new ConcurrentBag<Exception>();
             this.consumeCompletedCount = 0;
 
@@ -134,6 +140,35 @@ namespace BitSharp.Common
 
             // notify the read worker to begin
             this.readWorker.NotifyWork();
+
+            // notify the consume workers to begin
+            for (var i = 0; i < this.consumeWorkers.Length; i++)
+                this.consumeWorkers[i].NotifyWork();
+
+            // return the IDisposable to cleanup this session
+            return new Stopper(this);
+        }
+
+        public IDisposable Start(ConcurrentBlockingQueue<T> queue, Action<T> consumeAction, Action completedAction)
+        {
+            if (this.isStarted)
+                throw new InvalidOperationException();
+
+            // store the source enumerable and actions
+            this.source = null;
+            this.consumeAction = consumeAction;
+            this.completedAction = completedAction;
+
+            // initialize queue and exceptions and reset completed count
+            this.queue = queue;
+            this.queueOwned = false;
+            this.exceptions = new ConcurrentBag<Exception>();
+            this.consumeCompletedCount = 0;
+
+            // set to the started state
+            this.completedReadingEvent.Set();
+            this.completedConsumingEvent.Reset();
+            this.isStarted = true;
 
             // notify the consume workers to begin
             for (var i = 0; i < this.consumeWorkers.Length; i++)
@@ -172,7 +207,8 @@ namespace BitSharp.Common
             this.completedConsumingEvent.Wait();
 
             // dispose the queue
-            this.queue.Dispose();
+            if (this.queueOwned)
+                this.queue.Dispose();
 
             // null out all the fields used for this session
             this.source = null;

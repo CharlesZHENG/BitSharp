@@ -176,7 +176,7 @@ namespace BitSharp.Core.Builders
 
         private IDisposable StartTxLoader()
         {
-            return this.txLoader.Start(this.pendingTxes.GetConsumingEnumerable(),
+            return this.txLoader.Start(this.pendingTxes,
                 pendingTx =>
                 {
                     var loadedTx = LoadPendingTx(pendingTx, txCache);
