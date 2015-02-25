@@ -28,6 +28,7 @@ using BitSharp.Wallet;
 using BitSharp.Wallet.Address;
 using BitSharp.Node.Storage.Memory;
 using BitSharp.Core.Storage.Memory;
+using BitSharp.Node.Workers;
 
 namespace BitSharp.Client
 {
@@ -66,6 +67,9 @@ namespace BitSharp.Client
                 var cleanChainState = false;
 
                 var cacheSizeMaxBytes = 500.MILLION();
+
+                // location to store a copy of raw blocks to avoid redownload
+                BlockRequestWorker.SecondaryBlockFolder = @"";
 
                 //NOTE: Running with a cleaned chained state against a pruned blockchain does not work.
                 //      It will see the data is missing, but won't redownload the blocks.

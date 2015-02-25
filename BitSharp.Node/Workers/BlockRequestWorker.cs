@@ -11,6 +11,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
@@ -19,8 +20,11 @@ using System.Threading.Tasks;
 
 namespace BitSharp.Node.Workers
 {
-    internal class BlockRequestWorker : Worker
+    public class BlockRequestWorker : Worker
     {
+        //TODO
+        public static string SecondaryBlockFolder;
+
         private static readonly TimeSpan STALE_REQUEST_TIME = TimeSpan.FromMinutes(5);
         private static readonly TimeSpan MISSED_STALE_REQUEST_TIME = TimeSpan.FromSeconds(3);
         private static readonly int MAX_REQUESTS_PER_PEER = 100;
@@ -253,7 +257,7 @@ namespace BitSharp.Node.Workers
                 {
                     // iterate through the blocks that should be requested for this peer
                     var invVectors = ImmutableArray.CreateBuilder<InventoryVector>();
-                    foreach (var requestBlock in GetRequestBlocksForPeer(requestCount, peerBlockRequests))
+                    foreach (var requestBlock in GetRequestBlocksForPeer(peer, requestCount, peerBlockRequests))
                     {
                         // track block requests
                         peerBlockRequests[requestBlock] = now;
@@ -286,7 +290,7 @@ namespace BitSharp.Node.Workers
                 this.NotifyWork();
         }
 
-        private IEnumerable<UInt256> GetRequestBlocksForPeer(int count, ConcurrentDictionary<UInt256, DateTime> peerBlockRequests)
+        private IEnumerable<UInt256> GetRequestBlocksForPeer(Peer peer, int count, ConcurrentDictionary<UInt256, DateTime> peerBlockRequests)
         {
             if (count < 0)
                 throw new ArgumentOutOfRangeException("count");
@@ -306,7 +310,12 @@ namespace BitSharp.Node.Workers
                     && !this.allBlockRequests.ContainsKey(requestBlock.Hash)
                     && !this.coreStorage.ContainsBlockTxes(requestBlock.Hash))
                 {
-                    yield return requestBlock.Hash;
+                    var block = GetBlock(requestBlock.Hash);
+                    if (block != null)
+                        HandleBlock(peer, block);
+                    else
+                        yield return requestBlock.Hash;
+
                     currentCount++;
                 }
             }
@@ -325,6 +334,8 @@ namespace BitSharp.Node.Workers
 
                 var peer = flushBlock.Peer;
                 var block = flushBlock.Block;
+
+                StoreBlock(block);
 
                 if (this.coreStorage.TryAddBlock(block))
                     this.blockDownloadRateMeasure.Tick();
@@ -413,6 +424,54 @@ namespace BitSharp.Node.Workers
 
             // notify now that missed block request is being tracked
             this.NotifyWork();
+        }
+
+        private Block GetBlock(UInt256 blockHash)
+        {
+            if (SecondaryBlockFolder == null || SecondaryBlockFolder == "")
+                return null;
+
+            var blockFile = new FileInfo(GetBlockPath(blockHash));
+            if (blockFile.Exists)
+            {
+                using (var stream = new FileStream(blockFile.FullName, FileMode.Open))
+                using (var reader = new BinaryReader(stream))
+                {
+                    var block = DataEncoder.DecodeBlock(stream);
+                    if (block.Hash == blockHash)
+                        return block;
+                    else
+                        blockFile.Delete();
+                }
+            }
+
+            return null;
+        }
+
+        private void StoreBlock(Block block)
+        {
+            if (SecondaryBlockFolder == null || SecondaryBlockFolder == "")
+                return;
+
+            var blockFile = new FileInfo(GetBlockPath(block.Hash));
+            if (!blockFile.Exists)
+            {
+                Directory.CreateDirectory(blockFile.Directory.FullName);
+                using (var stream = new FileStream(blockFile.FullName, FileMode.Create))
+                using (var writer = new BinaryWriter(stream))
+                {
+                    writer.Write(DataEncoder.EncodeBlock(block));
+                }
+            }
+        }
+
+        private string GetBlockPath(UInt256 blockHash)
+        {
+            var blockHashString = blockHash.ToString().Substring(64 - 8, 8);
+            var chunkSize = 2;
+            var blockFolder = string.Join(Path.DirectorySeparatorChar.ToString(), Enumerable.Range(0, blockHashString.Length / chunkSize).Select(i => blockHashString.Substring(i * chunkSize, chunkSize)).ToArray());
+
+            return Path.Combine(SecondaryBlockFolder, blockFolder, "{0}.blk".Format2(blockHash));
         }
 
         private sealed class HeightComparer : IComparer<ChainedHeader>
