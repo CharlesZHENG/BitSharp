@@ -37,6 +37,7 @@ namespace BitSharp.Core.Builders
         private readonly DisposeHandle<IChainStateCursor> chainStateCursorHandle;
         private readonly IChainStateCursor chainStateCursor;
         private ChainBuilder chain;
+        private Chain rollbackChain;
         private readonly UtxoBuilder utxoBuilder;
 
         private readonly ReaderWriterLockSlim commitLock;
@@ -88,79 +89,80 @@ namespace BitSharp.Core.Builders
 
         public void AddBlock(ChainedHeader chainedHeader, IEnumerable<BlockTx> blockTxes)
         {
-            var savedChain = this.chain.ToImmutable();
-            this.BeginTransaction();
-            try
+            this.commitLock.DoWrite(() =>
             {
-                using (this.blockValidator.StartValidation(chainedHeader))
+                this.BeginTransaction();
+                try
                 {
-                    // add the block to the chain
-                    this.chain.AddBlock(chainedHeader);
-                    this.chainStateCursor.AddChainedHeader(chainedHeader);
-
-                    // ignore transactions on geneis block
-                    if (chainedHeader.Height > 0)
+                    using (this.blockValidator.StartValidation(chainedHeader))
                     {
-                        // calculate the new block utxo, only output availability is checked and updated
-                        foreach (var pendingTx in this.utxoBuilder.CalculateUtxo(this.chain.ToImmutable(), blockTxes.Select(x => x.Transaction)))
-                        {
-                            this.blockValidator.AddPendingTx(pendingTx);
+                        // add the block to the chain
+                        this.chain.AddBlock(chainedHeader);
+                        this.chainStateCursor.AddChainedHeader(chainedHeader);
 
-                            // track stats
-                            this.stats.txCount++;
-                            this.stats.inputCount += pendingTx.Transaction.Inputs.Length;
-                            this.stats.txRateMeasure.Tick();
-                            this.stats.inputRateMeasure.Tick(pendingTx.Transaction.Inputs.Length);
+                        // ignore transactions on geneis block
+                        if (chainedHeader.Height > 0)
+                        {
+                            // calculate the new block utxo, only output availability is checked and updated
+                            foreach (var pendingTx in this.utxoBuilder.CalculateUtxo(this.chain.ToImmutable(), blockTxes.Select(x => x.Transaction)))
+                            {
+                                this.blockValidator.AddPendingTx(pendingTx);
+
+                                // track stats
+                                this.stats.txCount++;
+                                this.stats.inputCount += pendingTx.Transaction.Inputs.Length;
+                                this.stats.txRateMeasure.Tick();
+                                this.stats.inputRateMeasure.Tick(pendingTx.Transaction.Inputs.Length);
+                            }
+                        }
+
+                        // finished queuing up block's txes
+                        this.blockValidator.CompleteAdding();
+
+                        // track stats
+                        this.stats.blockCount++;
+
+                        // wait for block validation to complete
+                        this.blockValidator.WaitToComplete();
+
+                        // check tx loader results
+                        if (this.blockValidator.TxLoaderExceptions.Count > 0)
+                        {
+                            throw new AggregateException(this.blockValidator.TxLoaderExceptions);
+                        }
+
+                        // check tx validation results
+                        if (this.blockValidator.TxValidatorExceptions.Count > 0)
+                        {
+                            throw new AggregateException(this.blockValidator.TxValidatorExceptions);
+                        }
+
+                        // check script validation results
+                        if (this.blockValidator.ScriptValidatorExceptions.Count > 0)
+                        {
+                            if (!this.rules.IgnoreScriptErrors)
+                                throw new AggregateException(this.blockValidator.ScriptValidatorExceptions);
+                            else
+                                this.logger.Debug("Ignoring script errors in block: {0,9:#,##0}, errors: {1:#,##0}".Format2(chainedHeader.Height, this.blockValidator.ScriptValidatorExceptions.Count));
                         }
                     }
 
-                    // finished queuing up block's txes
-                    this.blockValidator.CompleteAdding();
-
-                    // track stats
-                    this.stats.blockCount++;
-
-                    // wait for block validation to complete
-                    this.blockValidator.WaitToComplete();
-
-                    // check tx loader results
-                    if (this.blockValidator.TxLoaderExceptions.Count > 0)
-                    {
-                        throw new AggregateException(this.blockValidator.TxLoaderExceptions);
-                    }
-
-                    // check tx validation results
-                    if (this.blockValidator.TxValidatorExceptions.Count > 0)
-                    {
-                        throw new AggregateException(this.blockValidator.TxValidatorExceptions);
-                    }
-
-                    // check script validation results
-                    if (this.blockValidator.ScriptValidatorExceptions.Count > 0)
-                    {
-                        if (!this.rules.IgnoreScriptErrors)
-                            throw new AggregateException(this.blockValidator.ScriptValidatorExceptions);
-                        else
-                            this.logger.Debug("Ignoring script errors in block: {0,9:#,##0}, errors: {1:#,##0}".Format2(chainedHeader.Height, this.blockValidator.ScriptValidatorExceptions.Count));
-                    }
+                    // commit the chain state
+                    this.CommitTransaction();
+                }
+                catch (Exception)
+                {
+                    // rollback the chain state on error
+                    this.RollbackTransaction();
+                    throw;
                 }
 
-                // commit the chain state
-                this.CommitTransaction();
-            }
-            catch (Exception)
-            {
-                // rollback the chain state on error
-                this.RollbackTransaction();
-                this.chain = savedChain.ToBuilder();
-                throw;
-            }
+                // MEASURE: Block Rate
+                this.stats.blockRateMeasure.Tick();
 
-            // MEASURE: Block Rate
-            this.stats.blockRateMeasure.Tick();
-
-            // blockchain processing statistics
-            this.Stats.blockCount++;
+                // blockchain processing statistics
+                this.Stats.blockCount++;
+            });
 
             var logInterval = TimeSpan.FromSeconds(15);
             if (DateTime.UtcNow - this.Stats.lastLogTime >= logInterval)
@@ -172,46 +174,47 @@ namespace BitSharp.Core.Builders
 
         public void RollbackBlock(ChainedHeader chainedHeader, IEnumerable<BlockTx> blockTxes)
         {
-            var savedChain = this.chain.ToImmutable();
-            this.BeginTransaction();
-            try
+            this.commitLock.DoWrite(() =>
             {
-                // remove the block from the chain
-                this.chain.RemoveBlock(chainedHeader);
-                this.chainStateCursor.RemoveChainedHeader(chainedHeader);
+                this.BeginTransaction();
+                try
+                {
+                    // remove the block from the chain
+                    this.chain.RemoveBlock(chainedHeader);
+                    this.chainStateCursor.RemoveChainedHeader(chainedHeader);
 
-                // read spent transaction rollback information
-                IImmutableList<SpentTx> spentTxes;
-                if (!this.chainStateCursor.TryGetBlockSpentTxes(chainedHeader.Height, out spentTxes))
-                    throw new ValidationException(chainedHeader.Height);
+                    // read spent transaction rollback information
+                    IImmutableList<SpentTx> spentTxes;
+                    if (!this.chainStateCursor.TryGetBlockSpentTxes(chainedHeader.Height, out spentTxes))
+                        throw new ValidationException(chainedHeader.Height);
 
-                //TODO this can be read in reverse instead of doing a dictionary
-                var spentTxesDictionary =
-                    ImmutableDictionary.CreateRange(
-                        spentTxes.Select(spentTx => new KeyValuePair<UInt256, SpentTx>(spentTx.TxHash, spentTx)));
+                    //TODO this can be read in reverse instead of doing a dictionary
+                    var spentTxesDictionary =
+                        ImmutableDictionary.CreateRange(
+                            spentTxes.Select(spentTx => new KeyValuePair<UInt256, SpentTx>(spentTx.TxHash, spentTx)));
 
-                // keep track of the previoux tx output information for all unminted transactions
-                // the information is removed and will be needed to enable a replay of the rolled back block
-                var unmintedTxes = ImmutableList.CreateBuilder<UnmintedTx>();
+                    // keep track of the previoux tx output information for all unminted transactions
+                    // the information is removed and will be needed to enable a replay of the rolled back block
+                    var unmintedTxes = ImmutableList.CreateBuilder<UnmintedTx>();
 
-                // rollback the utxo
-                this.utxoBuilder.RollbackUtxo(this.chain.ToImmutable(), chainedHeader, blockTxes, spentTxesDictionary, unmintedTxes);
+                    // rollback the utxo
+                    this.utxoBuilder.RollbackUtxo(this.chain.ToImmutable(), chainedHeader, blockTxes, spentTxesDictionary, unmintedTxes);
 
-                // remove the rollback information
-                this.chainStateCursor.TryRemoveBlockSpentTxes(chainedHeader.Height);
+                    // remove the rollback information
+                    this.chainStateCursor.TryRemoveBlockSpentTxes(chainedHeader.Height);
 
-                // store the replay information
-                this.chainStateCursor.TryAddBlockUnmintedTxes(chainedHeader.Hash, unmintedTxes.ToImmutable());
+                    // store the replay information
+                    this.chainStateCursor.TryAddBlockUnmintedTxes(chainedHeader.Hash, unmintedTxes.ToImmutable());
 
-                // commit the chain state
-                this.CommitTransaction();
-            }
-            catch (Exception)
-            {
-                this.chain = savedChain.ToBuilder();
-                this.RollbackTransaction();
-                throw;
-            }
+                    // commit the chain state
+                    this.CommitTransaction();
+                }
+                catch (Exception)
+                {
+                    this.RollbackTransaction();
+                    throw;
+                }
+            });
         }
 
         public void LogBlockchainProgress()
@@ -262,8 +265,8 @@ namespace BitSharp.Core.Builders
             if (this.inTransaction)
                 throw new InvalidOperationException();
 
-            this.commitLock.EnterWriteLock();
             this.chainStateCursor.BeginTransaction();
+            this.rollbackChain = this.chain.ToImmutable();
             this.inTransaction = true;
         }
 
@@ -273,8 +276,8 @@ namespace BitSharp.Core.Builders
                 throw new InvalidOperationException();
 
             this.chainStateCursor.CommitTransaction();
+            this.rollbackChain = null;
             this.inTransaction = false;
-            this.commitLock.ExitWriteLock();
         }
 
         private void RollbackTransaction()
@@ -283,8 +286,8 @@ namespace BitSharp.Core.Builders
                 throw new InvalidOperationException();
 
             this.chainStateCursor.RollbackTransaction();
+            this.chain = this.rollbackChain.ToBuilder();
             this.inTransaction = false;
-            this.commitLock.ExitWriteLock();
         }
 
         public sealed class BuilderStats : IDisposable
