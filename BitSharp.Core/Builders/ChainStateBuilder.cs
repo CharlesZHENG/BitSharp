@@ -108,11 +108,14 @@ namespace BitSharp.Core.Builders
                             {
                                 this.blockValidator.AddPendingTx(pendingTx);
 
-                                // track stats
-                                this.stats.txCount++;
-                                this.stats.inputCount += pendingTx.Transaction.Inputs.Length;
-                                this.stats.txRateMeasure.Tick();
-                                this.stats.inputRateMeasure.Tick(pendingTx.Transaction.Inputs.Length);
+                                // track stats, ignore coinbase
+                                if (pendingTx.TxIndex > 0)
+                                {
+                                    this.stats.txCount++;
+                                    this.stats.inputCount += pendingTx.Transaction.Inputs.Length;
+                                    this.stats.txRateMeasure.Tick();
+                                    this.stats.inputRateMeasure.Tick(pendingTx.Transaction.Inputs.Length);
+                                }
                             }
                         }
 
