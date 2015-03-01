@@ -3,14 +3,8 @@ using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Domain;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics;
 using System.Globalization;
-using System.Linq;
-using System.Numerics;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BitSharp.Core.Test
 {

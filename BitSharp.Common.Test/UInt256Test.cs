@@ -1,11 +1,7 @@
-﻿using System;
-using System.Linq;
-using BitSharp.Common.ExtensionMethods;
-using BitSharp.Common.Test;
+﻿using BitSharp.Common.ExtensionMethods;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Globalization;
 using System.Numerics;
-using System.Security.Cryptography;
 
 namespace BitSharp.Common.Test
 {

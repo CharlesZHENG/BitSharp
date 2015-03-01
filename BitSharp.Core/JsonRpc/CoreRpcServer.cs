@@ -1,17 +1,12 @@
 ﻿using AustinHarris.JsonRpc;
 using BitSharp.Common;
 using BitSharp.Common.ExtensionMethods;
-using BitSharp.Core;
 using NLog;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Net;
-using System.Net.Sockets;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace BitSharp.Core.JsonRpc
 {

@@ -1,12 +1,8 @@
-﻿using BitSharp.Common;
-using BitSharp.Common.ExtensionMethods;
+﻿using BitSharp.Common.ExtensionMethods;
 using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BitSharp.Core.Domain
 {

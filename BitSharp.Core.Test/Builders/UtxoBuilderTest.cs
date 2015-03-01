@@ -1,19 +1,11 @@
 ﻿using BitSharp.Common;
-using BitSharp.Core.Domain;
 using BitSharp.Core.Builders;
-using BitSharp.Core.Storage;
+using BitSharp.Core.Domain;
 using BitSharp.Core.Storage.Memory;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Moq;
-using Ninject;
 using NLog;
-using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Threading;
 
 namespace BitSharp.Core.Test.Builders
 {

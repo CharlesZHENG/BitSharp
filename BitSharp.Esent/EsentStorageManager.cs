@@ -1,23 +1,6 @@
 ﻿using BitSharp.Common;
-using BitSharp.Common.ExtensionMethods;
-using BitSharp.Core.Domain;
-using BitSharp.Core.Rules;
 using BitSharp.Core.Storage;
-using BitSharp.Core.Storage.Memory;
-using BitSharp.Node.Storage;
-using Microsoft.Isam.Esent.Collections.Generic;
-using Microsoft.Isam.Esent.Interop;
-using Ninject;
-using Ninject.Modules;
-using Ninject.Parameters;
 using NLog;
-using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BitSharp.Esent
 {

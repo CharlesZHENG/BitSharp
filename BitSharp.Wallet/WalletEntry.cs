@@ -1,12 +1,7 @@
-﻿using BitSharp.Common;
-using BitSharp.Common.ExtensionMethods;
+﻿using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Monitor;
 using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BitSharp.Wallet
 {

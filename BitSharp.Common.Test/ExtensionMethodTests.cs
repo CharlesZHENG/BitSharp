@@ -1,12 +1,6 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System;
-using System.Collections.Generic;
+﻿using BitSharp.Common.ExtensionMethods;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Diagnostics;
-using BitSharp.Common.ExtensionMethods;
-using BitSharp.Common.Test;
 
 namespace BitSharp.Common.Test
 {

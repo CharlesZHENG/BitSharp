@@ -1,17 +1,9 @@
-﻿using BitSharp.Blockchain;
-using BitSharp.Common;
-using BitSharp.Common.ExtensionMethods;
-using BitSharp.Core.Domain;
+﻿using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Script;
 using BitSharp.Core.Test.Rules;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using NLog;
 using System;
-using System.Collections.Immutable;
-using System.Diagnostics;
-using System.Globalization;
 using System.Linq;
-using System.Threading;
 
 namespace BitSharp.Core.Test
 {

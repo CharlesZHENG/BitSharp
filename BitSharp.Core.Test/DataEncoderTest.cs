@@ -1,11 +1,5 @@
-﻿using BitSharp.Common.ExtensionMethods;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BitSharp.Core.Test
 {

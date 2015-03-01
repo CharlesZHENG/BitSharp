@@ -1,5 +1,4 @@
-﻿using BitSharp.BlockHelper;
-using BitSharp.Common;
+﻿using BitSharp.Common;
 using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core;
 using BitSharp.Core.Domain;
@@ -9,17 +8,11 @@ using BitSharp.Node;
 using BitSharp.Node.Storage;
 using BitSharp.Node.Storage.Memory;
 using Ninject;
-using Ninject.Modules;
 using NLog;
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
-using System.Linq;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace BitSharp.BlockHelper
 {

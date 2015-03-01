@@ -1,11 +1,7 @@
 ﻿using BitSharp.Common;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
 
 // public domain code from: https://gist.github.com/CodesInChaos/3175971
 namespace BitSharp.Wallet.Base58

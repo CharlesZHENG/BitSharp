@@ -1,27 +1,13 @@
 ﻿using BitSharp.Common;
 using BitSharp.Common.ExtensionMethods;
-using BitSharp.Core.ExtensionMethods;
+using BitSharp.Core.Domain;
+using BitSharp.Core.Storage;
+using NLog;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using System.IO;
 using System.Globalization;
-using System.Collections;
-using NLog;
-using BitSharp.Core.Rules;
-using BitSharp.Core.Storage;
-using BitSharp.Core.Workers;
-using System.Security.Cryptography;
-using BitSharp.Core.Domain;
-using BitSharp.Core.Monitor;
-using Ninject;
-using Ninject.Parameters;
+using System.Linq;
 
 namespace BitSharp.Core.Builders
 {

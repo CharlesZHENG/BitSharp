@@ -1,22 +1,12 @@
 ﻿using BitSharp.Common;
 using BitSharp.Common.ExtensionMethods;
-using BitSharp.Core.Domain;
 using BitSharp.Core.Builders;
+using BitSharp.Core.Domain;
 using BitSharp.Core.Rules;
 using BitSharp.Core.Storage;
-using Ninject;
-using Ninject.Parameters;
 using NLog;
 using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Linq;
-using System.Numerics;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
-using System.Diagnostics;
 
 namespace BitSharp.Core.Workers
 {

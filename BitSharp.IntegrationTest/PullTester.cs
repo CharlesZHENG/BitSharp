@@ -1,23 +1,21 @@
-﻿using System;
+﻿using BitSharp.Common;
+using BitSharp.Common.ExtensionMethods;
+using BitSharp.Core;
+using BitSharp.Core.Rules;
+using BitSharp.Core.Storage.Memory;
+using BitSharp.Node;
+using BitSharp.Node.Network;
+using BitSharp.Node.Storage;
+using BitSharp.Node.Storage.Memory;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System.Diagnostics;
-using System.Linq;
-using System.IO;
 using Ninject;
 using NLog;
-using BitSharp.Common;
-using BitSharp.Common.ExtensionMethods;
-using BitSharp.Core.Storage.Memory;
-using BitSharp.Node.Storage.Memory;
-using BitSharp.Node.Storage;
-using BitSharp.Core.Rules;
-using BitSharp.Core;
-using BitSharp.Node;
-using System.Reflection;
-using System.Threading;
-using System.Net.Sockets;
+using System;
+using System.Diagnostics;
+using System.IO;
 using System.Net;
-using BitSharp.Node.Network;
+using System.Net.Sockets;
+using System.Threading;
 
 namespace BitSharp.IntegrationTest
 {

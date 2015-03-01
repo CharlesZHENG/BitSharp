@@ -1,19 +1,13 @@
-﻿using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
+﻿using BitSharp.Common;
+using BitSharp.Common.ExtensionMethods;
+using BitSharp.Node.Domain;
+using NLog;
+using System;
+using System.Collections.Immutable;
 using System.Net;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using BitSharp.Common.ExtensionMethods;
-using System.Collections.Immutable;
-using BitSharp.Common;
-using NLog;
-using BitSharp.Node.Domain;
 
 namespace BitSharp.Node.Network
 {

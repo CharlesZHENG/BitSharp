@@ -1,18 +1,11 @@
 ﻿using BitSharp.Common;
 using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Domain;
-using BitSharp.Core.Storage;
 using NLog;
 using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Globalization;
-using System.Linq;
-using System.Numerics;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace BitSharp.Core.Rules
 {

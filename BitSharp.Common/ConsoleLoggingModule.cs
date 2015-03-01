@@ -1,14 +1,8 @@
-﻿using Ninject;
-using Ninject.Modules;
+﻿using Ninject.Modules;
 using NLog;
 using NLog.Config;
 using NLog.Targets;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BitSharp.Common
 {

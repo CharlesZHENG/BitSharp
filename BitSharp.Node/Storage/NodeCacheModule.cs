@@ -1,17 +1,7 @@
-﻿using BitSharp.Common;
-using BitSharp.Common.ExtensionMethods;
-using BitSharp.Core.Domain;
-using BitSharp.Core.Storage;
-using BitSharp.Node.Domain;
+﻿using BitSharp.Node.Domain;
 using Ninject;
 using Ninject.Modules;
 using Ninject.Parameters;
-using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BitSharp.Node.Storage
 {

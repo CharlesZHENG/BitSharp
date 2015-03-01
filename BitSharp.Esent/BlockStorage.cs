@@ -1,27 +1,17 @@
 ﻿using BitSharp.Common;
 using BitSharp.Common.ExtensionMethods;
-using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Data.SqlClient;
+using BitSharp.Core;
 using BitSharp.Core.Domain;
 using BitSharp.Core.Storage;
-using BitSharp.Core;
 using Microsoft.Isam.Esent.Interop;
-using System.IO;
-using System.Threading;
-using System.Collections.Immutable;
-using System.Security.Cryptography;
-using Microsoft.Isam.Esent.Interop.Vista;
+using Microsoft.Isam.Esent.Interop.Server2003;
+using Microsoft.Isam.Esent.Interop.Windows7;
 using Microsoft.Isam.Esent.Interop.Windows8;
 using Microsoft.Isam.Esent.Interop.Windows81;
 using NLog;
-using Microsoft.Isam.Esent.Interop.Server2003;
-using Microsoft.Isam.Esent.Interop.Windows7;
+using System;
+using System.Collections.Generic;
+using System.IO;
 
 namespace BitSharp.Esent
 {

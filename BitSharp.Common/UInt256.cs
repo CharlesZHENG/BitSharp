@@ -1,14 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using BitSharp.Common.ExtensionMethods;
-using System.Diagnostics;
+﻿using BitSharp.Common.ExtensionMethods;
+using System;
 using System.Globalization;
-using System.Numerics;
-using System.Collections.Immutable;
 using System.Net;
+using System.Numerics;
 
 namespace BitSharp.Common
 {

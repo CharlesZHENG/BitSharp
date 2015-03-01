@@ -1,19 +1,11 @@
-﻿using BitSharp.Common;
-using BitSharp.Common.ExtensionMethods;
+﻿using BitSharp.Core.Rules;
+using BitSharp.Node;
+using BitSharp.Node.Domain;
+using BitSharp.Node.Storage;
 using System;
 using System.Collections.Generic;
-using System.Data;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Data.SqlClient;
 using System.IO;
-using BitSharp.Node.Storage;
-using BitSharp.Node.Domain;
-using BitSharp.Core;
-using BitSharp.Node;
-using BitSharp.Core.Rules;
+using System.Linq;
 
 namespace BitSharp.Esent
 {

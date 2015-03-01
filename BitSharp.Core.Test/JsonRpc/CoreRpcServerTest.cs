@@ -1,25 +1,12 @@
-﻿using BitSharp.Common;
-using BitSharp.Common.ExtensionMethods;
-using BitSharp.Core.Domain;
-using BitSharp.Core.JsonRpc;
-using BitSharp.Core.Rules;
-using BitSharp.Core.Script;
+﻿using BitSharp.Core.JsonRpc;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Moq;
-using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Diagnostics;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
+using Newtonsoft.Json;
 using Ninject;
 using NLog;
-using System.Collections.Concurrent;
-using Newtonsoft.Json;
-using System.Net;
+using System;
 using System.IO;
+using System.Net;
+using System.Text;
 
 namespace BitSharp.Core.Test.JsonRpc
 {

@@ -1,11 +1,9 @@
 ﻿using BitSharp.Common;
 using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core;
-using BitSharp.Core.Builders;
 using BitSharp.Core.Domain;
 using BitSharp.Core.ExtensionMethods;
 using BitSharp.Core.Storage;
-using Microsoft.Isam.Esent.Collections.Generic;
 using Microsoft.Isam.Esent.Interop;
 using Microsoft.Isam.Esent.Interop.Server2003;
 using Microsoft.Isam.Esent.Interop.Windows8;
@@ -14,13 +12,7 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BitSharp.Esent
 {

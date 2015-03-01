@@ -3,16 +3,11 @@ using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics;
 using System.Globalization;
-using System.IO;
 using System.Linq;
 using System.Numerics;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using BitSharp.Common;
-using System.Security.Cryptography;
 
 namespace BitSharp.Common.ExtensionMethods
 {

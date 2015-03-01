@@ -1,13 +1,7 @@
-﻿using BitSharp.Common;
-using System;
-using System.Collections.Generic;
+﻿using System;
 using System.Collections.Immutable;
 using System.Data.Linq;
-using System.Diagnostics;
-using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BitSharp.Core.Domain
 {

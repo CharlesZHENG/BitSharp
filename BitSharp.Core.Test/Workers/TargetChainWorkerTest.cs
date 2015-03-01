@@ -1,6 +1,4 @@
-﻿using BitSharp.Blockchain;
-using BitSharp.Common;
-using BitSharp.Common.ExtensionMethods;
+﻿using BitSharp.Common;
 using BitSharp.Core.Domain;
 using BitSharp.Core.Rules;
 using BitSharp.Core.Storage;
@@ -12,12 +10,8 @@ using Moq;
 using Ninject;
 using Ninject.Parameters;
 using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace BitSharp.Core.Test.Workers
 {

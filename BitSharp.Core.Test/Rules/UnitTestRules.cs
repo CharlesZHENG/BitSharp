@@ -1,16 +1,8 @@
-﻿using BitSharp.Blockchain;
-using BitSharp.Common;
+﻿using BitSharp.Common;
 using BitSharp.Core.Domain;
 using BitSharp.Core.Rules;
-using BitSharp.Core.Storage;
 using NLog;
-using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BitSharp.Core.Test.Rules
 {

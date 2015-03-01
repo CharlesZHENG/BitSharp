@@ -1,16 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using BitSharp.Common;
+using BitSharp.Common.ExtensionMethods;
+using BitSharp.Core.Domain;
+using NLog;
+using System;
 using System.Diagnostics;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using BitSharp.Common.ExtensionMethods;
-using BitSharp.Common;
-using System.IO;
-using NLog;
-using BitSharp.Core.Domain;
 
 namespace BitSharp.Core.Test
 {

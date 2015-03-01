@@ -3,22 +3,15 @@ using Secp256k1;
 #endif
 
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
 using System.IO;
 using BitSharp.Common;
 using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.ExtensionMethods;
-using System.Collections.Concurrent;
-using System.Threading;
 using System.Collections.Immutable;
 using NLog;
 using BitSharp.Core.Domain;
-using BitSharp.Core.Rules;
 
 namespace BitSharp.Core.Script
 {

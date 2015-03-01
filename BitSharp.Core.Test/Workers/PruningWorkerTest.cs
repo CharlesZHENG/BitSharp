@@ -1,7 +1,6 @@
 ﻿using BitSharp.Common;
 using BitSharp.Core.Builders;
 using BitSharp.Core.Domain;
-using BitSharp.Core.Storage;
 using BitSharp.Core.Storage.Memory;
 using BitSharp.Core.Test.Rules;
 using BitSharp.Core.Workers;
@@ -11,11 +10,8 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics;
 using System.Linq;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace BitSharp.Core.Test.Workers
 {

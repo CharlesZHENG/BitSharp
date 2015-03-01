@@ -1,12 +1,8 @@
-﻿using Microsoft.Isam.Esent.Collections.Generic;
-using BitSharp.Common.ExtensionMethods;
+﻿using Base32;
+using Microsoft.Isam.Esent.Collections.Generic;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using Base32;
 
 namespace BitSharp.Esent
 {

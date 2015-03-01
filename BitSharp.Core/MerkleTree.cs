@@ -1,14 +1,9 @@
 ﻿using BitSharp.Common;
-using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Domain;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics;
 using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BitSharp.Core
 {

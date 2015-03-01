@@ -1,25 +1,10 @@
-﻿using BitSharp.Common;
-using BitSharp.Common.ExtensionMethods;
-using BitSharp.Core.Domain;
-using BitSharp.Core.JsonRpc;
-using BitSharp.Wallet;
-using BitSharp.Core.Rules;
-using BitSharp.Core.Script;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Moq;
-using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Diagnostics;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
-using System.Threading.Tasks;
-using Ninject;
-using NLog;
-using System.Collections.Concurrent;
-using BitSharp.Wallet.Address;
+﻿using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Test;
+using BitSharp.Wallet.Address;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using NLog;
+using System.Collections.Immutable;
+using System.Linq;
 
 namespace BitSharp.Wallet.Test
 {

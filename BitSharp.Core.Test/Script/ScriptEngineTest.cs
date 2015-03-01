@@ -1,18 +1,15 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Diagnostics;
-using BitSharp;
-using BitSharp.Common;
+﻿using BitSharp.Common;
 using BitSharp.Common.ExtensionMethods;
-using System.Collections.Immutable;
-using NLog;
-using Ninject;
 using BitSharp.Core.Domain;
 using BitSharp.Core.Script;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Ninject;
+using NLog;
+using System;
+using System.Collections.Generic;
+using System.Collections.Immutable;
+using System.Diagnostics;
+using System.Linq;
 
 namespace BitSharp.Core.Test.Script
 {
