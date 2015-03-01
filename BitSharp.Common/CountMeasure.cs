@@ -25,7 +25,7 @@ namespace BitSharp.Common
             this.rwLock = new ReaderWriterLockSlim();
             this.cancelToken = new CancellationTokenSource();
             this.stopwatch = Stopwatch.StartNew();
-            this.samples = new List<Sample> { new Sample { SampleStart = this.stopwatch.Elapsed, TickCount = 0 } };
+            this.samples = new List<Sample> { new Sample { SampleStart = TimeSpan.Zero, TickCount = 0 } };
 
             this.SampleCutoff = sampleCutoff;
             this.SampleResolution = sampleResolution ?? TimeSpan.FromSeconds(1);
@@ -44,7 +44,7 @@ namespace BitSharp.Common
 
             this.cancelToken.Cancel();
             this.sampleTask.Wait();
-            
+
             this.cancelToken.Dispose();
             this.rwLock.Dispose();
 

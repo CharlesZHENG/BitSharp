@@ -26,7 +26,7 @@ namespace BitSharp.Common
             this.rwLock = new ReaderWriterLockSlim();
             this.cancelToken = new CancellationTokenSource();
             this.stopwatch = Stopwatch.StartNew();
-            this.samples = new List<Sample>();
+            this.samples = new List<Sample> { new Sample { SampleStart = TimeSpan.Zero, TickCount = 0, TickDuration = 0 } };
 
             this.SampleCutoff = sampleCutoff ?? TimeSpan.FromSeconds(30);
             this.SampleResolution = sampleResolution ?? TimeSpan.FromSeconds(1);
@@ -54,8 +54,30 @@ namespace BitSharp.Common
 
         public void Tick(TimeSpan duration)
         {
-            Interlocked.Increment(ref this.tickCount);
-            Interlocked.Add(ref this.tickDuration, duration.Ticks);
+            this.rwLock.DoWrite(() =>
+            {
+                Interlocked.Increment(ref this.tickCount);
+                Interlocked.Add(ref this.tickDuration, duration.Ticks);
+            });
+        }
+
+        public void Measure(Action action)
+        {
+            var stopwatch = Stopwatch.StartNew();
+            action();
+            stopwatch.Stop();
+
+            Tick(stopwatch.Elapsed);
+        }
+
+        public T Measure<T>(Func<T> func)
+        {
+            var stopwatch = Stopwatch.StartNew();
+            var result = func();
+            stopwatch.Stop();
+
+            Tick(stopwatch.Elapsed);
+            return result;
         }
 
         public TimeSpan GetAverage()
@@ -67,10 +89,6 @@ namespace BitSharp.Common
 
                 var start = this.samples[0].SampleStart;
                 var now = stopwatch.Elapsed;
-
-                var duration = now - start;
-                if (duration <= TimeSpan.Zero)
-                    return TimeSpan.Zero;
 
                 var cutoff = now - this.SampleCutoff;
                 var validSamples = this.samples.Where(x => x.SampleStart >= cutoff).ToList();
@@ -101,7 +119,6 @@ namespace BitSharp.Common
                 }
 
                 var now = stopwatch.Elapsed;
-                var duration = now - start;
                 var cutoff = now - this.SampleCutoff;
 
                 this.rwLock.DoWrite(() =>
@@ -111,7 +128,7 @@ namespace BitSharp.Common
 
                     while (this.samples.Count > 0 && this.samples[0].SampleStart < cutoff)
                         this.samples.RemoveAt(0);
-                    this.samples.Add(new Sample { SampleStart = start, SampleDuration = duration, TickCount = tickCountLocal, TickDuration = tickDurationLocal });
+                    this.samples.Add(new Sample { SampleStart = start, TickCount = tickCountLocal, TickDuration = tickDurationLocal });
                 });
             }
         }
@@ -119,7 +136,6 @@ namespace BitSharp.Common
         private sealed class Sample
         {
             public TimeSpan SampleStart { get; set; }
-            public TimeSpan SampleDuration { get; set; }
             public int TickCount { get; set; }
             public long TickDuration { get; set; }
         }
