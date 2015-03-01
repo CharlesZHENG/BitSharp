@@ -90,7 +90,7 @@ namespace BitSharp.Esent.ChainState
                         new JET_INDEXCREATE
                         {
                             cbKeyMost = 255,
-                            grbit = CreateIndexGrbit.IndexUnique | CreateIndexGrbit.IndexDisallowNull,
+                            grbit = CreateIndexGrbit.IndexPrimary | CreateIndexGrbit.IndexDisallowNull,
                             szIndexName = "IX_BlockHeight",
                             szKey = "+BlockHeight\0\0",
                             cbKey = "+BlockHeight\0\0".Length
@@ -120,7 +120,7 @@ namespace BitSharp.Esent.ChainState
                         new JET_INDEXCREATE
                         {
                             cbKeyMost = 255,
-                            grbit = CreateIndexGrbit.IndexUnique | CreateIndexGrbit.IndexDisallowNull,
+                            grbit = CreateIndexGrbit.IndexPrimary | CreateIndexGrbit.IndexDisallowNull,
                             szIndexName = "IX_TxHash",
                             szKey = "+TxHash\0\0",
                             cbKey = "+TxHash\0\0".Length
@@ -146,7 +146,7 @@ namespace BitSharp.Esent.ChainState
                         new JET_INDEXCREATE
                         {
                             cbKeyMost = 255,
-                            grbit = CreateIndexGrbit.IndexUnique | CreateIndexGrbit.IndexDisallowNull,
+                            grbit = CreateIndexGrbit.IndexPrimary | CreateIndexGrbit.IndexDisallowNull,
                             szIndexName = "IX_SpentBlockIndex",
                             szKey = "+SpentBlockIndex\0\0",
                             cbKey = "+SpentBlockIndex\0\0".Length
@@ -172,7 +172,7 @@ namespace BitSharp.Esent.ChainState
                         new JET_INDEXCREATE
                         {
                             cbKeyMost = 255,
-                            grbit = CreateIndexGrbit.IndexUnique | CreateIndexGrbit.IndexDisallowNull,
+                            grbit = CreateIndexGrbit.IndexPrimary | CreateIndexGrbit.IndexDisallowNull,
                             szIndexName = "IX_UnmintedBlockHash",
                             szKey = "+BlockHash\0\0",
                             cbKey = "+BlockHash\0\0".Length

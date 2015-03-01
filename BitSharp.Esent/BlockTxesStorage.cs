@@ -1,28 +1,18 @@
 ﻿using BitSharp.Common;
 using BitSharp.Common.ExtensionMethods;
-using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Data.SqlClient;
+using BitSharp.Core;
 using BitSharp.Core.Domain;
 using BitSharp.Core.Storage;
-using BitSharp.Core;
 using Microsoft.Isam.Esent.Interop;
-using System.IO;
-using System.Threading;
-using System.Collections.Immutable;
-using System.Security.Cryptography;
 using Microsoft.Isam.Esent.Interop.Server2003;
-using Microsoft.Isam.Esent.Interop.Vista;
+using Microsoft.Isam.Esent.Interop.Windows7;
+using Microsoft.Isam.Esent.Interop.Windows8;
 using Microsoft.Isam.Esent.Interop.Windows81;
 using NLog;
-using Microsoft.Isam.Esent.Interop.Windows8;
+using System;
+using System.Collections.Generic;
+using System.IO;
 using Transaction = BitSharp.Core.Domain.Transaction;
-using Microsoft.Isam.Esent.Interop.Windows7;
 
 namespace BitSharp.Esent
 {
@@ -67,23 +57,37 @@ namespace BitSharp.Esent
 
         public bool ContainsBlock(UInt256 blockHash)
         {
-            int blockId;
-            return this.TryGetBlockId(blockHash, out blockId);
-        }
-
-        public void PruneElements(UInt256 blockHash, IEnumerable<int> txIndices)
-        {
-            int blockId;
-            if (!this.TryGetBlockId(blockHash, out blockId))
-                throw new MissingDataException(blockHash);
-
             using (var handle = this.cursorCache.TakeItem())
             {
                 var cursor = handle.Item;
 
                 using (var jetTx = cursor.jetSession.BeginTransaction())
                 {
-                    var pruningCursor = new MerkleTreePruningCursor(blockId, cursor);
+                    Api.JetSetCurrentIndex(cursor.jetSession, cursor.blocksTableId, "IX_BlockHashTxIndex");
+                    Api.MakeKey(cursor.jetSession, cursor.blocksTableId, DbEncoder.EncodeBlockHashTxIndex(blockHash, 0), MakeKeyGrbit.NewKey);
+
+                    if (Api.TrySeek(cursor.jetSession, cursor.blocksTableId, SeekGrbit.SeekGE))
+                    {
+                        UInt256 recordBlockHash; int txIndex;
+                        DbEncoder.DecodeBlockHashTxIndex(Api.RetrieveColumn(cursor.jetSession, cursor.blocksTableId, cursor.blockHashTxIndexColumnId),
+                            out recordBlockHash, out txIndex);
+                        return blockHash == recordBlockHash;
+                    }
+                    else
+                        return false;
+                }
+            }
+        }
+
+        public void PruneElements(UInt256 blockHash, IEnumerable<int> txIndices)
+        {
+            using (var handle = this.cursorCache.TakeItem())
+            {
+                var cursor = handle.Item;
+
+                using (var jetTx = cursor.jetSession.BeginTransaction())
+                {
+                    var pruningCursor = new MerkleTreePruningCursor(blockHash, cursor);
                     //var cachedCursor = new CachedMerkleTreePruningCursor(pruningCursor);
 
                     // prune the transactions
@@ -97,10 +101,9 @@ namespace BitSharp.Esent
 
         public bool TryReadBlockTransactions(UInt256 blockHash, out IEnumerable<BlockTx> blockTxes)
         {
-            int blockId;
-            if (this.TryGetBlockId(blockHash, out blockId))
+            if (this.ContainsBlock(blockHash))
             {
-                blockTxes = ReadBlockTransactions(blockHash, blockId);
+                blockTxes = ReadBlockTransactions(blockHash);
                 return true;
             }
             else
@@ -110,7 +113,7 @@ namespace BitSharp.Esent
             }
         }
 
-        private IEnumerable<BlockTx> ReadBlockTransactions(UInt256 blockHash, int blockId)
+        private IEnumerable<BlockTx> ReadBlockTransactions(UInt256 blockHash)
         {
             using (var handle = this.cursorCache.TakeItem())
             {
@@ -118,19 +121,20 @@ namespace BitSharp.Esent
 
                 using (var jetTx = cursor.jetSession.BeginTransaction())
                 {
-                    Api.JetSetCurrentIndex(cursor.jetSession, cursor.blocksTableId, "IX_BlockIdTxIndex");
-                    Api.MakeKey(cursor.jetSession, cursor.blocksTableId, blockId, MakeKeyGrbit.NewKey);
-                    Api.MakeKey(cursor.jetSession, cursor.blocksTableId, -1, MakeKeyGrbit.None);
+                    Api.JetSetCurrentIndex(cursor.jetSession, cursor.blocksTableId, "IX_BlockHashTxIndex");
+                    Api.MakeKey(cursor.jetSession, cursor.blocksTableId, DbEncoder.EncodeBlockHashTxIndex(blockHash, 0), MakeKeyGrbit.NewKey);
 
                     if (!Api.TrySeek(cursor.jetSession, cursor.blocksTableId, SeekGrbit.SeekGE))
                         yield break;
 
                     do
                     {
-                        if (blockId != Api.RetrieveColumnAsInt32(cursor.jetSession, cursor.blocksTableId, cursor.blockIdColumnId).Value)
+                        UInt256 recordBlockHash; int txIndex;
+                        DbEncoder.DecodeBlockHashTxIndex(Api.RetrieveColumn(cursor.jetSession, cursor.blocksTableId, cursor.blockHashTxIndexColumnId),
+                            out recordBlockHash, out txIndex);
+                        if (blockHash != recordBlockHash)
                             yield break;
 
-                        var txIndex = Api.RetrieveColumnAsInt32(cursor.jetSession, cursor.blocksTableId, cursor.blockTxIndexColumnId).Value;
                         var depth = Api.RetrieveColumnAsInt32(cursor.jetSession, cursor.blocksTableId, cursor.blockDepthColumnId).Value;
                         var txHash = DbEncoder.DecodeUInt256(Api.RetrieveColumn(cursor.jetSession, cursor.blocksTableId, cursor.blockTxHashColumnId));
                         var txBytes = Api.RetrieveColumn(cursor.jetSession, cursor.blocksTableId, cursor.blockTxBytesColumnId);
@@ -162,24 +166,17 @@ namespace BitSharp.Esent
             }
         }
 
+        private readonly DurationMeasure measure = new DurationMeasure(TimeSpan.FromSeconds(10));
         public bool TryGetTransaction(UInt256 blockHash, int txIndex, out Transaction transaction)
         {
-            int blockId;
-            if (!this.TryGetBlockId(blockHash, out blockId))
-            {
-                transaction = default(Transaction);
-                return false;
-            }
-
             using (var handle = this.cursorCache.TakeItem())
             {
                 var cursor = handle.Item;
 
                 using (var jetTx = cursor.jetSession.BeginTransaction())
                 {
-                    Api.JetSetCurrentIndex(cursor.jetSession, cursor.blocksTableId, "IX_BlockIdTxIndex");
-                    Api.MakeKey(cursor.jetSession, cursor.blocksTableId, blockId, MakeKeyGrbit.NewKey);
-                    Api.MakeKey(cursor.jetSession, cursor.blocksTableId, txIndex, MakeKeyGrbit.None);
+                    Api.JetSetCurrentIndex(cursor.jetSession, cursor.blocksTableId, "IX_BlockHashTxIndex");
+                    Api.MakeKey(cursor.jetSession, cursor.blocksTableId, DbEncoder.EncodeBlockHashTxIndex(blockHash, txIndex), MakeKeyGrbit.NewKey);
                     if (Api.TrySeek(cursor.jetSession, cursor.blocksTableId, SeekGrbit.SeekEQ))
                     {
                         var txBytes = Api.RetrieveColumn(cursor.jetSession, cursor.blocksTableId, cursor.blockTxBytesColumnId);
@@ -257,12 +254,8 @@ namespace BitSharp.Esent
             JET_TABLEID globalsTableId;
             JET_COLUMNID blockCountColumnId;
             JET_COLUMNID flushColumnId;
-            JET_TABLEID blockIdsTableId;
-            JET_COLUMNID blockIdsHashColumnId;
-            JET_COLUMNID blockIdsIdColumnId;
             JET_TABLEID blocksTableId;
-            JET_COLUMNID blockIdColumnId;
-            JET_COLUMNID blockTxIndexColumnId;
+            JET_COLUMNID blockHashTxIndexColumnId;
             JET_COLUMNID blockDepthColumnId;
             JET_COLUMNID blockTxHashColumnId;
             JET_COLUMNID blockTxBytesColumnId;
@@ -291,28 +284,8 @@ namespace BitSharp.Esent
 
                 Api.JetCloseTable(jetSession, globalsTableId);
 
-                Api.JetCreateTable(jetSession, blockDbId, "BlockIds", 0, 0, out blockIdsTableId);
-                Api.JetAddColumn(jetSession, blockIdsTableId, "BlockHash", new JET_COLUMNDEF { coltyp = JET_coltyp.Binary, cbMax = 32, grbit = ColumndefGrbit.ColumnNotNULL | ColumndefGrbit.ColumnFixed }, null, 0, out blockIdsHashColumnId);
-                Api.JetAddColumn(jetSession, blockIdsTableId, "BlockId", new JET_COLUMNDEF { coltyp = JET_coltyp.Long, grbit = ColumndefGrbit.ColumnAutoincrement | ColumndefGrbit.ColumnNotNULL }, null, 0, out blockIdsIdColumnId);
-
-                Api.JetCreateIndex2(jetSession, blockIdsTableId,
-                    new JET_INDEXCREATE[]
-                    {
-                        new JET_INDEXCREATE
-                        {
-                            cbKeyMost = 255,
-                            grbit = CreateIndexGrbit.IndexUnique | CreateIndexGrbit.IndexDisallowNull,
-                            szIndexName = "IX_BlockHash",
-                            szKey = "+BlockHash\0\0",
-                            cbKey = "+BlockHash\0\0".Length
-                        }
-                    }, 1);
-
-                Api.JetCloseTable(jetSession, blockIdsTableId);
-
                 Api.JetCreateTable(jetSession, blockDbId, "Blocks", 0, 0, out blocksTableId);
-                Api.JetAddColumn(jetSession, blocksTableId, "BlockId", new JET_COLUMNDEF { coltyp = JET_coltyp.Long, grbit = ColumndefGrbit.ColumnNotNULL }, null, 0, out blockIdColumnId);
-                Api.JetAddColumn(jetSession, blocksTableId, "TxIndex", new JET_COLUMNDEF { coltyp = JET_coltyp.Long, grbit = ColumndefGrbit.ColumnNotNULL }, null, 0, out blockTxIndexColumnId);
+                Api.JetAddColumn(jetSession, blocksTableId, "BlockHashTxIndex", new JET_COLUMNDEF { coltyp = JET_coltyp.Binary, cbMax = 36, grbit = ColumndefGrbit.ColumnNotNULL | ColumndefGrbit.ColumnFixed }, null, 0, out blockHashTxIndexColumnId);
                 Api.JetAddColumn(jetSession, blocksTableId, "Depth", new JET_COLUMNDEF { coltyp = JET_coltyp.Long, grbit = ColumndefGrbit.ColumnNotNULL }, null, 0, out blockDepthColumnId);
                 Api.JetAddColumn(jetSession, blocksTableId, "TxHash", new JET_COLUMNDEF { coltyp = JET_coltyp.Binary, cbMax = 32, grbit = ColumndefGrbit.ColumnNotNULL | ColumndefGrbit.ColumnFixed }, null, 0, out blockTxHashColumnId);
                 Api.JetAddColumn(jetSession, blocksTableId, "TxBytes", new JET_COLUMNDEF { coltyp = JET_coltyp.LongBinary }, null, 0, out blockTxBytesColumnId);
@@ -323,10 +296,10 @@ namespace BitSharp.Esent
                         new JET_INDEXCREATE
                         {
                             cbKeyMost = 255,
-                            grbit = CreateIndexGrbit.IndexUnique | CreateIndexGrbit.IndexDisallowNull,
-                            szIndexName = "IX_BlockIdTxIndex",
-                            szKey = "+BlockId\0+TxIndex\0\0",
-                            cbKey = "+BlockId\0+TxIndex\0\0".Length
+                            grbit = CreateIndexGrbit.IndexPrimary | CreateIndexGrbit.IndexDisallowNull,
+                            szIndexName = "IX_BlockHashTxIndex",
+                            szKey = "+BlockHashTxIndex\0\0",
+                            cbKey = "+BlockHashTxIndex\0\0".Length
                         }
                     }, 1);
 
@@ -418,19 +391,10 @@ namespace BitSharp.Esent
 
                     using (var jetTx = cursor.jetSession.BeginTransaction())
                     {
-                        int blockId;
-                        using (var jetUpdate = cursor.jetSession.BeginUpdate(cursor.blockIdsTableId, JET_prep.Insert))
-                        {
-                            blockId = Api.RetrieveColumnAsInt32(cursor.jetSession, cursor.blockIdsTableId, cursor.blockIdsIdColumnId, RetrieveColumnGrbit.RetrieveCopy).Value;
-                            Api.SetColumn(cursor.jetSession, cursor.blockIdsTableId, cursor.blockIdsHashColumnId, DbEncoder.EncodeUInt256(blockHash));
-
-                            jetUpdate.Save();
-                        }
-
                         var txIndex = 0;
                         foreach (var tx in blockTxes)
                         {
-                            AddTransaction(blockId, txIndex, tx.Hash, DataEncoder.EncodeTransaction(tx), cursor);
+                            AddTransaction(blockHash, txIndex, tx.Hash, DataEncoder.EncodeTransaction(tx), cursor);
                             txIndex++;
                         }
 
@@ -448,12 +412,11 @@ namespace BitSharp.Esent
             }
         }
 
-        private void AddTransaction(int blockId, int txIndex, UInt256 txHash, byte[] txBytes, BlockTxesCursor cursor)
+        private void AddTransaction(UInt256 blockHash, int txIndex, UInt256 txHash, byte[] txBytes, BlockTxesCursor cursor)
         {
             using (var jetUpdate = cursor.jetSession.BeginUpdate(cursor.blocksTableId, JET_prep.Insert))
             {
-                Api.SetColumn(cursor.jetSession, cursor.blocksTableId, cursor.blockIdColumnId, blockId);
-                Api.SetColumn(cursor.jetSession, cursor.blocksTableId, cursor.blockTxIndexColumnId, txIndex);
+                Api.SetColumn(cursor.jetSession, cursor.blocksTableId, cursor.blockHashTxIndexColumnId, DbEncoder.EncodeBlockHashTxIndex(blockHash, txIndex));
                 //TODO i'm using -1 depth to mean not pruned, this should be interpreted as depth 0
                 Api.SetColumn(cursor.jetSession, cursor.blocksTableId, cursor.blockDepthColumnId, -1);
                 Api.SetColumn(cursor.jetSession, cursor.blocksTableId, cursor.blockTxHashColumnId, DbEncoder.EncodeUInt256(txHash));
@@ -471,32 +434,33 @@ namespace BitSharp.Esent
 
                 using (var jetTx = cursor.jetSession.BeginTransaction())
                 {
-                    Api.JetSetCurrentIndex(cursor.jetSession, cursor.blockIdsTableId, "IX_BlockHash");
-                    Api.MakeKey(cursor.jetSession, cursor.blockIdsTableId, DbEncoder.EncodeUInt256(blockHash), MakeKeyGrbit.NewKey);
+                    // remove transactions
+                    Api.JetSetCurrentIndex(cursor.jetSession, cursor.blocksTableId, "IX_BlockHashTxIndex");
+                    Api.MakeKey(cursor.jetSession, cursor.blocksTableId, DbEncoder.EncodeBlockHashTxIndex(blockHash, 0), MakeKeyGrbit.NewKey);
 
-                    if (Api.TrySeek(cursor.jetSession, cursor.blockIdsTableId, SeekGrbit.SeekEQ))
+                    var removed = false;
+                    if (Api.TrySeek(cursor.jetSession, cursor.blocksTableId, SeekGrbit.SeekGE))
                     {
-                        var blockId = Api.RetrieveColumnAsInt32(cursor.jetSession, cursor.blockIdsTableId, cursor.blockIdsIdColumnId).Value;
-
-                        // remove block id
-                        Api.JetDelete(cursor.jetSession, cursor.blockIdsTableId);
-
-                        // remove transactions
-                        Api.JetSetCurrentIndex(cursor.jetSession, cursor.blocksTableId, "IX_BlockIdTxIndex");
-                        Api.MakeKey(cursor.jetSession, cursor.blocksTableId, blockId, MakeKeyGrbit.NewKey);
-                        Api.MakeKey(cursor.jetSession, cursor.blocksTableId, -1, MakeKeyGrbit.None);
-
-                        if (Api.TrySeek(cursor.jetSession, cursor.blocksTableId, SeekGrbit.SeekGE)
-                            && blockId == Api.RetrieveColumnAsInt32(cursor.jetSession, cursor.blocksTableId, cursor.blockIdColumnId).Value)
+                        do
                         {
-                            do
+                            UInt256 recordBlockHash; int txIndex;
+                            DbEncoder.DecodeBlockHashTxIndex(Api.RetrieveColumn(cursor.jetSession, cursor.blocksTableId, cursor.blockHashTxIndexColumnId),
+                                out recordBlockHash, out txIndex);
+                            if (blockHash == recordBlockHash)
                             {
                                 Api.JetDelete(cursor.jetSession, cursor.blocksTableId);
+                                removed = true;
                             }
-                            while (Api.TryMoveNext(cursor.jetSession, cursor.blocksTableId)
-                                && blockId == Api.RetrieveColumnAsInt32(cursor.jetSession, cursor.blocksTableId, cursor.blockIdColumnId).Value);
+                            else
+                            {
+                                break;
+                            }
                         }
+                        while (Api.TryMoveNext(cursor.jetSession, cursor.blocksTableId));
+                    }
 
+                    if (removed)
+                    {
                         // decrease block count
                         Api.EscrowUpdate(cursor.jetSession, cursor.globalsTableId, cursor.blockCountColumnId, -1);
 
@@ -550,30 +514,6 @@ namespace BitSharp.Esent
                     Windows8Api.JetResizeDatabase(cursor.jetSession, cursor.blockDbId, 0, out actualPages, Windows81Grbits.OnlyShrink);
 
                     this.logger.Info("Finished shrinking block txes database: {0:#,##0} MB".Format2((float)actualPages * SystemParameters.DatabasePageSize / 1.MILLION()));
-                }
-            }
-        }
-
-        private bool TryGetBlockId(UInt256 blockHash, out int blockId)
-        {
-            using (var handle = this.cursorCache.TakeItem())
-            {
-                var cursor = handle.Item;
-
-                using (var jetTx = cursor.jetSession.BeginTransaction())
-                {
-                    Api.JetSetCurrentIndex(cursor.jetSession, cursor.blockIdsTableId, "IX_BlockHash");
-                    Api.MakeKey(cursor.jetSession, cursor.blockIdsTableId, DbEncoder.EncodeUInt256(blockHash), MakeKeyGrbit.NewKey);
-                    if (Api.TrySeek(cursor.jetSession, cursor.blockIdsTableId, SeekGrbit.SeekEQ))
-                    {
-                        blockId = Api.RetrieveColumnAsInt32(cursor.jetSession, cursor.blockIdsTableId, cursor.blockIdsIdColumnId).Value;
-                        return true;
-                    }
-                    else
-                    {
-                        blockId = default(int);
-                        return false;
-                    }
                 }
             }
         }
