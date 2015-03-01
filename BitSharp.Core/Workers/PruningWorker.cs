@@ -43,7 +43,7 @@ namespace BitSharp.Core.Workers
             this.prunedChain = new ChainBuilder();
             this.Mode = PruningMode.None;
 
-            var txesPruneThreadCount = 4;
+            var txesPruneThreadCount = Environment.ProcessorCount * 8;
             this.blockTxesPruner = new ParallelConsumer<KeyValuePair<int, List<int>>>("PruningWorker.BlockTxesPruner", txesPruneThreadCount, logger);
         }
 
