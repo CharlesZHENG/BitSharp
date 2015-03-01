@@ -3,7 +3,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -44,7 +43,7 @@ namespace BitSharp.Common
 
             this.cancelToken.Cancel();
             this.sampleTask.Wait();
-            
+
             this.cancelToken.Dispose();
             this.rwLock.Dispose();
 
@@ -61,8 +60,11 @@ namespace BitSharp.Common
             Interlocked.Add(ref this.tickCount, count);
         }
 
-        public float GetAverage(TimeSpan perUnitTime)
+        public float GetAverage(TimeSpan? perUnitTime = null)
         {
+            if (perUnitTime == null)
+                perUnitTime = TimeSpan.FromSeconds(1);
+
             return this.rwLock.DoRead(() =>
             {
                 if (this.samples.Count == 0)
@@ -80,7 +82,7 @@ namespace BitSharp.Common
 
                 var totalTickCount = validSamples.Sum(x => x.TickCount) + this.tickCount;
 
-                var unitsOfTime = (double)duration.Ticks / perUnitTime.Ticks;
+                var unitsOfTime = (double)duration.Ticks / perUnitTime.Value.Ticks;
 
                 return (float)(totalTickCount / unitsOfTime);
             });
