@@ -6,19 +6,15 @@ using BitSharp.Core.Storage;
 using NLog;
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace BitSharp.Core.Builders
 {
     internal class BlockValidator : IDisposable
     {
         private readonly Logger logger;
+        private readonly ChainStateBuilder.BuilderStats stats;
         private readonly IStorageManager storageManager;
         private readonly IBlockchainRules rules;
 
@@ -37,14 +33,15 @@ namespace BitSharp.Core.Builders
         private ConcurrentBag<Exception> txValidatorExceptions;
         private ConcurrentBag<Exception> scriptValidatorExceptions;
 
-        public BlockValidator(IStorageManager storageManager, IBlockchainRules rules, Logger logger)
+        public BlockValidator(ChainStateBuilder.BuilderStats stats, IStorageManager storageManager, IBlockchainRules rules, Logger logger)
         {
             this.logger = logger;
+            this.stats = stats;
             this.storageManager = storageManager;
             this.rules = rules;
 
             // thread count for i/o task (TxLoader)
-            var ioThreadCount = 4;
+            var ioThreadCount = Environment.ProcessorCount * 8;
 
             // thread count for cpu tasks (TxValidator, ScriptValidator)
             var cpuThreadCount = Environment.ProcessorCount * 2;
@@ -219,9 +216,14 @@ namespace BitSharp.Core.Builders
                         {
                             var spentTx = spentTxes[inputIndex];
 
+                            var stopwatch = Stopwatch.StartNew();
                             Transaction prevTx;
                             if (this.storageManager.BlockTxesStorage.TryGetTransaction(spentTx.BlockHash, spentTx.TxIndex, out prevTx))
                             {
+                                stopwatch.Stop();
+                                this.stats.prevTxLoadDurationMeasure.Tick(stopwatch.Elapsed);
+                                this.stats.prevTxLoadRateMeasure.Tick();
+
                                 if (input.PreviousTxOutputKey.TxHash != prevTx.Hash)
                                     throw new Exception("TODO");
 

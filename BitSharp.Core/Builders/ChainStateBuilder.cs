@@ -1,27 +1,15 @@
 ﻿using BitSharp.Common;
 using BitSharp.Common.ExtensionMethods;
+using BitSharp.Core.Domain;
+using BitSharp.Core.Rules;
+using BitSharp.Core.Storage;
+using NLog;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
-using System.IO;
-using System.Globalization;
-using System.Collections;
-using NLog;
-using BitSharp.Core.ExtensionMethods;
-using BitSharp.Core.Rules;
-using BitSharp.Core.Storage;
-using BitSharp.Core.Workers;
-using System.Security.Cryptography;
-using BitSharp.Core.Domain;
-using BitSharp.Core.Monitor;
-using Ninject;
-using Ninject.Parameters;
 
 namespace BitSharp.Core.Builders
 {
@@ -50,7 +38,8 @@ namespace BitSharp.Core.Builders
             this.rules = rules;
             this.storageManager = storageManager;
 
-            this.blockValidator = new BlockValidator(this.storageManager, this.rules, this.logger);
+            this.stats = new BuilderStats();
+            this.blockValidator = new BlockValidator(this.stats, this.storageManager, this.rules, this.logger);
 
             this.chainStateCursorHandle = this.storageManager.OpenChainStateCursor();
             this.chainStateCursor = this.chainStateCursorHandle.Item;
@@ -59,8 +48,6 @@ namespace BitSharp.Core.Builders
             this.utxoBuilder = new UtxoBuilder(chainStateCursor, logger);
 
             this.commitLock = new ReaderWriterLockSlim();
-
-            this.stats = new BuilderStats();
         }
 
         public void Dispose()
@@ -229,9 +216,11 @@ namespace BitSharp.Core.Builders
 
             this.logger.Info(
                 string.Join("\n",
-                    new string('-', 200),
+                    new string('-', 80),
                     "Height: {0,10} | Duration: {1} /*| Validation: {2} */| Blocks/s: {3,7} | Tx/s: {4,7} | Inputs/s: {5,7} | Processed Tx: {6,7} | Processed Inputs: {7,7} | Utxo Size: {8,7}",
-                    new string('-', 200)
+                    "prevTxLoadDurationMeasure: {9,12:#,##0.000}ms",
+                    "prevTxLoadRateMeasure:     {10,12:#,##0.000}/s",
+                    new string('-', 80)
                 )
                 .Format2
                 (
@@ -243,7 +232,9 @@ namespace BitSharp.Core.Builders
                 /*5*/ inputRate.ToString("#,##0"),
                 /*6*/ this.Stats.txCount.ToString("#,##0"),
                 /*7*/ this.Stats.inputCount.ToString("#,##0"),
-                /*8*/ this.UnspentTxCount.ToString("#,##0")
+                /*8*/ this.UnspentTxCount.ToString("#,##0"),
+                /*9*/ this.Stats.prevTxLoadDurationMeasure.GetAverage().TotalMilliseconds,
+                /*10*/this.Stats.prevTxLoadRateMeasure.GetAverage()
                 ));
         }
 
@@ -305,6 +296,8 @@ namespace BitSharp.Core.Builders
             public long txCount;
             public long inputCount;
 
+            public readonly DurationMeasure prevTxLoadDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
+            public readonly RateMeasure prevTxLoadRateMeasure = new RateMeasure(sampleCutoff, sampleResolution);
             public readonly RateMeasure blockRateMeasure = new RateMeasure(sampleCutoff, sampleResolution);
             public readonly RateMeasure txRateMeasure = new RateMeasure(sampleCutoff, sampleResolution);
             public readonly RateMeasure inputRateMeasure = new RateMeasure(sampleCutoff, sampleResolution);
@@ -315,6 +308,8 @@ namespace BitSharp.Core.Builders
 
             public void Dispose()
             {
+                this.prevTxLoadDurationMeasure.Dispose();
+                this.prevTxLoadRateMeasure.Dispose();
                 this.blockRateMeasure.Dispose();
                 this.txRateMeasure.Dispose();
                 this.inputRateMeasure.Dispose();
