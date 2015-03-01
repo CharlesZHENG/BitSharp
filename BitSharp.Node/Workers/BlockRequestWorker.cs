@@ -231,6 +231,28 @@ namespace BitSharp.Node.Workers
             // reset target queue index
             this.targetChainQueueIndex = 0;
 
+            // get blocks from secondary source, if specified
+            if (SecondaryBlockFolder != null && SecondaryBlockFolder != "")
+            {
+                for (; this.targetChainQueueIndex < this.targetChainQueue.Count; this.targetChainQueueIndex++)
+                {
+                    if (!this.IsStarted)
+                        break;
+
+                    var requestBlock = this.targetChainQueue[this.targetChainQueueIndex];
+
+                    if (!this.flushBlocks.Contains(requestBlock.Hash)
+                        && !this.coreStorage.ContainsBlockTxes(requestBlock.Hash))
+                    {
+                        var block = GetBlock(requestBlock.Hash);
+                        if (block != null)
+                            HandleBlock(null, block);
+                        else
+                            break;
+                    }
+                }
+            }
+
             // spread the number of blocks queued to be requested over each peer
             var requestsPerPeer = Math.Max(1, this.targetChainLookAhead / peerCount);
             requestsPerPeer = Math.Min(requestsPerPeer, MAX_REQUESTS_PER_PEER);
@@ -257,7 +279,7 @@ namespace BitSharp.Node.Workers
                 {
                     // iterate through the blocks that should be requested for this peer
                     var invVectors = ImmutableArray.CreateBuilder<InventoryVector>();
-                    foreach (var requestBlock in GetRequestBlocksForPeer(peer, requestCount, peerBlockRequests))
+                    foreach (var requestBlock in GetRequestBlocksForPeer(requestCount, peerBlockRequests))
                     {
                         // track block requests
                         peerBlockRequests[requestBlock] = now;
@@ -290,7 +312,7 @@ namespace BitSharp.Node.Workers
                 this.NotifyWork();
         }
 
-        private IEnumerable<UInt256> GetRequestBlocksForPeer(Peer peer, int count, ConcurrentDictionary<UInt256, DateTime> peerBlockRequests)
+        private IEnumerable<UInt256> GetRequestBlocksForPeer(int count, ConcurrentDictionary<UInt256, DateTime> peerBlockRequests)
         {
             if (count < 0)
                 throw new ArgumentOutOfRangeException("count");
@@ -310,12 +332,7 @@ namespace BitSharp.Node.Workers
                     && !this.allBlockRequests.ContainsKey(requestBlock.Hash)
                     && !this.coreStorage.ContainsBlockTxes(requestBlock.Hash))
                 {
-                    var block = GetBlock(requestBlock.Hash);
-                    if (block != null)
-                        HandleBlock(peer, block);
-                    else
-                        yield return requestBlock.Hash;
-
+                    yield return requestBlock.Hash;
                     currentCount++;
                 }
             }
@@ -347,12 +364,15 @@ namespace BitSharp.Node.Workers
                 BlockRequest blockRequest;
                 this.allBlockRequests.TryRemove(block.Hash, out blockRequest);
 
-                DateTime requestTime;
-                ConcurrentDictionary<UInt256, DateTime> peerBlockRequests;
-                if (this.blockRequestsByPeer.TryGetValue(peer, out peerBlockRequests)
-                    && peerBlockRequests.TryRemove(block.Hash, out requestTime))
+                if (peer != null)
                 {
-                    this.blockRequestDurationMeasure.Tick(DateTime.UtcNow - requestTime);
+                    DateTime requestTime;
+                    ConcurrentDictionary<UInt256, DateTime> peerBlockRequests;
+                    if (this.blockRequestsByPeer.TryGetValue(peer, out peerBlockRequests)
+                        && peerBlockRequests.TryRemove(block.Hash, out requestTime))
+                    {
+                        this.blockRequestDurationMeasure.Tick(DateTime.UtcNow - requestTime);
+                    }
                 }
 
                 this.NotifyWork();
