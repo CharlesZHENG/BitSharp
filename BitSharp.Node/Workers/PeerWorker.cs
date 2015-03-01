@@ -24,7 +24,7 @@ namespace BitSharp.Node.Workers
 {
     internal class PeerWorker : Worker
     {
-        private static readonly int CONNECTED_MAX = 25;
+        private static readonly int CONNECTED_MAX = 3;
         private static readonly int PENDING_MAX = 2 * CONNECTED_MAX;
         private static readonly int HANDSHAKE_TIMEOUT_MS = 15000;
 
