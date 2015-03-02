@@ -97,6 +97,7 @@
   <ItemGroup>
     <Compile Include="BlockReplayer.cs" />
     <Compile Include="Builders\BlockValidator.cs" />
+    <Compile Include="Builders\TxInputWithPrevOutputKey.cs" />
     <Compile Include="Domain\UnmintedTx.cs" />
     <Compile Include="Builders\UtxoBuilder.cs" />
     <Compile Include="Builders\TxInputWithPrevOutput.cs" />

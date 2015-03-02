@@ -43,7 +43,7 @@ namespace BitSharp.Client
                 var connectToPeers = true;
 
                 var bypassValidation = false;
-                var ignoreScripts = false;
+                var ignoreScripts = true;
                 var ignoreSignatures = false;
                 var ignoreScriptErrors = true;
 
@@ -54,11 +54,15 @@ namespace BitSharp.Client
 
                 var cleanData = false;
                 var cleanChainState = false;
+                var cleanBlockTxes = cleanChainState && enablePruning;
 
-                var cacheSizeMaxBytes = 500.MILLION();
+                int? cacheSizeMaxBytes = 500.MILLION();
 
                 // location to store a copy of raw blocks to avoid redownload
-                BlockRequestWorker.SecondaryBlockFolder = @"";
+                if (useTestNet)
+                    BlockRequestWorker.SecondaryBlockFolder = @"";
+                else
+                    BlockRequestWorker.SecondaryBlockFolder = @"";
 
                 //NOTE: Running with a cleaned chained state against a pruned blockchain does not work.
                 //      It will see the data is missing, but won't redownload the blocks.
@@ -77,9 +81,14 @@ namespace BitSharp.Client
                     try { Directory.Delete(Path.Combine(baseDirectory, "Data", rulesType.ToString()), recursive: true); }
                     catch (IOException) { }
                 }
-                else if (cleanChainState)
+                if (cleanChainState)
                 {
                     try { Directory.Delete(Path.Combine(baseDirectory, "Data", rulesType.ToString(), "ChainState"), recursive: true); }
+                    catch (IOException) { }
+                }
+                if (cleanBlockTxes)
+                {
+                    try { Directory.Delete(Path.Combine(baseDirectory, "Data", rulesType.ToString(), "BlockTxes"), recursive: true); }
                     catch (IOException) { }
                 }
 

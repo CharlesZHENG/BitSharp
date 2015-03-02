@@ -30,6 +30,17 @@ namespace BitSharp.Common
         }
 
         /// <summary>
+        /// Gets the number of elements contained in the queue.
+        /// </summary>
+        public int Count
+        {
+            get
+            {
+                return this.queue.Count;
+            }
+        }
+
+        /// <summary>
         /// Adds the item to the queue.
         /// </summary>
         /// <param name="item">The item to be added.</param>
@@ -46,6 +57,28 @@ namespace BitSharp.Common
 
             // notify the consuming enumerable
             this.workEvent.Set();
+        }
+
+        /// <summary>
+        /// Adds a collection of items to the queue.
+        /// </summary>
+        /// <param name="item">The items to be added.</param>
+        public void AddRange(IEnumerable<T> items)
+        {
+            CheckDisposed();
+
+            // queue must not be marked as completed adding
+            if (this.isCompleteAdding)
+                throw new InvalidOperationException();
+
+            // queue the items
+            foreach (var item in items)
+            {
+                this.queue.Enqueue(item);
+
+                // notify the consuming enumerable
+                this.workEvent.Set();
+            }
         }
 
         /// <summary>

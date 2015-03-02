@@ -44,6 +44,9 @@ namespace BitSharp.Common
         private ConcurrentBlockingQueue<T> queue;
         private bool queueOwned;
 
+        // track the number of items currently being processed
+        private int processingCount;
+
         // track consumer work thread completions
         private int consumeCompletedCount;
 
@@ -100,6 +103,17 @@ namespace BitSharp.Common
         public string Name { get { return this.name; } }
 
         /// <summary>
+        /// The number of pending items to consume, including any currently being consumed.
+        /// </summary>
+        public int PendingCount
+        {
+            get
+            {
+                return this.queue.Count + this.processingCount;
+            }
+        }
+
+        /// <summary>
         /// Start a new parallel consuming session on the provided source, calling the provided actions.
         /// </summary>
         /// <param name="source">The source enumerable to read from.</param>
@@ -127,6 +141,7 @@ namespace BitSharp.Common
             this.queue = new ConcurrentBlockingQueue<T>();
             this.queueOwned = true;
             this.exceptions = new ConcurrentBag<Exception>();
+            this.processingCount = 0;
             this.consumeCompletedCount = 0;
 
             // set to the started state
@@ -159,6 +174,7 @@ namespace BitSharp.Common
             this.queue = queue;
             this.queueOwned = false;
             this.exceptions = new ConcurrentBag<Exception>();
+            this.processingCount = 0;
             this.consumeCompletedCount = 0;
 
             // set to the started state
@@ -255,8 +271,16 @@ namespace BitSharp.Common
                     if (!this.isStarted || this.exceptions.Count > 0)
                         return;
 
-                    // consume the item
-                    this.consumeAction(value);
+                    Interlocked.Increment(ref this.processingCount);
+                    try
+                    {
+                        // consume the item
+                        this.consumeAction(value);
+                    }
+                    finally
+                    {
+                        Interlocked.Decrement(ref this.processingCount);
+                    }
                 }
             }
             // capture any thrown exceptions

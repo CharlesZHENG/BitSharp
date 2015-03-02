@@ -81,6 +81,7 @@
     <Compile Include="ConcurrentSet.cs" />
     <Compile Include="ConcurrentSetBuilder.cs" />
     <Compile Include="DisposableCache.cs" />
+    <Compile Include="AverageMeasure.cs" />
     <Compile Include="ExtensionMethods.cs" />
     <Compile Include="ImmutableBitArray.cs" />
     <Compile Include="ConsoleLoggingModule.cs" />

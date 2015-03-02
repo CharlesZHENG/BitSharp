@@ -138,7 +138,7 @@ namespace BitSharp.Node.Workers
                 if (!peer.IsConnected)
                     DisconnectPeer(peer);
 
-                if (this.connectedPeers.Count <= 5)
+                if (this.connectedPeers.Count < 3)
                     break;
 
                 // disconnect seed peers, once enough peers are connected

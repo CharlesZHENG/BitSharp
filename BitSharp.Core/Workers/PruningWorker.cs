@@ -34,7 +34,7 @@ namespace BitSharp.Core.Workers
             this.prunedChain = new ChainBuilder();
             this.Mode = PruningMode.None;
 
-            var txesPruneThreadCount = Environment.ProcessorCount * 8;
+            var txesPruneThreadCount = Environment.ProcessorCount;
             this.blockTxesPruner = new ParallelConsumer<KeyValuePair<int, List<int>>>("PruningWorker.BlockTxesPruner", txesPruneThreadCount, logger);
         }
 
@@ -56,12 +56,12 @@ namespace BitSharp.Core.Workers
             using (var handle = this.storageManager.OpenChainStateCursor())
             {
                 var chainStateCursor = handle.Item;
-                
+
                 var totalStopwatch = Stopwatch.StartNew();
                 var pruneStopwatch = new Stopwatch();
                 var flushStopwatch = new Stopwatch();
                 var commitStopwatch = new Stopwatch();
-                
+
                 var startHeight = this.prunedChain.Height;
                 var stopHeight = this.prunedChain.Height;
                 var txCount = 0;

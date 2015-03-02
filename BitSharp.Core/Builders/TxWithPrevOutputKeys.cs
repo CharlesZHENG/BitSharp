@@ -1,5 +1,7 @@
 ﻿using BitSharp.Core.Domain;
+using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Linq;
 
 namespace BitSharp.Core.Builders
 {
@@ -25,5 +27,17 @@ namespace BitSharp.Core.Builders
         public ChainedHeader ChainedHeader { get { return this.chainedHeader; } }
 
         public ImmutableArray<BlockTxKey> PrevOutputTxKeys { get { return this.prevOutputTxKeys; } }
+
+        public IEnumerable<TxInputWithPrevOutputKey> GetInputs()
+        {
+            if (txIndex > 0)
+            {
+                return prevOutputTxKeys.Select((prevOutputTxKey, inputIndex) => new TxInputWithPrevOutputKey(txIndex, transaction, chainedHeader, inputIndex, prevOutputTxKey));
+            }
+            else
+            {
+                return new List<TxInputWithPrevOutputKey> { new TxInputWithPrevOutputKey(txIndex, transaction, chainedHeader, 0, null) };
+            }
+        }
     }
 }

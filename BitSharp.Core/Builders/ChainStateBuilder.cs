@@ -90,20 +90,27 @@ namespace BitSharp.Core.Builders
                         // ignore transactions on geneis block
                         if (chainedHeader.Height > 0)
                         {
-                            // calculate the new block utxo, only output availability is checked and updated
-                            foreach (var pendingTx in this.utxoBuilder.CalculateUtxo(this.chain.ToImmutable(), blockTxes.Select(x => x.Transaction)))
+                            this.stats.calculateUtxoDurationMeasure.Measure(() =>
                             {
-                                this.blockValidator.AddPendingTx(pendingTx);
-
-                                // track stats, ignore coinbase
-                                if (pendingTx.TxIndex > 0)
+                                // calculate the new block utxo, only output availability is checked and updated
+                                var pendingTxCount = 0;
+                                foreach (var pendingTx in this.utxoBuilder.CalculateUtxo(this.chain.ToImmutable(), blockTxes.Select(x => x.Transaction)))
                                 {
-                                    this.stats.txCount++;
-                                    this.stats.inputCount += pendingTx.Transaction.Inputs.Length;
-                                    this.stats.txRateMeasure.Tick();
-                                    this.stats.inputRateMeasure.Tick(pendingTx.Transaction.Inputs.Length);
+                                    this.blockValidator.AddPendingTx(pendingTx);
+
+                                    // track stats, ignore coinbase
+                                    if (pendingTx.TxIndex > 0)
+                                    {
+                                        pendingTxCount += pendingTx.Transaction.Inputs.Length;
+                                        this.stats.txCount++;
+                                        this.stats.inputCount += pendingTx.Transaction.Inputs.Length;
+                                        this.stats.txRateMeasure.Tick();
+                                        this.stats.inputRateMeasure.Tick(pendingTx.Transaction.Inputs.Length);
+                                    }
                                 }
-                            }
+
+                                this.stats.pendingTxesTotalAverageMeasure.Tick(pendingTxCount);
+                            });
                         }
 
                         // finished queuing up block's txes
@@ -113,7 +120,8 @@ namespace BitSharp.Core.Builders
                         this.stats.blockCount++;
 
                         // wait for block validation to complete
-                        this.blockValidator.WaitToComplete();
+                        this.stats.waitToCompleteDurationMeasure.Measure(() =>
+                            this.blockValidator.WaitToComplete());
 
                         // check tx loader results
                         if (this.blockValidator.TxLoaderExceptions.Count > 0)
@@ -218,8 +226,15 @@ namespace BitSharp.Core.Builders
                 string.Join("\n",
                     new string('-', 80),
                     "Height: {0,10} | Duration: {1} /*| Validation: {2} */| Blocks/s: {3,7} | Tx/s: {4,7} | Inputs/s: {5,7} | Processed Tx: {6,7} | Processed Inputs: {7,7} | Utxo Size: {8,7}",
-                    "prevTxLoadDurationMeasure: {9,12:#,##0.000}ms",
-                    "prevTxLoadRateMeasure:     {10,12:#,##0.000}/s",
+                    new string('-', 80),
+                    "Avg. Prev Tx Load Time: {9,12:#,##0.000}ms",
+                    "Prev Tx Load Rate:      {10,12:#,##0.000}/s",
+                    new string('-', 80),
+                    "Avg. Prev Txes per Block:                  {11,12:#,##0.000}",
+                    "Avg. Pending Prev Txes at UTXO Completion: {12,12:#,##0.000}",
+                    new string('-', 80),
+                    "Avg. UTXO Calculation Time: {13,12:#,##0.000}ms",
+                    "Avg. Wait-to-complete Time: {14,12:#,##0.000}ms",
                     new string('-', 80)
                 )
                 .Format2
@@ -234,7 +249,11 @@ namespace BitSharp.Core.Builders
                 /*7*/ this.Stats.inputCount.ToString("#,##0"),
                 /*8*/ this.UnspentTxCount.ToString("#,##0"),
                 /*9*/ this.Stats.prevTxLoadDurationMeasure.GetAverage().TotalMilliseconds,
-                /*10*/this.Stats.prevTxLoadRateMeasure.GetAverage()
+                /*10*/ this.Stats.prevTxLoadRateMeasure.GetAverage(),
+                /*11*/ this.Stats.pendingTxesTotalAverageMeasure.GetAverage(),
+                /*12*/ this.Stats.pendingTxesAtCompleteAverageMeasure.GetAverage(),
+                /*13*/ this.Stats.calculateUtxoDurationMeasure.GetAverage().TotalMilliseconds,
+                /*14*/ this.Stats.waitToCompleteDurationMeasure.GetAverage().TotalMilliseconds
                 ));
         }
 
@@ -296,8 +315,12 @@ namespace BitSharp.Core.Builders
             public long txCount;
             public long inputCount;
 
+            public readonly DurationMeasure calculateUtxoDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
             public readonly DurationMeasure prevTxLoadDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
             public readonly RateMeasure prevTxLoadRateMeasure = new RateMeasure(sampleCutoff, sampleResolution);
+            public readonly AverageMeasure pendingTxesTotalAverageMeasure = new AverageMeasure(sampleCutoff, sampleResolution);
+            public readonly AverageMeasure pendingTxesAtCompleteAverageMeasure = new AverageMeasure(sampleCutoff, sampleResolution);
+            public readonly DurationMeasure waitToCompleteDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
             public readonly RateMeasure blockRateMeasure = new RateMeasure(sampleCutoff, sampleResolution);
             public readonly RateMeasure txRateMeasure = new RateMeasure(sampleCutoff, sampleResolution);
             public readonly RateMeasure inputRateMeasure = new RateMeasure(sampleCutoff, sampleResolution);
@@ -308,8 +331,12 @@ namespace BitSharp.Core.Builders
 
             public void Dispose()
             {
+                this.calculateUtxoDurationMeasure.Dispose();
                 this.prevTxLoadDurationMeasure.Dispose();
                 this.prevTxLoadRateMeasure.Dispose();
+                this.pendingTxesTotalAverageMeasure.Dispose();
+                this.pendingTxesAtCompleteAverageMeasure.Dispose();
+                this.waitToCompleteDurationMeasure.Dispose();
                 this.blockRateMeasure.Dispose();
                 this.txRateMeasure.Dispose();
                 this.inputRateMeasure.Dispose();

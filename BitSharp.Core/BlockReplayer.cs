@@ -8,7 +8,6 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics;
 using System.Linq;
 
 namespace BitSharp.Core.Builders
@@ -20,14 +19,15 @@ namespace BitSharp.Core.Builders
         private readonly IBlockchainRules rules;
 
         private readonly ParallelConsumer<BlockTx> pendingTxLoader;
-        private readonly ParallelConsumer<TxWithPrevOutputKeys> txLoader;
+        private readonly ParallelConsumer<TxInputWithPrevOutputKey> txLoader;
 
         private IChainState chainState;
         private ChainedHeader replayBlock;
         private bool replayForward;
         private ImmutableDictionary<UInt256, UnmintedTx> unmintedTxes;
         private ConcurrentDictionary<UInt256, Transaction> txCache;
-        private ConcurrentBlockingQueue<TxWithPrevOutputKeys> pendingTxes;
+        private ConcurrentDictionary<UInt256, TxOutput[]> loadingTxes;
+        private ConcurrentBlockingQueue<TxInputWithPrevOutputKey> pendingTxes;
         private ConcurrentBlockingQueue<TxWithPrevOutputs> loadedTxes;
         private IDisposable pendingTxLoaderStopper;
         private IDisposable txLoaderStopper;
@@ -44,7 +44,7 @@ namespace BitSharp.Core.Builders
             var ioThreadCount = Environment.ProcessorCount * 8;
 
             this.pendingTxLoader = new ParallelConsumer<BlockTx>("BlockReplayer.PendingTxLoader", ioThreadCount, logger);
-            this.txLoader = new ParallelConsumer<TxWithPrevOutputKeys>("BlockReplayer.TxLoader", ioThreadCount, logger);
+            this.txLoader = new ParallelConsumer<TxInputWithPrevOutputKey>("BlockReplayer.TxLoader", ioThreadCount, logger);
         }
 
         public void Dispose()
@@ -89,8 +89,9 @@ namespace BitSharp.Core.Builders
             }
 
             this.txCache = new ConcurrentDictionary<UInt256, Transaction>();
+            this.loadingTxes = new ConcurrentDictionary<UInt256, TxOutput[]>();
 
-            this.pendingTxes = new ConcurrentBlockingQueue<TxWithPrevOutputKeys>();
+            this.pendingTxes = new ConcurrentBlockingQueue<TxInputWithPrevOutputKey>();
             this.loadedTxes = new ConcurrentBlockingQueue<TxWithPrevOutputs>();
 
             this.pendingTxLoaderExceptions = new ConcurrentBag<Exception>();
@@ -148,6 +149,7 @@ namespace BitSharp.Core.Builders
             this.replayBlock = null;
             this.unmintedTxes = null;
             this.txCache = null;
+            this.loadingTxes = null;
             this.pendingTxes = null;
             this.loadedTxes = null;
             this.pendingTxLoaderStopper = null;
@@ -163,7 +165,15 @@ namespace BitSharp.Core.Builders
                 {
                     var pendingTx = LoadPendingTx(blockTx);
                     if (pendingTx != null)
-                        this.pendingTxes.Add(pendingTx);
+                    {
+                        if (pendingTx.TxIndex > 0)
+                        {
+                            if (!this.loadingTxes.TryAdd(pendingTx.Transaction.Hash, new TxOutput[pendingTx.Transaction.Inputs.Length]))
+                                throw new Exception("TODO");
+                        }
+
+                        this.pendingTxes.AddRange(pendingTx.GetInputs());
+                    }
                 },
                 () => this.pendingTxes.CompleteAdding());
         }
@@ -229,57 +239,72 @@ namespace BitSharp.Core.Builders
             }
         }
 
-        private TxWithPrevOutputs LoadPendingTx(TxWithPrevOutputKeys pendingTx, ConcurrentDictionary<UInt256, Transaction> txCache)
+        private TxWithPrevOutputs LoadPendingTx(TxInputWithPrevOutputKey pendingTx, ConcurrentDictionary<UInt256, Transaction> txCache)
         {
             try
             {
                 var txIndex = pendingTx.TxIndex;
                 var transaction = pendingTx.Transaction;
                 var chainedHeader = pendingTx.ChainedHeader;
-                var spentTxes = pendingTx.PrevOutputTxKeys;
-
-                var prevTxOutputs = ImmutableArray.CreateBuilder<TxOutput>(transaction.Inputs.Length);
+                var inputIndex = pendingTx.InputIndex;
+                var prevOutputTxKey = pendingTx.PrevOutputTxKey;
 
                 // load previous transactions for each input, unless this is a coinbase transaction
                 if (txIndex > 0)
                 {
-                    for (var inputIndex = 0; inputIndex < transaction.Inputs.Length; inputIndex++)
-                    {
-                        var input = transaction.Inputs[inputIndex];
+                    var input = transaction.Inputs[inputIndex];
+                    TxOutput prevTxOutput;
 
-                        Transaction cachedPrevTx;
-                        if (txCache.TryGetValue(input.PreviousTxOutputKey.TxHash, out cachedPrevTx))
+                    Transaction cachedPrevTx;
+                    if (txCache.TryGetValue(input.PreviousTxOutputKey.TxHash, out cachedPrevTx))
+                    {
+                        prevTxOutput = cachedPrevTx.Outputs[input.PreviousTxOutputKey.TxOutputIndex.ToIntChecked()];
+                    }
+                    else
+                    {
+                        Transaction prevTx;
+                        if (this.coreStorage.TryGetTransaction(prevOutputTxKey.BlockHash, prevOutputTxKey.TxIndex, out prevTx))
                         {
-                            var prevTxOutput = cachedPrevTx.Outputs[input.PreviousTxOutputKey.TxOutputIndex.ToIntChecked()];
-                            prevTxOutputs.Add(prevTxOutput);
+                            if (input.PreviousTxOutputKey.TxHash != prevTx.Hash)
+                                throw new Exception("TODO");
+
+                            txCache.TryAdd(prevTx.Hash, prevTx);
+
+                            prevTxOutput = prevTx.Outputs[input.PreviousTxOutputKey.TxOutputIndex.ToIntChecked()];
                         }
                         else
                         {
-                            var spentTx = spentTxes[inputIndex];
-
-                            Transaction prevTx;
-                            if (this.coreStorage.TryGetTransaction(spentTx.BlockHash, spentTx.TxIndex, out prevTx))
-                            {
-                                if (input.PreviousTxOutputKey.TxHash != prevTx.Hash)
-                                    throw new Exception("TODO");
-
-                                txCache.TryAdd(prevTx.Hash, prevTx);
-
-                                var prevTxOutput = prevTx.Outputs[input.PreviousTxOutputKey.TxOutputIndex.ToIntChecked()];
-                                prevTxOutputs.Add(prevTxOutput);
-                            }
-                            else
-                            {
-                                throw new Exception("TODO");
-                            }
+                            throw new Exception("TODO");
                         }
                     }
 
-                    Debug.Assert(prevTxOutputs.Count == transaction.Inputs.Length);
-                }
+                    var prevTxOutputs = this.loadingTxes[transaction.Hash];
+                    bool completed;
+                    lock (prevTxOutputs)
+                    {
+                        prevTxOutputs[inputIndex] = prevTxOutput;
+                        completed = prevTxOutputs.All(x => x != null);
+                    }
 
-                var txWithPrevOutputs = new TxWithPrevOutputs(txIndex, transaction, chainedHeader, prevTxOutputs.ToImmutableArray());
-                return txWithPrevOutputs;
+                    if (completed)
+                    {
+                        if (!this.loadingTxes.TryRemove(transaction.Hash, out prevTxOutputs))
+                            throw new Exception("TODO");
+
+                        return new TxWithPrevOutputs(txIndex, transaction, chainedHeader, ImmutableArray.CreateRange(prevTxOutputs));
+                    }
+                    else
+                    {
+                        return null;
+                    }
+                }
+                else
+                {
+                    if (inputIndex == 0)
+                        return new TxWithPrevOutputs(txIndex, transaction, chainedHeader, ImmutableArray.Create<TxOutput>());
+                    else
+                        return null;
+                }
             }
             catch (Exception e)
             {
