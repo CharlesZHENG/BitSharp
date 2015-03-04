@@ -1,4 +1,5 @@
 ﻿using BitSharp.Common.ExtensionMethods;
+using NLog;
 using System;
 using System.Diagnostics;
 using System.Threading;
@@ -13,6 +14,8 @@ namespace BitSharp.Common
     /// <typeparam name="T">The type of object being cached, must be IDiposable.</typeparam>
     public class DisposableCache<T> : IDisposable where T : class, IDisposable
     {
+        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+
         private readonly Func<T> createFunc;
         private readonly Action<T> prepareAction;
 
@@ -164,7 +167,10 @@ namespace BitSharp.Common
                 return new DisposeHandle<T>(() => this.CacheItem(item), item);
             // if no instance was available, either throw an exception or return null based on whether one was required
             else if (required)
+            {
+                logger.Warn("DisposableCache<{0}> ran out of items.".Format2(typeof(T).Name));
                 throw new InvalidOperationException();
+            }
             else
                 return null;
         }
