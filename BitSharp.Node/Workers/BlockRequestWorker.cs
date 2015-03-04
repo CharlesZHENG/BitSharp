@@ -243,11 +243,12 @@ namespace BitSharp.Node.Workers
                         var block = GetBlock(requestBlock.Hash);
                         if (block != null)
                             HandleBlock(null, block);
-                        else
-                            break;
                     }
                 }
             }
+
+            // reset target queue index
+            this.targetChainQueueIndex = 0;
 
             // spread the number of blocks queued to be requested over each peer
             var requestsPerPeer = Math.Max(1, this.targetChainLookAhead / peerCount);
