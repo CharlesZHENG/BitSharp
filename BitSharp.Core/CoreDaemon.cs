@@ -19,7 +19,8 @@ namespace BitSharp.Core
         public event EventHandler OnChainStateChanged;
         public event Action<UInt256> BlockMissed;
 
-        private readonly Logger logger;
+        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+
         private readonly IKernel kernel;
         private readonly IBlockchainRules rules;
         private readonly IStorageManager storageManager;
@@ -34,21 +35,19 @@ namespace BitSharp.Core
         private readonly WorkerMethod gcWorker;
         private readonly WorkerMethod utxoScanWorker;
 
-        public CoreDaemon(Logger logger, IKernel kernel, IBlockchainRules rules, IStorageManager storageManager)
+        public CoreDaemon(IKernel kernel, IBlockchainRules rules, IStorageManager storageManager)
         {
-            this.logger = logger;
-
             this.kernel = kernel;
             this.rules = rules;
             this.storageManager = storageManager;
-            this.coreStorage = new CoreStorage(storageManager, logger);
+            this.coreStorage = new CoreStorage(storageManager);
 
             // write genesis block out to storage
             this.coreStorage.AddGenesisBlock(this.rules.GenesisChainedHeader);
             this.coreStorage.TryAddBlock(this.rules.GenesisBlock);
 
             // create chain state builder
-            this.chainStateBuilder = new ChainStateBuilder(this.logger, this.rules, this.storageManager);
+            this.chainStateBuilder = new ChainStateBuilder(this.rules, this.storageManager);
 
             // add genesis block to chain state, if needed
             if (this.chainStateBuilder.Chain.Height < 0)
@@ -57,25 +56,25 @@ namespace BitSharp.Core
             // create workers
             this.targetChainWorker = new TargetChainWorker(
                 new WorkerConfig(initialNotify: true, minIdleTime: TimeSpan.FromMilliseconds(50), maxIdleTime: TimeSpan.FromSeconds(30)),
-                this.logger, this.rules, this.coreStorage);
+                this.rules, this.coreStorage);
 
             this.chainStateWorker = new ChainStateWorker(
                 new WorkerConfig(initialNotify: true, minIdleTime: TimeSpan.FromMilliseconds(50), maxIdleTime: TimeSpan.FromSeconds(5)),
-                this.targetChainWorker, this.chainStateBuilder, this.logger, this.rules, this.coreStorage);
+                this.targetChainWorker, this.chainStateBuilder, this.rules, this.coreStorage);
 
             this.pruningWorker = new PruningWorker(
                 new WorkerConfig(initialNotify: true, minIdleTime: TimeSpan.FromSeconds(1), maxIdleTime: TimeSpan.FromMinutes(5)),
-                this, this.storageManager, this.chainStateWorker, this.logger);
+                this, this.storageManager, this.chainStateWorker);
 
             this.defragWorker = new DefragWorker(
                 new WorkerConfig(initialNotify: true, minIdleTime: TimeSpan.FromMinutes(5), maxIdleTime: TimeSpan.FromMinutes(5)),
-                this.storageManager, this.logger);
+                this.storageManager);
 
             this.gcWorker = new WorkerMethod("GC Worker", GcWorker,
-                initialNotify: true, minIdleTime: TimeSpan.FromSeconds(30), maxIdleTime: TimeSpan.FromSeconds(30), logger: this.logger);
+                initialNotify: true, minIdleTime: TimeSpan.FromSeconds(30), maxIdleTime: TimeSpan.FromSeconds(30));
 
             this.utxoScanWorker = new WorkerMethod("UTXO Scan Worker", UtxoScanWorker,
-                initialNotify: true, minIdleTime: TimeSpan.FromSeconds(60), maxIdleTime: TimeSpan.FromSeconds(60), logger: this.logger);
+                initialNotify: true, minIdleTime: TimeSpan.FromSeconds(60), maxIdleTime: TimeSpan.FromSeconds(60));
 
             // wire events
             this.chainStateWorker.BlockMissed += HandleBlockMissed;

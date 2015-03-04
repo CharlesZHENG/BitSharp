@@ -18,7 +18,7 @@ namespace BitSharp.Common
         // dispose timeout, the worker thread will be aborted if it does not stop in a timely fashion on Dispose
         private static readonly TimeSpan DISPOSE_STOP_TIMEOUT = TimeSpan.FromSeconds(10);
 
-        private readonly Logger logger;
+        private readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         // the WorkerLoop thread
         private readonly Thread workerThread;
@@ -47,8 +47,8 @@ namespace BitSharp.Common
         /// </summary>
         /// <param name="name">The name of the worker.</param>
         /// <param name="logger">A logger for the worker</param>
-        public Worker(string name, Logger logger)
-            : this(name, initialNotify: false, minIdleTime: TimeSpan.Zero, maxIdleTime: TimeSpan.MaxValue, logger: logger)
+        public Worker(string name)
+            : this(name, initialNotify: false, minIdleTime: TimeSpan.Zero, maxIdleTime: TimeSpan.MaxValue)
         { }
 
         /// <summary>
@@ -59,9 +59,8 @@ namespace BitSharp.Common
         /// <param name="minIdleTime">The minimum idle time for the worker.</param>
         /// <param name="maxIdleTime">The maximum idle time for the worker.</param>
         /// <param name="logger">A logger for the worker.</param>
-        public Worker(string name, bool initialNotify, TimeSpan minIdleTime, TimeSpan maxIdleTime, Logger logger)
+        public Worker(string name, bool initialNotify, TimeSpan minIdleTime, TimeSpan maxIdleTime)
         {
-            this.logger = logger;
             this.Name = name;
             this.MinIdleTime = minIdleTime;
             this.MaxIdleTime = maxIdleTime;

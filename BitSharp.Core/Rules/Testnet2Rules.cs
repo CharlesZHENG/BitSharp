@@ -1,7 +1,6 @@
 ﻿using BitSharp.Common;
 using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Domain;
-using NLog;
 using System;
 using System.Collections.Immutable;
 using System.Diagnostics;
@@ -14,8 +13,7 @@ namespace BitSharp.Core.Rules
         private readonly Block _genesisBlock;
         private readonly ChainedHeader _genesisChainedHeader;
 
-        public Testnet2Rules(Logger logger)
-            : base(logger)
+        public Testnet2Rules()
         {
             this._genesisBlock =
                 new Block

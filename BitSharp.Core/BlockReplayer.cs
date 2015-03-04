@@ -14,7 +14,8 @@ namespace BitSharp.Core.Builders
 {
     public class BlockReplayer : IDisposable
     {
-        private readonly Logger logger;
+        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+
         private readonly CoreStorage coreStorage;
         private readonly IBlockchainRules rules;
 
@@ -34,17 +35,16 @@ namespace BitSharp.Core.Builders
         private ConcurrentBag<Exception> pendingTxLoaderExceptions;
         private ConcurrentBag<Exception> txLoaderExceptions;
 
-        public BlockReplayer(CoreStorage coreStorage, IBlockchainRules rules, Logger logger)
+        public BlockReplayer(CoreStorage coreStorage, IBlockchainRules rules)
         {
-            this.logger = logger;
             this.coreStorage = coreStorage;
             this.rules = rules;
 
             // thread count for i/o task (TxLoader)
             var ioThreadCount = Environment.ProcessorCount * 8;
 
-            this.pendingTxLoader = new ParallelConsumer<BlockTx>("BlockReplayer.PendingTxLoader", ioThreadCount, logger);
-            this.txLoader = new ParallelConsumer<TxInputWithPrevOutputKey>("BlockReplayer.TxLoader", ioThreadCount, logger);
+            this.pendingTxLoader = new ParallelConsumer<BlockTx>("BlockReplayer.PendingTxLoader", ioThreadCount);
+            this.txLoader = new ParallelConsumer<TxInputWithPrevOutputKey>("BlockReplayer.TxLoader", ioThreadCount);
         }
 
         public void Dispose()

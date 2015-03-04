@@ -1,5 +1,4 @@
-﻿using NLog;
-using System;
+﻿using System;
 
 namespace BitSharp.Common
 {
@@ -7,8 +6,8 @@ namespace BitSharp.Common
     {
         private readonly Action<WorkerMethod> workAction;
 
-        public WorkerMethod(string name, Action<WorkerMethod> workAction, bool initialNotify, TimeSpan minIdleTime, TimeSpan maxIdleTime, Logger logger)
-            : base(name, initialNotify, minIdleTime, maxIdleTime, logger)
+        public WorkerMethod(string name, Action<WorkerMethod> workAction, bool initialNotify, TimeSpan minIdleTime, TimeSpan maxIdleTime)
+            : base(name, initialNotify, minIdleTime, maxIdleTime)
         {
             this.workAction = workAction;
         }

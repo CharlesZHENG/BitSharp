@@ -24,7 +24,7 @@ namespace BitSharp.Core.Test
             var logger = LogManager.CreateNullLogger();
 
             using (var simulator = new MainnetSimulator())
-            using (var blockReplayer = new BlockReplayer(simulator.CoreDaemon.CoreStorage, simulator.CoreDaemon.Rules, logger))
+            using (var blockReplayer = new BlockReplayer(simulator.CoreDaemon.CoreStorage, simulator.CoreDaemon.Rules))
             {
                 simulator.AddBlockRange(0, 9999);
                 simulator.WaitForUpdate();
@@ -60,7 +60,7 @@ namespace BitSharp.Core.Test
             var logger = LogManager.CreateNullLogger();
 
             using (var daemon = new TestDaemon())
-            using (var blockReplayer = new BlockReplayer(daemon.CoreDaemon.CoreStorage, daemon.CoreDaemon.Rules, logger))
+            using (var blockReplayer = new BlockReplayer(daemon.CoreDaemon.CoreStorage, daemon.CoreDaemon.Rules))
             {
                 // create a new keypair to spend to
                 var toKeyPair = daemon.TxManager.CreateKeyPair();

@@ -15,15 +15,15 @@ namespace BitSharp.Node.Storage
         public event Action<TKey> OnRemoved;
         public event Action<TKey> OnMissing;
 
-        private readonly Logger logger;
+        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+
         private readonly string name;
         private readonly IBoundedStorage<TKey, TValue> dataStorage;
         private readonly ConcurrentSet<TKey> knownKeys;
         private readonly ConcurrentSetBuilder<TKey> missingData;
 
-        public BoundedCache(string name, IBoundedStorage<TKey, TValue> dataStorage, Logger logger)
+        public BoundedCache(string name, IBoundedStorage<TKey, TValue> dataStorage)
         {
-            this.logger = logger;
             this.name = name;
             this.dataStorage = dataStorage;
             this.knownKeys = new ConcurrentSet<TKey>();

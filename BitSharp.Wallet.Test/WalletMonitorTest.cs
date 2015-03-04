@@ -20,7 +20,7 @@ namespace BitSharp.Wallet.Test
                 .HexToByteArray().ToImmutableArray();
 
             using (var simulator = new MainnetSimulator())
-            using (var walletMonitor = new WalletMonitor(simulator.CoreDaemon, LogManager.CreateNullLogger()))
+            using (var walletMonitor = new WalletMonitor(simulator.CoreDaemon))
             {
                 walletMonitor.AddAddress(new PublicKeyAddress(publicKey));
                 walletMonitor.Start();

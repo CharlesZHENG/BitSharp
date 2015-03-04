@@ -16,12 +16,7 @@ namespace BitSharp.Core.Script
 {
     public class TransactionManager
     {
-        private readonly Logger logger;
-
-        public TransactionManager(Logger logger)
-        {
-            this.logger = logger;
-        }
+        private readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         public Tuple<ECPrivateKeyParameters, ECPublicKeyParameters> CreateKeyPair()
         {
@@ -80,7 +75,7 @@ namespace BitSharp.Core.Script
         public byte[] CreatePrivateKeyScript(Transaction tx, int inputIndex, byte hashType, ECPrivateKeyParameters privateKey, ECPublicKeyParameters publicKey)
         {
             //TODO
-            var scriptEngine = new ScriptEngine(this.logger);
+            var scriptEngine = new ScriptEngine();
 
             var publicAddress = CreatePublicAddress(publicKey);
             var publicKeyScript = CreatePublicKeyScript(publicAddress);

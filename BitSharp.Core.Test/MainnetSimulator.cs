@@ -24,9 +24,6 @@ namespace BitSharp.Core.Test
 
         public MainnetSimulator()
         {
-            this.random = new Random();
-            this.blockProvider = new MainnetBlockProvider();
-
             // initialize kernel
             this.kernel = new StandardKernel();
 
@@ -34,8 +31,11 @@ namespace BitSharp.Core.Test
             this.kernel.Load(new ConsoleLoggingModule());
 
             // log startup
-            this.logger = kernel.Get<Logger>();
+            this.logger = LogManager.GetCurrentClassLogger();
             this.logger.Info("Starting up: {0}".Format2(DateTime.Now));
+
+            this.random = new Random();
+            this.blockProvider = new MainnetBlockProvider();
 
             // add storage module
             this.kernel.Load(new MemoryStorageModule());

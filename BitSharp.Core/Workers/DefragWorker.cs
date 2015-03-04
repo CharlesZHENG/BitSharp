@@ -6,13 +6,13 @@ namespace BitSharp.Core.Workers
 {
     internal class DefragWorker : Worker
     {
-        private readonly Logger logger;
+        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+
         private readonly IStorageManager storageManager;
 
-        public DefragWorker(WorkerConfig workerConfig, IStorageManager storageManager, Logger logger)
-            : base("DefragWorker", workerConfig.initialNotify, workerConfig.minIdleTime, workerConfig.maxIdleTime, logger)
+        public DefragWorker(WorkerConfig workerConfig, IStorageManager storageManager)
+            : base("DefragWorker", workerConfig.initialNotify, workerConfig.minIdleTime, workerConfig.maxIdleTime)
         {
-            this.logger = logger;
             this.storageManager = storageManager;
         }
 

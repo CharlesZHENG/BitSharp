@@ -14,16 +14,16 @@ namespace BitSharp.Node.Workers
     {
         private static readonly int SERVER_BACKLOG = 10;
 
-        private readonly Logger logger;
+        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+
         private readonly LocalClient localClient;
         private readonly PeerWorker peerWorker;
 
         private Socket listenSocket;
 
-        public ListenWorker(Logger logger, LocalClient localClient, PeerWorker peerWorker)
-            : base("ListenWorker", initialNotify: true, minIdleTime: TimeSpan.Zero, maxIdleTime: TimeSpan.Zero, logger: logger)
+        public ListenWorker(LocalClient localClient, PeerWorker peerWorker)
+            : base("ListenWorker", initialNotify: true, minIdleTime: TimeSpan.Zero, maxIdleTime: TimeSpan.Zero)
         {
-            this.logger = logger;
             this.localClient = localClient;
             this.peerWorker = peerWorker;
         }

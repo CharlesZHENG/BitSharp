@@ -44,7 +44,7 @@ namespace BitSharp.IntegrationTest
                     kernel.Load(new ConsoleLoggingModule(LogLevel.Info));
 
                     // log startup
-                    var logger = kernel.Get<Logger>();
+                    var logger = LogManager.GetCurrentClassLogger();
                     logger.Info("Starting up: {0}".Format2(DateTime.Now));
 
                     // add storage module

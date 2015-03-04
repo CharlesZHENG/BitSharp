@@ -6,7 +6,8 @@ namespace BitSharp.Esent
 {
     public class EsentStorageManager : IStorageManager
     {
-        private readonly Logger logger;
+        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+
         private readonly string baseDirectory;
 
         private readonly object blockStorageLock;
@@ -17,9 +18,8 @@ namespace BitSharp.Esent
         private BlockTxesStorage blockTxesStorage;
         private EsentChainStateManager chainStateManager;
 
-        public EsentStorageManager(string baseDirectory, Logger logger)
+        public EsentStorageManager(string baseDirectory)
         {
-            this.logger = logger;
             this.baseDirectory = baseDirectory;
 
             this.blockStorageLock = new object();
@@ -46,7 +46,7 @@ namespace BitSharp.Esent
                 if (this.blockStorage == null)
                     lock (this.blockStorageLock)
                         if (this.blockStorage == null)
-                            this.blockStorage = new BlockStorage(this.baseDirectory, this.logger);
+                            this.blockStorage = new BlockStorage(this.baseDirectory);
 
                 return this.blockStorage;
             }
@@ -59,7 +59,7 @@ namespace BitSharp.Esent
                 if (this.blockTxesStorage == null)
                     lock (this.blockTxesStorageLock)
                         if (this.blockTxesStorage == null)
-                            this.blockTxesStorage = new BlockTxesStorage(this.baseDirectory, this.logger);
+                            this.blockTxesStorage = new BlockTxesStorage(this.baseDirectory);
 
                 return this.blockTxesStorage;
             }
@@ -70,7 +70,7 @@ namespace BitSharp.Esent
             if (this.chainStateManager == null)
                 lock (this.chainStateManagerLock)
                     if (this.chainStateManager == null)
-                        this.chainStateManager = new EsentChainStateManager(this.baseDirectory, this.logger);
+                        this.chainStateManager = new EsentChainStateManager(this.baseDirectory);
 
             return this.chainStateManager.OpenChainStateCursor();
         }

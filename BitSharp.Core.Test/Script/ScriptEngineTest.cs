@@ -18,8 +18,9 @@ namespace BitSharp.Core.Test.Script
     {
         private static MainnetBlockProvider provider;
 
+        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+
         private IKernel kernel;
-        private Logger logger;
 
         [ClassInitialize]
         public static void ClassInitialize(TestContext context)
@@ -31,7 +32,6 @@ namespace BitSharp.Core.Test.Script
         public void TestInitialize()
         {
             this.kernel = new StandardKernel(new ConsoleLoggingModule());
-            this.logger = this.kernel.Get<Logger>();
         }
 
         public void Dispose()
@@ -122,7 +122,7 @@ namespace BitSharp.Core.Test.Script
 
         private void TestTransactionSignature(byte[][] expectedSignatures, Transaction tx, IDictionary<UInt256, Transaction> txLookup)
         {
-            var scriptEngine = new ScriptEngine(this.logger);
+            var scriptEngine = new ScriptEngine();
             for (var inputIndex = 0; inputIndex < tx.Inputs.Length; inputIndex++)
             {
                 var input = tx.Inputs[inputIndex];
@@ -137,7 +137,7 @@ namespace BitSharp.Core.Test.Script
 
         private void TestTransactionVerifySignature(byte[] expectedHashTypes, byte[][] expectedSignatures, byte[][] expectedSignatureHashes, Transaction tx, IDictionary<UInt256, Transaction> txLookup)
         {
-            var scriptEngine = new ScriptEngine(this.logger);
+            var scriptEngine = new ScriptEngine();
 
             for (var inputIndex = 0; inputIndex < tx.Inputs.Length; inputIndex++)
             {
@@ -160,7 +160,7 @@ namespace BitSharp.Core.Test.Script
 
         private void TestTransactionVerifyScript(Transaction tx, IDictionary<UInt256, Transaction> txLookup)
         {
-            var scriptEngine = new ScriptEngine(this.logger);
+            var scriptEngine = new ScriptEngine();
 
             for (var inputIndex = 0; inputIndex < tx.Inputs.Length; inputIndex++)
             {

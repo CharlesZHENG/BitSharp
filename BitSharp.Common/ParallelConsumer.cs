@@ -18,8 +18,9 @@ namespace BitSharp.Common
     /// <typeparam name="T">The type of the items to be read and consumed.</typeparam>
     public class ParallelConsumer<T> : IDisposable
     {
+        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+
         private readonly string name;
-        private readonly Logger logger;
 
         // the worker thread where the source will be read
         private WorkerMethod readWorker;
@@ -64,16 +65,15 @@ namespace BitSharp.Common
         /// <param name="name">The name of the instance.</param>
         /// <param name="consumerThreadCount">The number of consumer threads to create.</param>
         /// <param name="logger">A logger.</param>
-        public ParallelConsumer(string name, int consumerThreadCount, Logger logger)
+        public ParallelConsumer(string name, int consumerThreadCount)
         {
             this.name = name;
-            this.logger = logger;
 
             // initialize a pool of consume workers
             this.consumeWorkers = new WorkerMethod[consumerThreadCount];
             for (var i = 0; i < this.consumeWorkers.Length; i++)
             {
-                this.consumeWorkers[i] = new WorkerMethod(name + ".ConsumeWorker." + i, ConsumeWorker, initialNotify: false, minIdleTime: TimeSpan.Zero, maxIdleTime: TimeSpan.MaxValue, logger: logger);
+                this.consumeWorkers[i] = new WorkerMethod(name + ".ConsumeWorker." + i, ConsumeWorker, initialNotify: false, minIdleTime: TimeSpan.Zero, maxIdleTime: TimeSpan.MaxValue);
                 this.consumeWorkers[i].Start();
             }
         }
@@ -128,7 +128,7 @@ namespace BitSharp.Common
             // initialize the read worker
             if (this.readWorker == null)
             {
-                this.readWorker = new WorkerMethod(name + ".ReadWorker", ReadWorker, initialNotify: false, minIdleTime: TimeSpan.Zero, maxIdleTime: TimeSpan.MaxValue, logger: logger);
+                this.readWorker = new WorkerMethod(name + ".ReadWorker", ReadWorker, initialNotify: false, minIdleTime: TimeSpan.Zero, maxIdleTime: TimeSpan.MaxValue);
                 this.readWorker.Start();
             }
 

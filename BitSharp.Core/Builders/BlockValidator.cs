@@ -14,7 +14,8 @@ namespace BitSharp.Core.Builders
 {
     internal class BlockValidator : IDisposable
     {
-        private readonly Logger logger;
+        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+
         private readonly ChainStateBuilder.BuilderStats stats;
         private readonly IStorageManager storageManager;
         private readonly IBlockchainRules rules;
@@ -35,9 +36,8 @@ namespace BitSharp.Core.Builders
         private ConcurrentBag<Exception> txValidatorExceptions;
         private ConcurrentBag<Exception> scriptValidatorExceptions;
 
-        public BlockValidator(ChainStateBuilder.BuilderStats stats, IStorageManager storageManager, IBlockchainRules rules, Logger logger)
+        public BlockValidator(ChainStateBuilder.BuilderStats stats, IStorageManager storageManager, IBlockchainRules rules)
         {
-            this.logger = logger;
             this.stats = stats;
             this.storageManager = storageManager;
             this.rules = rules;
@@ -48,9 +48,9 @@ namespace BitSharp.Core.Builders
             // thread count for cpu tasks (TxValidator, ScriptValidator)
             var cpuThreadCount = Environment.ProcessorCount * 2;
 
-            this.txLoader = new ParallelConsumer<TxInputWithPrevOutputKey>("BlockValidator.TxLoader", ioThreadCount, logger);
-            this.txValidator = new ParallelConsumer<TxWithPrevOutputs>("BlockValidator.TxValidator", cpuThreadCount, logger);
-            this.scriptValidator = new ParallelConsumer<TxInputWithPrevOutput>("BlockValidator.ScriptValidator", cpuThreadCount, logger);
+            this.txLoader = new ParallelConsumer<TxInputWithPrevOutputKey>("BlockValidator.TxLoader", ioThreadCount);
+            this.txValidator = new ParallelConsumer<TxWithPrevOutputs>("BlockValidator.TxValidator", cpuThreadCount);
+            this.scriptValidator = new ParallelConsumer<TxInputWithPrevOutput>("BlockValidator.ScriptValidator", cpuThreadCount);
         }
 
         public void Dispose()

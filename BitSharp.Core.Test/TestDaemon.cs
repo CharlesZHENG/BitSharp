@@ -33,13 +33,17 @@ namespace BitSharp.Core.Test
 
         public TestDaemon(Block genesisBlock = null)
         {
-            this.random = new Random();
-
             // initialize kernel
             this.kernel = new StandardKernel();
 
             // add logging module
             this.kernel.Load(new ConsoleLoggingModule());
+
+            // log startup
+            this.logger = LogManager.GetCurrentClassLogger();
+            this.logger.Info("Starting up: {0}".Format2(DateTime.Now));
+
+            this.random = new Random();
 
             // create the key pair that block rewards will be sent to
             this.txManager = this.kernel.Get<TransactionManager>();
@@ -52,10 +56,6 @@ namespace BitSharp.Core.Test
 
             // create and mine the genesis block
             this.genesisBlock = genesisBlock ?? MineEmptyBlock(0);
-
-            // log startup
-            this.logger = kernel.Get<Logger>();
-            this.logger.Info("Starting up: {0}".Format2(DateTime.Now));
 
             // add storage module
             this.kernel.Load(new MemoryStorageModule());

@@ -8,17 +8,15 @@ namespace BitSharp.Common
 {
     public class MethodTimer
     {
-        private readonly Logger logger;
+        private readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        public MethodTimer(Logger logger = null)
+        public MethodTimer()
         {
-            this.logger = logger;
             this.IsEnabled = true;
         }
 
-        public MethodTimer(bool isEnabled, Logger logger = null)
+        public MethodTimer(bool isEnabled)
         {
-            this.logger = logger;
             this.IsEnabled = isEnabled;
         }
 

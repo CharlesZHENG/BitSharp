@@ -21,8 +21,9 @@ namespace BitSharp.Node.Workers
         private static readonly int PENDING_MAX = 2 * CONNECTED_MAX;
         private static readonly int HANDSHAKE_TIMEOUT_MS = 15000;
 
+        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+
         private readonly Random random = new Random();
-        private readonly Logger logger;
         private readonly LocalClient localClient;
         private readonly CoreDaemon coreDaemon;
 
@@ -34,10 +35,9 @@ namespace BitSharp.Node.Workers
 
         private int incomingCount;
 
-        public PeerWorker(WorkerConfig workerConfig, Logger logger, LocalClient localClient, CoreDaemon coreDaemon)
-            : base("PeerWorker", workerConfig.initialNotify, workerConfig.minIdleTime, workerConfig.maxIdleTime, logger)
+        public PeerWorker(WorkerConfig workerConfig, LocalClient localClient, CoreDaemon coreDaemon)
+            : base("PeerWorker", workerConfig.initialNotify, workerConfig.minIdleTime, workerConfig.maxIdleTime)
         {
-            this.logger = logger;
             this.localClient = localClient;
             this.coreDaemon = coreDaemon;
         }
@@ -74,7 +74,7 @@ namespace BitSharp.Node.Workers
 
         public void AddIncomingPeer(Socket socket)
         {
-            var peer = new Peer(socket, isSeed: false, logger: this.logger);
+            var peer = new Peer(socket, isSeed: false);
             try
             {
                 ConnectAndHandshake(peer, isIncoming: true)
@@ -203,7 +203,7 @@ namespace BitSharp.Node.Workers
         {
             try
             {
-                var peer = new Peer(remoteEndPoint, isSeed, this.logger);
+                var peer = new Peer(remoteEndPoint, isSeed);
                 try
                 {
                     this.unconnectedPeersLock.Do(() =>

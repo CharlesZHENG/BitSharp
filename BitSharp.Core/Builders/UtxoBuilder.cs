@@ -18,14 +18,12 @@ namespace BitSharp.Core.Builders
         private static readonly int DUPE_COINBASE_2_HEIGHT = 91812;
         private static readonly UInt256 DUPE_COINBASE_2_HASH = UInt256.Parse("d5d27987d2a3dfc724e359870c6644b40e497bdc0589a033220fe15429d88599", NumberStyles.HexNumber);
 
-        private readonly Logger logger;
+        private readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly IChainStateCursor chainStateCursor;
 
-        public UtxoBuilder(IChainStateCursor chainStateCursor, Logger logger)
+        public UtxoBuilder(IChainStateCursor chainStateCursor)
         {
-            this.logger = logger;
-
             this.chainStateCursor = chainStateCursor;
         }
 

@@ -26,8 +26,9 @@ namespace BitSharp.Client
     /// </summary>
     public partial class MainWindow : Window
     {
+        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+
         private IKernel kernel;
-        private Logger logger;
         private CoreDaemon coreDaemon;
         private DummyMonitor dummyMonitor;
         private LocalClient localClient;
@@ -99,7 +100,7 @@ namespace BitSharp.Client
                 this.kernel.Load(new LoggingModule(baseDirectory, LogLevel.Info));
 
                 // log startup
-                this.logger = kernel.Get<Logger>();
+                this.logger = LogManager.GetCurrentClassLogger();
                 this.logger.Info("Starting up: {0}".Format2(DateTime.Now));
 
                 var modules = new List<INinjectModule>();
@@ -137,7 +138,7 @@ namespace BitSharp.Client
                 this.kernel.Bind<CoreDaemon>().ToConstant(this.coreDaemon).InTransientScope();
 
                 // initialize dummy wallet monitor
-                this.dummyMonitor = new DummyMonitor(this.coreDaemon, this.logger);
+                this.dummyMonitor = new DummyMonitor(this.coreDaemon);
                 if (enableDummyWallet)
                 {
                     this.dummyMonitor.Start();
@@ -223,8 +224,8 @@ namespace BitSharp.Client
 
         private sealed class DummyMonitor : WalletMonitor
         {
-            public DummyMonitor(CoreDaemon coreDaemon, Logger logger)
-                : base(coreDaemon, logger)
+            public DummyMonitor(CoreDaemon coreDaemon)
+                : base(coreDaemon)
             {
                 this.AddAddress(new First10000Address());
                 this.AddAddress(new Top10000Address());

@@ -16,7 +16,7 @@ namespace BitSharp.Core.Rules
     {
         private const UInt64 SATOSHI_PER_BTC = 100 * 1000 * 1000;
 
-        private readonly Logger logger;
+        private readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly UInt256 highestTarget;
         private readonly Block genesisBlock;
@@ -24,10 +24,8 @@ namespace BitSharp.Core.Rules
         private readonly int difficultyInterval = 2016;
         private readonly long difficultyTargetTimespan = 14 * 24 * 60 * 60;
 
-        public MainnetRules(Logger logger)
+        public MainnetRules()
         {
-            this.logger = logger;
-
             this.highestTarget = UInt256.Parse("00000000FFFF0000000000000000000000000000000000000000000000000000", NumberStyles.HexNumber);
 
             this.genesisBlock =
@@ -316,7 +314,7 @@ namespace BitSharp.Core.Rules
 
         public virtual void ValidationTransactionScript(ChainedHeader chainedHeader, Transaction tx, int txIndex, TxInput txInput, int txInputIndex, TxOutput prevTxOutput)
         {
-            var scriptEngine = new ScriptEngine(this.logger, this.IgnoreSignatures);
+            var scriptEngine = new ScriptEngine(this.IgnoreSignatures);
 
             // create the transaction script from the input and output
             var script = txInput.ScriptSignature.AddRange(prevTxOutput.ScriptPublicKey);

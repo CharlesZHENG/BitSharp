@@ -13,7 +13,8 @@ namespace BitSharp.Core.Workers
 {
     internal class PruningWorker : Worker
     {
-        private readonly Logger logger;
+        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+
         private readonly ICoreDaemon coreDaemon;
         private readonly IStorageManager storageManager;
         private readonly ChainStateWorker chainStateWorker;
@@ -23,10 +24,9 @@ namespace BitSharp.Core.Workers
         //TODO
         private ChainBuilder prunedChain;
 
-        public PruningWorker(WorkerConfig workerConfig, ICoreDaemon coreDaemon, IStorageManager storageManager, ChainStateWorker chainStateWorker, Logger logger)
-            : base("PruningWorker", workerConfig.initialNotify, workerConfig.minIdleTime, workerConfig.maxIdleTime, logger)
+        public PruningWorker(WorkerConfig workerConfig, ICoreDaemon coreDaemon, IStorageManager storageManager, ChainStateWorker chainStateWorker)
+            : base("PruningWorker", workerConfig.initialNotify, workerConfig.minIdleTime, workerConfig.maxIdleTime)
         {
-            this.logger = logger;
             this.coreDaemon = coreDaemon;
             this.storageManager = storageManager;
             this.chainStateWorker = chainStateWorker;
@@ -35,7 +35,7 @@ namespace BitSharp.Core.Workers
             this.Mode = PruningMode.None;
 
             var txesPruneThreadCount = Environment.ProcessorCount;
-            this.blockTxesPruner = new ParallelConsumer<KeyValuePair<int, List<int>>>("PruningWorker.BlockTxesPruner", txesPruneThreadCount, logger);
+            this.blockTxesPruner = new ParallelConsumer<KeyValuePair<int, List<int>>>("PruningWorker.BlockTxesPruner", txesPruneThreadCount);
         }
 
         protected override void SubDispose()

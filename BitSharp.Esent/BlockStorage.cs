@@ -17,16 +17,16 @@ namespace BitSharp.Esent
 {
     public class BlockStorage : IBlockStorage
     {
-        private readonly Logger logger;
+        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+
         private readonly string jetDirectory;
         private readonly string jetDatabase;
         private readonly Instance jetInstance;
 
         private readonly DisposableCache<BlockCursor> cursorCache;
 
-        public BlockStorage(string baseDirectory, Logger logger)
+        public BlockStorage(string baseDirectory)
         {
-            this.logger = logger;
             this.jetDirectory = Path.Combine(baseDirectory, "Blocks");
             this.jetDatabase = Path.Combine(this.jetDirectory, "Blocks.edb");
 

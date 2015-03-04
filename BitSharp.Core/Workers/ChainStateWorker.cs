@@ -16,7 +16,8 @@ namespace BitSharp.Core.Workers
     {
         public event Action OnChainStateChanged;
 
-        private readonly Logger logger;
+        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+
         private readonly IBlockchainRules rules;
         private readonly CoreStorage coreStorage;
 
@@ -32,10 +33,9 @@ namespace BitSharp.Core.Workers
         private readonly ChainStateBuilder chainStateBuilder;
         private Chain currentChain;
 
-        public ChainStateWorker(WorkerConfig workerConfig, TargetChainWorker targetChainWorker, ChainStateBuilder chainStateBuilder, Logger logger, IBlockchainRules rules, CoreStorage coreStorage)
-            : base("ChainStateWorker", workerConfig.initialNotify, workerConfig.minIdleTime, workerConfig.maxIdleTime, logger)
+        public ChainStateWorker(WorkerConfig workerConfig, TargetChainWorker targetChainWorker, ChainStateBuilder chainStateBuilder, IBlockchainRules rules, CoreStorage coreStorage)
+            : base("ChainStateWorker", workerConfig.initialNotify, workerConfig.minIdleTime, workerConfig.maxIdleTime)
         {
-            this.logger = logger;
             this.rules = rules;
             this.coreStorage = coreStorage;
 

@@ -18,8 +18,7 @@ namespace BitSharp.Core.Test.Rules
         private Block _genesisBlock;
         private ChainedHeader _genesisChainedHeader;
 
-        public UnitTestRules(Logger logger)
-            : base(logger)
+        public UnitTestRules()
         {
             this._highestTarget = Target0;
         }

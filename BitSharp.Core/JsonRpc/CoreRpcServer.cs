@@ -15,15 +15,15 @@ namespace BitSharp.Core.JsonRpc
     //TODO i'll have to add something non-standard to tell it what addresses to watch, so i can use standard commands like "getreceivedbyaddress"
     public class CoreRpcServer : JsonRpcService, IDisposable
     {
-        private readonly Logger logger;
+        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+
         private readonly CoreDaemon coreDaemon;
         private readonly ListenerWorker listener;
 
-        public CoreRpcServer(Logger logger, CoreDaemon coreDaemon)
+        public CoreRpcServer(CoreDaemon coreDaemon)
         {
-            this.logger = logger;
             this.coreDaemon = coreDaemon;
-            this.listener = new ListenerWorker(this, this.logger);
+            this.listener = new ListenerWorker(this);
         }
 
         public void Dispose()
@@ -59,14 +59,14 @@ namespace BitSharp.Core.JsonRpc
 
         private sealed class ListenerWorker : Worker
         {
-            private readonly Logger logger;
+            private readonly Logger logger = LogManager.GetCurrentClassLogger();
+
             private readonly CoreRpcServer rpcServer;
             private HttpListener httpListener;
 
-            public ListenerWorker(CoreRpcServer rpcServer, Logger logger)
-                : base("CoreRpcServer.ListenerWorker", initialNotify: true, minIdleTime: TimeSpan.Zero, maxIdleTime: TimeSpan.Zero, logger: logger)
+            public ListenerWorker(CoreRpcServer rpcServer)
+                : base("CoreRpcServer.ListenerWorker", initialNotify: true, minIdleTime: TimeSpan.Zero, maxIdleTime: TimeSpan.Zero)
             {
-                this.logger = logger;
                 this.rpcServer = rpcServer;
             }
 

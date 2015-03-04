@@ -17,7 +17,8 @@ namespace BitSharp.Node.Workers
     {
         private static readonly TimeSpan STALE_REQUEST_TIME = TimeSpan.FromSeconds(60);
 
-        private readonly Logger logger;
+        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+
         private readonly LocalClient localClient;
         private readonly CoreDaemon coreDaemon;
         private readonly CoreStorage coreStorage;
@@ -27,10 +28,9 @@ namespace BitSharp.Node.Workers
         private readonly WorkerMethod flushWorker;
         private readonly ConcurrentQueue<FlushHeaders> flushQueue;
 
-        public HeadersRequestWorker(WorkerConfig workerConfig, Logger logger, LocalClient localClient, CoreDaemon coreDaemon)
-            : base("HeadersRequestWorker", workerConfig.initialNotify, workerConfig.minIdleTime, workerConfig.maxIdleTime, logger)
+        public HeadersRequestWorker(WorkerConfig workerConfig, LocalClient localClient, CoreDaemon coreDaemon)
+            : base("HeadersRequestWorker", workerConfig.initialNotify, workerConfig.minIdleTime, workerConfig.maxIdleTime)
         {
-            this.logger = logger;
             this.localClient = localClient;
             this.coreDaemon = coreDaemon;
             this.coreStorage = coreDaemon.CoreStorage;
@@ -40,7 +40,7 @@ namespace BitSharp.Node.Workers
             this.localClient.OnBlockHeaders += HandleBlockHeaders;
             this.coreDaemon.OnTargetChainChanged += HandleTargetChainChanged;
 
-            this.flushWorker = new WorkerMethod("HeadersRequestWorker.FlushWorker", FlushWorkerMethod, initialNotify: true, minIdleTime: TimeSpan.Zero, maxIdleTime: TimeSpan.MaxValue, logger: this.logger);
+            this.flushWorker = new WorkerMethod("HeadersRequestWorker.FlushWorker", FlushWorkerMethod, initialNotify: true, minIdleTime: TimeSpan.Zero, maxIdleTime: TimeSpan.MaxValue);
             this.flushQueue = new ConcurrentQueue<FlushHeaders>();
         }
 

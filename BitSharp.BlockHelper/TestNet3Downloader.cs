@@ -31,7 +31,7 @@ namespace BitSharp.BlockHelper
                 kernel.Load(new ConsoleLoggingModule(LogLevel.Info));
 
                 // log startup
-                var logger = kernel.Get<Logger>();
+                var logger = LogManager.GetCurrentClassLogger();
                 logger.Info("Starting up: {0}".Format2(DateTime.Now));
 
                 // determine local path of BitSharp.BlockHelper project

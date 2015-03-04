@@ -33,7 +33,7 @@ namespace BitSharp.Esent.Test
 
         public IStorageManager OpenStorageManager()
         {
-            return new EsentStorageManager(this.baseDirectory, LogManager.CreateNullLogger());
+            return new EsentStorageManager(this.baseDirectory);
         }
     }
 }

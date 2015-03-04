@@ -17,19 +17,18 @@ namespace BitSharp.Core.Script
 {
     public class ScriptEngine
     {
-        private readonly Logger logger;
+        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+
         private readonly bool ignoreSignatures;
 
-        public ScriptEngine(Logger logger)
+        public ScriptEngine()
         {
-            this.logger = logger;
             this.ignoreSignatures = false;
         }
 
         //TODO
-        internal ScriptEngine(Logger logger, bool ignoreSignatures)
+        internal ScriptEngine(bool ignoreSignatures)
         {
-            this.logger = logger;
             this.ignoreSignatures = ignoreSignatures;
         }
 

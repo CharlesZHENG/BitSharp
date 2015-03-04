@@ -19,8 +19,9 @@ namespace BitSharp.Node.Network
         public event Action<Peer, ImmutableArray<byte>> OnPing;
         public event Action<Peer> OnDisconnect;
 
+        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+
         private readonly object objectLock = new object();
-        private readonly Logger logger;
         private readonly SemaphoreSlim semaphore = new SemaphoreSlim(1);
         private bool isDisposed;
 
@@ -35,32 +36,30 @@ namespace BitSharp.Node.Network
 
         private CountMeasure blockMissCountMeasure;
 
-        public Peer(IPEndPoint remoteEndPoint, bool isSeed, Logger logger)
+        public Peer(IPEndPoint remoteEndPoint, bool isSeed)
         {
-            this.logger = logger;
             this.remoteEndPoint = remoteEndPoint;
             this.isSeed = isSeed;
 
             this.socket = new Socket(remoteEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-            this.receiver = new RemoteReceiver(this, this.socket, persistent: false, logger: this.logger);
-            this.sender = new RemoteSender(this.socket, this.logger);
+            this.receiver = new RemoteReceiver(this, this.socket, persistent: false);
+            this.sender = new RemoteSender(this.socket);
 
             this.blockMissCountMeasure = new CountMeasure(TimeSpan.FromMinutes(10));
 
             WireNode();
         }
 
-        public Peer(Socket socket, bool isSeed, Logger logger)
+        public Peer(Socket socket, bool isSeed)
         {
-            this.logger = logger;
             this.socket = socket;
             this.isConnected = true;
 
             this.localEndPoint = (IPEndPoint)socket.LocalEndPoint;
             this.remoteEndPoint = (IPEndPoint)socket.RemoteEndPoint;
 
-            this.receiver = new RemoteReceiver(this, this.socket, persistent: false, logger: this.logger);
-            this.sender = new RemoteSender(this.socket, this.logger);
+            this.receiver = new RemoteReceiver(this, this.socket, persistent: false);
+            this.sender = new RemoteSender(this.socket);
 
             this.blockMissCountMeasure = new CountMeasure(TimeSpan.FromMinutes(10));
 

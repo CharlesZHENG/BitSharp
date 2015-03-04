@@ -34,7 +34,7 @@ namespace BitSharp.Esent.ChainState
             JET_COLUMNID unspentTxCountColumnId;
 
             Api.JetCreateTable(jetSession, utxoDbId, "Globals", 0, 0, out globalsTableId);
-            Api.JetAddColumn(jetSession, globalsTableId, "UnspentTxCount", new JET_COLUMNDEF { coltyp = JET_coltyp.Long, grbit = ColumndefGrbit.ColumnNotNULL}, null, 0, out unspentTxCountColumnId);
+            Api.JetAddColumn(jetSession, globalsTableId, "UnspentTxCount", new JET_COLUMNDEF { coltyp = JET_coltyp.Long, grbit = ColumndefGrbit.ColumnNotNULL }, null, 0, out unspentTxCountColumnId);
 
             // initialize global data
             using (var jetUpdate = jetSession.BeginUpdate(globalsTableId, JET_prep.Insert))
@@ -176,7 +176,7 @@ namespace BitSharp.Esent.ChainState
             Api.JetCloseTable(jetSession, unmintedTxTableId);
         }
 
-        public static void OpenDatabase(string jetDatabase, Instance jetInstance, bool readOnly, Logger logger)
+        public static void OpenDatabase(string jetDatabase, Instance jetInstance, bool readOnly)
         {
             using (var jetSession = new Session(jetInstance))
             {
@@ -189,7 +189,7 @@ namespace BitSharp.Esent.ChainState
                 Api.JetAttachDatabase(jetSession, jetDatabase, attachGrbit);
                 try
                 {
-                    using (var cursor = new ChainStateCursor(jetDatabase, jetInstance, logger))
+                    using (var cursor = new ChainStateCursor(jetDatabase, jetInstance))
                     {
                         // reset flush column
                         using (var jetUpdate = cursor.jetSession.BeginUpdate(cursor.flushTableId, JET_prep.Replace))

@@ -11,12 +11,7 @@ namespace BitSharp.Core.Test
 {
     public class Miner
     {
-        private readonly Logger logger;
-
-        public Miner(Logger logger)
-        {
-            this.logger = logger;
-        }
+        private readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private class LocalMinerState
         {

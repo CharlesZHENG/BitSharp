@@ -1,6 +1,5 @@
 ﻿using BitSharp.Core;
 using BitSharp.Core.JsonRpc;
-using NLog;
 
 namespace BitSharp.Node
 {
@@ -8,8 +7,8 @@ namespace BitSharp.Node
     {
         private readonly CoreDaemon coreDaemon;
 
-        public NodeRpcServer(Logger logger, CoreDaemon coreDaemon)
-            : base(logger, coreDaemon)
+        public NodeRpcServer(CoreDaemon coreDaemon)
+            : base(coreDaemon)
         {
             this.coreDaemon = coreDaemon;
         }

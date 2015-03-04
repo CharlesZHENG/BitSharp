@@ -21,7 +21,7 @@ namespace BitSharp.Esent
         //TODO
         public static bool IndexOutputs { get; set; }
 
-        private readonly Logger logger;
+        private readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly string jetDatabase;
         private readonly Instance jetInstance;
@@ -55,9 +55,8 @@ namespace BitSharp.Esent
 
         private bool inTransaction;
 
-        public ChainStateCursor(string jetDatabase, Instance jetInstance, Logger logger)
+        public ChainStateCursor(string jetDatabase, Instance jetInstance)
         {
-            this.logger = logger;
             this.jetDatabase = jetDatabase;
             this.jetInstance = jetInstance;
 

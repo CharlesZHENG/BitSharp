@@ -16,7 +16,8 @@ namespace BitSharp.Wallet
 {
     public class WalletMonitor : Worker
     {
-        private readonly Logger logger;
+        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+
         private readonly CoreDaemon coreDaemon;
         private readonly BlockReplayer blockReplayer;
 
@@ -35,12 +36,11 @@ namespace BitSharp.Wallet
 
         private decimal bitBalance;
 
-        public WalletMonitor(CoreDaemon coreDaemon, Logger logger)
-            : base("WalletMonitor", initialNotify: true, minIdleTime: TimeSpan.FromMilliseconds(100), maxIdleTime: TimeSpan.MaxValue, logger: logger)
+        public WalletMonitor(CoreDaemon coreDaemon)
+            : base("WalletMonitor", initialNotify: true, minIdleTime: TimeSpan.FromMilliseconds(100), maxIdleTime: TimeSpan.MaxValue)
         {
-            this.logger = logger;
             this.coreDaemon = coreDaemon;
-            this.blockReplayer = new BlockReplayer(coreDaemon.CoreStorage, coreDaemon.Rules, logger);
+            this.blockReplayer = new BlockReplayer(coreDaemon.CoreStorage, coreDaemon.Rules);
 
             this.chainBuilder = Chain.CreateForGenesisBlock(coreDaemon.Rules.GenesisChainedHeader).ToBuilder();
 

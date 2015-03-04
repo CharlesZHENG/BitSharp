@@ -12,7 +12,7 @@ namespace BitSharp.Common.Test
         [TestMethod]
         public void TestConsume()
         {
-            using (var consumer = new ParallelConsumer<int>("", 4, LogManager.CreateNullLogger()))
+            using (var consumer = new ParallelConsumer<int>("", 4))
             {
                 // create a source enumerable
                 var source = Enumerable.Range(0, 5).Select(x => x);
@@ -40,7 +40,7 @@ namespace BitSharp.Common.Test
         [TestMethod]
         public void TestCompletedAction()
         {
-            using (var consumer = new ParallelConsumer<int>("", 4, LogManager.CreateNullLogger()))
+            using (var consumer = new ParallelConsumer<int>("", 4))
             {
                 // create a source enumerable
                 var source = Enumerable.Range(0, 5).Select(x => x);
@@ -64,7 +64,7 @@ namespace BitSharp.Common.Test
         [TestMethod]
         public void TestSourceException()
         {
-            using (var consumer = new ParallelConsumer<int>("", 4, LogManager.CreateNullLogger()))
+            using (var consumer = new ParallelConsumer<int>("", 4))
             {
                 // create a source enumerable that will throw an exception
                 var expectedException = new Exception();
@@ -106,7 +106,7 @@ namespace BitSharp.Common.Test
         [TestMethod]
         public void TestConsumerException()
         {
-            using (var consumer = new ParallelConsumer<int>("", 4, LogManager.CreateNullLogger()))
+            using (var consumer = new ParallelConsumer<int>("", 4))
             {
                 // create a source enumerable
                 var source = Enumerable.Range(0, 5).Select(x => x);

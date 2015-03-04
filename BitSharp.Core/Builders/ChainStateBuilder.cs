@@ -15,7 +15,8 @@ namespace BitSharp.Core.Builders
 {
     internal class ChainStateBuilder : IDisposable
     {
-        private readonly Logger logger;
+        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+
         private readonly IBlockchainRules rules;
         private readonly IStorageManager storageManager;
 
@@ -32,20 +33,19 @@ namespace BitSharp.Core.Builders
 
         private readonly BuilderStats stats;
 
-        public ChainStateBuilder(Logger logger, IBlockchainRules rules, IStorageManager storageManager)
+        public ChainStateBuilder(IBlockchainRules rules, IStorageManager storageManager)
         {
-            this.logger = logger;
             this.rules = rules;
             this.storageManager = storageManager;
 
             this.stats = new BuilderStats();
-            this.blockValidator = new BlockValidator(this.stats, this.storageManager, this.rules, this.logger);
+            this.blockValidator = new BlockValidator(this.stats, this.storageManager, this.rules);
 
             this.chainStateCursorHandle = this.storageManager.OpenChainStateCursor();
             this.chainStateCursor = this.chainStateCursorHandle.Item;
 
             this.chain = new ChainBuilder(chainStateCursor.ReadChain());
-            this.utxoBuilder = new UtxoBuilder(chainStateCursor, logger);
+            this.utxoBuilder = new UtxoBuilder(chainStateCursor);
 
             this.commitLock = new ReaderWriterLockSlim();
         }

@@ -1,7 +1,6 @@
 ﻿using BitSharp.Core.JsonRpc;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
-using Ninject;
 using NLog;
 using System;
 using System.IO;
@@ -18,8 +17,8 @@ namespace BitSharp.Core.Test.JsonRpc
         {
             using (var simulator = new MainnetSimulator())
             {
-                var logger = simulator.Kernel.Get<Logger>();
-                using (var rpcServer = new CoreRpcServer(logger, simulator.CoreDaemon))
+                var logger = LogManager.GetCurrentClassLogger();
+                using (var rpcServer = new CoreRpcServer(simulator.CoreDaemon))
                 {
                     rpcServer.StartListening();
 

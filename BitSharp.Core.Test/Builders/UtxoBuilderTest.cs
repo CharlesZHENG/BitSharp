@@ -30,7 +30,7 @@ namespace BitSharp.Core.Test.Builders
             var memoryChainStateCursor = memoryStorage.OpenChainStateCursor().Item;
 
             // initialize utxo builder
-            var utxoBuilder = new UtxoBuilder(memoryChainStateCursor, LogManager.CreateNullLogger());
+            var utxoBuilder = new UtxoBuilder(memoryChainStateCursor);
 
             // prepare an unspent transaction
             var txHash = new UInt256(100);
@@ -103,7 +103,7 @@ namespace BitSharp.Core.Test.Builders
             var memoryChainStateCursor = memoryStorage.OpenChainStateCursor().Item;
 
             // initialize utxo builder
-            var utxoBuilder = new UtxoBuilder(memoryChainStateCursor, LogManager.CreateNullLogger());
+            var utxoBuilder = new UtxoBuilder(memoryChainStateCursor);
 
             // prepare an unspent transaction
             var txHash = new UInt256(100);

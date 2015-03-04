@@ -33,14 +33,14 @@ namespace BitSharp.Node.Network
         public event Action<InventoryPayload> OnGetData;
         public event Action<ImmutableArray<byte>> OnPing;
 
-        private readonly Logger logger;
+        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+
         private readonly Peer owner;
         private readonly Socket socket;
         private readonly bool persistent;
 
-        public RemoteReceiver(Peer owner, Socket socket, bool persistent, Logger logger)
+        public RemoteReceiver(Peer owner, Socket socket, bool persistent)
         {
-            this.logger = logger;
             this.owner = owner;
             this.socket = socket;
             this.persistent = persistent;
@@ -138,7 +138,7 @@ namespace BitSharp.Node.Network
                     handler(message);
 
                 stopwatch.Stop();
-                
+
                 if (this.logger.IsTraceEnabled)
                     this.logger.Trace("{2,25} Received message {0,12} in {1,6} ms".Format2(message.Command, stopwatch.ElapsedMilliseconds, this.socket.RemoteEndPoint));
             }

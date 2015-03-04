@@ -14,7 +14,7 @@ namespace BitSharp.Core.Test.Script
         [TestMethod]
         public void TestCreateCoinbaseAndSpend()
         {
-            var txManager = new TransactionManager(LogManager.CreateNullLogger());
+            var txManager = new TransactionManager();
             var keyPair = txManager.CreateKeyPair();
             var privateKey = keyPair.Item1;
             var publicKey = keyPair.Item2;
@@ -26,7 +26,7 @@ namespace BitSharp.Core.Test.Script
 
             var script = privateKeyScript.Concat(publicKeyScript);
 
-            var scriptEngine = new ScriptEngine(LogManager.CreateNullLogger());
+            var scriptEngine = new ScriptEngine();
             Assert.IsTrue(scriptEngine.VerifyScript(0, 0, publicKeyScript.ToArray(), coinbaseTx, 0, script));
         }
     }

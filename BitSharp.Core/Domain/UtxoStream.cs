@@ -8,14 +8,14 @@ namespace BitSharp.Core.Domain
 {
     public class UtxoStream : Stream
     {
-        private readonly Logger logger;
+        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+
         private readonly IEnumerator<UnspentTx> unspentTransactions;
         private readonly List<byte> unreadBytes;
         private int totalBytes;
 
-        public UtxoStream(Logger logger, IEnumerable<UnspentTx> unspentTransactions)
+        public UtxoStream(IEnumerable<UnspentTx> unspentTransactions)
         {
-            this.logger = logger;
             this.unspentTransactions = unspentTransactions.GetEnumerator();
             this.unreadBytes = new List<byte>();
         }

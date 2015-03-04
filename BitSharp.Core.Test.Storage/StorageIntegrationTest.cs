@@ -34,11 +34,11 @@ namespace BitSharp.Core.Test.Storage
             var genesisHeader = new ChainedHeader(genesisBlock.Header, height: 0, totalWork: 0);
             var genesisChain = Chain.CreateForGenesisBlock(genesisHeader);
 
-            var rules = new MainnetRules(logger);
+            var rules = new MainnetRules();
 
             using (var storageManager = provider.OpenStorageManager())
-            using (var coreStorage = new CoreStorage(storageManager, logger))
-            using (var chainStateBuilder = new ChainStateBuilder(logger, rules, storageManager))
+            using (var coreStorage = new CoreStorage(storageManager))
+            using (var chainStateBuilder = new ChainStateBuilder(rules, storageManager))
             {
                 // add blocks to storage
                 coreStorage.AddGenesisBlock(ChainedHeader.CreateForGenesisBlock(blocks[0].Header));
@@ -64,7 +64,7 @@ namespace BitSharp.Core.Test.Storage
                 //TODO verify the UTXO hash hard-coded here is correct
                 //TODO 5500: 0e9da3d53272cda9ecb6037c411ebc3cd0b65b5c16698baba41665edb29b8eaf
                 var expectedUtxoHash = UInt256.Parse("609eb5882e0b71a707fb876c844fbfe6b4579e04eb27c7c0cefbb7478bac737b", NumberStyles.HexNumber);
-                using (var utxoStream = new UtxoStream(logger, expectedUtxos.Last()))
+                using (var utxoStream = new UtxoStream(expectedUtxos.Last()))
                 {
                     var utxoHash = new UInt256(SHA256Static.ComputeDoubleHash(utxoStream));
                     Assert.AreEqual(expectedUtxoHash, utxoHash);

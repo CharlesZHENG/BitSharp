@@ -25,7 +25,8 @@ namespace BitSharp.Node.Workers
         private static readonly TimeSpan MISSED_STALE_REQUEST_TIME = TimeSpan.FromSeconds(3);
         private static readonly int MAX_REQUESTS_PER_PEER = 100;
 
-        private readonly Logger logger;
+        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+
         private readonly LocalClient localClient;
         private readonly CoreDaemon coreDaemon;
         private readonly CoreStorage coreStorage;
@@ -50,10 +51,9 @@ namespace BitSharp.Node.Workers
 
         private readonly WorkerMethod diagnosticWorker;
 
-        public BlockRequestWorker(WorkerConfig workerConfig, Logger logger, LocalClient localClient, CoreDaemon coreDaemon)
-            : base("BlockRequestWorker", workerConfig.initialNotify, workerConfig.minIdleTime, workerConfig.maxIdleTime, logger)
+        public BlockRequestWorker(WorkerConfig workerConfig, LocalClient localClient, CoreDaemon coreDaemon)
+            : base("BlockRequestWorker", workerConfig.initialNotify, workerConfig.minIdleTime, workerConfig.maxIdleTime)
         {
-            this.logger = logger;
             this.localClient = localClient;
             this.coreDaemon = coreDaemon;
             this.coreStorage = coreDaemon.CoreStorage;
@@ -76,11 +76,11 @@ namespace BitSharp.Node.Workers
             this.targetChainQueueIndex = 0;
             this.targetChainLookAhead = 1;
 
-            this.flushWorker = new WorkerMethod("BlockRequestWorker.FlushWorker", FlushWorkerMethod, initialNotify: true, minIdleTime: TimeSpan.Zero, maxIdleTime: TimeSpan.MaxValue, logger: this.logger);
+            this.flushWorker = new WorkerMethod("BlockRequestWorker.FlushWorker", FlushWorkerMethod, initialNotify: true, minIdleTime: TimeSpan.Zero, maxIdleTime: TimeSpan.MaxValue);
             this.flushQueue = new ConcurrentQueue<FlushBlock>();
             this.flushBlocks = new ConcurrentSet<UInt256>();
 
-            this.diagnosticWorker = new WorkerMethod("BlockRequestWorker.DiagnosticWorker", DiagnosticWorkerMethod, initialNotify: true, minIdleTime: TimeSpan.FromSeconds(10), maxIdleTime: TimeSpan.FromSeconds(10), logger: this.logger);
+            this.diagnosticWorker = new WorkerMethod("BlockRequestWorker.DiagnosticWorker", DiagnosticWorkerMethod, initialNotify: true, minIdleTime: TimeSpan.FromSeconds(10), maxIdleTime: TimeSpan.FromSeconds(10));
         }
 
         public float GetBlockDownloadRate(TimeSpan perUnitTime)

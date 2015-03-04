@@ -11,7 +11,8 @@ namespace BitSharp.Core.Storage
 {
     public class CoreStorage : IDisposable
     {
-        private readonly Logger logger;
+        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+
         private readonly IStorageManager storageManager;
         private readonly IBlockStorage blockStorage;
         private readonly IBlockTxesStorage blockTxesStorage;
@@ -25,12 +26,11 @@ namespace BitSharp.Core.Storage
         private readonly ConcurrentDictionary<UInt256, bool> presentBlockTxes = new ConcurrentDictionary<UInt256, bool>();
         private readonly object[] presentBlockTxesLocks = new object[64];
 
-        public CoreStorage(IStorageManager storageManager, Logger logger)
+        public CoreStorage(IStorageManager storageManager)
         {
             for (var i = 0; i < this.presentBlockTxesLocks.Length; i++)
                 presentBlockTxesLocks[i] = new object();
 
-            this.logger = logger;
             this.storageManager = storageManager;
             this.blockStorage = storageManager.BlockStorage;
             this.blockTxesStorage = storageManager.BlockTxesStorage;

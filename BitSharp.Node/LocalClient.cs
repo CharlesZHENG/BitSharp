@@ -26,7 +26,8 @@ namespace BitSharp.Node
         public event Action<Peer, Block> OnBlock;
         public event Action<Peer, IImmutableList<BlockHeader>> OnBlockHeaders;
 
-        private readonly Logger logger;
+        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+
         private readonly CancellationTokenSource shutdownToken;
         private readonly Random random = new Random();
 
@@ -45,11 +46,10 @@ namespace BitSharp.Node
 
         private RateMeasure messageRateMeasure;
 
-        public LocalClient(Logger logger, RulesEnum type, IKernel kernel, IBlockchainRules rules, CoreDaemon coreDaemon, NetworkPeerCache networkPeerCache)
+        public LocalClient(RulesEnum type, IKernel kernel, IBlockchainRules rules, CoreDaemon coreDaemon, NetworkPeerCache networkPeerCache)
         {
             this.shutdownToken = new CancellationTokenSource();
 
-            this.logger = logger;
             this.type = type;
             this.kernel = kernel;
             this.rules = rules;
@@ -61,19 +61,19 @@ namespace BitSharp.Node
 
             this.peerWorker = new PeerWorker(
                 new WorkerConfig(initialNotify: true, minIdleTime: TimeSpan.FromSeconds(1), maxIdleTime: TimeSpan.FromSeconds(1)),
-                this.logger, this, this.coreDaemon);
+                this, this.coreDaemon);
 
-            this.listenWorker = new ListenWorker(this.logger, this, this.peerWorker);
+            this.listenWorker = new ListenWorker(this, this.peerWorker);
 
             this.headersRequestWorker = new HeadersRequestWorker(
                 new WorkerConfig(initialNotify: true, minIdleTime: TimeSpan.FromMilliseconds(50), maxIdleTime: TimeSpan.FromSeconds(5)),
-                this.logger, this, this.coreDaemon);
+                this, this.coreDaemon);
 
             this.blockRequestWorker = new BlockRequestWorker(
                 new WorkerConfig(initialNotify: true, minIdleTime: TimeSpan.FromMilliseconds(50), maxIdleTime: TimeSpan.FromSeconds(30)),
-                this.logger, this, this.coreDaemon);
+                this, this.coreDaemon);
 
-            this.statsWorker = new WorkerMethod("LocalClient.StatsWorker", StatsWorker, true, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(30), this.logger);
+            this.statsWorker = new WorkerMethod("LocalClient.StatsWorker", StatsWorker, true, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(30));
 
             this.peerWorker.PeerConnected += HandlePeerConnected;
             this.peerWorker.PeerDisconnected += HandlePeerDisconnected;

@@ -21,13 +21,13 @@ namespace BitSharp.Node.Network
     {
         public event Action<Exception> OnFailed;
 
-        private readonly Logger logger;
+        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+
         private readonly SemaphoreSlim semaphore = new SemaphoreSlim(1);
         private readonly Socket socket;
 
-        public RemoteSender(Socket socket, Logger logger)
+        public RemoteSender(Socket socket)
         {
-            this.logger = logger;
             this.socket = socket;
         }
 

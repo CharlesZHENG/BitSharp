@@ -11,7 +11,8 @@ namespace BitSharp.Esent
 {
     internal class EsentChainStateManager : IDisposable
     {
-        private readonly Logger logger;
+        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+
         private readonly string baseDirectory;
         private readonly string jetDirectory;
         private readonly string jetDatabase;
@@ -19,9 +20,8 @@ namespace BitSharp.Esent
 
         private readonly DisposableCache<IChainStateCursor> cursorCache;
 
-        public EsentChainStateManager(string baseDirectory, Logger logger)
+        public EsentChainStateManager(string baseDirectory)
         {
-            this.logger = logger;
             this.baseDirectory = baseDirectory;
             this.jetDirectory = Path.Combine(baseDirectory, "ChainState");
             this.jetDatabase = Path.Combine(this.jetDirectory, "ChainState.edb");
@@ -32,7 +32,7 @@ namespace BitSharp.Esent
             this.CreateOrOpenDatabase();
 
             this.cursorCache = new DisposableCache<IChainStateCursor>(64,
-                createFunc: () => new ChainStateCursor(this.jetDatabase, this.jetInstance, this.logger),
+                createFunc: () => new ChainStateCursor(this.jetDatabase, this.jetInstance),
                 prepareAction: cursor =>
                 {
                     // rollback any open transaction before returning the cursor to the cache
@@ -56,7 +56,7 @@ namespace BitSharp.Esent
         {
             try
             {
-                ChainStateSchema.OpenDatabase(this.jetDatabase, this.jetInstance, readOnly: false, logger: this.logger);
+                ChainStateSchema.OpenDatabase(this.jetDatabase, this.jetInstance, readOnly: false);
             }
             catch (Exception)
             {

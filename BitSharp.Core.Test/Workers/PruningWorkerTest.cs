@@ -42,7 +42,7 @@ namespace BitSharp.Core.Test.Workers
 
             // initialize the pruning worker
             var workerConfig = new WorkerConfig(initialNotify: false, minIdleTime: TimeSpan.Zero, maxIdleTime: TimeSpan.MaxValue);
-            using (var pruningWorker = new PruningWorker(workerConfig, coreDaemon.Object, storageManager, null, logger))
+            using (var pruningWorker = new PruningWorker(workerConfig, coreDaemon.Object, storageManager, null))
             // get a chain state cursor
             using (var handle = storageManager.OpenChainStateCursor())
             {
