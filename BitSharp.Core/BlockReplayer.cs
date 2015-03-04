@@ -41,7 +41,7 @@ namespace BitSharp.Core.Builders
             this.rules = rules;
 
             // thread count for i/o task (TxLoader)
-            var ioThreadCount = Environment.ProcessorCount * 8;
+            var ioThreadCount = 4;
 
             this.pendingTxLoader = new ParallelConsumer<BlockTx>("BlockReplayer.PendingTxLoader", ioThreadCount);
             this.txLoader = new ParallelConsumer<TxInputWithPrevOutputKey>("BlockReplayer.TxLoader", ioThreadCount);
