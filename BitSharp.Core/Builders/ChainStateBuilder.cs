@@ -162,12 +162,7 @@ namespace BitSharp.Core.Builders
                 this.Stats.blockCount++;
             });
 
-            var logInterval = TimeSpan.FromSeconds(15);
-            if (DateTime.UtcNow - this.Stats.lastLogTime >= logInterval)
-            {
-                this.LogBlockchainProgress();
-                this.Stats.lastLogTime = DateTime.UtcNow;
-            }
+            this.LogBlockchainProgress();
         }
 
         public void RollbackBlock(ChainedHeader chainedHeader, IEnumerable<BlockTx> blockTxes)
@@ -217,6 +212,11 @@ namespace BitSharp.Core.Builders
 
         public void LogBlockchainProgress()
         {
+            if (DateTime.UtcNow - this.Stats.lastLogTime < TimeSpan.FromSeconds(15))
+                return;
+            else
+                this.Stats.lastLogTime = DateTime.UtcNow;
+
             var elapsedSeconds = this.Stats.durationStopwatch.Elapsed.TotalSeconds;
             var blockRate = this.stats.blockRateMeasure.GetAverage(TimeSpan.FromSeconds(1));
             var txRate = this.stats.txRateMeasure.GetAverage(TimeSpan.FromSeconds(1));
