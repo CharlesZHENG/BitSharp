@@ -1,70 +1,124 @@
-﻿using System;
-using System.Collections.Concurrent;
+﻿using NLog;
+using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
 
 namespace BitSharp.Common
 {
-    public static class LookAheadMethods
+    public class LookAhead<T> : IDisposable
     {
-        public static IEnumerable<T> LookAhead<T>(this IEnumerable<T> values, int lookAhead, CancellationToken? cancelToken = null)
+        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+
+        private readonly string name;
+
+        // the worker thread where the source will be read
+        private WorkerMethod readWorker;
+
+        // event to track when reading has been completed
+        private readonly ManualResetEventSlim completedReadingEvent = new ManualResetEventSlim(false);
+
+        // the source enumerable to read
+        private IEnumerable<T> source;
+
+        private CancellationToken? cancelToken;
+
+        // the queue of read items that are waiting to be returned
+        private ConcurrentBlockingQueue<T> queue;
+
+        // any exception that occurs during reading
+        private Exception readException;
+
+        private bool isDisposed;
+
+        /// <summary>
+        /// Initialize a new LookAhead.
+        /// </summary>
+        /// <param name="name">The name of the instance.</param>
+        public LookAhead(string name)
         {
-            var doneConsuming = false;
+            this.name = name;
 
-            using (var readValues = new BlockingCollection<T>(1 + lookAhead))
-            using (var readTask =
-                Task.Run(() =>
-                {
-                    try
-                    {
-                        foreach (var value in values)
-                        {
-                            // cooperative loop
-                            if (doneConsuming || (cancelToken != null && cancelToken.Value.IsCancellationRequested))
-                                return;
+            // initialize the read worker
+            this.readWorker = new WorkerMethod(name + ".ReadWorker", ReadWorker, initialNotify: false, minIdleTime: TimeSpan.Zero, maxIdleTime: TimeSpan.MaxValue);
+            this.readWorker.Start();
+        }
 
-                            readValues.Add(value);
-                        }
-                    }
-                    finally
-                    {
-                        readValues.CompleteAdding();
-                    }
-                }))
+        /// <summary>
+        /// Release all resources.
+        /// </summary>
+        public void Dispose()
+        {
+            if (this.isDisposed)
+                return;
+
+            if (this.readWorker != null)
+                this.readWorker.Dispose();
+            this.completedReadingEvent.Dispose();
+
+            this.isDisposed = true;
+        }
+
+        /// <summary>
+        /// The name of the instance.
+        /// </summary>
+        public string Name { get { return this.name; } }
+
+        public IEnumerable<T> ReadAll(IEnumerable<T> source, CancellationToken? cancelToken = null)
+        {
+            // store the source enumerable and cancel token
+            this.source = source;
+            this.cancelToken = cancelToken;
+
+            // set to the started state
+            this.readException = null;
+            this.completedReadingEvent.Reset();
+
+            // initialize queue
+            using (this.queue = new ConcurrentBlockingQueue<T>())
             {
-                try
+                // notify the read worker to begin
+                this.readWorker.NotifyWork();
+
+                foreach (var item in this.queue.GetConsumingEnumerable())
                 {
-                    foreach (var value in readValues.GetConsumingEnumerable())
-                    {
-                        // cooperative loop
-                        cancelToken.GetValueOrDefault(CancellationToken.None).ThrowIfCancellationRequested();
+                    if (this.readException != null)
+                        break;
 
-                        yield return value;
-                    }
-
-                    // ensure a cancellation exception is thrown if the loop exited due to cancelToken
-                    cancelToken.GetValueOrDefault(CancellationToken.None).ThrowIfCancellationRequested();
+                    yield return item;
                 }
-                finally
+
+                completedReadingEvent.Wait();
+
+                if (this.readException != null)
+                    throw readException;
+            }
+        }
+
+        private void ReadWorker(WorkerMethod instance)
+        {
+            // read all source items
+            try
+            {
+                foreach (var item in this.source)
                 {
-                    // indicate that consuming is finished so that readTask can exit
-                    doneConsuming = true;
+                    // cooperative loop
+                    if (this.cancelToken != null && this.cancelToken.Value.IsCancellationRequested)
+                        break;
 
-                    // clear readValues to ensure readTask doesn't block on readValues.Add(value)
-                    readValues.GetConsumingEnumerable().Count();
-
-                    // wait for readTask to finish
-                    try
-                    {
-                        readTask.Wait();
-                    }
-                    catch (AggregateException e)
-                    {
-                        throw e.InnerExceptions.First();
-                    }
+                    // queue the item to be returned
+                    this.queue.Add(item);
                 }
+            }
+            // capture any thrown exceptions
+            catch (Exception e)
+            {
+                this.readException = e;
+            }
+            // ensure queue is marked as complete for adding once reading has finished
+            finally
+            {
+                this.queue.CompleteAdding();
+                this.completedReadingEvent.Set();
             }
         }
     }

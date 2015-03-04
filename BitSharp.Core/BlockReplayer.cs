@@ -35,6 +35,8 @@ namespace BitSharp.Core.Builders
         private ConcurrentBag<Exception> pendingTxLoaderExceptions;
         private ConcurrentBag<Exception> txLoaderExceptions;
 
+        private readonly LookAhead<BlockTx> blockTxesLookAhead;
+
         public BlockReplayer(CoreStorage coreStorage, IBlockchainRules rules)
         {
             this.coreStorage = coreStorage;
@@ -45,6 +47,8 @@ namespace BitSharp.Core.Builders
 
             this.pendingTxLoader = new ParallelConsumer<BlockTx>("BlockReplayer.PendingTxLoader", ioThreadCount);
             this.txLoader = new ParallelConsumer<TxInputWithPrevOutputKey>("BlockReplayer.TxLoader", ioThreadCount);
+
+            this.blockTxesLookAhead = new LookAhead<BlockTx>("BlockReplayer.BlockTxesLookAhead");
         }
 
         public void Dispose()
@@ -162,7 +166,7 @@ namespace BitSharp.Core.Builders
 
         private IDisposable StartPendingTxLoader(IEnumerable<BlockTx> blockTxes)
         {
-            return this.pendingTxLoader.Start(blockTxes.LookAhead(10),
+            return this.pendingTxLoader.Start(blockTxesLookAhead.ReadAll(blockTxes),
                 blockTx =>
                 {
                     var pendingTx = LoadPendingTx(blockTx);
