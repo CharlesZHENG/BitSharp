@@ -157,7 +157,7 @@ namespace BitSharp.Core.Builders
                     if (loadedTx != null)
                         this.loadedTxes.Add(loadedTx);
                 },
-                () => this.loadedTxes.CompleteAdding());
+                _ => this.loadedTxes.CompleteAdding());
         }
 
         private IDisposable StartTxValidator(ChainedHeader chainedHeader)
@@ -186,7 +186,7 @@ namespace BitSharp.Core.Builders
 
                     ValidateTransaction(loadedTx);
                 },
-                () => this.loadedTxInputs.CompleteAdding());
+                _ => this.loadedTxInputs.CompleteAdding());
         }
 
         private IDisposable StartScriptValidator()
@@ -196,7 +196,7 @@ namespace BitSharp.Core.Builders
                 {
                     ValidateScript(loadedTxInput);
                 },
-                () => { });
+                _ => { });
         }
 
         private TxWithPrevOutputs LoadPendingTx(TxInputWithPrevOutputKey pendingTx, ConcurrentDictionary<UInt256, Transaction> txCache)

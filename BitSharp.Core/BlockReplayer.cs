@@ -57,6 +57,8 @@ namespace BitSharp.Core.Builders
 
             if (this.loadedTxes != null)
                 this.loadedTxes.Dispose();
+
+            this.blockTxesLookAhead.Dispose();
         }
 
         public IDisposable StartReplay(IChainState chainState, UInt256 blockHash)
@@ -175,7 +177,7 @@ namespace BitSharp.Core.Builders
                         this.pendingTxes.AddRange(pendingTx.GetInputs());
                     }
                 },
-                () => this.pendingTxes.CompleteAdding());
+                _ => this.pendingTxes.CompleteAdding());
         }
 
         private IDisposable StartTxLoader()
@@ -187,7 +189,7 @@ namespace BitSharp.Core.Builders
                     if (loadedTx != null)
                         this.loadedTxes.Add(loadedTx);
                 },
-                () => this.loadedTxes.CompleteAdding());
+                _ => this.loadedTxes.CompleteAdding());
         }
 
         //TODO conflicting names

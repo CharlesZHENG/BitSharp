@@ -39,7 +39,7 @@ namespace BitSharp.Common
         private Action<T> consumeAction;
 
         // an action to perform when all items have been read and consumed
-        private Action completedAction;
+        private Action<AggregateException> completedAction;
 
         // the queue of read items that are waiting to be consumed
         private ConcurrentBlockingQueue<T> queue;
@@ -120,7 +120,7 @@ namespace BitSharp.Common
         /// <param name="consumeAction">The action to be called on each item from the source.</param>
         /// <param name="completedAction">An action to be called when all items have been successfully read and consumed. This will not be called if there is an exception.</param>
         /// <returns>An IDisposable to cleanup the parallel consuming session.</returns>
-        public IDisposable Start(IEnumerable<T> source, Action<T> consumeAction, Action completedAction)
+        public IDisposable Start(IEnumerable<T> source, Action<T> consumeAction, Action<AggregateException> completedAction)
         {
             if (this.isStarted)
                 throw new InvalidOperationException();
@@ -160,7 +160,7 @@ namespace BitSharp.Common
             return new Stopper(this);
         }
 
-        public IDisposable Start(ConcurrentBlockingQueue<T> queue, Action<T> consumeAction, Action completedAction)
+        public IDisposable Start(ConcurrentBlockingQueue<T> queue, Action<T> consumeAction, Action<AggregateException> completedAction)
         {
             if (this.isStarted)
                 throw new InvalidOperationException();
@@ -294,9 +294,8 @@ namespace BitSharp.Common
                 // increment the completed consumer count and check if all have been completed
                 if (Interlocked.Increment(ref this.consumeCompletedCount) == this.consumeWorkers.Length)
                 {
-                    // if no exceptions occurred, invoke the completed action
-                    if (this.exceptions.Count == 0)
-                        this.completedAction();
+                    // invoke the completed action
+                    this.completedAction(this.exceptions.Count > 0 ? new AggregateException(this.exceptions) : null);
 
                     // notify that consuming has been completed
                     this.completedConsumingEvent.Set();

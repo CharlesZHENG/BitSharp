@@ -1,5 +1,4 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using NLog;
 using System;
 using System.Collections.Concurrent;
 using System.Linq;
@@ -26,7 +25,7 @@ namespace BitSharp.Common.Test
                     };
 
                 // start consuming the source
-                using (consumer.Start(source, consumeAction, () => { }))
+                using (consumer.Start(source, consumeAction, _ => { }))
                 {
                     // wait for the consumer to complete
                     consumer.WaitToComplete();
@@ -47,7 +46,7 @@ namespace BitSharp.Common.Test
 
                 // create a completed action
                 var wasCompleted = false;
-                Action completedAction = () => wasCompleted = true;
+                Action<AggregateException> completedAction = _ => wasCompleted = true;
 
                 // start consuming the source
                 using (consumer.Start(source, _ => { }, completedAction))
@@ -78,8 +77,9 @@ namespace BitSharp.Common.Test
                     });
 
                 // create a completed action
+                AggregateException completedException = null;
                 var wasCompleted = false;
-                Action completedAction = () => wasCompleted = true;
+                Action<AggregateException> completedAction = ex => { completedException = ex; wasCompleted = true; };
 
                 // start consuming the source
                 using (consumer.Start(source, _ => { }, completedAction))
@@ -97,7 +97,10 @@ namespace BitSharp.Common.Test
                         Assert.AreSame(expectedException, e.InnerExceptions[0]);
 
                         // verify completed action was not called
-                        Assert.IsFalse(wasCompleted);
+                        Assert.IsNotNull(completedException);
+                        Assert.AreEqual(1, completedException.InnerExceptions.Count);
+                        Assert.AreSame(expectedException, completedException.InnerExceptions[0]);
+                        Assert.IsTrue(wasCompleted);
                     }
                 }
             }
@@ -120,8 +123,9 @@ namespace BitSharp.Common.Test
                     };
 
                 // create a completed action
+                AggregateException completedException = null;
                 var wasCompleted = false;
-                Action completedAction = () => wasCompleted = true;
+                Action<AggregateException> completedAction = ex => { completedException = ex; wasCompleted = true; };
 
                 // start consuming the source
                 using (consumer.Start(source, consumeAction, completedAction))
@@ -138,8 +142,11 @@ namespace BitSharp.Common.Test
                         Assert.AreEqual(1, e.InnerExceptions.Count);
                         Assert.AreSame(expectedException, e.InnerExceptions[0]);
 
-                        // verify completed action was not called
-                        Assert.IsFalse(wasCompleted);
+                        // verify completed action was called with exception
+                        Assert.IsNotNull(completedException);
+                        Assert.AreEqual(1, completedException.InnerExceptions.Count);
+                        Assert.AreSame(expectedException, completedException.InnerExceptions[0]);
+                        Assert.IsTrue(wasCompleted);
                     }
                 }
             }

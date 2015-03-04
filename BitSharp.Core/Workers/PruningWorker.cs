@@ -237,7 +237,7 @@ namespace BitSharp.Core.Workers
 
                             this.storageManager.BlockTxesStorage.PruneElements(confirmedBlockHash, spentTxIndices);
                         },
-                        () => { }))
+                        _ => { }))
                     {
                         this.blockTxesPruner.WaitToComplete();
                     }
