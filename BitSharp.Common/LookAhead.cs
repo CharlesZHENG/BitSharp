@@ -79,18 +79,26 @@ namespace BitSharp.Common
                 // notify the read worker to begin
                 this.readWorker.NotifyWork();
 
-                foreach (var item in this.queue.GetConsumingEnumerable())
+                try
                 {
+                    foreach (var item in this.queue.GetConsumingEnumerable())
+                    {
+                        if (this.readException != null)
+                            break;
+
+                        yield return item;
+                    }
+
+                    completedReadingEvent.Wait();
+
                     if (this.readException != null)
-                        break;
-
-                    yield return item;
+                        throw readException;
                 }
-
-                completedReadingEvent.Wait();
-
-                if (this.readException != null)
-                    throw readException;
+                finally
+                {
+                    // ensure read worker is always finished
+                    completedReadingEvent.Wait();
+                }
             }
         }
 
