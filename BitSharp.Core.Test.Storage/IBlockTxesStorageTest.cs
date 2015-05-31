@@ -1,10 +1,16 @@
-﻿using BitSharp.Core.Domain;
+﻿using BitSharp.Common;
+using BitSharp.Common.ExtensionMethods;
+using BitSharp.Core.Domain;
+using BitSharp.Core.Storage;
 using BitSharp.Core.Test.Rules;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Ninject;
+using NLog;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq;
 
 namespace BitSharp.Core.Test.Storage
@@ -227,53 +233,94 @@ namespace BitSharp.Core.Test.Storage
         // IBlockTxesStorage.PruneElements
         private void TestPruneElements(ITestStorageProvider provider)
         {
-            using (var storageManager = provider.OpenStorageManager())
+            // run 4 iterations of pruning: no adjacent blocks, one adjacent block on either side, and two adjacent blocks
+            for (var iteration = 0; iteration < 4; iteration++)
             {
-                var blockTxesStorage = storageManager.BlockTxesStorage;
+                provider.TestCleanup();
 
-                // create a block
-                var block = CreateFakeBlock();
-                var txCount = block.Transactions.Length;
-
-                // determine expected merkle root node when fully pruned
-                var expectedFinalDepth = (int)Math.Ceiling(Math.Log(txCount, 2));
-                var expectedFinalElement = new BlockTx(index: 0, depth: expectedFinalDepth, hash: block.Header.MerkleRoot, pruned: true, transaction: null);
-
-                // pick a random pruning order
-                var random = new Random();
-                var pruneOrderSource = Enumerable.Range(0, txCount).ToList();
-                var pruneOrder = new List<int>(txCount);
-                while (pruneOrderSource.Count > 0)
+                using (var kernel = new StandardKernel())
+                using (var storageManager = provider.OpenStorageManager())
                 {
-                    var randomIndex = random.Next(pruneOrderSource.Count);
+                    // add logging module
+                    kernel.Load(new ConsoleLoggingModule(LogLevel.Debug));
 
-                    pruneOrder.Add(pruneOrderSource[randomIndex]);
-                    pruneOrderSource.RemoveAt(randomIndex);
+                    var blockTxesStorage = storageManager.BlockTxesStorage;
+
+                    // create a block
+                    var block = CreateFakeBlock();
+                    var txCount = block.Transactions.Length;
+
+                    // determine expected merkle root node when fully pruned
+                    var expectedFinalDepth = (int)Math.Ceiling(Math.Log(txCount, 2));
+                    var expectedFinalElement = new BlockTx(index: 0, depth: expectedFinalDepth, hash: block.Header.MerkleRoot, pruned: true, transaction: null);
+
+                    // pick a random pruning order
+                    var random = new Random();
+                    var pruneOrderSource = Enumerable.Range(0, txCount).ToList();
+                    var pruneOrder = new List<int>(txCount);
+                    while (pruneOrderSource.Count > 0)
+                    {
+                        var randomIndex = random.Next(pruneOrderSource.Count);
+
+                        pruneOrder.Add(pruneOrderSource[randomIndex]);
+                        pruneOrderSource.RemoveAt(randomIndex);
+                    }
+
+                    // add preceding block
+                    if (iteration == 1 || iteration == 3)
+                        blockTxesStorage.TryAddBlockTransactions(new UInt256(block.Hash.ToBigInteger() - 1), block.Transactions);
+
+                    // add the block to be pruned
+                    blockTxesStorage.TryAddBlockTransactions(block.Hash, block.Transactions);
+
+                    // add proceeding block
+                    if (iteration == 2 || iteration == 3)
+                        blockTxesStorage.TryAddBlockTransactions(new UInt256(block.Hash.ToBigInteger() + 1), block.Transactions);
+
+                    // prune the block
+                    var count = 0;
+                    foreach (var pruneIndex in pruneOrder)
+                    {
+                        Debug.WriteLine(count++);
+
+                        // prune a transaction
+                        blockTxesStorage.PruneElements(new[] { new KeyValuePair<UInt256, IEnumerable<int>>(block.Hash, new[] { pruneIndex }) });
+
+                        // read block transactions
+                        IEnumerable<BlockTx> blockTxes;
+                        Assert.IsTrue(blockTxesStorage.TryReadBlockTransactions(block.Hash, out blockTxes));
+
+                        // verify block transactions, exception will be fired if invalid
+                        MerkleTree.ReadMerkleTreeNodes(block.Header.MerkleRoot, blockTxes).Count();
+                    }
+
+                    // read fully pruned block and verify
+                    IEnumerable<BlockTx> finalBlockTxes;
+                    Assert.IsTrue(blockTxesStorage.TryReadBlockTransactions(block.Hash, out finalBlockTxes));
+                    var finalNodes = MerkleTree.ReadMerkleTreeNodes(block.Header.MerkleRoot, finalBlockTxes).ToList();
+                    Assert.AreEqual(1, finalNodes.Count);
+                    Assert.AreEqual(expectedFinalElement, finalNodes[0]);
+
+                    // verify preceding block was not affected
+                    if (iteration == 1 || iteration == 3)
+                    {
+                        Assert.IsTrue(blockTxesStorage.TryReadBlockTransactions(new UInt256(block.Hash.ToBigInteger() - 1), out finalBlockTxes));
+                        Assert.AreEqual(block.Transactions.Length, finalBlockTxes.Count());
+
+                        // verify block transactions, exception will be fired if invalid
+                        MerkleTree.ReadMerkleTreeNodes(block.Header.MerkleRoot, finalBlockTxes).Count();
+                    }
+
+                    // verify proceeding block was not affected
+                    if (iteration == 2 || iteration == 3)
+                    {
+                        Assert.IsTrue(blockTxesStorage.TryReadBlockTransactions(new UInt256(block.Hash.ToBigInteger() + 1), out finalBlockTxes));
+                        Assert.AreEqual(block.Transactions.Length, finalBlockTxes.Count());
+
+                        // verify block transactions, exception will be fired if invalid
+                        MerkleTree.ReadMerkleTreeNodes(block.Header.MerkleRoot, finalBlockTxes).Count();
+                    }
                 }
-
-                // add the block
-                blockTxesStorage.TryAddBlockTransactions(block.Hash, block.Transactions);
-
-                // prune the block
-                foreach (var pruneIndex in pruneOrder)
-                {
-                    // prune a transaction
-                    blockTxesStorage.PruneElements(block.Hash, new[] { pruneIndex });
-
-                    // read block transactions
-                    IEnumerable<BlockTx> blockTxes;
-                    Assert.IsTrue(blockTxesStorage.TryReadBlockTransactions(block.Hash, out blockTxes));
-
-                    // verify block transactions, exception will be fired if invalid
-                    MerkleTree.ReadMerkleTreeNodes(block.Header.MerkleRoot, blockTxes).ToList();
-                }
-
-                // read fully pruned block and verify
-                IEnumerable<BlockTx> finalBlockTxes;
-                Assert.IsTrue(blockTxesStorage.TryReadBlockTransactions(block.Hash, out finalBlockTxes));
-                var finalNodes = MerkleTree.ReadMerkleTreeNodes(block.Header.MerkleRoot, finalBlockTxes).ToList();
-                Assert.AreEqual(1, finalNodes.Count);
-                Assert.AreEqual(expectedFinalElement, finalNodes[0]);
             }
         }
 
