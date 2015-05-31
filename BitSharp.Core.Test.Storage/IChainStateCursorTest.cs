@@ -1,9 +1,11 @@
-﻿using BitSharp.Core.Domain;
+﻿using BitSharp.Common;
+using BitSharp.Core.Domain;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Threading;
 
 namespace BitSharp.Core.Test.Storage
 {
@@ -137,39 +139,66 @@ namespace BitSharp.Core.Test.Storage
 
             // open two chain state cursors
             using (var storageManager = provider.OpenStorageManager())
-            using (var handle1 = storageManager.OpenChainStateCursor())
-            using (var handle2 = storageManager.OpenChainStateCursor())
+            using (var txBeganEvent = new ManualResetEventSlim())
+            using (var headerAddedEvent = new ManualResetEventSlim())
+            using (var doCommitEvent = new ManualResetEventSlim())
+            using (var committedEvent = new ManualResetEventSlim())
             {
-                var chainStateCursor1 = handle1.Item;
-                var chainStateCursor2 = handle2.Item;
+                var thread1 = new Thread(() =>
+                {
+                    using (var handle1 = storageManager.OpenChainStateCursor())
+                    {
+                        var chainStateCursor1 = handle1.Item;
 
-                // open transactions on both cursors
-                chainStateCursor1.BeginTransaction();
-                chainStateCursor2.BeginTransaction();
+                        // open transactions on cusor 1
+                        chainStateCursor1.BeginTransaction();
 
-                // verify initial empty chain
-                Assert.AreEqual(0, chainStateCursor1.ReadChain().Count());
-                Assert.AreEqual(0, chainStateCursor2.ReadChain().Count());
+                        // add a header on cursor 1
+                        chainStateCursor1.AddChainedHeader(chainedHeader0);
 
-                // add a header on cursor 1
-                chainStateCursor1.AddChainedHeader(chainedHeader0);
+                        // alert header has been added
+                        headerAddedEvent.Set();
 
-                // verify cursor 1 sees the new header while cursor 2 does not
-                CollectionAssert.AreEqual(new[] { chainedHeader0 }, chainStateCursor1.ReadChain().ToList());
-                Assert.AreEqual(0, chainStateCursor2.ReadChain().Count());
+                        doCommitEvent.Wait();
 
-                // commit cursor 1
-                chainStateCursor1.CommitTransaction();
+                        // commit transaction on cursor 1
+                        chainStateCursor1.CommitTransaction();
 
-                // verify cursor 1 sees the new header while cursor 2 does not
-                CollectionAssert.AreEqual(new[] { chainedHeader0 }, chainStateCursor1.ReadChain().ToList());
-                Assert.AreEqual(0, chainStateCursor2.ReadChain().Count());
+                        // alert transaction has been committed
+                        committedEvent.Set();
+                    }
+                });
+                thread1.Start();
 
-                // commit cursor 2
-                chainStateCursor2.CommitTransaction();
+                // wait for header to be added on cursor 1
+                headerAddedEvent.Wait();
 
-                // verify cursor 2 now sees the new header
-                CollectionAssert.AreEqual(new[] { chainedHeader0 }, chainStateCursor2.ReadChain().ToList());
+                using (var handle2 = storageManager.OpenChainStateCursor())
+                {
+                    var chainStateCursor2 = handle2.Item;
+
+                    // open transactions on cusor 2
+                    chainStateCursor2.BeginTransaction(readOnly: true);
+
+                    // verify empty chain
+                    Assert.AreEqual(0, chainStateCursor2.ReadChain().Count());
+
+                    doCommitEvent.Set();
+                    committedEvent.Wait();
+
+                    // verify empty chain
+                    Assert.AreEqual(0, chainStateCursor2.ReadChain().Count());
+
+                    chainStateCursor2.CommitTransaction();
+                    chainStateCursor2.BeginTransaction();
+
+                    // verify cursor 2 now sees the new header
+                    CollectionAssert.AreEqual(new[] { chainedHeader0 }, chainStateCursor2.ReadChain().ToList());
+
+                    chainStateCursor2.RollbackTransaction();
+                }
+
+                thread1.Join();
             }
         }
 
@@ -211,7 +240,7 @@ namespace BitSharp.Core.Test.Storage
             var fakeHeaders = new FakeHeaders();
             var chainedHeader0 = fakeHeaders.GenesisChained();
             var unspentTx = new UnspentTx(txHash: 0, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent));
-            var spentTxes = ImmutableList.Create(new SpentTx(txHash: 1, confirmedBlockIndex: 0, txIndex: 0, outputCount: 1, spentBlockIndex: 0));
+            var spentTxes = ImmutableList.Create<UInt256>(1);
 
             using (var storageManager = provider.OpenStorageManager())
             using (var handle = storageManager.OpenChainStateCursor())
@@ -235,12 +264,14 @@ namespace BitSharp.Core.Test.Storage
                 Assert.IsTrue(chainStateCursor.TryGetUnspentTx(unspentTx.TxHash, out actualUnspentTx));
                 Assert.AreEqual(unspentTx, actualUnspentTx);
 
-                IImmutableList<SpentTx> actualSpentTxes;
+                IImmutableList<UInt256> actualSpentTxes;
                 Assert.IsTrue(chainStateCursor.TryGetBlockSpentTxes(0, out actualSpentTxes));
                 CollectionAssert.AreEqual((ICollection)spentTxes, (ICollection)actualSpentTxes);
 
                 // commit transaction
                 chainStateCursor.CommitTransaction();
+
+                chainStateCursor.BeginTransaction();
 
                 // verify data
                 Assert.AreEqual(chainedHeader0, chainStateCursor.GetChainTip());
@@ -251,6 +282,8 @@ namespace BitSharp.Core.Test.Storage
 
                 Assert.IsTrue(chainStateCursor.TryGetBlockSpentTxes(0, out actualSpentTxes));
                 CollectionAssert.AreEqual((ICollection)spentTxes, (ICollection)actualSpentTxes);
+
+                chainStateCursor.RollbackTransaction();
             }
         }
 
@@ -263,7 +296,7 @@ namespace BitSharp.Core.Test.Storage
 
             var unspentTx = new UnspentTx(txHash: 0, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent));
 
-            var spentTxes = ImmutableList.Create(new SpentTx(txHash: 1, confirmedBlockIndex: 0, txIndex: 0, outputCount: 1, spentBlockIndex: 0));
+            var spentTxes = ImmutableList.Create<UInt256>(1);
 
             using (var storageManager = provider.OpenStorageManager())
             using (var handle = storageManager.OpenChainStateCursor())
@@ -291,12 +324,14 @@ namespace BitSharp.Core.Test.Storage
                 chainStateCursor.TryAddBlockSpentTxes(0, spentTxes);
 
                 // verify spent txes
-                IImmutableList<SpentTx> actualSpentTxes;
+                IImmutableList<UInt256> actualSpentTxes;
                 Assert.IsTrue(chainStateCursor.TryGetBlockSpentTxes(0, out actualSpentTxes));
                 CollectionAssert.AreEqual(spentTxes, (ICollection)actualSpentTxes);
 
                 // rollback transaction
                 chainStateCursor.RollbackTransaction();
+
+                chainStateCursor.BeginTransaction();
 
                 // verify chain
                 Assert.AreEqual(0, chainStateCursor.ReadChain().Count());
@@ -307,6 +342,8 @@ namespace BitSharp.Core.Test.Storage
 
                 // verify spent txes
                 Assert.IsFalse(chainStateCursor.TryGetBlockSpentTxes(0, out actualSpentTxes));
+
+                chainStateCursor.RollbackTransaction();
             }
         }
 
@@ -727,14 +764,8 @@ namespace BitSharp.Core.Test.Storage
 
         public void TestContainsBlockSpentTxes(ITestStorageProvider provider)
         {
-            var spentTxes0 = ImmutableList.Create(
-                new SpentTx(txHash: 0, confirmedBlockIndex: 0, txIndex: 0, outputCount: 1, spentBlockIndex: 0),
-                new SpentTx(txHash: 1, confirmedBlockIndex: 0, txIndex: 1, outputCount: 2, spentBlockIndex: 0),
-                new SpentTx(txHash: 2, confirmedBlockIndex: 0, txIndex: 2, outputCount: 3, spentBlockIndex: 0));
-
-            var spentTxes1 = ImmutableList.Create(
-                new SpentTx(txHash: 100, confirmedBlockIndex: 1, txIndex: 0, outputCount: 1, spentBlockIndex: 1),
-                new SpentTx(txHash: 101, confirmedBlockIndex: 1, txIndex: 1, outputCount: 2, spentBlockIndex: 1));
+            var spentTxes0 = ImmutableList.Create<UInt256>(0, 1, 2);
+            var spentTxes1 = ImmutableList.Create<UInt256>(100, 101);
 
             using (var storageManager = provider.OpenStorageManager())
             using (var handle = storageManager.OpenChainStateCursor())
@@ -780,14 +811,8 @@ namespace BitSharp.Core.Test.Storage
 
         public void TestTryAddGetRemoveBlockSpentTxes(ITestStorageProvider provider)
         {
-            var spentTxes0 = ImmutableList.Create(
-                new SpentTx(txHash: 0, confirmedBlockIndex: 0, txIndex: 0, outputCount: 1, spentBlockIndex: 0),
-                new SpentTx(txHash: 1, confirmedBlockIndex: 0, txIndex: 1, outputCount: 2, spentBlockIndex: 0),
-                new SpentTx(txHash: 2, confirmedBlockIndex: 0, txIndex: 2, outputCount: 3, spentBlockIndex: 0));
-
-            var spentTxes1 = ImmutableList.Create(
-                new SpentTx(txHash: 100, confirmedBlockIndex: 1, txIndex: 0, outputCount: 1, spentBlockIndex: 1),
-                new SpentTx(txHash: 101, confirmedBlockIndex: 1, txIndex: 1, outputCount: 2, spentBlockIndex: 1));
+            var spentTxes0 = ImmutableList.Create<UInt256>(0, 1, 2);
+            var spentTxes1 = ImmutableList.Create<UInt256>(100, 101);
 
             using (var storageManager = provider.OpenStorageManager())
             using (var handle = storageManager.OpenChainStateCursor())
@@ -798,7 +823,7 @@ namespace BitSharp.Core.Test.Storage
                 chainStateCursor.BeginTransaction();
 
                 // verify initial empty state
-                IImmutableList<SpentTx> actualSpentTxes0, actualSpentTxes1;
+                IImmutableList<UInt256> actualSpentTxes0, actualSpentTxes1;
                 Assert.IsFalse(chainStateCursor.TryGetBlockSpentTxes(0, out actualSpentTxes0));
                 Assert.IsFalse(chainStateCursor.TryGetBlockSpentTxes(1, out actualSpentTxes1));
 
