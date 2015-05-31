@@ -14,11 +14,12 @@ namespace BitSharp.Esent.Test
 
         public void TestInitialize()
         {
-            this.baseDirectory = Path.Combine(Path.GetTempPath(), "BitSharp", "Tests", Path.GetRandomFileName());
+            this.baseDirectory = Path.Combine(Path.GetTempPath(), "BitSharp", "Tests");
 
             if (Directory.Exists(this.baseDirectory))
                 Directory.Delete(this.baseDirectory, recursive: true);
 
+            this.baseDirectory = Path.Combine(this.baseDirectory, Path.GetRandomFileName());
             Directory.CreateDirectory(this.baseDirectory);
         }
 
