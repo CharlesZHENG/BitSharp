@@ -21,6 +21,7 @@ namespace BitSharp.Common
         private readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly string name;
+        private readonly int consumerThreadCount;
 
         // the worker thread where the source will be read
         private WorkerMethod readWorker;
@@ -68,6 +69,7 @@ namespace BitSharp.Common
         public ParallelConsumer(string name, int consumerThreadCount)
         {
             this.name = name;
+            this.consumerThreadCount = consumerThreadCount;
 
             // initialize a pool of consume workers
             this.consumeWorkers = new WorkerMethod[consumerThreadCount];
@@ -101,6 +103,8 @@ namespace BitSharp.Common
         /// The name of the instance.
         /// </summary>
         public string Name { get { return this.name; } }
+
+        public int ConsumerThreadCount { get { return this.consumerThreadCount; } }
 
         /// <summary>
         /// The number of pending items to consume, including any currently being consumed.
