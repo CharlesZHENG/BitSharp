@@ -32,7 +32,7 @@ namespace BitSharp.Core.Domain
                     this.cursorCache.CacheItem(handle);
 
                     // begin transaction to take the snapshot
-                    cursor.BeginTransaction();
+                    cursor.BeginTransaction(readOnly: true);
 
                     // verify the chain state matches the expected chain
                     var chainTip = cursor.GetChainTip();
@@ -119,7 +119,7 @@ namespace BitSharp.Core.Domain
             }
         }
 
-        public bool TryGetBlockSpentTxes(int blockIndex, out IImmutableList<SpentTx> spentTxes)
+        public bool TryGetBlockSpentTxes(int blockIndex, out IImmutableList<UInt256> spentTxes)
         {
             using (var handle = this.cursorCache.TakeItem())
             {

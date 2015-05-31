@@ -21,7 +21,7 @@ namespace BitSharp.Core.Storage
         /// <summary>
         /// Begin a new transaction.
         /// </summary>
-        void BeginTransaction();
+        void BeginTransaction(bool readOnly = false);
 
         /// <summary>
         /// Commit the current transaction.
@@ -61,6 +61,14 @@ namespace BitSharp.Core.Storage
         /// The current unspent transaction count.
         /// </summary>
         int UnspentTxCount { get; set; }
+
+        int UnspentOutputCount { get; set; }
+
+        int TotalTxCount { get; set; }
+
+        int TotalInputCount { get; set; }
+
+        int TotalOutputCount { get; set; }
 
         /// <summary>
         /// Determine whether an unspent transaction is present.
@@ -114,7 +122,7 @@ namespace BitSharp.Core.Storage
         /// <param name="blockIndex">The block's index (height) in the chain.</param>
         /// <param name="spentTxes">Contains the spent transactions when successful; otherwise, null.</param>
         /// <returns>true if the block's spent transactions were retrieved; otherwise, false</returns>
-        bool TryGetBlockSpentTxes(int blockIndex, out IImmutableList<SpentTx> spentTxes);
+        bool TryGetBlockSpentTxes(int blockIndex, out IImmutableList<UInt256> spentTxes);
 
         /// <summary>
         /// Add a block's spent transactions.
@@ -122,7 +130,7 @@ namespace BitSharp.Core.Storage
         /// <param name="blockIndex">The block's index (height) in the chain.</param>
         /// <param name="spentTxes">The spent transactions.</param>
         /// <returns>true if the block's spent transactions were added; otherwise, false</returns>
-        bool TryAddBlockSpentTxes(int blockIndex, IImmutableList<SpentTx> spentTxes);
+        bool TryAddBlockSpentTxes(int blockIndex, IImmutableList<UInt256> spentTxes);
 
         /// <summary>
         /// Remove a block's spent transactions.

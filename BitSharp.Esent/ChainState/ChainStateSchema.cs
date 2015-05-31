@@ -31,14 +31,26 @@ namespace BitSharp.Esent.ChainState
         {
             JET_TABLEID globalsTableId;
             JET_COLUMNID unspentTxCountColumnId;
+            JET_COLUMNID unspentOutputCountColumnId;
+            JET_COLUMNID totalTxCountColumnId;
+            JET_COLUMNID totalInputCountColumnId;
+            JET_COLUMNID totalOutputCountColumnId;
 
             Api.JetCreateTable(jetSession, utxoDbId, "Globals", 0, 0, out globalsTableId);
             Api.JetAddColumn(jetSession, globalsTableId, "UnspentTxCount", new JET_COLUMNDEF { coltyp = JET_coltyp.Long, grbit = ColumndefGrbit.ColumnNotNULL }, null, 0, out unspentTxCountColumnId);
+            Api.JetAddColumn(jetSession, globalsTableId, "UnspentOutputCount", new JET_COLUMNDEF { coltyp = JET_coltyp.Long, grbit = ColumndefGrbit.ColumnNotNULL }, null, 0, out unspentOutputCountColumnId);
+            Api.JetAddColumn(jetSession, globalsTableId, "TotalTxCount", new JET_COLUMNDEF { coltyp = JET_coltyp.Long, grbit = ColumndefGrbit.ColumnNotNULL }, null, 0, out totalTxCountColumnId);
+            Api.JetAddColumn(jetSession, globalsTableId, "TotalInputCount", new JET_COLUMNDEF { coltyp = JET_coltyp.Long, grbit = ColumndefGrbit.ColumnNotNULL }, null, 0, out totalInputCountColumnId);
+            Api.JetAddColumn(jetSession, globalsTableId, "TotalOutputCount", new JET_COLUMNDEF { coltyp = JET_coltyp.Long, grbit = ColumndefGrbit.ColumnNotNULL }, null, 0, out totalOutputCountColumnId);
 
             // initialize global data
             using (var jetUpdate = jetSession.BeginUpdate(globalsTableId, JET_prep.Insert))
             {
                 Api.SetColumn(jetSession, globalsTableId, unspentTxCountColumnId, 0);
+                Api.SetColumn(jetSession, globalsTableId, unspentOutputCountColumnId, 0);
+                Api.SetColumn(jetSession, globalsTableId, totalTxCountColumnId, 0);
+                Api.SetColumn(jetSession, globalsTableId, totalInputCountColumnId, 0);
+                Api.SetColumn(jetSession, globalsTableId, totalOutputCountColumnId, 0);
 
                 jetUpdate.Save();
             }

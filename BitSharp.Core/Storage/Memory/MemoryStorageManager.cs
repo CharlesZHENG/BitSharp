@@ -14,11 +14,11 @@ namespace BitSharp.Core.Storage.Memory
             : this(null, null, null, null)
         { }
 
-        internal MemoryStorageManager(Chain chain = null, int? unspentTxCount = null, ImmutableSortedDictionary<UInt256, UnspentTx> unspentTransactions = null, ImmutableDictionary<int, IImmutableList<SpentTx>> spentTransactions = null)
+        internal MemoryStorageManager(Chain chain = null, int? unspentTxCount = null, int? unspentOutputCount = null, int? totalTxCount = null, int? totalInputCount = null, int? totalOutputCount = null, ImmutableSortedDictionary<UInt256, UnspentTx> unspentTransactions = null, ImmutableDictionary<int, IImmutableList<UInt256>> spentTransactions = null)
         {
             this.blockStorage = new MemoryBlockStorage();
             this.blockTxesStorage = new MemoryBlockTxesStorage();
-            this.chainStateStorage = new MemoryChainStateStorage(chain, unspentTxCount, unspentTransactions, spentTransactions);
+            this.chainStateStorage = new MemoryChainStateStorage(chain, unspentTxCount, unspentOutputCount, totalTxCount, totalInputCount, totalOutputCount, unspentTransactions, spentTransactions);
         }
 
         public void Dispose()

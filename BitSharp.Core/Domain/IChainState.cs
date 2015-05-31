@@ -53,7 +53,7 @@ namespace BitSharp.Core.Domain
         /// <param name="blockIndex">The block's index (height) in the chain.</param>
         /// <param name="spentTxes">Contains the spent transactions when successful; otherwise, null.</param>
         /// <returns>true if the block's spent transactions were retrieved; otherwise, false</returns>
-        bool TryGetBlockSpentTxes(int blockIndex, out IImmutableList<SpentTx> spentTxes);
+        bool TryGetBlockSpentTxes(int blockIndex, out IImmutableList<UInt256> spentTxes);
 
         /// <summary>
         /// Determine whether unminted transactions are present for a block.
