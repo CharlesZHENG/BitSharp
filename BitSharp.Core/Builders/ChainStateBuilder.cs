@@ -44,7 +44,15 @@ namespace BitSharp.Core.Builders
             this.chainStateCursorHandle = this.storageManager.OpenChainStateCursor();
             this.chainStateCursor = this.chainStateCursorHandle.Item;
 
-            this.chain = new ChainBuilder(chainStateCursor.ReadChain());
+            this.chainStateCursor.BeginTransaction(readOnly: true);
+            try
+            {
+                this.chain = new ChainBuilder(chainStateCursor.ReadChain());
+            }
+            finally
+            {
+                this.chainStateCursor.RollbackTransaction();
+            }
             this.utxoBuilder = new UtxoBuilder(chainStateCursor);
 
             this.commitLock = new ReaderWriterLockSlim();
@@ -176,22 +184,12 @@ namespace BitSharp.Core.Builders
                     this.chain.RemoveBlock(chainedHeader);
                     this.chainStateCursor.RemoveChainedHeader(chainedHeader);
 
-                    // read spent transaction rollback information
-                    IImmutableList<SpentTx> spentTxes;
-                    if (!this.chainStateCursor.TryGetBlockSpentTxes(chainedHeader.Height, out spentTxes))
-                        throw new ValidationException(chainedHeader.Height);
-
-                    //TODO this can be read in reverse instead of doing a dictionary
-                    var spentTxesDictionary =
-                        ImmutableDictionary.CreateRange(
-                            spentTxes.Select(spentTx => new KeyValuePair<UInt256, SpentTx>(spentTx.TxHash, spentTx)));
-
                     // keep track of the previoux tx output information for all unminted transactions
                     // the information is removed and will be needed to enable a replay of the rolled back block
                     var unmintedTxes = ImmutableList.CreateBuilder<UnmintedTx>();
 
                     // rollback the utxo
-                    this.utxoBuilder.RollbackUtxo(this.chain.ToImmutable(), chainedHeader, blockTxes, spentTxesDictionary, unmintedTxes);
+                    this.utxoBuilder.RollbackUtxo(this.chain.ToImmutable(), chainedHeader, blockTxes, unmintedTxes);
 
                     // remove the rollback information
                     this.chainStateCursor.TryRemoveBlockSpentTxes(chainedHeader.Height);
@@ -212,58 +210,61 @@ namespace BitSharp.Core.Builders
 
         public void LogBlockchainProgress()
         {
-            if (DateTime.UtcNow - this.Stats.lastLogTime < TimeSpan.FromSeconds(15))
-                return;
-            else
-                this.Stats.lastLogTime = DateTime.UtcNow;
-
-            var elapsedSeconds = this.Stats.durationStopwatch.Elapsed.TotalSeconds;
-            var blockRate = this.stats.blockRateMeasure.GetAverage(TimeSpan.FromSeconds(1));
-            var txRate = this.stats.txRateMeasure.GetAverage(TimeSpan.FromSeconds(1));
-            var inputRate = this.stats.inputRateMeasure.GetAverage(TimeSpan.FromSeconds(1));
-
-            this.logger.Info(
-                string.Join("\n",
-                    new string('-', 80),
-                    "Height: {0,10} | Duration: {1} /*| Validation: {2} */| Blocks/s: {3,7} | Tx/s: {4,7} | Inputs/s: {5,7} | Processed Tx: {6,7} | Processed Inputs: {7,7} | Utxo Size: {8,7}",
-                    new string('-', 80),
-                    "Avg. Prev Tx Load Time: {9,12:#,##0.000}ms",
-                    "Prev Tx Load Rate:      {10,12:#,##0.000}/s",
-                    new string('-', 80),
-                    "Avg. Prev Txes per Block:                  {11,12:#,##0.000}",
-                    "Avg. Pending Prev Txes at UTXO Completion: {12,12:#,##0.000}",
-                    new string('-', 80),
-                    "Avg. UTXO Calculation Time: {13,12:#,##0.000}ms",
-                    "Avg. Wait-to-complete Time: {14,12:#,##0.000}ms",
-                    new string('-', 80)
-                )
-                .Format2
-                (
-                /*0*/ this.Chain.Height.ToString("#,##0"),
-                /*1*/ this.Stats.durationStopwatch.Elapsed.ToString(@"hh\:mm\:ss"),
-                /*2*/ this.Stats.validateStopwatch.Elapsed.ToString(@"hh\:mm\:ss"),
-                /*3*/ blockRate.ToString("#,##0"),
-                /*4*/ txRate.ToString("#,##0"),
-                /*5*/ inputRate.ToString("#,##0"),
-                /*6*/ this.Stats.txCount.ToString("#,##0"),
-                /*7*/ this.Stats.inputCount.ToString("#,##0"),
-                /*8*/ this.UnspentTxCount.ToString("#,##0"),
-                /*9*/ this.Stats.prevTxLoadDurationMeasure.GetAverage().TotalMilliseconds,
-                /*10*/ this.Stats.prevTxLoadRateMeasure.GetAverage(),
-                /*11*/ this.Stats.pendingTxesTotalAverageMeasure.GetAverage(),
-                /*12*/ this.Stats.pendingTxesAtCompleteAverageMeasure.GetAverage(),
-                /*13*/ this.Stats.calculateUtxoDurationMeasure.GetAverage().TotalMilliseconds,
-                /*14*/ this.Stats.waitToCompleteDurationMeasure.GetAverage().TotalMilliseconds
-                ));
-        }
-
-        public int UnspentTxCount
-        {
-            get
+            this.commitLock.DoWrite(() =>
             {
-                return this.commitLock.DoRead(() =>
-                    this.chainStateCursor.UnspentTxCount);
-            }
+                this.BeginTransaction();
+                try
+                {
+                    if (DateTime.UtcNow - this.Stats.lastLogTime < TimeSpan.FromSeconds(15))
+                        return;
+                    else
+                        this.Stats.lastLogTime = DateTime.UtcNow;
+
+                    var elapsedSeconds = this.Stats.durationStopwatch.Elapsed.TotalSeconds;
+                    var blockRate = this.stats.blockRateMeasure.GetAverage(TimeSpan.FromSeconds(1));
+                    var txRate = this.stats.txRateMeasure.GetAverage(TimeSpan.FromSeconds(1));
+                    var inputRate = this.stats.inputRateMeasure.GetAverage(TimeSpan.FromSeconds(1));
+
+                    this.logger.Info(
+                        string.Join("\n",
+                            new string('-', 80),
+                            "Height: {0,10} | Duration: {1} /*| Validation: {2} */| Blocks/s: {3,7} | Tx/s: {4,7} | Inputs/s: {5,7} | Processed Tx: {6,7} | Processed Inputs: {7,7} | Utx Size: {8,7} | Utxo Size: {9,7}",
+                            new string('-', 80),
+                            "Avg. Prev Tx Load Time: {10,12:#,##0.000}ms",
+                            "Prev Tx Load Rate:  {11,12:#,##0}/s",
+                            new string('-', 80),
+                            "Avg. Prev Txes per Block:                  {12,12:#,##0}",
+                            "Avg. Pending Prev Txes at UTXO Completion: {13,12:#,##0}",
+                            new string('-', 80),
+                            "Avg. UTXO Calculation Time: {14,12:#,##0.000}ms",
+                            "Avg. Wait-to-complete Time: {15,12:#,##0.000}ms",
+                            new string('-', 80)
+                        )
+                        .Format2
+                        (
+                        /*0*/ this.chain.Height.ToString("#,##0"),
+                        /*1*/ this.Stats.durationStopwatch.Elapsed.ToString(@"hh\:mm\:ss"),
+                        /*2*/ this.Stats.validateStopwatch.Elapsed.ToString(@"hh\:mm\:ss"),
+                        /*3*/ blockRate.ToString("#,##0"),
+                        /*4*/ txRate.ToString("#,##0"),
+                        /*5*/ inputRate.ToString("#,##0"),
+                        /*6*/ this.chainStateCursor.TotalTxCount.ToString("#,##0"),
+                        /*7*/ this.chainStateCursor.TotalInputCount.ToString("#,##0"),
+                        /*8*/ this.chainStateCursor.UnspentTxCount.ToString("#,##0"),
+                        /*9*/ this.chainStateCursor.UnspentOutputCount.ToString("#,##0"),
+                        /*10*/ this.Stats.prevTxLoadDurationMeasure.GetAverage().TotalMilliseconds,
+                        /*11*/ this.Stats.prevTxLoadRateMeasure.GetAverage(),
+                        /*12*/ this.Stats.pendingTxesTotalAverageMeasure.GetAverage(),
+                        /*13*/ this.Stats.pendingTxesAtCompleteAverageMeasure.GetAverage(),
+                        /*14*/ this.Stats.calculateUtxoDurationMeasure.GetAverage().TotalMilliseconds,
+                        /*15*/ this.Stats.waitToCompleteDurationMeasure.GetAverage().TotalMilliseconds
+                        ));
+                }
+                finally
+                {
+                    this.RollbackTransaction();
+                }
+            });
         }
 
         //TODO cache the latest immutable snapshot
