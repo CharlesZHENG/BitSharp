@@ -30,12 +30,21 @@ namespace BitSharp.Core.Storage.Memory
             return this.allBlockTxes.ContainsKey(blockHash);
         }
 
-        public bool TryAddBlockTransactions(UInt256 blockHash, IEnumerable<Transaction> blockTxes)
+        public IEnumerable<UInt256> TryAddBlockTransactions(IEnumerable<KeyValuePair<UInt256, IEnumerable<Transaction>>> blockTransactions)
         {
-            return this.allBlockTxes.TryAdd(blockHash,
-                ImmutableSortedDictionary.CreateRange<int, BlockTx>(
-                    blockTxes.Select((tx, txIndex) =>
-                        new KeyValuePair<int, BlockTx>(txIndex, new BlockTx(txIndex, 0, tx.Hash, false, tx)))));
+            foreach (var keyPair in blockTransactions)
+            {
+                var blockHash = keyPair.Key;
+                var blockTxes = keyPair.Value;
+
+                if (this.allBlockTxes.TryAdd(blockHash,
+                    ImmutableSortedDictionary.CreateRange<int, BlockTx>(
+                        blockTxes.Select((tx, txIndex) =>
+                            new KeyValuePair<int, BlockTx>(txIndex, new BlockTx(txIndex, 0, tx.Hash, false, tx))))))
+                {
+                    yield return blockHash;
+                }
+            }
         }
 
         public bool TryGetTransaction(UInt256 blockHash, int txIndex, out Transaction transaction)
@@ -77,21 +86,46 @@ namespace BitSharp.Core.Storage.Memory
             }
         }
 
-        public void PruneElements(UInt256 blockHash, IEnumerable<int> txIndices)
+        public void PruneElements(IEnumerable<KeyValuePair<UInt256, IEnumerable<int>>> blockTxIndices)
         {
-            ImmutableSortedDictionary<int, BlockTx> blockTxes;
-            if (this.allBlockTxes.TryGetValue(blockHash, out blockTxes))
+            foreach (var keyPair in blockTxIndices)
             {
-                var pruningCursor = new MemoryMerkleTreePruningCursor(blockTxes.Values);
-                foreach (var index in txIndices)
-                    MerkleTree.PruneNode(pruningCursor, index);
+                var blockHash = keyPair.Key;
+                var txIndices = keyPair.Value;
 
-                var prunedBlockTxes =
-                    ImmutableSortedDictionary.CreateRange<int, BlockTx>(
-                        pruningCursor.ReadNodes().Select(blockTx =>
-                            new KeyValuePair<int, BlockTx>(blockTx.Index, blockTx)));
+                ImmutableSortedDictionary<int, BlockTx> blockTxes;
+                if (this.allBlockTxes.TryGetValue(blockHash, out blockTxes))
+                {
+                    var pruningCursor = new MemoryMerkleTreePruningCursor(blockTxes.Values);
+                    foreach (var index in txIndices)
+                        MerkleTree.PruneNode(pruningCursor, index);
 
-                this.allBlockTxes[blockHash] = prunedBlockTxes;
+                    var prunedBlockTxes =
+                        ImmutableSortedDictionary.CreateRange<int, BlockTx>(
+                            pruningCursor.ReadNodes().Select(blockTx =>
+                                new KeyValuePair<int, BlockTx>(blockTx.Index, blockTx)));
+
+                    this.allBlockTxes[blockHash] = prunedBlockTxes;
+                }
+            }
+        }
+
+        public void DeleteElements(IEnumerable<KeyValuePair<UInt256, IEnumerable<int>>> blockTxIndices)
+        {
+            foreach (var keyPair in blockTxIndices)
+            {
+                var blockHash = keyPair.Key;
+                var txIndices = keyPair.Value;
+
+                ImmutableSortedDictionary<int, BlockTx> blockTxes;
+                if (this.allBlockTxes.TryGetValue(blockHash, out blockTxes))
+                {
+                    var prunedBlockTxes = blockTxes.ToBuilder();
+                    foreach (var index in txIndices)
+                        prunedBlockTxes.Remove(index);
+
+                    this.allBlockTxes[blockHash] = prunedBlockTxes.ToImmutable();
+                }
             }
         }
 

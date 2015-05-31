@@ -12,6 +12,7 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Transaction = BitSharp.Core.Domain.Transaction;
 
 namespace BitSharp.Esent
@@ -79,7 +80,7 @@ namespace BitSharp.Esent
             }
         }
 
-        public void PruneElements(UInt256 blockHash, IEnumerable<int> txIndices)
+        public void PruneElements(IEnumerable<KeyValuePair<UInt256, IEnumerable<int>>> blockTxIndices)
         {
             using (var handle = this.cursorCache.TakeItem())
             {
@@ -87,12 +88,48 @@ namespace BitSharp.Esent
 
                 using (var jetTx = cursor.jetSession.BeginTransaction())
                 {
-                    var pruningCursor = new MerkleTreePruningCursor(blockHash, cursor);
-                    //var cachedCursor = new CachedMerkleTreePruningCursor(pruningCursor);
+                    foreach (var keyPair in blockTxIndices)
+                    {
+                        var blockHash = keyPair.Key;
+                        var txIndices = keyPair.Value;
 
-                    // prune the transactions
-                    foreach (var index in txIndices)
-                        MerkleTree.PruneNode(pruningCursor, index);
+                        var pruningCursor = new MerkleTreePruningCursor(blockHash, cursor);
+                        //var cachedCursor = new CachedMerkleTreePruningCursor(pruningCursor);
+
+                        // prune the transactions
+                        foreach (var index in txIndices)
+                            MerkleTree.PruneNode(pruningCursor, index);
+                    }
+
+                    jetTx.CommitLazy();
+                }
+            }
+        }
+
+        public void DeleteElements(IEnumerable<KeyValuePair<UInt256, IEnumerable<int>>> blockTxIndices)
+        {
+            using (var handle = this.cursorCache.TakeItem())
+            {
+                var cursor = handle.Item;
+
+                using (var jetTx = cursor.jetSession.BeginTransaction())
+                {
+                    foreach (var keyPair in blockTxIndices)
+                    {
+                        var blockHash = keyPair.Key;
+                        var txIndices = keyPair.Value;
+
+                        // prune the transactions
+                        foreach (var index in txIndices)
+                        {
+                            // remove transactions
+                            Api.JetSetCurrentIndex(cursor.jetSession, cursor.blocksTableId, "IX_BlockHashTxIndex");
+                            Api.MakeKey(cursor.jetSession, cursor.blocksTableId, DbEncoder.EncodeBlockHashTxIndex(blockHash, index), MakeKeyGrbit.NewKey);
+
+                            if (Api.TrySeek(cursor.jetSession, cursor.blocksTableId, SeekGrbit.SeekEQ))
+                                Api.JetDelete(cursor.jetSession, cursor.blocksTableId);
+                        }
+                    }
 
                     jetTx.CommitLazy();
                 }
@@ -166,7 +203,6 @@ namespace BitSharp.Esent
             }
         }
 
-        private readonly DurationMeasure measure = new DurationMeasure(TimeSpan.FromSeconds(10));
         public bool TryGetTransaction(UInt256 blockHash, int txIndex, out Transaction transaction)
         {
             using (var handle = this.cursorCache.TakeItem())
@@ -378,11 +414,8 @@ namespace BitSharp.Esent
             get { return "Blocks"; }
         }
 
-        public bool TryAddBlockTransactions(UInt256 blockHash, IEnumerable<Transaction> blockTxes)
+        public IEnumerable<UInt256> TryAddBlockTransactions(IEnumerable<KeyValuePair<UInt256, IEnumerable<Transaction>>> blockTransactions)
         {
-            if (this.ContainsBlock(blockHash))
-                return false;
-
             try
             {
                 using (var handle = this.cursorCache.TakeItem())
@@ -391,24 +424,36 @@ namespace BitSharp.Esent
 
                     using (var jetTx = cursor.jetSession.BeginTransaction())
                     {
-                        var txIndex = 0;
-                        foreach (var tx in blockTxes)
+                        var addedBlocks = new List<UInt256>();
+                        foreach (var keyPair in blockTransactions)
                         {
-                            AddTransaction(blockHash, txIndex, tx.Hash, DataEncoder.EncodeTransaction(tx), cursor);
-                            txIndex++;
+                            var blockHash = keyPair.Key;
+                            var blockTxes = keyPair.Value;
+
+                            if (this.ContainsBlock(blockHash))
+                                continue;
+
+                            var txIndex = 0;
+                            foreach (var tx in blockTxes)
+                            {
+                                AddTransaction(blockHash, txIndex, tx.Hash, DataEncoder.EncodeTransaction(tx), cursor);
+                                txIndex++;
+                            }
+
+                            // increase block count
+                            Api.EscrowUpdate(cursor.jetSession, cursor.globalsTableId, cursor.blockCountColumnId, +1);
+
+                            addedBlocks.Add(blockHash);
                         }
 
-                        // increase block count
-                        Api.EscrowUpdate(cursor.jetSession, cursor.globalsTableId, cursor.blockCountColumnId, +1);
-
                         jetTx.CommitLazy();
-                        return true;
+                        return addedBlocks;
                     }
                 }
             }
             catch (EsentKeyDuplicateException)
             {
-                return false;
+                return Enumerable.Empty<UInt256>();
             }
         }
 
