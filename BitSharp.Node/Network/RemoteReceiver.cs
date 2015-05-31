@@ -238,7 +238,7 @@ namespace BitSharp.Node.Network
 
                             for (var i = 0; i < headerCount; i++)
                             {
-                                var blockHeader = DataEncoder.DecodeBlockHeader(headerStream);
+                                var blockHeader = DataEncoder.DecodeBlockHeader(reader);
                                 //TODO wiki says this is a byte and a var int, which is it?
                                 var txCount = reader.ReadVarInt();
 

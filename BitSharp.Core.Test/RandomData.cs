@@ -65,7 +65,7 @@ namespace BitSharp.Core.Test
                     txHash: random.NextUInt32(),
                     txOutputIndex: random.NextUInt32()
                 ),
-                scriptSignature: random.NextBytes(random.Next((options != null ? options.ScriptSignatureSize : null) ?? 100)).ToImmutableArray(),
+                scriptSignature: random.NextBytes(random.Next((options != null ? options.ScriptSignatureSize : null) ?? 100)),
                 sequence: random.NextUInt32()
             );
         }
@@ -75,7 +75,7 @@ namespace BitSharp.Core.Test
             return new TxOutput
             (
                 value: random.NextUInt64(),
-                scriptPublicKey: random.NextBytes(random.Next((options != null ? options.ScriptPublicKeySize : null) ?? 100)).ToImmutableArray()
+                scriptPublicKey: random.NextBytes(random.Next((options != null ? options.ScriptPublicKeySize : null) ?? 100))
             );
         }
 

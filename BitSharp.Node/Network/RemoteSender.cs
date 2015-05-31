@@ -107,7 +107,7 @@ namespace BitSharp.Node.Network
                 payloadWriter.WriteVarInt((UInt64)blockHeaders.Length);
                 foreach (var blockHeader in blockHeaders)
                 {
-                    DataEncoder.EncodeBlockHeader(payloadStream, blockHeader);
+                    DataEncoder.EncodeBlockHeader(payloadWriter, blockHeader);
                     payloadWriter.WriteVarInt(0);
                 }
 

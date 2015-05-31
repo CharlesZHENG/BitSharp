@@ -1,6 +1,7 @@
 ﻿using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Domain;
 using System.Collections.Generic;
+using System.IO;
 using System.IO.Compression;
 using System.Reflection;
 
@@ -21,8 +22,9 @@ namespace BitSharp.Core.Test
                 foreach (var entry in zip.Entries)
                 {
                     using (var blockStream = entry.Open())
+                    using (var blockReader = new BinaryReader(blockStream))
                     {
-                        this.blocks.Add(entry.Name, DataEncoder.DecodeBlock(blockStream));
+                        this.blocks.Add(entry.Name, DataEncoder.DecodeBlock(blockReader));
                     }
                 }
             }

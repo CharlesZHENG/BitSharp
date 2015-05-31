@@ -44,8 +44,8 @@ namespace BitSharp.Core.ExtensionMethods
 
         public static byte[] ReadVarBytes(this BinaryReader reader)
         {
-            var length = reader.ReadVarInt();
-            return reader.ReadBytes(length.ToIntChecked());
+            var length = reader.ReadVarInt().ToIntChecked();
+            return reader.ReadBytes(length);
         }
 
         public static string ReadVarString(this BinaryReader reader)
@@ -75,6 +75,19 @@ namespace BitSharp.Core.ExtensionMethods
             }
 
             return list.ToImmutable();
+        }
+
+        public static T[] ReadArray<T>(this BinaryReader reader, Func<T> decode)
+        {
+            var length = reader.ReadVarInt().ToIntChecked();
+
+            var list = new T[length];
+            for (var i = 0; i < length; i++)
+            {
+                list[i] = decode();
+            }
+
+            return list;
         }
 
         private static BinaryReader ReverseRead(this BinaryReader reader, int length)
@@ -188,6 +201,16 @@ namespace BitSharp.Core.ExtensionMethods
         }
 
         public static void WriteList<T>(this BinaryWriter writer, ImmutableArray<T> list, Action<T> encode)
+        {
+            writer.WriteVarInt((UInt64)list.Length);
+
+            for (var i = 0; i < list.Length; i++)
+            {
+                encode(list[i]);
+            }
+        }
+
+        public static void WriteArray<T>(this BinaryWriter writer, T[] list, Action<T> encode)
         {
             writer.WriteVarInt((UInt64)list.Length);
 

@@ -44,7 +44,7 @@ Verifying script for block {0}, transaction {1}, input {2}
 
             Stack stack, altStack;
             if (
-                ExecuteOps(scriptPubKey.ToImmutableArray(), tx, inputIndex, script, out stack, out altStack)
+                ExecuteOps(scriptPubKey, tx, inputIndex, script, out stack, out altStack)
                 && stack.Count == 1 && altStack.Count == 0)
             {
                 var success = stack.PeekBool(); //TODO Pop? does it matter?
@@ -60,7 +60,7 @@ Verifying script for block {0}, transaction {1}, input {2}
             }
         }
 
-        private bool ExecuteOps(ImmutableArray<byte> scriptPubKey, Transaction tx, int inputIndex, byte[] script, out Stack stack, out Stack altStack)
+        private bool ExecuteOps(byte[] scriptPubKey, Transaction tx, int inputIndex, byte[] script, out Stack stack, out Stack altStack)
         {
             stack = new Stack();
             altStack = new Stack();
@@ -288,7 +288,7 @@ Verifying script for block {0}, transaction {1}, input {2}
             return true;
         }
 
-        public bool VerifySignature(ImmutableArray<byte> scriptPubKey, Transaction tx, byte[] sig, byte[] pubKey, int inputIndex, out byte hashType, out byte[] txSignature, out byte[] txSignatureHash)
+        public bool VerifySignature(byte[] scriptPubKey, Transaction tx, byte[] sig, byte[] pubKey, int inputIndex, out byte hashType, out byte[] txSignature, out byte[] txSignatureHash)
         {
             // get the 1-byte hashType off the end of sig
             hashType = sig[sig.Length - 1];
@@ -317,13 +317,13 @@ Verifying script for block {0}, transaction {1}, input {2}
             }
         }
 
-        public byte[] TxSignature(ImmutableArray<byte> scriptPubKey, Transaction tx, int inputIndex, byte hashType)
+        public byte[] TxSignature(byte[] scriptPubKey, Transaction tx, int inputIndex, byte hashType)
         {
             ///TODO
             Debug.Assert(inputIndex < tx.Inputs.Length);
 
             // Blank out other inputs' signatures
-            var empty = ImmutableArray.Create<byte>();
+            var empty = new byte[0];
             var newInputs = ImmutableArray.CreateBuilder<TxInput>(tx.Inputs.Length);
             for (var i = 0; i < tx.Inputs.Length; i++)
             {

@@ -1,6 +1,7 @@
-﻿using BitSharp.Common;
+using BitSharp.Common;
 using BitSharp.Core.Domain;
 using BitSharp.Core.ExtensionMethods;
+using NLog;
 using System;
 using System.Collections.Immutable;
 using System.Diagnostics;
@@ -13,119 +14,108 @@ namespace BitSharp.Core
 {
     public class DataEncoder
     {
-        public static UInt256 DecodeUInt256(Stream stream)
+        private static Logger logger = LogManager.GetCurrentClassLogger();
+
+        public static UInt256 DecodeUInt256(BinaryReader reader)
         {
-            using (var reader = new BinaryReader(stream, Encoding.ASCII, leaveOpen: true))
-            {
-                return reader.ReadUInt256();
-            }
+            return reader.ReadUInt256();
         }
 
         public static UInt256 DecodeUInt256(byte[] bytes)
         {
             using (var stream = new MemoryStream(bytes))
+            using (var reader = new BinaryReader(stream))
             {
-                return DecodeUInt256(stream);
+                return DecodeUInt256(reader);
             }
         }
 
-        public static void EncodeUInt256(Stream stream, UInt256 value)
+        public static void EncodeUInt256(BinaryWriter writer, UInt256 value)
         {
-            using (var writer = new BinaryWriter(stream, Encoding.ASCII, leaveOpen: true))
-            {
-                writer.WriteUInt256(value);
-            }
+            writer.WriteUInt256(value);
         }
 
         public static byte[] EncodeUInt256(UInt256 value)
         {
             using (var stream = new MemoryStream())
+            using (var writer = new BinaryWriter(stream))
             {
-                EncodeUInt256(stream, value);
+                EncodeUInt256(writer, value);
                 return stream.ToArray();
             }
         }
 
-        public static Block DecodeBlock(Stream stream, UInt256? blockHash = null)
+        public static Block DecodeBlock(BinaryReader reader, UInt256? blockHash = null)
         {
-            using (var reader = new BinaryReader(stream, Encoding.ASCII, leaveOpen: true))
-            {
-                return new Block
-                (
-                    header: DecodeBlockHeader(stream, blockHash),
-                    transactions: reader.ReadList(() => DecodeTransaction(stream))
-                );
-            }
+            return new Block
+            (
+                header: DecodeBlockHeader(reader, blockHash),
+                transactions: reader.ReadList(() => DecodeTransaction(reader))
+            );
         }
 
         public static Block DecodeBlock(byte[] bytes)
         {
             using (var stream = new MemoryStream(bytes))
+            using (var reader = new BinaryReader(stream))
             {
-                return DecodeBlock(stream);
+                return DecodeBlock(reader);
             }
         }
 
-        public static void EncodeBlock(Stream stream, Block block)
+        public static void EncodeBlock(BinaryWriter writer, Block block)
         {
-            using (var writer = new BinaryWriter(stream, Encoding.ASCII, leaveOpen: true))
-            {
-                EncodeBlockHeader(stream, block.Header);
-                writer.WriteList(block.Transactions, tx => EncodeTransaction(stream, tx));
-            }
+            EncodeBlockHeader(writer, block.Header);
+            writer.WriteList(block.Transactions, tx => EncodeTransaction(writer, tx));
         }
 
         public static byte[] EncodeBlock(Block block)
         {
             using (var stream = new MemoryStream())
+            using (var writer = new BinaryWriter(stream))
             {
-                EncodeBlock(stream, block);
+                EncodeBlock(writer, block);
                 return stream.ToArray();
             }
         }
 
-        public static BlockHeader DecodeBlockHeader(Stream stream, UInt256? blockHash = null)
+        public static BlockHeader DecodeBlockHeader(BinaryReader reader, UInt256? blockHash = null)
         {
-            using (var reader = new BinaryReader(stream, Encoding.ASCII, leaveOpen: true))
-            {
-                return new BlockHeader
-                (
-                    version: reader.ReadUInt32(),
-                    previousBlock: reader.ReadUInt256(),
-                    merkleRoot: reader.ReadUInt256(),
-                    time: reader.ReadUInt32(),
-                    bits: reader.ReadUInt32(),
-                    nonce: reader.ReadUInt32(),
-                    hash: blockHash
-                );
-            }
+            return new BlockHeader
+            (
+                version: reader.ReadUInt32(),
+                previousBlock: reader.ReadUInt256(),
+                merkleRoot: reader.ReadUInt256(),
+                time: reader.ReadUInt32(),
+                bits: reader.ReadUInt32(),
+                nonce: reader.ReadUInt32(),
+                hash: blockHash
+            );
         }
 
         public static BlockHeader DecodeBlockHeader(byte[] bytes, UInt256? blockHash = null)
         {
             using (var stream = new MemoryStream(bytes))
+            using (var reader = new BinaryReader(stream))
             {
-                return DecodeBlockHeader(stream, blockHash);
+                return DecodeBlockHeader(reader, blockHash);
             }
         }
 
-        public static void EncodeBlockHeader(Stream stream, BlockHeader blockHeader)
+        public static void EncodeBlockHeader(BinaryWriter writer, BlockHeader blockHeader)
         {
-            using (var writer = new BinaryWriter(stream, Encoding.ASCII, leaveOpen: true))
-            {
-                writer.WriteUInt32(blockHeader.Version);
-                writer.WriteUInt256(blockHeader.PreviousBlock);
-                writer.WriteUInt256(blockHeader.MerkleRoot);
-                writer.WriteUInt32(blockHeader.Time);
-                writer.WriteUInt32(blockHeader.Bits);
-                writer.WriteUInt32(blockHeader.Nonce);
-            }
+            writer.WriteUInt32(blockHeader.Version);
+            writer.WriteUInt256(blockHeader.PreviousBlock);
+            writer.WriteUInt256(blockHeader.MerkleRoot);
+            writer.WriteUInt32(blockHeader.Time);
+            writer.WriteUInt32(blockHeader.Bits);
+            writer.WriteUInt32(blockHeader.Nonce);
         }
 
         public static byte[] EncodeBlockHeader(UInt32 Version, UInt256 PreviousBlock, UInt256 MerkleRoot, UInt32 Time, UInt32 Bits, UInt32 Nonce)
         {
             using (var stream = new MemoryStream())
-            using (var writer = new BinaryWriter(stream, Encoding.ASCII, leaveOpen: true))
+            using (var writer = new BinaryWriter(stream))
             {
                 writer.WriteUInt32(Version);
                 writer.WriteUInt256(PreviousBlock);
@@ -141,142 +131,130 @@ namespace BitSharp.Core
         public static byte[] EncodeBlockHeader(BlockHeader blockHeader)
         {
             using (var stream = new MemoryStream())
+            using (var writer = new BinaryWriter(stream))
             {
-                EncodeBlockHeader(stream, blockHeader);
+                EncodeBlockHeader(writer, blockHeader);
                 return stream.ToArray();
             }
         }
 
-        public static BigInteger DecodeTotalWork(Stream stream)
+        public static BigInteger DecodeTotalWork(BinaryReader reader)
         {
-            using (var reader = new BinaryReader(stream, Encoding.ASCII, leaveOpen: true))
-            {
-                var totalWorkBytesBigEndian = reader.ReadBytes(64);
-                var totalWorkBytesLittleEndian = totalWorkBytesBigEndian.Reverse().ToArray();
-                return new BigInteger(totalWorkBytesLittleEndian);
-            }
+            var totalWorkBytesBigEndian = reader.ReadBytes(64);
+            var totalWorkBytesLittleEndian = totalWorkBytesBigEndian.Reverse().ToArray();
+            return new BigInteger(totalWorkBytesLittleEndian);
         }
 
         public static BigInteger DecodeTotalWork(byte[] bytes)
         {
             using (var stream = new MemoryStream(bytes))
+            using (var reader = new BinaryReader(stream))
             {
-                return DecodeTotalWork(stream);
+                return DecodeTotalWork(reader);
             }
         }
 
-        public static void EncodeTotalWork(Stream stream, BigInteger totalWork)
+        public static void EncodeTotalWork(BinaryWriter writer, BigInteger totalWork)
         {
-            using (var writer = new BinaryWriter(stream, Encoding.ASCII, leaveOpen: true))
-            {
-                if (totalWork < 0)
-                    throw new ArgumentOutOfRangeException();
+            if (totalWork < 0)
+                throw new ArgumentOutOfRangeException();
 
-                var totalWorkBytesLittleEndian = totalWork.ToByteArray();
-                if (totalWorkBytesLittleEndian.Length > 64)
-                    throw new ArgumentOutOfRangeException();
+            var totalWorkBytesLittleEndian = totalWork.ToByteArray();
+            if (totalWorkBytesLittleEndian.Length > 64)
+                throw new ArgumentOutOfRangeException();
 
-                var totalWorkBytesLittleEndian64 = new byte[64];
-                Buffer.BlockCopy(totalWorkBytesLittleEndian, 0, totalWorkBytesLittleEndian64, 0, totalWorkBytesLittleEndian.Length);
+            var totalWorkBytesLittleEndian64 = new byte[64];
+            Buffer.BlockCopy(totalWorkBytesLittleEndian, 0, totalWorkBytesLittleEndian64, 0, totalWorkBytesLittleEndian.Length);
 
-                var totalWorkBytesBigEndian = totalWorkBytesLittleEndian64.Reverse().ToArray();
+            var totalWorkBytesBigEndian = totalWorkBytesLittleEndian64.Reverse().ToArray();
 
-                writer.WriteBytes(totalWorkBytesBigEndian);
-                Debug.Assert(new BigInteger(totalWorkBytesLittleEndian64) == totalWork);
-            }
+            writer.WriteBytes(totalWorkBytesBigEndian);
+            Debug.Assert(new BigInteger(totalWorkBytesLittleEndian64) == totalWork);
         }
 
         public static byte[] EncodeTotalWork(BigInteger totalWork)
         {
             using (var stream = new MemoryStream())
+            using (var writer = new BinaryWriter(stream))
             {
-                EncodeTotalWork(stream, totalWork);
+                EncodeTotalWork(writer, totalWork);
                 return stream.ToArray();
             }
         }
 
-        public static ChainedHeader DecodeChainedHeader(Stream stream)
+        public static ChainedHeader DecodeChainedHeader(BinaryReader reader)
         {
-            using (var reader = new BinaryReader(stream, Encoding.ASCII, leaveOpen: true))
-            {
-                return new ChainedHeader
-                (
-                    blockHeader: DecodeBlockHeader(stream),
-                    height: reader.ReadInt32(),
-                    totalWork: new BigInteger(reader.ReadVarBytes())
-                );
-            }
+            return new ChainedHeader
+            (
+                blockHeader: DecodeBlockHeader(reader),
+                height: reader.ReadInt32(),
+                totalWork: new BigInteger(reader.ReadVarBytes())
+            );
         }
 
         public static ChainedHeader DecodeChainedHeader(byte[] bytes)
         {
             using (var stream = new MemoryStream(bytes))
+            using (var reader = new BinaryReader(stream))
             {
-                return DecodeChainedHeader(stream);
+                return DecodeChainedHeader(reader);
             }
         }
 
-        public static void EncodeChainedHeader(Stream stream, ChainedHeader chainedHeader)
+        public static void EncodeChainedHeader(BinaryWriter writer, ChainedHeader chainedHeader)
         {
-            using (var writer = new BinaryWriter(stream, Encoding.ASCII, leaveOpen: true))
-            {
-                EncodeBlockHeader(stream, chainedHeader.BlockHeader);
-                writer.WriteInt32(chainedHeader.Height);
-                writer.WriteVarBytes(chainedHeader.TotalWork.ToByteArray());
-            }
+            EncodeBlockHeader(writer, chainedHeader.BlockHeader);
+            writer.WriteInt32(chainedHeader.Height);
+            writer.WriteVarBytes(chainedHeader.TotalWork.ToByteArray());
         }
 
         public static byte[] EncodeChainedHeader(ChainedHeader chainedHeader)
         {
             using (var stream = new MemoryStream())
+            using (var writer = new BinaryWriter(stream))
             {
-                EncodeChainedHeader(stream, chainedHeader);
+                EncodeChainedHeader(writer, chainedHeader);
                 return stream.ToArray();
             }
         }
 
-        public static Transaction DecodeTransaction(Stream stream, UInt256? txHash = null)
+        public static Transaction DecodeTransaction(BinaryReader reader, UInt256? txHash = null)
         {
-            using (var reader = new BinaryReader(stream, Encoding.ASCII, leaveOpen: true))
-            {
-                return new Transaction
-                (
-                    version: reader.ReadUInt32(),
-                    inputs: reader.ReadList(() => DecodeTxInput(stream)),
-                    outputs: reader.ReadList(() => DecodeTxOutput(stream)),
-                    lockTime: reader.ReadUInt32(),
-                    hash: txHash
-                );
-            }
+            return new Transaction
+            (
+                version: reader.ReadUInt32(),
+                inputs: reader.ReadList(() => DecodeTxInput(reader)),
+                outputs: reader.ReadList(() => DecodeTxOutput(reader)),
+                lockTime: reader.ReadUInt32(),
+                hash: txHash
+            );
         }
 
         public static Transaction DecodeTransaction(byte[] bytes, UInt256? txHash = null)
         {
             using (var stream = new MemoryStream(bytes))
+            using (var reader = new BinaryReader(stream))
             {
-                return DecodeTransaction(stream, txHash);
+                return DecodeTransaction(reader, txHash);
             }
         }
 
-        public static void EncodeTransaction(Stream stream, Transaction tx)
+        public static void EncodeTransaction(BinaryWriter writer, Transaction tx)
         {
-            using (var writer = new BinaryWriter(stream, Encoding.ASCII, leaveOpen: true))
-            {
-                writer.WriteUInt32(tx.Version);
-                writer.WriteList(tx.Inputs, input => EncodeTxInput(stream, input));
-                writer.WriteList(tx.Outputs, output => EncodeTxOutput(stream, output));
-                writer.WriteUInt32(tx.LockTime);
-            }
+            writer.WriteUInt32(tx.Version);
+            writer.WriteList(tx.Inputs, input => EncodeTxInput(writer, input));
+            writer.WriteList(tx.Outputs, output => EncodeTxOutput(writer, output));
+            writer.WriteUInt32(tx.LockTime);
         }
 
         public static byte[] EncodeTransaction(UInt32 Version, ImmutableArray<TxInput> Inputs, ImmutableArray<TxOutput> Outputs, UInt32 LockTime)
         {
             using (var stream = new MemoryStream())
-            using (var writer = new BinaryWriter(stream, Encoding.ASCII, leaveOpen: true))
+            using (var writer = new BinaryWriter(stream))
             {
                 writer.WriteUInt32(Version);
-                writer.WriteList(Inputs, input => EncodeTxInput(stream, input));
-                writer.WriteList(Outputs, output => EncodeTxOutput(stream, output));
+                writer.WriteList(Inputs, input => EncodeTxInput(writer, input));
+                writer.WriteList(Outputs, output => EncodeTxOutput(writer, output));
                 writer.WriteUInt32(LockTime);
 
                 return stream.ToArray();
@@ -286,252 +264,229 @@ namespace BitSharp.Core
         public static byte[] EncodeTransaction(Transaction tx)
         {
             using (var stream = new MemoryStream())
+            using (var writer = new BinaryWriter(stream))
             {
-                EncodeTransaction(stream, tx);
+                EncodeTransaction(writer, tx);
                 return stream.ToArray();
             }
         }
 
-        public static TxInput DecodeTxInput(Stream stream)
+        public static TxInput DecodeTxInput(BinaryReader reader)
         {
-            using (var reader = new BinaryReader(stream, Encoding.ASCII, leaveOpen: true))
-            {
-                return new TxInput
+            return new TxInput
+            (
+                previousTxOutputKey: new TxOutputKey
                 (
-                    previousTxOutputKey: new TxOutputKey
-                    (
-                        txHash: reader.ReadUInt256(),
-                        txOutputIndex: reader.ReadUInt32()
-                    ),
-                    scriptSignature: reader.ReadVarBytes().ToImmutableArray(),
-                    sequence: reader.ReadUInt32()
-                );
-            }
+                    txHash: reader.ReadUInt256(),
+                    txOutputIndex: reader.ReadUInt32()
+                ),
+                scriptSignature: reader.ReadVarBytes(),
+                sequence: reader.ReadUInt32()
+            );
         }
 
         public static TxInput DecodeTxInput(byte[] bytes)
         {
             using (var stream = new MemoryStream(bytes))
+            using (var reader = new BinaryReader(stream))
             {
-                return DecodeTxInput(stream);
+                return DecodeTxInput(reader);
             }
         }
 
-        public static void EncodeTxInput(Stream stream, TxInput txInput)
+        public static void EncodeTxInput(BinaryWriter writer, TxInput txInput)
         {
-            using (var writer = new BinaryWriter(stream, Encoding.ASCII, leaveOpen: true))
-            {
-                writer.WriteUInt256(txInput.PreviousTxOutputKey.TxHash);
-                writer.WriteUInt32(txInput.PreviousTxOutputKey.TxOutputIndex);
-                writer.WriteVarBytes(txInput.ScriptSignature.ToArray());
-                writer.WriteUInt32(txInput.Sequence);
-            }
+            writer.WriteUInt256(txInput.PreviousTxOutputKey.TxHash);
+            writer.WriteUInt32(txInput.PreviousTxOutputKey.TxOutputIndex);
+            writer.WriteVarBytes(txInput.ScriptSignature.ToArray());
+            writer.WriteUInt32(txInput.Sequence);
         }
 
         public static byte[] EncodeTxInput(TxInput txInput)
         {
             using (var stream = new MemoryStream())
+            using (var writer = new BinaryWriter(stream))
             {
-                EncodeTxInput(stream, txInput);
+                EncodeTxInput(writer, txInput);
                 return stream.ToArray();
             }
         }
 
-        public static TxOutput DecodeTxOutput(Stream stream)
+        public static TxOutput DecodeTxOutput(BinaryReader reader)
         {
-            using (var reader = new BinaryReader(stream, Encoding.ASCII, leaveOpen: true))
-            {
-                return new TxOutput
-                (
-                    value: reader.ReadUInt64(),
-                    scriptPublicKey: reader.ReadVarBytes().ToImmutableArray()
-                );
-            }
+            return new TxOutput
+            (
+                value: reader.ReadUInt64(),
+                scriptPublicKey: reader.ReadVarBytes()
+            );
         }
 
         public static TxOutput DecodeTxOutput(byte[] bytes)
         {
             using (var stream = new MemoryStream(bytes))
+            using (var reader = new BinaryReader(stream))
             {
-                return DecodeTxOutput(stream);
+                return DecodeTxOutput(reader);
             }
         }
 
-        public static void EncodeTxOutput(Stream stream, TxOutput txOutput)
+        public static void EncodeTxOutput(BinaryWriter writer, TxOutput txOutput)
         {
-            using (var writer = new BinaryWriter(stream, Encoding.ASCII, leaveOpen: true))
-            {
-                writer.WriteUInt64(txOutput.Value);
-                writer.WriteVarBytes(txOutput.ScriptPublicKey.ToArray());
-            }
+            writer.WriteUInt64(txOutput.Value);
+            writer.WriteVarBytes(txOutput.ScriptPublicKey.ToArray());
         }
 
         public static byte[] EncodeTxOutput(TxOutput txOutput)
         {
             using (var stream = new MemoryStream())
+            using (var writer = new BinaryWriter(stream))
             {
-                EncodeTxOutput(stream, txOutput);
+                EncodeTxOutput(writer, txOutput);
                 return stream.ToArray();
             }
         }
 
-        public static UnspentTx DecodeUnspentTx(Stream stream)
+        public static UnspentTx DecodeUnspentTx(BinaryReader reader)
         {
-            using (var reader = new BinaryReader(stream, Encoding.ASCII, leaveOpen: true))
-            {
-                return new UnspentTx(
-                    txHash: reader.ReadUInt256(),
-                    blockIndex: reader.ReadInt32(),
-                    txIndex: reader.ReadInt32(),
-                    outputStates: new OutputStates(
-                        bytes: reader.ReadVarBytes(),
-                        length: reader.ReadInt32())
-                );
-            }
+            return new UnspentTx(
+                txHash: reader.ReadUInt256(),
+                blockIndex: reader.ReadInt32(),
+                txIndex: reader.ReadInt32(),
+                outputStates: new OutputStates(
+                    bytes: reader.ReadVarBytes(),
+                    length: reader.ReadInt32())
+            );
         }
 
         public static UnspentTx DecodeUnspentTx(byte[] bytes)
         {
             using (var stream = new MemoryStream(bytes))
+            using (var reader = new BinaryReader(stream))
             {
-                return DecodeUnspentTx(stream);
+                return DecodeUnspentTx(reader);
             }
         }
 
-        public static void EncodeUnspentTx(Stream stream, UnspentTx unspentTx)
+        public static void EncodeUnspentTx(BinaryWriter writer, UnspentTx unspentTx)
         {
-            using (var writer = new BinaryWriter(stream, Encoding.ASCII, leaveOpen: true))
-            {
-                writer.WriteUInt256(unspentTx.TxHash);
-                writer.WriteInt32(unspentTx.BlockIndex);
-                writer.WriteInt32(unspentTx.TxIndex);
-                writer.WriteVarBytes(unspentTx.OutputStates.ToByteArray());
-                writer.WriteInt32(unspentTx.OutputStates.Length);
-            }
+            writer.WriteUInt256(unspentTx.TxHash);
+            writer.WriteInt32(unspentTx.BlockIndex);
+            writer.WriteInt32(unspentTx.TxIndex);
+            writer.WriteVarBytes(unspentTx.OutputStates.ToByteArray());
+            writer.WriteInt32(unspentTx.OutputStates.Length);
         }
 
         public static byte[] EncodeUnspentTx(UnspentTx unspentTx)
         {
             using (var stream = new MemoryStream())
+            using (var writer = new BinaryWriter(stream))
             {
-                EncodeUnspentTx(stream, unspentTx);
+                EncodeUnspentTx(writer, unspentTx);
                 return stream.ToArray();
             }
         }
 
-        public static SpentTx DecodeSpentTx(Stream stream)
+        public static SpentTx DecodeSpentTx(BinaryReader reader)
         {
-            using (var reader = new BinaryReader(stream, Encoding.ASCII, leaveOpen: true))
-            {
-                return new SpentTx(
-                    txHash: reader.ReadUInt256(),
-                    confirmedBlockIndex: reader.ReadInt32(),
-                    txIndex: reader.ReadInt32(),
-                    outputCount: reader.ReadInt32(),
-                    spentBlockIndex: reader.ReadInt32()
-                );
-            }
+            return new SpentTx(
+                txHash: reader.ReadUInt256(),
+                confirmedBlockIndex: reader.ReadInt32(),
+                txIndex: reader.ReadInt32(),
+                outputCount: reader.ReadInt32(),
+                spentBlockIndex: reader.ReadInt32()
+            );
         }
 
         public static SpentTx DecodeSpentTx(byte[] bytes)
         {
             using (var stream = new MemoryStream(bytes))
+            using (var reader = new BinaryReader(stream))
             {
-                return DecodeSpentTx(stream);
+                return DecodeSpentTx(reader);
             }
         }
 
-        public static void EncodeSpentTx(Stream stream, SpentTx spentTx)
+        public static void EncodeSpentTx(BinaryWriter writer, SpentTx spentTx)
         {
-            using (var writer = new BinaryWriter(stream, Encoding.ASCII, leaveOpen: true))
-            {
-                writer.WriteUInt256(spentTx.TxHash);
-                writer.WriteInt32(spentTx.ConfirmedBlockIndex);
-                writer.WriteInt32(spentTx.TxIndex);
-                writer.WriteInt32(spentTx.OutputCount);
-                writer.WriteInt32(spentTx.SpentBlockIndex);
-            }
+            writer.WriteUInt256(spentTx.TxHash);
+            writer.WriteInt32(spentTx.ConfirmedBlockIndex);
+            writer.WriteInt32(spentTx.TxIndex);
+            writer.WriteInt32(spentTx.OutputCount);
+            writer.WriteInt32(spentTx.SpentBlockIndex);
         }
 
         public static byte[] EncodeSpentTx(SpentTx spentTx)
         {
             using (var stream = new MemoryStream())
+            using (var writer = new BinaryWriter(stream))
             {
-                EncodeSpentTx(stream, spentTx);
+                EncodeSpentTx(writer, spentTx);
                 return stream.ToArray();
             }
         }
 
-        public static BlockTxKey DecodeBlockTxKey(Stream stream)
+        public static BlockTxKey DecodeBlockTxKey(BinaryReader reader)
         {
-            using (var reader = new BinaryReader(stream, Encoding.ASCII, leaveOpen: true))
-            {
-                return new BlockTxKey(
-                    blockHash: reader.ReadUInt256(),
-                    txIndex: reader.ReadInt32()
-                );
-            }
+            return new BlockTxKey(
+                blockHash: reader.ReadUInt256(),
+                txIndex: reader.ReadInt32()
+            );
         }
 
         public static BlockTxKey DecodeBlockTxKey(byte[] bytes)
         {
             using (var stream = new MemoryStream(bytes))
+            using (var reader = new BinaryReader(stream))
             {
-                return DecodeBlockTxKey(stream);
+                return DecodeBlockTxKey(reader);
             }
         }
 
-        public static void EncodeBlockTxKey(Stream stream, BlockTxKey blockTxKey)
+        public static void EncodeBlockTxKey(BinaryWriter writer, BlockTxKey blockTxKey)
         {
-            using (var writer = new BinaryWriter(stream, Encoding.ASCII, leaveOpen: true))
-            {
-                writer.WriteUInt256(blockTxKey.BlockHash);
-                writer.WriteInt32(blockTxKey.TxIndex);
-            }
+            writer.WriteUInt256(blockTxKey.BlockHash);
+            writer.WriteInt32(blockTxKey.TxIndex);
         }
 
         public static byte[] EncodeBlockTxKey(BlockTxKey blockTxKey)
         {
             using (var stream = new MemoryStream())
+            using (var writer = new BinaryWriter(stream))
             {
-                EncodeBlockTxKey(stream, blockTxKey);
+                EncodeBlockTxKey(writer, blockTxKey);
                 return stream.ToArray();
             }
         }
 
-        public static UnmintedTx DecodeUnmintedTx(Stream stream)
+        public static UnmintedTx DecodeUnmintedTx(BinaryReader reader)
         {
-            using (var reader = new BinaryReader(stream, Encoding.ASCII, leaveOpen: true))
-            {
-                return new UnmintedTx(
-                    txHash: reader.ReadUInt256(),
-                    prevOutputTxKeys: reader.ReadList(() => DecodeBlockTxKey(stream))
-                );
-            }
+            return new UnmintedTx(
+                txHash: reader.ReadUInt256(),
+                prevOutputTxKeys: reader.ReadList(() => DecodeBlockTxKey(reader))
+            );
         }
 
         public static UnmintedTx DecodeUnmintedTx(byte[] bytes)
         {
             using (var stream = new MemoryStream(bytes))
+            using (var reader = new BinaryReader(stream))
             {
-                return DecodeUnmintedTx(stream);
+                return DecodeUnmintedTx(reader);
             }
         }
 
-        public static void EncodeUnmintedTx(Stream stream, UnmintedTx unmintedTx)
+        public static void EncodeUnmintedTx(BinaryWriter writer, UnmintedTx unmintedTx)
         {
-            using (var writer = new BinaryWriter(stream, Encoding.ASCII, leaveOpen: true))
-            {
-                writer.WriteUInt256(unmintedTx.TxHash);
-                writer.WriteList(unmintedTx.PrevOutputTxKeys, x => EncodeBlockTxKey(stream, x));
-            }
+            writer.WriteUInt256(unmintedTx.TxHash);
+            writer.WriteList(unmintedTx.PrevOutputTxKeys, x => EncodeBlockTxKey(writer, x));
         }
 
         public static byte[] EncodeUnmintedTx(UnmintedTx unmintedTx)
         {
             using (var stream = new MemoryStream())
+            using (var writer = new BinaryWriter(stream))
             {
-                EncodeUnmintedTx(stream, unmintedTx);
+                EncodeUnmintedTx(writer, unmintedTx);
                 return stream.ToArray();
             }
         }
@@ -556,73 +511,112 @@ namespace BitSharp.Core
             return buffer;
         }
 
-        public static TxOutputKey DecodeTxOutputKey(Stream stream)
+        public static TxOutputKey DecodeTxOutputKey(BinaryReader reader)
         {
-            using (var reader = new BinaryReader(stream, Encoding.ASCII, leaveOpen: true))
-            {
-                return new TxOutputKey
-                (
-                    txHash: reader.ReadUInt256(),
-                    txOutputIndex: reader.ReadUInt32()
-                );
-            }
+            return new TxOutputKey
+            (
+                txHash: reader.ReadUInt256(),
+                txOutputIndex: reader.ReadUInt32()
+            );
         }
 
         public static TxOutputKey DecodeTxOutputKey(byte[] bytes)
         {
             using (var stream = new MemoryStream(bytes))
+            using (var reader = new BinaryReader(stream))
             {
-                return DecodeTxOutputKey(stream);
+                return DecodeTxOutputKey(reader);
             }
         }
 
-        public static void EncodeTxOutputKey(Stream stream, TxOutputKey txOutputKey)
+        public static void EncodeTxOutputKey(BinaryWriter writer, TxOutputKey txOutputKey)
         {
-            using (var writer = new BinaryWriter(stream, Encoding.ASCII, leaveOpen: true))
-            {
-                writer.WriteUInt256(txOutputKey.TxHash);
-                writer.WriteUInt32(txOutputKey.TxOutputIndex);
-            }
+            writer.WriteUInt256(txOutputKey.TxHash);
+            writer.WriteUInt32(txOutputKey.TxOutputIndex);
         }
 
         public static byte[] EncodeTxOutputKey(TxOutputKey txOutputKey)
         {
             using (var stream = new MemoryStream())
+            using (var writer = new BinaryWriter(stream))
             {
-                EncodeTxOutputKey(stream, txOutputKey);
+                EncodeTxOutputKey(writer, txOutputKey);
                 return stream.ToArray();
             }
         }
 
-        public static string DecodeVarString(Stream stream)
+        public static BlockTx DecodeBlockTx(BinaryReader reader, bool skipTx = false)
         {
-            using (var reader = new BinaryReader(stream, Encoding.ASCII, leaveOpen: true))
+            var index = reader.ReadInt32();
+            var depth = reader.ReadInt32();
+            var hash = reader.ReadUInt256();
+            var pruned = reader.ReadBool();
+
+            if (!pruned && !skipTx)
             {
-                return reader.ReadVarString();
+                var tx = DecodeTransaction(reader, hash);
+                return new BlockTx(index, depth, hash, pruned, tx);
             }
+            else
+                return new BlockTx(index, depth, hash, pruned, null);
+        }
+
+        public static BlockTx DecodeBlockTx(byte[] bytes, bool skipTx = false)
+        {
+            using (var stream = new MemoryStream(bytes))
+            using (var reader = new BinaryReader(stream))
+            {
+                return DecodeBlockTx(reader, skipTx);
+            }
+        }
+
+        public static void EncodeBlockTx(BinaryWriter writer, BlockTx blockTx)
+        {
+            var txBytes = blockTx.Transaction != null ? EncodeTransaction(blockTx.Transaction) : new byte[0];
+
+            writer.WriteInt32(blockTx.Index);
+            writer.WriteInt32(blockTx.Depth);
+            writer.WriteUInt256(blockTx.Hash);
+            writer.WriteBool(blockTx.Pruned);
+            if (!blockTx.Pruned)
+                EncodeTransaction(writer, blockTx.Transaction);
+        }
+
+        public static byte[] EncodeBlockTx(BlockTx blockTx)
+        {
+            using (var stream = new MemoryStream())
+            using (var writer = new BinaryWriter(stream))
+            {
+                EncodeBlockTx(writer, blockTx);
+                return stream.ToArray();
+            }
+        }
+
+        public static string DecodeVarString(BinaryReader reader)
+        {
+            return reader.ReadVarString();
         }
 
         public static string DecodeVarString(byte[] bytes)
         {
             using (var stream = new MemoryStream(bytes))
+            using (var reader = new BinaryReader(stream))
             {
-                return DecodeVarString(stream);
+                return DecodeVarString(reader);
             }
         }
 
-        public static void EncodeVarString(Stream stream, string s)
+        public static void EncodeVarString(BinaryWriter writer, string s)
         {
-            using (var writer = new BinaryWriter(stream, Encoding.ASCII, leaveOpen: true))
-            {
-                writer.WriteVarString(s);
-            }
+            writer.WriteVarString(s);
         }
 
         public static byte[] EncodeVarString(string s)
         {
             using (var stream = new MemoryStream())
+            using (var writer = new BinaryWriter(stream))
             {
-                EncodeVarString(stream, s);
+                EncodeVarString(writer, s);
                 return stream.ToArray();
             }
         }

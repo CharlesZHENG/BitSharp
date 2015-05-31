@@ -175,34 +175,34 @@ namespace BitSharp.Core.Test.Script
             }
         }
 
-        private static ImmutableArray<byte> GetSigFromScriptSig(ImmutableArray<byte> scriptSig)
+        private static ImmutableArray<byte> GetSigFromScriptSig(byte[] scriptSig)
         {
             Debug.Assert(scriptSig[0] >= (int)ScriptOp.OP_PUSHBYTES1 && scriptSig[0] <= (int)ScriptOp.OP_PUSHBYTES75);
             // The first byte of scriptSig will be OP_PUSHBYTES, so the first byte indicates how many bytes to take to get sig from scriptSig
             return scriptSig.Skip(1).Take(scriptSig[0]).ToImmutableArray();
         }
 
-        private static byte GetHashTypeFromScriptSig(ImmutableArray<byte> scriptSig)
+        private static byte GetHashTypeFromScriptSig(byte[] scriptSig)
         {
             return GetSigFromScriptSig(scriptSig).Last();
         }
 
-        private static ImmutableArray<byte> GetPubKeyFromScripts(ImmutableArray<byte> scriptSig, ImmutableArray<byte> pubKey)
+        private static byte[] GetPubKeyFromScripts(byte[] scriptSig, byte[] pubKey)
         {
             if (scriptSig.Length > scriptSig[0] + 1)
             {
-                var result = scriptSig.Skip(1 + scriptSig[0] + 1).Take(scriptSig.Skip(1 + scriptSig[0]).First()).ToImmutableArray();
+                var result = scriptSig.Skip(1 + scriptSig[0] + 1).Take(scriptSig.Skip(1 + scriptSig[0]).First()).ToArray();
                 return result;
             }
             else
             {
-                return pubKey.Skip(1).Take(pubKey.Length - 2).ToImmutableArray();
+                return pubKey.Skip(1).Take(pubKey.Length - 2).ToArray();
             }
         }
 
-        private static ImmutableArray<byte> GetScriptFromInputPrevOutput(TxInput input, TxOutput prevOutput)
+        private static byte[] GetScriptFromInputPrevOutput(TxInput input, TxOutput prevOutput)
         {
-            return input.ScriptSignature.AddRange(prevOutput.ScriptPublicKey);
+            return input.ScriptSignature.Concat(prevOutput.ScriptPublicKey);
         }
     }
 }
