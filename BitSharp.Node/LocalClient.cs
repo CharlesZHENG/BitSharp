@@ -116,7 +116,6 @@ namespace BitSharp.Node
                 this.peerWorker.Start();
                 if (this.Type != RulesEnum.ComparisonToolTestNet)
                 {
-                    //TODO: load seed peers in a task once the fact that they are seeds is persisted
                     // add seed peers
                     AddSeedPeers();
 
@@ -180,7 +179,10 @@ namespace BitSharp.Node
                 {
                     try
                     {
-                        var ipAddress = Dns.GetHostEntry(hostNameOrAddress).AddressList.First();
+                        IPAddress ipAddress;
+                        if (!IPAddress.TryParse(hostNameOrAddress, out ipAddress))
+                            ipAddress = Dns.GetHostEntry(hostNameOrAddress).AddressList.First();
+
                         this.peerWorker.AddCandidatePeer(
                             new CandidatePeer
                             (
@@ -202,8 +204,8 @@ namespace BitSharp.Node
                     addSeed("dnsseed.bluematt.me");
                     //addSeed("dnsseed.bitcoin.dashjr.org");
                     addSeed("seed.bitcoinstats.com");
-                    addSeed("seed.bitnodes.io");
-                    addSeed("seeds.bitcoin.open-nodes.org");
+                    //addSeed("seed.bitnodes.io");
+                    //addSeed("seeds.bitcoin.open-nodes.org");
                     addSeed("bitseed.xf2.org");
                     break;
 
