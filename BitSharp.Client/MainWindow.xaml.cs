@@ -48,14 +48,17 @@ namespace BitSharp.Client
                 var ignoreSignatures = false;
                 var ignoreScriptErrors = true;
 
-                var enablePruning = false;
+                var pruningMode = PruningMode.TxIndex | PruningMode.BlockSpentIndex | PruningMode.BlockTxesPreserveMerkle;
                 var enableDummyWallet = true;
 
                 var runInMemory = false;
 
+                // clean all data
                 var cleanData = false;
-                var cleanChainState = false;
-                var cleanBlockTxes = cleanChainState && enablePruning;
+                // clean chain state if the dummy wallet is enabled and there is pruning, the dummy wallet does not store its progress and replays from scratch every time
+                var cleanChainState = false || (enableDummyWallet && pruningMode != PruningMode.None);
+                // clean block txes if the chain state is being cleaned and block txes have been pruned, the new chain state will require intact blocks to validate
+                var cleanBlockTxes = false || (cleanChainState && (pruningMode.HasFlag(PruningMode.BlockTxesPreserveMerkle) || pruningMode.HasFlag(PruningMode.BlockTxesDestroyMerkle)));
 
                 int? cacheSizeMaxBytes = 500.MILLION();
 
@@ -134,7 +137,7 @@ namespace BitSharp.Client
 
                 // initialize the blockchain daemon
                 this.coreDaemon = this.kernel.Get<CoreDaemon>();
-                this.coreDaemon.PruningMode = enablePruning ? PruningMode.ReplayAndRollbackAndTxes : PruningMode.ReplayAndRollback;
+                this.coreDaemon.PruningMode = pruningMode;
                 this.kernel.Bind<CoreDaemon>().ToConstant(this.coreDaemon).InTransientScope();
 
                 // initialize dummy wallet monitor

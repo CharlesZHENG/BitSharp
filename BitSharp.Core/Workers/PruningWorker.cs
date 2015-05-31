@@ -77,7 +77,8 @@ namespace BitSharp.Core.Workers
         protected override void WorkAction()
         {
             // check if pruning is turned off
-            if (this.Mode == PruningMode.None)
+            var mode = this.Mode;
+            if (mode == PruningMode.None)
                 return;
 
             var totalStopwatch = Stopwatch.StartNew();
@@ -112,11 +113,6 @@ namespace BitSharp.Core.Workers
             {
                 // cooperative loop
                 if (!this.IsStarted)
-                    break;
-
-                // check if pruning is turned off
-                var mode = this.Mode;
-                if (mode == PruningMode.None)
                     break;
 
                 // get candidate block to be pruned
@@ -189,34 +185,40 @@ namespace BitSharp.Core.Workers
                 flushStopwatch.Stop();
             });
 
-            using (var handle = this.storageManager.OpenChainStateCursor())
+            if (mode.HasFlag(PruningMode.TxIndex) || mode.HasFlag(PruningMode.BlockSpentIndex))
             {
-                var chainStateCursor = handle.Item;
-
-                chainStateCursor.BeginTransaction();
-                var wasCommitted = false;
-                try
+                using (var handle = this.storageManager.OpenChainStateCursor())
                 {
-                    pruneIndexStopwatch.Time(() =>
-                    {
-                        foreach (var height in prunedBlockIndices)
-                            chainStateCursor.TryRemoveBlockSpentTxes(height);
-                        foreach (var txHash in spentTxHashes)
-                            chainStateCursor.TryRemoveUnspentTx(txHash);
-                    });
+                    var chainStateCursor = handle.Item;
 
-                    // commit pruned chain state
-                    // flush is not needed here, at worst pruning will be performed again against already pruned transactions
-                    commitStopwatch.Time(() =>
+                    chainStateCursor.BeginTransaction();
+                    var wasCommitted = false;
+                    try
                     {
-                        chainStateCursor.CommitTransaction();
-                        wasCommitted = true;
-                    });
-                }
-                finally
-                {
-                    if (!wasCommitted)
-                        chainStateCursor.RollbackTransaction();
+                        pruneIndexStopwatch.Time(() =>
+                        {
+                            if (mode.HasFlag(PruningMode.BlockSpentIndex))
+                                foreach (var height in prunedBlockIndices)
+                                    chainStateCursor.TryRemoveBlockSpentTxes(height);
+
+                            if (mode.HasFlag(PruningMode.TxIndex))
+                                foreach (var txHash in spentTxHashes)
+                                    chainStateCursor.TryRemoveUnspentTx(txHash);
+                        });
+
+                        // commit pruned chain state
+                        // flush is not needed here, at worst pruning will be performed again against already pruned transactions
+                        commitStopwatch.Time(() =>
+                        {
+                            chainStateCursor.CommitTransaction();
+                            wasCommitted = true;
+                        });
+                    }
+                    finally
+                    {
+                        if (!wasCommitted)
+                            chainStateCursor.RollbackTransaction();
+                    }
                 }
             }
 
@@ -314,19 +316,16 @@ namespace BitSharp.Core.Workers
                                             spentTxHashes.Add(spentTxHash);
 
                                             // queue up spent tx to be pruned from block txes
-                                            if (mode == PruningMode.ReplayAndRollbackAndTxes)
+                                            ConcurrentBag<int> blockTxIndices;
+                                            if (pruneData.TryAdd(spentTx.BlockIndex, emptyBag))
                                             {
-                                                ConcurrentBag<int> blockTxIndices;
-                                                if (pruneData.TryAdd(spentTx.BlockIndex, emptyBag))
-                                                {
-                                                    blockTxIndices = emptyBag;
-                                                    emptyBag = new ConcurrentBag<int>();
-                                                }
-                                                else
-                                                    blockTxIndices = pruneData[spentTx.BlockIndex];
-
-                                                blockTxIndices.Add(spentTx.TxIndex);
+                                                blockTxIndices = emptyBag;
+                                                emptyBag = new ConcurrentBag<int>();
                                             }
+                                            else
+                                                blockTxIndices = pruneData[spentTx.BlockIndex];
+
+                                            blockTxIndices.Add(spentTx.TxIndex);
                                         }
                                     }
                                 }
@@ -340,21 +339,20 @@ namespace BitSharp.Core.Workers
                 });
 
                 // store block's spent txes to be removed from chain state
-                if (mode == PruningMode.ReplayAndRollback || mode == PruningMode.ReplayAndRollbackAndTxes)
-                {
-                    prunedBlockIndices.Add(pruneBlock.Height);
-                }
+                prunedBlockIndices.Add(pruneBlock.Height);
 
                 // remove spent transactions from block storage
-                if (mode == PruningMode.ReplayAndRollbackAndTxes && pruneData.Count > 0)
+                if (pruneData.Count > 0 && (mode.HasFlag(PruningMode.BlockTxesPreserveMerkle) || mode.HasFlag(PruningMode.BlockTxesDestroyMerkle)))
                 {
                     pruneBlocksStopwatch.Time(() =>
                     {
                         using (var blockTxesPruneQueue = new ConcurrentBlockingQueue<KeyValuePair<UInt256, IEnumerable<int>>>())
                         using (this.pruneBlockWorkers.Start(() =>
                         {
-                            this.storageManager.BlockTxesStorage.PruneElements(blockTxesPruneQueue.GetConsumingEnumerable());
-                            //this.storageManager.BlockTxesStorage.DeleteElements(blockTxesPruneQueue.GetConsumingEnumerable());
+                            if (mode.HasFlag(PruningMode.BlockTxesPreserveMerkle))
+                                this.storageManager.BlockTxesStorage.PruneElements(blockTxesPruneQueue.GetConsumingEnumerable());
+                            else
+                                this.storageManager.BlockTxesStorage.DeleteElements(blockTxesPruneQueue.GetConsumingEnumerable());
                         }))
                         {
                             foreach (var keyPair in pruneData)

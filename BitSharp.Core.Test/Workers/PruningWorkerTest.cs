@@ -50,7 +50,7 @@ namespace BitSharp.Core.Test.Workers
                 var chainStateCursor = handle.Item;
 
                 // set the pruning worker to prune all data
-                pruningWorker.Mode = PruningMode.ReplayAndRollbackAndTxes;
+                pruningWorker.Mode = PruningMode.TxIndex | PruningMode.BlockSpentIndex | PruningMode.BlockTxesPreserveMerkle;
 
                 // wire event to wait for work
                 var workFinishedEvent = new AutoResetEvent(false);
