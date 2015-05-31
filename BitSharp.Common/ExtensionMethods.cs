@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Numerics;
@@ -176,6 +177,14 @@ namespace BitSharp.Common.ExtensionMethods
             }
         }
 
+        public static uint ToUIntChecked(this int value)
+        {
+            checked
+            {
+                return (uint)value;
+            }
+        }
+
         public static byte[] NextBytes(this Random random, long length)
         {
             var buffer = (byte[])Array.CreateInstance(typeof(byte), length);
@@ -249,9 +258,9 @@ namespace BitSharp.Common.ExtensionMethods
             return value * 1000 * 1000;
         }
 
-        public static int BILLION(this int value)
+        public static long BILLION(this int value)
         {
-            return value * 1000 * 1000 * 1000;
+            return (long)value * 1000 * 1000 * 1000;
         }
 
         public static long THOUSAND(this long value)
@@ -436,6 +445,29 @@ namespace BitSharp.Common.ExtensionMethods
                     sum += selector(item);
 
                 return sum;
+            }
+        }
+
+        public static IEnumerable<TResult> DequeueSelect<T, TResult>(this ConcurrentQueue<T> queue, Func<T, TResult> selector)
+        {
+            T result;
+            while (queue.TryDequeue(out result))
+                yield return selector(result);
+        }
+
+        public static void Time(this Stopwatch stopwatch, Action action)
+        {
+            if (stopwatch.IsRunning)
+                throw new InvalidOperationException();
+
+            stopwatch.Start();
+            try
+            {
+                action();
+            }
+            finally
+            {
+                stopwatch.Stop();
             }
         }
     }

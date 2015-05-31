@@ -76,6 +76,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Bits.cs" />
+    <Compile Include="DisposeAction.cs" />
     <Compile Include="DisposeHandle.cs" />
     <Compile Include="ConcurrentDictionaryBuilder.cs" />
     <Compile Include="ConcurrentSet.cs" />
@@ -99,6 +100,7 @@
     <Compile Include="SortedValueDictionary.cs" />
     <Compile Include="UInt256.cs" />
     <Compile Include="Worker.cs" />
+    <Compile Include="WorkerPool.cs" />
     <Compile Include="WorkerMethod.cs" />
   </ItemGroup>
   <ItemGroup>
