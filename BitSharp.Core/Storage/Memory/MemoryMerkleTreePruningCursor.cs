@@ -48,7 +48,13 @@ namespace BitSharp.Core.Storage.Memory
             if (this.index >= 0 && this.index <= this.nodes.Count)
             {
                 this.index--;
-                return (this.index >= 0 && this.index < this.nodes.Count);
+                if (this.index >= 0 && this.index < this.nodes.Count)
+                    return true;
+                else
+                {
+                    this.index++;
+                    return false;
+                }
             }
             else
             {
@@ -61,7 +67,13 @@ namespace BitSharp.Core.Storage.Memory
             if (this.index >= -1 && this.index < this.nodes.Count)
             {
                 this.index++;
-                return (this.index >= 0 && this.index < this.nodes.Count);
+                if (this.index >= 0 && this.index < this.nodes.Count)
+                    return true;
+                else
+                {
+                    this.index--;
+                    return false;
+                }
             }
             else
             {

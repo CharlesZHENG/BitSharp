@@ -2,7 +2,6 @@
 using BitSharp.Core.Domain;
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Linq;
 
 namespace BitSharp.Core
@@ -14,7 +13,7 @@ namespace BitSharp.Core
         {
             if (!cursor.TryMoveToIndex(index))
                 return;
-            
+
             var node = cursor.ReadNode();
 
             if (node.Depth != 0)
@@ -53,7 +52,7 @@ namespace BitSharp.Core
                         if (node.Index != 0 && node.Pruned)
                         {
                             var newNode = node.PairWithSelf();
-                            cursor.MoveLeft();
+                            //cursor.MoveLeft();
                             cursor.WriteNode(newNode);
 
                             node = newNode;
@@ -137,14 +136,16 @@ namespace BitSharp.Core
             {
                 throw new InvalidOperationException();
             }
+
+            yield break;
         }
 
         public static UInt256 PairHashes(UInt256 left, UInt256 right)
         {
-            var bytes = ImmutableArray.CreateBuilder<byte>(64);
-            bytes.AddRange(left.ToByteArray());
-            bytes.AddRange(right.ToByteArray());
-            return new UInt256(SHA256Static.ComputeDoubleHash(bytes.ToArray()));
+            var bytes = new byte[64];
+            left.ToByteArray(bytes, 0);
+            right.ToByteArray(bytes, 32);
+            return new UInt256(SHA256Static.ComputeDoubleHash(bytes));
         }
 
         private class MerkleStream

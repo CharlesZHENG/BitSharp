@@ -32,10 +32,17 @@ namespace BitSharp.Esent
                 UInt256 recordBlockHash; int txIndex;
                 DbEncoder.DecodeBlockHashTxIndex(Api.RetrieveColumn(cursor.jetSession, cursor.blocksTableId, cursor.blockHashTxIndexColumnId),
                     out recordBlockHash, out txIndex);
+
+                if (blockHash != recordBlockHash)
+                    Api.TryMoveNext(cursor.jetSession, cursor.blocksTableId);
+
                 return blockHash == recordBlockHash;
             }
             else
+            {
+                Api.TryMoveNext(cursor.jetSession, cursor.blocksTableId);
                 return false;
+            }
         }
 
         public bool TryMoveRight()
@@ -45,10 +52,17 @@ namespace BitSharp.Esent
                 UInt256 recordBlockHash; int txIndex;
                 DbEncoder.DecodeBlockHashTxIndex(Api.RetrieveColumn(cursor.jetSession, cursor.blocksTableId, cursor.blockHashTxIndexColumnId),
                     out recordBlockHash, out txIndex);
+
+                if (blockHash != recordBlockHash)
+                    Api.TryMovePrevious(cursor.jetSession, cursor.blocksTableId);
+
                 return blockHash == recordBlockHash;
             }
             else
+            {
+                Api.TryMovePrevious(cursor.jetSession, cursor.blocksTableId);
                 return false;
+            }
         }
 
         public MerkleTreeNode ReadNode()
