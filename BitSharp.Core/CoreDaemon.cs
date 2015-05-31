@@ -67,11 +67,11 @@ namespace BitSharp.Core
                 this, this.storageManager, this.chainStateWorker);
 
             this.defragWorker = new DefragWorker(
-                new WorkerConfig(initialNotify: true, minIdleTime: TimeSpan.FromMinutes(5), maxIdleTime: TimeSpan.FromMinutes(5)),
+                new WorkerConfig(initialNotify: true, minIdleTime: TimeSpan.FromMinutes(1), maxIdleTime: TimeSpan.FromMinutes(5)),
                 this.storageManager);
 
             this.gcWorker = new WorkerMethod("GC Worker", GcWorker,
-                initialNotify: true, minIdleTime: TimeSpan.FromSeconds(30), maxIdleTime: TimeSpan.FromSeconds(30));
+                initialNotify: true, minIdleTime: TimeSpan.FromSeconds(30), maxIdleTime: TimeSpan.FromMinutes(5));
 
             this.utxoScanWorker = new WorkerMethod("UTXO Scan Worker", UtxoScanWorker,
                 initialNotify: true, minIdleTime: TimeSpan.FromSeconds(60), maxIdleTime: TimeSpan.FromSeconds(60));
@@ -170,23 +170,23 @@ namespace BitSharp.Core
         public void Start()
         {
             // startup workers
+            //this.utxoScanWorker.Start();
+            this.gcWorker.Start();
             this.targetChainWorker.Start();
             this.chainStateWorker.Start();
             this.pruningWorker.Start();
             this.defragWorker.Start();
-            this.gcWorker.Start();
-            //this.utxoScanWorker.Start();
         }
 
         public void Stop()
         {
             // stop workers
-            this.chainStateWorker.Stop();
-            this.utxoScanWorker.Stop();
-            this.pruningWorker.Stop();
-            this.targetChainWorker.Stop();
             this.defragWorker.Stop();
+            this.pruningWorker.Stop();
+            this.chainStateWorker.Stop();
+            this.targetChainWorker.Stop();
             this.gcWorker.Stop();
+            this.utxoScanWorker.Stop();
         }
 
         public void WaitForUpdate()
