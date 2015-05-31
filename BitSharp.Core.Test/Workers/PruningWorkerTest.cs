@@ -1,6 +1,7 @@
 ﻿using BitSharp.Common;
 using BitSharp.Core.Builders;
 using BitSharp.Core.Domain;
+using BitSharp.Core.Storage;
 using BitSharp.Core.Storage.Memory;
 using BitSharp.Core.Test.Rules;
 using BitSharp.Core.Workers;
@@ -75,7 +76,7 @@ namespace BitSharp.Core.Test.Workers
                 }
 
                 // add an unspent tx for each transaction to storage
-                for (var txIndex = 0; txIndex < block.Transactions.Length;txIndex++)
+                for (var txIndex = 0; txIndex < block.Transactions.Length; txIndex++)
                 {
                     var tx = block.Transactions[txIndex];
                     var unspentTx = new UnspentTx(tx.Hash, blockIndex: 0, txIndex: txIndex, outputStates: new OutputStates(1, OutputState.Unspent));
@@ -91,8 +92,7 @@ namespace BitSharp.Core.Test.Workers
                 {
                     // create a spent tx to prune the transaction
                     var pruneTx = block.Transactions[pruneTxIndex];
-                    var spentTx = new SpentTx(txHash: pruneTx.Hash, confirmedBlockIndex: 0, txIndex: pruneTxIndex, outputCount: 1, spentBlockIndex: 0);
-                    var spentTxes = ImmutableList.Create(spentTx);
+                    var spentTxes = ImmutableList.Create(pruneTx.Hash);
 
                     // store the spent txes for the current pruning block
                     pruneHeight++;
