@@ -29,7 +29,7 @@ namespace BitSharp.Core.Builders
 
         public IEnumerable<TxWithPrevOutputKeys> CalculateUtxo(Chain chain, IEnumerable<Transaction> blockTxes)
         {
-            var blockSpentTxes = ImmutableList.CreateBuilder<SpentTx>();
+            var blockSpentTxes = ImmutableList.CreateBuilder<UInt256>();
 
             var chainedHeader = chain.LastBlock;
 
@@ -67,8 +67,15 @@ namespace BitSharp.Core.Builders
                 // mint the transaction's outputs in the utxo
                 this.Mint(tx, txIndex, chainedHeader);
 
+                // increase unspent output count
+                this.chainStateCursor.UnspentOutputCount += tx.Outputs.Length;
+
                 // increment unspent tx count
                 this.chainStateCursor.UnspentTxCount++;
+
+                this.chainStateCursor.TotalTxCount++;
+                this.chainStateCursor.TotalInputCount += tx.Inputs.Length;
+                this.chainStateCursor.TotalOutputCount += tx.Outputs.Length;
 
                 yield return new TxWithPrevOutputKeys(txIndex, tx, chainedHeader, prevOutputTxKeys.ToImmutable());
             }
@@ -89,7 +96,7 @@ namespace BitSharp.Core.Builders
             }
         }
 
-        private UnspentTx Spend(int txIndex, Transaction tx, int inputIndex, TxInput input, ChainedHeader chainedHeader, ImmutableList<SpentTx>.Builder blockSpentTxes)
+        private UnspentTx Spend(int txIndex, Transaction tx, int inputIndex, TxInput input, ChainedHeader chainedHeader, ImmutableList<UInt256>.Builder blockSpentTxes)
         {
             UnspentTx unspentTx;
             if (!this.chainStateCursor.TryGetUnspentTx(input.PreviousTxOutputKey.TxHash, out unspentTx))
@@ -115,6 +122,9 @@ namespace BitSharp.Core.Builders
             // update output states
             unspentTx = unspentTx.SetOutputState(outputIndex, OutputState.Spent);
 
+            // decrement unspent output count
+            this.chainStateCursor.UnspentOutputCount--;
+
             // update transaction output states in the utxo
             var wasUpdated = this.chainStateCursor.TryUpdateUnspentTx(unspentTx);
             if (!wasUpdated)
@@ -123,7 +133,7 @@ namespace BitSharp.Core.Builders
             // store pruning information for a fully spent transaction
             if (unspentTx.IsFullySpent)
             {
-                blockSpentTxes.Add(unspentTx.ToSpentTx(chainedHeader.Height));
+                blockSpentTxes.Add(unspentTx.TxHash);
 
                 // decrement unspent tx count
                 this.chainStateCursor.UnspentTxCount--;
@@ -133,7 +143,7 @@ namespace BitSharp.Core.Builders
         }
 
         //TODO with the rollback information that's now being stored, rollback could be down without needing the block
-        public void RollbackUtxo(Chain chain, ChainedHeader chainedHeader, IEnumerable<BlockTx> blockTxes, ImmutableDictionary<UInt256, SpentTx> spentTxes, ImmutableList<UnmintedTx>.Builder unmintedTxes)
+        public void RollbackUtxo(Chain chain, ChainedHeader chainedHeader, IEnumerable<BlockTx> blockTxes, ImmutableList<UnmintedTx>.Builder unmintedTxes)
         {
             //TODO don't reverse here, storage should be read in reverse
             foreach (var blockTx in blockTxes.Reverse())
@@ -144,8 +154,15 @@ namespace BitSharp.Core.Builders
                 // remove transaction outputs
                 this.Unmint(tx, chainedHeader, isCoinbase: true);
 
+                // decrease unspent output count
+                this.chainStateCursor.UnspentOutputCount -= tx.Outputs.Length;
+
                 // decrement unspent tx count
                 this.chainStateCursor.UnspentTxCount--;
+
+                this.chainStateCursor.TotalTxCount--;
+                this.chainStateCursor.TotalInputCount -= tx.Inputs.Length;
+                this.chainStateCursor.TotalOutputCount -= tx.Outputs.Length;
 
                 var prevOutputTxKeys = ImmutableArray.CreateBuilder<BlockTxKey>(tx.Inputs.Length);
 
@@ -155,7 +172,7 @@ namespace BitSharp.Core.Builders
                     for (var inputIndex = tx.Inputs.Length - 1; inputIndex >= 0; inputIndex--)
                     {
                         var input = tx.Inputs[inputIndex];
-                        var unspentTx = this.Unspend(input, chainedHeader, spentTxes);
+                        var unspentTx = this.Unspend(input, chainedHeader);
 
                         // store rollback replay information
                         var unspentTxBlockHash = chain.Blocks[unspentTx.BlockIndex].Hash;
@@ -201,7 +218,7 @@ namespace BitSharp.Core.Builders
             }
         }
 
-        private UnspentTx Unspend(TxInput input, ChainedHeader chainedHeader, ImmutableDictionary<UInt256, SpentTx> spentTxes)
+        private UnspentTx Unspend(TxInput input, ChainedHeader chainedHeader)
         {
             bool wasRestored;
 
@@ -212,14 +229,9 @@ namespace BitSharp.Core.Builders
             }
             else
             {
-                // lookup fully spent transaction
-                SpentTx spentTx;
-                if (!spentTxes.TryGetValue(input.PreviousTxOutputKey.TxHash, out spentTx))
-                    throw new ValidationException(chainedHeader.Hash);
-
-                // restore fully spent transaction
-                unspentTx = new UnspentTx(spentTx.TxHash, spentTx.ConfirmedBlockIndex, spentTx.TxIndex, new OutputStates(spentTx.OutputCount, OutputState.Spent));
-                wasRestored = true;
+                // unable to rollback, the unspent tx with the block tx key has been pruned
+                //TODO better exception
+                throw new InvalidOperationException();
             }
 
             // retrieve previous output index
@@ -233,6 +245,9 @@ namespace BitSharp.Core.Builders
 
             // mark output as unspent
             unspentTx = unspentTx.SetOutputState(outputIndex, OutputState.Unspent);
+
+            // increment unspent output count
+            this.chainStateCursor.UnspentOutputCount++;
 
             // update storage
             if (!wasRestored)
@@ -249,7 +264,7 @@ namespace BitSharp.Core.Builders
                     throw new ValidationException(chainedHeader.Hash);
 
                 // increment unspent tx count
-                this.chainStateCursor.UnspentTxCount--;
+                this.chainStateCursor.UnspentTxCount++;
             }
 
             return unspentTx;
