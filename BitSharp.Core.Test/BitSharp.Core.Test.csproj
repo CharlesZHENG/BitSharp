@@ -105,6 +105,7 @@
     <Compile Include="BlockReplayerTest.cs" />
     <Compile Include="Builders\ChainBuilderTest.cs" />
     <Compile Include="Domain\ChainTest.cs" />
+    <Compile Include="TestNet3BlockProvider.cs" />
     <Compile Include="MerkleTreeTest.cs" />
     <Compile Include="FakeHeaders.cs" />
     <Compile Include="MainnetTestData.cs" />
@@ -137,6 +138,7 @@
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="Blocks.zip" />
+    <EmbeddedResource Include="Blocks.TestNet3.zip" />
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>

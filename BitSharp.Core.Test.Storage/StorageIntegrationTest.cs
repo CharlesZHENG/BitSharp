@@ -7,6 +7,7 @@ using BitSharp.Core.Storage;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using NLog;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 
@@ -25,16 +26,20 @@ namespace BitSharp.Core.Test.Storage
         {
             var logger = LogManager.CreateNullLogger();
 
-            var blockProvider = new MainnetBlockProvider();
+            var blockProvider = new TestNet3BlockProvider();
             //TODO this should go to height 5500 so that it will fail if blocks txes aren't rolled back in reverse
             //TODO it makes the test run fairly slow
-            var blocks = Enumerable.Range(0, 500).Select(x => blockProvider.GetBlock(x)).ToList();
+            var blocks = blockProvider.ReadBlocks().Take(1000).ToList();
 
             var genesisBlock = blocks[0];
             var genesisHeader = new ChainedHeader(genesisBlock.Header, height: 0, totalWork: 0);
             var genesisChain = Chain.CreateForGenesisBlock(genesisHeader);
 
-            var rules = new MainnetRules();
+            var rules = new Testnet3Rules()
+            {
+                IgnoreSignatures = true,
+                IgnoreScriptErrors = true
+            };
 
             using (var storageManager = provider.OpenStorageManager())
             using (var coreStorage = new CoreStorage(storageManager))
@@ -48,6 +53,8 @@ namespace BitSharp.Core.Test.Storage
                 var expectedUtxos = new List<List<UnspentTx>>();
                 for (var blockIndex = 0; blockIndex < blocks.Count; blockIndex++)
                 {
+                    Debug.WriteLine("Adding: {0:N0}".Format2(blockIndex));
+
                     var block = blocks[blockIndex];
                     var chainedHeader = new ChainedHeader(block.Header, blockIndex, 0);
 
@@ -62,7 +69,7 @@ namespace BitSharp.Core.Test.Storage
                 // verify the utxo state before rolling back
                 //TODO verify the UTXO hash hard-coded here is correct
                 //TODO 5500: 0e9da3d53272cda9ecb6037c411ebc3cd0b65b5c16698baba41665edb29b8eaf
-                var expectedUtxoHash = UInt256.Parse("609eb5882e0b71a707fb876c844fbfe6b4579e04eb27c7c0cefbb7478bac737b", NumberStyles.HexNumber);
+                var expectedUtxoHash = UInt256.Parse("8e7a5912c6e9e46370841e54c590dab04f37861345ee9946b69e0c8505f602eb", NumberStyles.HexNumber);
                 using (var utxoStream = new UtxoStream(expectedUtxos.Last()))
                 {
                     var utxoHash = new UInt256(SHA256Static.ComputeDoubleHash(utxoStream));
@@ -73,6 +80,8 @@ namespace BitSharp.Core.Test.Storage
                 // roll utxo backwards and validate its state at each step along the way
                 for (var blockIndex = blocks.Count - 1; blockIndex >= 1; blockIndex--)
                 {
+                    Debug.WriteLine("Rolling back: {0:N0}".Format2(blockIndex));
+
                     var block = blocks[blockIndex];
                     var chainedHeader = new ChainedHeader(block.Header, blockIndex, 0);
                     var blockTxes = block.Transactions.Select((tx, txIndex) => new BlockTx(txIndex, 0, tx.Hash, /*pruned:*/false, tx));

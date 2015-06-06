@@ -180,16 +180,16 @@ namespace BitSharp.Core.Builders
                 this.BeginTransaction();
                 try
                 {
-                    // remove the block from the chain
-                    this.chain.RemoveBlock(chainedHeader);
-                    this.chainStateCursor.RemoveChainedHeader(chainedHeader);
-
                     // keep track of the previoux tx output information for all unminted transactions
                     // the information is removed and will be needed to enable a replay of the rolled back block
                     var unmintedTxes = ImmutableList.CreateBuilder<UnmintedTx>();
 
                     // rollback the utxo
                     this.utxoBuilder.RollbackUtxo(this.chain.ToImmutable(), chainedHeader, blockTxes, unmintedTxes);
+
+                    // remove the block from the chain
+                    this.chain.RemoveBlock(chainedHeader);
+                    this.chainStateCursor.RemoveChainedHeader(chainedHeader);
 
                     // remove the rollback information
                     this.chainStateCursor.TryRemoveBlockSpentTxes(chainedHeader.Height);
