@@ -160,6 +160,15 @@ namespace BitSharp.Common
         }
 
         /// <summary>
+        /// Start the worker in the notified state.
+        /// </summary>
+        public void NotifyAndStart()
+        {
+            NotifyWork();
+            Start();
+        }
+
+        /// <summary>
         /// Stop the worker, and wait for it to idle.
         /// </summary>
         /// <param name="timeout">The amount of time to wait for the worker to idle. If null, the worker will wait indefinitely.</param>

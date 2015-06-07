@@ -35,7 +35,6 @@ namespace BitSharp.Core.Workers
         //TODO
         private ChainBuilder prunedChain;
 
-        private DateTime lastLogTime = DateTime.Now;
         private int lastLogHeight = -1;
 
         public PruningWorker(WorkerConfig workerConfig, ICoreDaemon coreDaemon, IStorageManager storageManager, ChainStateWorker chainStateWorker)
@@ -129,28 +128,23 @@ namespace BitSharp.Core.Workers
                 var isLagging = maxHeight - chainedHeader.Height > 100;
                 if (isLagging)
                 {
+                    Throttler.IfElapsed(TimeSpan.FromSeconds(5), () =>
+                        this.logger.Info("Pruning is lagging."));
+
                     //TODO better way to block chain state worker when pruning is behind
                     if (this.chainStateWorker != null && this.chainStateWorker.IsStarted)
-                    {
-                        this.logger.Info("Pausing chain state processing, pruning is lagging.");
                         this.chainStateWorker.Stop(TimeSpan.Zero);
-                    }
                 }
                 else
                 {
                     //TODO better way to block chain state worker when pruning is behind
                     if (this.chainStateWorker != null && !this.chainStateWorker.IsStarted)
-                    {
-                        this.logger.Info("Resuming chain state processing, pruning is caught up.");
-                        this.chainStateWorker.Start();
-                        this.chainStateWorker.NotifyWork();
-                    }
+                        this.chainStateWorker.NotifyAndStart();
                 }
 
                 // log pruning stats periodically
-                if (DateTime.Now - lastLogTime > TimeSpan.FromSeconds(15))
+                Throttler.IfElapsed(TimeSpan.FromSeconds(15), () =>
                 {
-                    this.lastLogTime = DateTime.Now;
                     this.logger.Info(
     @"Pruned from block {0:#,##0} to {1:#,##0}:
 - avg tx rate:    {2,8:#,##0}/s
@@ -164,16 +158,12 @@ namespace BitSharp.Core.Workers
                         .Format2(lastLogHeight, chainedHeader.Height, txRateMeasure.GetAverage(), txCountMeasure.GetAverage(), gatherIndexDurationMeasure.GetAverage().TotalSeconds, pruneBlocksDurationMeasure.GetAverage().TotalSeconds, pruneIndexDurationMeasure.GetAverage().TotalSeconds, commitDurationMeasure.GetAverage().TotalSeconds, totalDurationMeasure.GetAverage().TotalSeconds));
 
                     lastLogHeight = chainedHeader.Height + 1;
-                }
+                });
             }
 
             // ensure chain state processing is resumed
             if (this.chainStateWorker != null && !this.chainStateWorker.IsStarted)
-            {
-                this.logger.Info("Resuming chain state processing, pruning is caught up.");
-                this.chainStateWorker.Start();
-                this.chainStateWorker.NotifyWork();
-            }
+                this.chainStateWorker.NotifyAndStart();
         }
 
         private void PruneBlock(PruningMode mode, Chain chain, ChainedHeader pruneBlock)
