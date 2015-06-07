@@ -165,8 +165,9 @@ namespace BitSharp.Node.Network
                         var stopwatch = Stopwatch.StartNew();
 
                         using (var byteStream = new MemoryStream())
+                        using (var writer = new BinaryWriter(byteStream))
                         {
-                            NodeEncoder.EncodeMessage(byteStream, message);
+                            NodeEncoder.EncodeMessage(writer, message);
 
                             var messageBytes = byteStream.ToArray();
                             await stream.WriteAsync(messageBytes, 0, messageBytes.Length);
