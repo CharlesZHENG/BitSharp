@@ -63,7 +63,7 @@ namespace BitSharp.Core
                 this.targetChainWorker, this.chainStateBuilder, this.rules, this.coreStorage);
 
             this.pruningWorker = new PruningWorker(
-                new WorkerConfig(initialNotify: true, minIdleTime: TimeSpan.FromSeconds(1), maxIdleTime: TimeSpan.FromMinutes(5)),
+                new WorkerConfig(initialNotify: true, minIdleTime: TimeSpan.FromSeconds(0), maxIdleTime: TimeSpan.FromMinutes(5)),
                 this, this.storageManager, this.chainStateWorker);
 
             this.defragWorker = new DefragWorker(
