@@ -1,4 +1,5 @@
-﻿using BitSharp.Common.ExtensionMethods;
+﻿using BitSharp.Common;
+using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core;
 using BitSharp.Core.Rules;
 using BitSharp.Core.Storage.Memory;
@@ -39,9 +40,13 @@ namespace BitSharp.Client
         {
             try
             {
+                // detect local dev machine - TODO proper configuration
+                var isLocalDev = -899308969 ==
+                    (Environment.MachineName + Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)).GetHashCode();
+
                 //TODO
                 //**************************************************************
-                var useTestNet = true;
+                var useTestNet = false;
                 var connectToPeers = true;
 
                 var bypassValidation = false;
@@ -61,13 +66,11 @@ namespace BitSharp.Client
                     // clean block txes if the chain state is being cleaned and block txes have been pruned, the new chain state will require intact blocks to validate
                     || (cleanChainState && (pruningMode.HasFlag(PruningMode.BlockTxesPreserveMerkle) || pruningMode.HasFlag(PruningMode.BlockTxesDestroyMerkle)));
 
-                int? cacheSizeMaxBytes = 500.MILLION();
+                int? cacheSizeMaxBytes = null; // 500.MILLION();
 
                 // location to store a copy of raw blocks to avoid redownload
-                if (useTestNet)
-                    BlockRequestWorker.SecondaryBlockFolder = @"";
-                else
-                    BlockRequestWorker.SecondaryBlockFolder = @"";
+                if (isLocalDev)
+                    BlockRequestWorker.SecondaryBlockFolder = @"D:\BitSharp.Blocks\RawBlocks";
 
                 //NOTE: Running with a cleaned chained state against a pruned blockchain does not work.
                 //      It will see the data is missing, but won't redownload the blocks.
