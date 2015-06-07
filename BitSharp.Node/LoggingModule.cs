@@ -1,7 +1,9 @@
-﻿using Ninject.Modules;
+﻿using BitSharp.Common.ExtensionMethods;
+using Ninject.Modules;
 using NLog;
 using NLog.Config;
 using NLog.Targets;
+using NLog.Targets.Wrappers;
 using System.IO;
 
 namespace BitSharp.Node
@@ -29,7 +31,7 @@ namespace BitSharp.Node
             var debuggerTarget = new DebuggerTarget();
             debuggerTarget.Layout = layout;
             config.AddTarget("console", debuggerTarget);
-            config.LoggingRules.Add(new LoggingRule("*", logLevel, debuggerTarget));
+            config.LoggingRules.Add(new LoggingRule("*", logLevel, WrapAsync(debuggerTarget)));
 
             // create file target
             var fileTarget = new FileTarget() { AutoFlush = false };
@@ -37,11 +39,21 @@ namespace BitSharp.Node
             fileTarget.FileName = Path.Combine(this.directory, "BitSharp.log");
             fileTarget.DeleteOldFileOnStartup = true;
             config.AddTarget("file", fileTarget);
-            config.LoggingRules.Add(new LoggingRule("*", logLevel, fileTarget));
+            config.LoggingRules.Add(new LoggingRule("*", logLevel, WrapAsync(fileTarget)));
 
             // activate configuration and bind
             LogManager.Configuration = config;
             this.Kernel.Bind<Logger>().ToMethod(context => LogManager.GetLogger("BitSharp"));
+        }
+
+        private AsyncTargetWrapper WrapAsync(Target target)
+        {
+            return new AsyncTargetWrapper
+            {
+                WrappedTarget = target,
+                QueueLimit = 5.THOUSAND(),
+                OverflowAction = AsyncTargetWrapperOverflowAction.Block
+            };
         }
     }
 }
