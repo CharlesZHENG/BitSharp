@@ -80,14 +80,9 @@ namespace BitSharp.Core.Workers
                 return;
 
             var totalStopwatch = Stopwatch.StartNew();
-            var gatherIndexStopwatch = new Stopwatch();
-            var pruneIndexStopwatch = new Stopwatch();
-            var pruneBlocksStopwatch = new Stopwatch();
-            var commitStopwatch = new Stopwatch();
 
             var startHeight = this.prunedChain.Height;
             var stopHeight = this.prunedChain.Height;
-            var txCount = 0;
 
             // get the current processed chain
             var processedChain = this.coreDaemon.CurrentChain;
@@ -118,10 +113,7 @@ namespace BitSharp.Core.Workers
                 if (direction > 0)
                 {
                     // prune the block
-                    int pruneBlockTxCount;
-                    this.PruneBlock(mode, processedChain, chainedHeader, out pruneBlockTxCount, gatherIndexStopwatch, pruneIndexStopwatch, pruneBlocksStopwatch, commitStopwatch);
-                    txCount += pruneBlockTxCount;
-                    txCountMeasure.Tick(pruneBlockTxCount);
+                    this.PruneBlock(mode, processedChain, chainedHeader);
 
                     // track pruned block
                     this.prunedChain.AddBlock(chainedHeader);
@@ -156,30 +148,20 @@ namespace BitSharp.Core.Workers
             // log if pruning was done
             if (stopHeight > startHeight)
             {
-                var txRate = txCount / totalStopwatch.Elapsed.TotalSeconds;
-                txRateMeasure.Tick((float)txRate);
-                gatherIndexDurationMeasure.Tick(gatherIndexStopwatch.Elapsed);
-                pruneIndexDurationMeasure.Tick(pruneIndexStopwatch.Elapsed);
-                pruneBlocksDurationMeasure.Tick(pruneBlocksStopwatch.Elapsed);
-                commitDurationMeasure.Tick(commitStopwatch.Elapsed);
-                totalDurationMeasure.Tick(totalStopwatch.Elapsed);
-
                 if (isLagging || DateTime.Now - lastLogTime > TimeSpan.FromSeconds(15))
                 {
-                    this.logger.Debug(measure.GetAverage().TotalMilliseconds);
-
                     lastLogTime = DateTime.Now;
                     this.logger.Info(
 @"Pruned from block {0:#,##0} to {1:#,##0}:
-- tx count:       {2,8:#,##0}
-- tx count/block: {3,8:#,##0}
-- avg tx rate:    {4,8:#,##0}/s
-- gather index:   {5,12:#,##0.000}s
-- prune blocks:   {6,12:#,##0.000}s
-- prune index:    {7,12:#,##0.000}s
-- commit:         {8,12:#,##0.000}s
-- TOTAL:          {9,12:#,##0.000}s"
-                        .Format2(startHeight, stopHeight, txCount, txCountMeasure.GetAverage(), txRateMeasure.GetAverage(), gatherIndexDurationMeasure.GetAverage().TotalSeconds, pruneBlocksDurationMeasure.GetAverage().TotalSeconds, pruneIndexDurationMeasure.GetAverage().TotalSeconds, commitDurationMeasure.GetAverage().TotalSeconds, totalDurationMeasure.GetAverage().TotalSeconds));
+- avg tx rate:    {2,8:#,##0}/s
+- per block stats:
+- tx count:       {3,8:#,##0}
+- gather index:   {4,12:#,##0.000}s
+- prune blocks:   {5,12:#,##0.000}s
+- prune index:    {6,12:#,##0.000}s
+- commit:         {7,12:#,##0.000}s
+- TOTAL:          {8,12:#,##0.000}s"
+                        .Format2(startHeight, stopHeight, txRateMeasure.GetAverage(), txCountMeasure.GetAverage(), gatherIndexDurationMeasure.GetAverage().TotalSeconds, pruneBlocksDurationMeasure.GetAverage().TotalSeconds, pruneIndexDurationMeasure.GetAverage().TotalSeconds, commitDurationMeasure.GetAverage().TotalSeconds, totalDurationMeasure.GetAverage().TotalSeconds));
                 }
 
                 //TODO better way to block chain state worker when pruning is behind
@@ -195,10 +177,16 @@ namespace BitSharp.Core.Workers
             //TODO add periodic stats logging like ChainStateBuilder has
         }
 
-        private DurationMeasure measure = new DurationMeasure();
-        private void PruneBlock(PruningMode mode, Chain chain, ChainedHeader pruneBlock, out int txCount, Stopwatch gatherIndexStopwatch, Stopwatch pruneIndexStopwatch, Stopwatch pruneBlocksStopwatch, Stopwatch commitStopwatch)
+        private void PruneBlock(PruningMode mode, Chain chain, ChainedHeader pruneBlock)
         {
             //TODO the replay information about blocks that have been rolled back also needs to be pruned (UnmintedTx)
+
+            var txCount = 0;
+            var totalStopwatch = Stopwatch.StartNew();
+            var gatherIndexStopwatch = new Stopwatch();
+            var pruneIndexStopwatch = new Stopwatch();
+            var pruneBlocksStopwatch = new Stopwatch();
+            var commitStopwatch = new Stopwatch();
 
             // retrieve the spent txes for this block
             IImmutableList<UInt256> spentTxes;
@@ -345,6 +333,15 @@ namespace BitSharp.Core.Workers
                 //throw new InvalidOperationException();
                 txCount = 0;
             }
+
+            // track stats
+            txCountMeasure.Tick(txCount);
+            txRateMeasure.Tick((float)(txCount / totalStopwatch.Elapsed.TotalSeconds));
+            gatherIndexDurationMeasure.Tick(gatherIndexStopwatch.Elapsed);
+            pruneIndexDurationMeasure.Tick(pruneIndexStopwatch.Elapsed);
+            pruneBlocksDurationMeasure.Tick(pruneBlocksStopwatch.Elapsed);
+            commitDurationMeasure.Tick(commitStopwatch.Elapsed);
+            totalDurationMeasure.Tick(totalStopwatch.Elapsed);
         }
     }
 }
