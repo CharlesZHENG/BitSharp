@@ -35,6 +35,9 @@ namespace BitSharp.Core.Workers
         //TODO
         private ChainBuilder prunedChain;
 
+        private DateTime lastLogTime = DateTime.Now;
+        private int lastLogHeight = -1;
+
         public PruningWorker(WorkerConfig workerConfig, ICoreDaemon coreDaemon, IStorageManager storageManager, ChainStateWorker chainStateWorker)
             : base("PruningWorker", workerConfig.initialNotify, workerConfig.minIdleTime, workerConfig.maxIdleTime)
         {
@@ -71,15 +74,12 @@ namespace BitSharp.Core.Workers
 
         public int PrunableHeight { get; set; }
 
-        private DateTime lastLogTime = DateTime.Now;
         protected override void WorkAction()
         {
             // check if pruning is turned off
             var mode = this.Mode;
             if (mode == PruningMode.None)
                 return;
-
-            var startHeight = this.prunedChain.Height;
 
             // navigate from the current pruned chain towards the current processed chain
             foreach (var pathElement in this.prunedChain.ToImmutable().NavigateTowards(() => this.coreDaemon.CurrentChain))
@@ -150,9 +150,7 @@ namespace BitSharp.Core.Workers
                 // log pruning stats periodically
                 if (DateTime.Now - lastLogTime > TimeSpan.FromSeconds(15))
                 {
-                    lastLogTime = DateTime.Now;
-                    var stopHeight = this.prunedChain.Height;
-
+                    this.lastLogTime = DateTime.Now;
                     this.logger.Info(
     @"Pruned from block {0:#,##0} to {1:#,##0}:
 - avg tx rate:    {2,8:#,##0}/s
@@ -163,9 +161,9 @@ namespace BitSharp.Core.Workers
 - prune index:    {6,12:#,##0.000}s
 - commit:         {7,12:#,##0.000}s
 - TOTAL:          {8,12:#,##0.000}s"
-                        .Format2(startHeight, stopHeight, txRateMeasure.GetAverage(), txCountMeasure.GetAverage(), gatherIndexDurationMeasure.GetAverage().TotalSeconds, pruneBlocksDurationMeasure.GetAverage().TotalSeconds, pruneIndexDurationMeasure.GetAverage().TotalSeconds, commitDurationMeasure.GetAverage().TotalSeconds, totalDurationMeasure.GetAverage().TotalSeconds));
+                        .Format2(lastLogHeight, chainedHeader.Height, txRateMeasure.GetAverage(), txCountMeasure.GetAverage(), gatherIndexDurationMeasure.GetAverage().TotalSeconds, pruneBlocksDurationMeasure.GetAverage().TotalSeconds, pruneIndexDurationMeasure.GetAverage().TotalSeconds, commitDurationMeasure.GetAverage().TotalSeconds, totalDurationMeasure.GetAverage().TotalSeconds));
 
-                    startHeight = stopHeight + 1;
+                    lastLogHeight = chainedHeader.Height + 1;
                 }
             }
 
