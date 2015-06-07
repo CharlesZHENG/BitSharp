@@ -10,11 +10,11 @@ namespace BitSharp.Common
 {
     public static class Throttler
     {
-        private static readonly ConcurrentDictionary<string, DateTime> lastTimes = new ConcurrentDictionary<string, DateTime>();
+        private static readonly ConcurrentDictionary<Tuple<string, string, int>, DateTime> lastTimes = new ConcurrentDictionary<Tuple<string, string, int>, DateTime>();
 
-        public static bool IfElapsed(TimeSpan interval, Action action, [CallerMemberName] string memberName = "", [CallerLineNumber] int lineNumber = 0)
+        public static bool IfElapsed(TimeSpan interval, Action action, [CallerMemberName] string memberName = "", [CallerFilePath] string filePath = "", [CallerLineNumber] int lineNumber = 0)
         {
-            var key = memberName + "_" + lineNumber;
+            var key = Tuple.Create(memberName, filePath, lineNumber);
 
             DateTime lastTime;
             if (!lastTimes.TryGetValue(key, out lastTime))
