@@ -204,7 +204,7 @@ namespace BitSharp.Core.Builders
                 var tx = blockTx.Transaction;
                 var txIndex = blockTx.Index;
 
-                var prevOutputTxKeys = ImmutableArray.CreateBuilder<BlockTxKey>(tx.Inputs.Length);
+                var prevOutputTxKeys = ImmutableArray.CreateBuilder<BlockTxKey>(txIndex > 0 ? tx.Inputs.Length : 0);
 
                 if (txIndex > 0)
                 {
@@ -234,7 +234,7 @@ namespace BitSharp.Core.Builders
                     }
                 }
 
-                var pendingTx = new TxWithPrevOutputKeys(txIndex, tx, this.replayBlock, prevOutputTxKeys.ToImmutable());
+                var pendingTx = new TxWithPrevOutputKeys(txIndex, tx, this.replayBlock, prevOutputTxKeys.MoveToImmutable());
                 return pendingTx;
             }
             catch (Exception e)

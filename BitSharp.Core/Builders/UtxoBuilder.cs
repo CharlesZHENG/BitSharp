@@ -47,7 +47,7 @@ namespace BitSharp.Core.Builders
                     continue;
                 }
 
-                var prevOutputTxKeys = ImmutableArray.CreateBuilder<BlockTxKey>(tx.Inputs.Length);
+                var prevOutputTxKeys = ImmutableArray.CreateBuilder<BlockTxKey>(txIndex > 0 ? tx.Inputs.Length : 0);
 
                 //TODO apply real coinbase rule
                 // https://github.com/bitcoin/bitcoin/blob/481d89979457d69da07edd99fba451fd42a47f5c/src/core.h#L219
@@ -77,7 +77,7 @@ namespace BitSharp.Core.Builders
                 this.chainStateCursor.TotalInputCount += tx.Inputs.Length;
                 this.chainStateCursor.TotalOutputCount += tx.Outputs.Length;
 
-                yield return new TxWithPrevOutputKeys(txIndex, tx, chainedHeader, prevOutputTxKeys.ToImmutable());
+                yield return new TxWithPrevOutputKeys(txIndex, tx, chainedHeader, prevOutputTxKeys.MoveToImmutable());
             }
 
             if (!this.chainStateCursor.TryAddBlockSpentTxes(chainedHeader.Height, blockSpentTxes.ToImmutable()))
@@ -164,7 +164,7 @@ namespace BitSharp.Core.Builders
                 this.chainStateCursor.TotalInputCount -= tx.Inputs.Length;
                 this.chainStateCursor.TotalOutputCount -= tx.Outputs.Length;
 
-                var prevOutputTxKeys = ImmutableArray.CreateBuilder<BlockTxKey>(tx.Inputs.Length);
+                var prevOutputTxKeys = ImmutableArray.CreateBuilder<BlockTxKey>(txIndex > 0 ? tx.Inputs.Length : 0);
 
                 if (txIndex > 0)
                 {
@@ -181,7 +181,7 @@ namespace BitSharp.Core.Builders
                 }
 
                 // store rollback replay information
-                unmintedTxes.Add(new UnmintedTx(tx.Hash, prevOutputTxKeys.ToImmutable()));
+                unmintedTxes.Add(new UnmintedTx(tx.Hash, prevOutputTxKeys.MoveToImmutable()));
             }
         }
 
