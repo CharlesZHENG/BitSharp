@@ -43,7 +43,7 @@ namespace BitSharp.Core.Builders
             this.rules = rules;
 
             // thread count for i/o task (TxLoader)
-            var ioThreadCount = Environment.ProcessorCount * 8;
+            var ioThreadCount = Environment.ProcessorCount * 2;
 
             // thread count for cpu tasks (TxValidator, ScriptValidator)
             var cpuThreadCount = Environment.ProcessorCount * 2;
