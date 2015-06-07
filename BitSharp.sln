@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Express 2013 for Windows Desktop
-VisualStudioVersion = 12.0.30723.0
+# Visual Studio 2013
+VisualStudioVersion = 12.0.31101.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BitSharp.Client", "BitSharp.Client\BitSharp.Client.csproj", "{0EE7A0E7-573E-4CE7-B4C2-2BAAEE4E4E9F}"
 EndProject
@@ -32,6 +32,12 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BitSharp.Core.Test.Storage", "BitSharp.Core.Test.Storage\BitSharp.Core.Test.Storage.csproj", "{B0699775-A157-48AA-A62D-2CB18930D6FF}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BitSharp.IntegrationTest", "BitSharp.IntegrationTest\BitSharp.IntegrationTest.csproj", "{F73B1ABE-2D1F-4F29-A0BC-562158E208E7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BitSharp.Lmdb", "BitSharp.Lmdb\BitSharp.Lmdb.csproj", "{218D1F77-ECD4-447C-B8A2-38CA43C7CCB4}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BitSharp.Lmdb.Test", "BitSharp.Lmdb.Test\BitSharp.Lmdb.Test.csproj", "{0D4F870A-A895-44ED-A56A-63BF242AD7CE}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{CF768D98-BE1E-4B29-A8B1-75562AD2E632}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -161,6 +167,22 @@ Global
 		{F73B1ABE-2D1F-4F29-A0BC-562158E208E7}.Release|Any CPU.Build.0 = Release|Any CPU
 		{F73B1ABE-2D1F-4F29-A0BC-562158E208E7}.Release|x64.ActiveCfg = Release|x64
 		{F73B1ABE-2D1F-4F29-A0BC-562158E208E7}.Release|x64.Build.0 = Release|x64
+		{218D1F77-ECD4-447C-B8A2-38CA43C7CCB4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{218D1F77-ECD4-447C-B8A2-38CA43C7CCB4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{218D1F77-ECD4-447C-B8A2-38CA43C7CCB4}.Debug|x64.ActiveCfg = Debug|x64
+		{218D1F77-ECD4-447C-B8A2-38CA43C7CCB4}.Debug|x64.Build.0 = Debug|x64
+		{218D1F77-ECD4-447C-B8A2-38CA43C7CCB4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{218D1F77-ECD4-447C-B8A2-38CA43C7CCB4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{218D1F77-ECD4-447C-B8A2-38CA43C7CCB4}.Release|x64.ActiveCfg = Release|x64
+		{218D1F77-ECD4-447C-B8A2-38CA43C7CCB4}.Release|x64.Build.0 = Release|x64
+		{0D4F870A-A895-44ED-A56A-63BF242AD7CE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0D4F870A-A895-44ED-A56A-63BF242AD7CE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0D4F870A-A895-44ED-A56A-63BF242AD7CE}.Debug|x64.ActiveCfg = Debug|x64
+		{0D4F870A-A895-44ED-A56A-63BF242AD7CE}.Debug|x64.Build.0 = Debug|x64
+		{0D4F870A-A895-44ED-A56A-63BF242AD7CE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0D4F870A-A895-44ED-A56A-63BF242AD7CE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0D4F870A-A895-44ED-A56A-63BF242AD7CE}.Release|x64.ActiveCfg = Release|x64
+		{0D4F870A-A895-44ED-A56A-63BF242AD7CE}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

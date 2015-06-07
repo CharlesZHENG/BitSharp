@@ -18,8 +18,9 @@ namespace BitSharp.Esent
         private readonly RulesEnum rulesType;
         private readonly long? cacheSizeMinBytes;
         private readonly long? cacheSizeMaxBytes;
+        private readonly bool blockStorage;
 
-        public EsentStorageModule(string baseDirectory, RulesEnum rulesType, long? cacheSizeMinBytes = null, long? cacheSizeMaxBytes = null)
+        public EsentStorageModule(string baseDirectory, RulesEnum rulesType, bool blockStorage = true, long? cacheSizeMinBytes = null, long? cacheSizeMaxBytes = null)
         {
             this.baseDirectory = baseDirectory;
             this.dataDirectory = Path.Combine(baseDirectory, "Data", rulesType.ToString());
@@ -27,6 +28,7 @@ namespace BitSharp.Esent
             this.rulesType = rulesType;
             this.cacheSizeMinBytes = cacheSizeMinBytes;
             this.cacheSizeMaxBytes = cacheSizeMaxBytes;
+            this.blockStorage = blockStorage;
         }
 
         public override void Load()
@@ -42,13 +44,15 @@ namespace BitSharp.Esent
                 SystemParameters.CacheSizeMax = (this.cacheSizeMaxBytes.Value / SystemParameters.DatabasePageSize).ToIntChecked();
 
             // bind concrete storage providers
-            this.Bind<EsentStorageManager>().ToSelf().InSingletonScope().WithConstructorArgument("baseDirectory", this.dataDirectory);
+            if (blockStorage)
+                this.Bind<EsentStorageManager>().ToSelf().InSingletonScope().WithConstructorArgument("baseDirectory", this.dataDirectory);
             this.Bind<NetworkPeerStorage>().ToSelf().InSingletonScope()
                 .WithConstructorArgument("baseDirectory", this.peersDirectory)
                 .WithConstructorArgument("rulesType", this.rulesType);
 
             // bind storage providers interfaces
-            this.Bind<IStorageManager>().ToMethod(x => this.Kernel.Get<EsentStorageManager>()).InSingletonScope();
+            if (blockStorage)
+                this.Bind<IStorageManager>().ToMethod(x => this.Kernel.Get<EsentStorageManager>()).InSingletonScope();
             this.Bind<INetworkPeerStorage>().ToMethod(x => this.Kernel.Get<NetworkPeerStorage>()).InSingletonScope();
         }
     }

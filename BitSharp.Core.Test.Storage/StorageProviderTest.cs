@@ -1,5 +1,6 @@
 ﻿using BitSharp.Common.ExtensionMethods;
 using BitSharp.Esent.Test;
+using BitSharp.Lmdb.Test;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
@@ -15,6 +16,7 @@ namespace BitSharp.Core.Test.Storage
             {
                 new MemoryTestStorageProvider(),
                 new EsentTestStorageProvider(),
+                new LmdbTestStorageProvider(),
             };
 
         // Run the specified test method against all providers

@@ -112,6 +112,14 @@
       <Project>{6d4d2210-a54f-41f0-bca4-727b7ddb27c2}</Project>
       <Name>BitSharp.Esent</Name>
     </ProjectReference>
+    <ProjectReference Include="..\BitSharp.Lmdb.Test\BitSharp.Lmdb.Test.csproj">
+      <Project>{0d4f870a-a895-44ed-a56a-63bf242ad7ce}</Project>
+      <Name>BitSharp.Lmdb.Test</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\BitSharp.Lmdb\BitSharp.Lmdb.csproj">
+      <Project>{218d1f77-ecd4-447c-b8a2-38ca43c7ccb4}</Project>
+      <Name>BitSharp.Lmdb</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
