@@ -35,7 +35,7 @@ namespace BitSharp.Lmdb.Test
 
         public IStorageManager OpenStorageManager()
         {
-            return new LmdbStorageManager(this.baseDirectory, blockTxesSize: 500.MILLION());
+            return new LmdbStorageManager(this.baseDirectory, blocksSize: 50.MILLION(), blockTxesSize: 50.MILLION(), chainStateSize: 50.MILLION());
         }
     }
 }

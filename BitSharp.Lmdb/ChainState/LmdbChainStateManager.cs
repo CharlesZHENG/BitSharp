@@ -22,7 +22,7 @@ namespace BitSharp.Lmdb
         private readonly LightningDatabase blockSpentTxesTableId;
         private readonly LightningDatabase blockUnmintedTxesTableId;
 
-        public LmdbChainStateManager(string baseDirectory)
+        public LmdbChainStateManager(string baseDirectory, long chainStateSize)
         {
             this.baseDirectory = baseDirectory;
             this.jetDirectory = Path.Combine(baseDirectory, "ChainState");
@@ -31,7 +31,7 @@ namespace BitSharp.Lmdb
             this.jetInstance = new LightningEnvironment(this.jetDirectory, EnvironmentOpenFlags.NoThreadLocalStorage | EnvironmentOpenFlags.NoSync)
             {
                 MaxDatabases = 10,
-                MapSize = 3.BILLION()
+                MapSize = chainStateSize
             };
             this.jetInstance.Open();
 

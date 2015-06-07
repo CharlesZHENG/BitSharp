@@ -22,14 +22,14 @@ namespace BitSharp.Lmdb
         public readonly LightningDatabase blockHeadersTableId;
         public readonly LightningDatabase invalidBlocksTableId;
 
-        public BlockStorage(string baseDirectory)
+        public BlockStorage(string baseDirectory, long blocksSize)
         {
             this.jetDirectory = Path.Combine(baseDirectory, "Blocks");
 
             this.jetInstance = new LightningEnvironment(this.jetDirectory, EnvironmentOpenFlags.NoThreadLocalStorage | EnvironmentOpenFlags.NoSync)
             {
                 MaxDatabases = 10,
-                MapSize = 500.MILLION(),
+                MapSize = blocksSize,
             };
             this.jetInstance.Open();
 

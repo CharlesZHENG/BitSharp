@@ -10,7 +10,9 @@ namespace BitSharp.Lmdb
         private readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly string baseDirectory;
+        private readonly long blocksSize;
         private readonly long blockTxesSize;
+        private readonly long chainStateSize;
 
         private readonly object blockStorageLock;
         private readonly object blockTxesStorageLock;
@@ -21,14 +23,16 @@ namespace BitSharp.Lmdb
         private LmdbChainStateManager chainStateManager;
 
         public LmdbStorageManager(string baseDirectory)
-            : this(baseDirectory, blockTxesSize: 20.BILLION())
+            : this(baseDirectory, blocksSize: 500.MILLION(), blockTxesSize: 20.BILLION(), chainStateSize: 3.BILLION())
         {
         }
 
-        public LmdbStorageManager(string baseDirectory, long blockTxesSize)
+        public LmdbStorageManager(string baseDirectory, long blocksSize, long blockTxesSize, long chainStateSize)
         {
             this.baseDirectory = baseDirectory;
+            this.blocksSize = blocksSize;
             this.blockTxesSize = blockTxesSize;
+            this.chainStateSize = chainStateSize;
 
             this.blockStorageLock = new object();
             this.blockTxesStorageLock = new object();
@@ -54,7 +58,7 @@ namespace BitSharp.Lmdb
                 if (this.blockStorage == null)
                     lock (this.blockStorageLock)
                         if (this.blockStorage == null)
-                            this.blockStorage = new BlockStorage(this.baseDirectory);
+                            this.blockStorage = new BlockStorage(this.baseDirectory, this.blocksSize);
 
                 return this.blockStorage;
             }
@@ -78,7 +82,7 @@ namespace BitSharp.Lmdb
             if (this.chainStateManager == null)
                 lock (this.chainStateManagerLock)
                     if (this.chainStateManager == null)
-                        this.chainStateManager = new LmdbChainStateManager(this.baseDirectory);
+                        this.chainStateManager = new LmdbChainStateManager(this.baseDirectory, this.chainStateSize);
 
             return this.chainStateManager.OpenChainStateCursor();
         }
