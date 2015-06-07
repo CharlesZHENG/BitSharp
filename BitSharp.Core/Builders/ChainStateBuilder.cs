@@ -212,7 +212,7 @@ namespace BitSharp.Core.Builders
         {
             this.commitLock.DoWrite(() =>
             {
-                this.BeginTransaction();
+                this.BeginTransaction(readOnly: true);
                 try
                 {
                     if (DateTime.UtcNow - this.Stats.lastLogTime < TimeSpan.FromSeconds(15))
@@ -274,12 +274,12 @@ namespace BitSharp.Core.Builders
                 new ChainState(this.chain.ToImmutable(), this.storageManager));
         }
 
-        private void BeginTransaction()
+        private void BeginTransaction(bool readOnly = false)
         {
             if (this.inTransaction)
                 throw new InvalidOperationException();
 
-            this.chainStateCursor.BeginTransaction();
+            this.chainStateCursor.BeginTransaction(readOnly);
             this.rollbackChain = this.chain.ToImmutable();
             this.inTransaction = true;
         }
