@@ -42,7 +42,9 @@ namespace BitSharp.Wallet
             this.coreDaemon = coreDaemon;
             this.blockReplayer = new BlockReplayer(coreDaemon.CoreStorage, coreDaemon.Rules);
 
-            this.chainBuilder = Chain.CreateForGenesisBlock(coreDaemon.Rules.GenesisChainedHeader).ToBuilder();
+            //this.chainBuilder = Chain.CreateForGenesisBlock(coreDaemon.Rules.GenesisChainedHeader).ToBuilder();
+            //TODO start from the currently processed chain tip since wallet state isn't persisted
+            this.chainBuilder = coreDaemon.CurrentChain.ToBuilder();
 
             this.addressesByOutputScriptHash = new Dictionary<UInt256, List<MonitoredWalletAddress>>();
             this.matcherAddresses = new List<MonitoredWalletAddress>();

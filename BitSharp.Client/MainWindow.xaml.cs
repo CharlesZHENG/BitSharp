@@ -53,12 +53,11 @@ namespace BitSharp.Client
 
                 var runInMemory = false;
 
-                // clean all data
                 var cleanData = false;
-                // clean chain state if the dummy wallet is enabled and there is pruning, the dummy wallet does not store its progress and replays from scratch every time
-                var cleanChainState = false || (enableDummyWallet && pruningMode != PruningMode.None);
-                // clean block txes if the chain state is being cleaned and block txes have been pruned, the new chain state will require intact blocks to validate
-                var cleanBlockTxes = false || (cleanChainState && (pruningMode.HasFlag(PruningMode.BlockTxesPreserveMerkle) || pruningMode.HasFlag(PruningMode.BlockTxesDestroyMerkle)));
+                var cleanChainState = false;
+                var cleanBlockTxes = false
+                    // clean block txes if the chain state is being cleaned and block txes have been pruned, the new chain state will require intact blocks to validate
+                    || (cleanChainState && (pruningMode.HasFlag(PruningMode.BlockTxesPreserveMerkle) || pruningMode.HasFlag(PruningMode.BlockTxesDestroyMerkle)));
 
                 int? cacheSizeMaxBytes = 500.MILLION();
 
