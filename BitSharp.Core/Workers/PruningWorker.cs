@@ -79,17 +79,10 @@ namespace BitSharp.Core.Workers
             if (mode == PruningMode.None)
                 return;
 
-            var totalStopwatch = Stopwatch.StartNew();
-
             var startHeight = this.prunedChain.Height;
-            var stopHeight = this.prunedChain.Height;
-
-            // get the current processed chain
-            var processedChain = this.coreDaemon.CurrentChain;
 
             // navigate from the current pruned chain towards the current processed chain
-            var isLagging = false;
-            foreach (var pathElement in this.prunedChain.ToImmutable().NavigateTowards(processedChain))
+            foreach (var pathElement in this.prunedChain.ToImmutable().NavigateTowards(() => this.coreDaemon.CurrentChain))
             {
                 // cooperative loop
                 if (!this.IsStarted)
@@ -98,6 +91,9 @@ namespace BitSharp.Core.Workers
                 // get candidate block to be pruned
                 var direction = pathElement.Item1;
                 var chainedHeader = pathElement.Item2;
+
+                // get the current processed chain
+                var processedChain = this.coreDaemon.CurrentChain;
 
                 // determine maximum safe pruning height, based on a buffer distance from the processed chain height
                 var blocksPerDay = 144;
@@ -129,30 +125,36 @@ namespace BitSharp.Core.Workers
                     throw new InvalidOperationException();
                 }
 
-                stopHeight = this.prunedChain.Height;
-
-                // limit how long pruning transaction is kept open
-                if (totalStopwatch.Elapsed > TimeSpan.FromSeconds(15))
+                // pause chain state processing when pruning lags too far behind
+                var isLagging = maxHeight - chainedHeader.Height > 100;
+                if (isLagging)
                 {
                     //TODO better way to block chain state worker when pruning is behind
-                    this.logger.Info("Pausing chain state processing, pruning is lagging.");
-                    if (this.chainStateWorker != null)
-                        this.chainStateWorker.Stop();
-
-                    this.ForceWork();
-                    isLagging = true;
-                    break;
+                    if (this.chainStateWorker != null && this.chainStateWorker.IsStarted)
+                    {
+                        this.logger.Info("Pausing chain state processing, pruning is lagging.");
+                        this.chainStateWorker.Stop(TimeSpan.Zero);
+                    }
                 }
-            }
+                else
+                {
+                    //TODO better way to block chain state worker when pruning is behind
+                    if (this.chainStateWorker != null && !this.chainStateWorker.IsStarted)
+                    {
+                        this.logger.Info("Resuming chain state processing, pruning is caught up.");
+                        this.chainStateWorker.Start();
+                        this.chainStateWorker.NotifyWork();
+                    }
+                }
 
-            // log if pruning was done
-            if (stopHeight > startHeight)
-            {
-                if (isLagging || DateTime.Now - lastLogTime > TimeSpan.FromSeconds(15))
+                // log pruning stats periodically
+                if (DateTime.Now - lastLogTime > TimeSpan.FromSeconds(15))
                 {
                     lastLogTime = DateTime.Now;
+                    var stopHeight = this.prunedChain.Height;
+
                     this.logger.Info(
-@"Pruned from block {0:#,##0} to {1:#,##0}:
+    @"Pruned from block {0:#,##0} to {1:#,##0}:
 - avg tx rate:    {2,8:#,##0}/s
 - per block stats:
 - tx count:       {3,8:#,##0}
@@ -162,19 +164,18 @@ namespace BitSharp.Core.Workers
 - commit:         {7,12:#,##0.000}s
 - TOTAL:          {8,12:#,##0.000}s"
                         .Format2(startHeight, stopHeight, txRateMeasure.GetAverage(), txCountMeasure.GetAverage(), gatherIndexDurationMeasure.GetAverage().TotalSeconds, pruneBlocksDurationMeasure.GetAverage().TotalSeconds, pruneIndexDurationMeasure.GetAverage().TotalSeconds, commitDurationMeasure.GetAverage().TotalSeconds, totalDurationMeasure.GetAverage().TotalSeconds));
-                }
 
-                //TODO better way to block chain state worker when pruning is behind
-                if (!isLagging && this.chainStateWorker != null && !this.chainStateWorker.IsStarted)
-                {
-                    this.chainStateWorker.Start();
-                    this.chainStateWorker.NotifyWork();
+                    startHeight = stopHeight + 1;
                 }
             }
 
-            //this.logger.Info("Finished round of pruning.");
-
-            //TODO add periodic stats logging like ChainStateBuilder has
+            // ensure chain state processing is resumed
+            if (this.chainStateWorker != null && !this.chainStateWorker.IsStarted)
+            {
+                this.logger.Info("Resuming chain state processing, pruning is caught up.");
+                this.chainStateWorker.Start();
+                this.chainStateWorker.NotifyWork();
+            }
         }
 
         private void PruneBlock(PruningMode mode, Chain chain, ChainedHeader pruneBlock)
