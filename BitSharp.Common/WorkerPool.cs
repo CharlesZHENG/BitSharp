@@ -15,10 +15,9 @@ namespace BitSharp.Common
         private readonly int poolThreadCount;
 
         private readonly WorkerMethod[] workers;
+        private readonly CountdownEvent finishedEvent;
 
-        private Action workAction;
-        private int finishedCount;
-        private readonly ManualResetEventSlim finishedEvent = new ManualResetEventSlim();
+        private Action<int> workAction;
         private ConcurrentBag<Exception> thrownExceptions;
 
         public WorkerPool(string name, int poolThreadCount)
@@ -26,10 +25,15 @@ namespace BitSharp.Common
             this.name = name;
             this.poolThreadCount = poolThreadCount;
 
+            this.finishedEvent = new CountdownEvent(poolThreadCount);
             this.workers = new WorkerMethod[poolThreadCount];
+
             for (var i = 0; i < this.workers.Length; i++)
             {
-                this.workers[i] = new WorkerMethod(name + "." + i, PerformAction, initialNotify: false, minIdleTime: TimeSpan.Zero, maxIdleTime: TimeSpan.MaxValue);
+                this.workers[i] = new WorkerMethod(name + "." + i, PerformAction, initialNotify: false, minIdleTime: TimeSpan.Zero, maxIdleTime: TimeSpan.MaxValue)
+                {
+                    Data = i
+                };
                 this.workers[i].Start();
             }
         }
@@ -45,6 +49,12 @@ namespace BitSharp.Common
             this.isDisposed = true;
         }
 
+        public void Do(Action<int> action)
+        {
+            this.Start(action);
+            this.Finish();
+        }
+
         public void Do(Action action)
         {
             this.Start(action);
@@ -53,13 +63,17 @@ namespace BitSharp.Common
 
         public IDisposable Start(Action action)
         {
+            return Start(_ => action());
+        }
+
+        public IDisposable Start(Action<int> action)
+        {
             if (action == null)
                 throw new ArgumentNullException();
             if (this.workAction != null)
                 throw new InvalidOperationException();
 
             this.workAction = action;
-            this.finishedCount = 0;
             this.finishedEvent.Reset();
             this.thrownExceptions = new ConcurrentBag<Exception>();
 
@@ -86,7 +100,7 @@ namespace BitSharp.Common
         {
             try
             {
-                this.workAction();
+                this.workAction((int)instance.Data);
             }
             catch (Exception e)
             {
@@ -94,8 +108,7 @@ namespace BitSharp.Common
             }
             finally
             {
-                if (Interlocked.Increment(ref this.finishedCount) == this.workers.Length)
-                    this.finishedEvent.Set();
+                finishedEvent.Signal();
             }
         }
     }
