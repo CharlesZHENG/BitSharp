@@ -59,7 +59,7 @@ namespace BitSharp.Core
                 this.rules, this.coreStorage);
 
             this.chainStateWorker = new ChainStateWorker(
-                new WorkerConfig(initialNotify: true, minIdleTime: TimeSpan.FromMilliseconds(50), maxIdleTime: TimeSpan.FromSeconds(5)),
+                new WorkerConfig(initialNotify: true, minIdleTime: TimeSpan.FromMilliseconds(0), maxIdleTime: TimeSpan.FromSeconds(5)),
                 this.targetChainWorker, this.chainStateBuilder, this.rules, this.coreStorage);
 
             this.pruningWorker = new PruningWorker(
