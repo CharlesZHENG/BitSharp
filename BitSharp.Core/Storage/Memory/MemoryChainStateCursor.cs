@@ -12,6 +12,7 @@ namespace BitSharp.Core.Storage.Memory
         private readonly MemoryChainStateStorage chainStateStorage;
 
         private bool inTransaction;
+        private bool readOnly;
 
         private ChainBuilder chain;
         private int? unspentTxCount;
@@ -52,6 +53,8 @@ namespace BitSharp.Core.Storage.Memory
 
         public void Dispose()
         {
+            if (this.inTransaction)
+                this.RollbackTransaction();
         }
 
         public bool InTransaction
@@ -63,6 +66,10 @@ namespace BitSharp.Core.Storage.Memory
         {
             if (this.inTransaction)
                 throw new InvalidOperationException();
+
+            this.readOnly = readOnly;
+            if (!readOnly)
+                chainStateStorage.WriteTxLock.Wait();
 
             this.chainStateStorage.BeginTransaction(out this.chain, out this.unspentTxCount, out this.unspentOutputCount, out this.totalTxCount, out this.totalInputCount, out this.totalOutputCount, out this.unspentTransactions, out this.blockSpentTxes, out this.blockUnmintedTxes, out this.chainVersion, out this.unspentTxCountVersion, out this.unspentOutputCountVersion, out this.totalTxCountVersion, out this.totalInputCountVersion, out this.totalOutputCountVersion, out this.unspentTxesVersion, out this.blockSpentTxesVersion, out this.blockUnmintedTxesVersion);
 
@@ -107,6 +114,9 @@ namespace BitSharp.Core.Storage.Memory
             this.blockUnmintedTxes = null;
 
             this.inTransaction = false;
+
+            if (!readOnly)
+                chainStateStorage.WriteTxLock.Release();
         }
 
         public void RollbackTransaction()
@@ -125,6 +135,9 @@ namespace BitSharp.Core.Storage.Memory
             this.blockUnmintedTxes = null;
 
             this.inTransaction = false;
+
+            if (!readOnly)
+                chainStateStorage.WriteTxLock.Release();
         }
 
         public IEnumerable<ChainedHeader> ReadChain()

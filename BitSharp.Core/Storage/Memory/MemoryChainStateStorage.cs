@@ -5,12 +5,14 @@ using BitSharp.Core.Domain;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Threading;
 
 namespace BitSharp.Core.Storage.Memory
 {
     internal class MemoryChainStateStorage
     {
         private readonly object lockObject = new object();
+        private readonly SemaphoreSlim writeTxLock = new SemaphoreSlim(1);
 
         private ChainBuilder chain;
         private int unspentTxCount;
@@ -47,7 +49,10 @@ namespace BitSharp.Core.Storage.Memory
 
         public void Dispose()
         {
+            this.writeTxLock.Dispose();
         }
+
+        internal SemaphoreSlim WriteTxLock { get { return this.writeTxLock; } }
 
         public void BeginTransaction(out ChainBuilder chain, out int? unspentTxCount, out int? unspentOutputCount, out int? totalTxCount, out int? totalInputCount, out int? totalOutputCount, out ImmutableSortedDictionary<UInt256, UnspentTx>.Builder unspentTransactions, out ImmutableDictionary<int, IImmutableList<UInt256>>.Builder blockSpentTxes, out ImmutableDictionary<UInt256, IImmutableList<UnmintedTx>>.Builder blockUnmintedTxes, out long chainVersion, out long unspentTxCountVersion, out long unspentOutputCountVersion, out long totalTxCountVersion, out long totalInputCountVersion, out long totalOutputCountVersion, out long unspentTxesVersion, out long blockSpentTxesVersion, out long blockUnmintedTxesVersion)
         {
