@@ -191,7 +191,7 @@ namespace BitSharp.Common
                     if (timeout != null)
                     {
                         stopped = this.idleEvent.Wait(timeout.Value);
-                        if (!stopped)
+                        if (!stopped && timeout.Value > TimeSpan.Zero)
                             this.logger.Warn("Worker failed to stop: {0}".Format2(this.Name));
                     }
                     else
