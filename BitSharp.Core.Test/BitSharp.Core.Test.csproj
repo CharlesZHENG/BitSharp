@@ -125,7 +125,7 @@
     <Compile Include="Script\ScriptBuilderTest.cs" />
     <Compile Include="Script\ScriptEngineTest.cs" />
     <Compile Include="Script\TransactionManagerTest.cs" />
-    <Compile Include="MainnetSimulator.cs" />
+    <Compile Include="Simulator.cs" />
     <Compile Include="Storage\MemoryTestStorageProvider.cs" />
     <Compile Include="Storage\ITestStorageProvider.cs" />
     <Compile Include="TestDaemon.cs" />

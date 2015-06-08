@@ -1,6 +1,7 @@
 ﻿using BitSharp.Common;
 using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Domain;
+using BitSharp.Core.Rules;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -90,6 +91,19 @@ namespace BitSharp.Core.Test
             blocks[name] = block;
 
             return block;
+        }
+
+        public static BlockProvider CreateForRules(RulesEnum rulesType)
+        {
+            switch (rulesType)
+            {
+                case RulesEnum.MainNet:
+                    return new MainnetBlockProvider();
+                case RulesEnum.TestNet3:
+                    return new TestNet3BlockProvider();
+                default:
+                    return null;
+            }
         }
     }
 

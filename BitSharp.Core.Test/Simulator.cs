@@ -11,18 +11,18 @@ using System;
 
 namespace BitSharp.Core.Test
 {
-    public class MainnetSimulator : IDisposable
+    public abstract class Simulator : IDisposable
     {
         private const UInt64 SATOSHI_PER_BTC = 100 * 1000 * 1000;
 
         private readonly Random random;
-        private readonly MainnetBlockProvider blockProvider;
+        private readonly BlockProvider blockProvider;
         private readonly IKernel kernel;
         private readonly Logger logger;
         private readonly CoreDaemon coreDaemon;
         private readonly CoreStorage coreStorage;
 
-        public MainnetSimulator()
+        public Simulator(RulesEnum rulesType)
         {
             // initialize kernel
             this.kernel = new StandardKernel();
@@ -35,13 +35,13 @@ namespace BitSharp.Core.Test
             this.logger.Info("Starting up: {0}".Format2(DateTime.Now));
 
             this.random = new Random();
-            this.blockProvider = new MainnetBlockProvider();
+            this.blockProvider = BlockProvider.CreateForRules(rulesType);
 
             // add storage module
             this.kernel.Load(new MemoryStorageModule());
 
             // add rules module
-            this.kernel.Load(new RulesModule(RulesEnum.MainNet));
+            this.kernel.Load(new RulesModule(rulesType));
 
             // TODO ignore script errors in test daemon until scripting engine is completed
             var rules = this.kernel.Get<IBlockchainRules>();
@@ -67,9 +67,10 @@ namespace BitSharp.Core.Test
         public void Dispose()
         {
             this.kernel.Dispose();
+            this.blockProvider.Dispose();
         }
 
-        public MainnetBlockProvider BlockProvider { get { return this.blockProvider; } }
+        public BlockProvider BlockProvider { get { return this.blockProvider; } }
 
         public IKernel Kernel { get { return this.kernel; } }
 
@@ -104,6 +105,22 @@ namespace BitSharp.Core.Test
         public void WaitForUpdate()
         {
             this.coreDaemon.WaitForUpdate();
+        }
+    }
+
+    public class MainnetSimulator : Simulator
+    {
+        public MainnetSimulator()
+            : base(RulesEnum.MainNet)
+        {
+        }
+    }
+
+    public class TestNet3Simulator : Simulator
+    {
+        public TestNet3Simulator()
+            : base(RulesEnum.TestNet3)
+        {
         }
     }
 }
