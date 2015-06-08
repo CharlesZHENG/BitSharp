@@ -118,7 +118,7 @@ namespace BitSharp.Core.Test
     public class TestNet3BlockProvider : BlockProvider
     {
         public TestNet3BlockProvider()
-            : base("BitSharp.Core.Test.Blocks.Testnet3.zip")
+            : base("BitSharp.Core.Test.Blocks.TestNet3.zip")
         {
         }
     }
