@@ -28,6 +28,7 @@ namespace BitSharp.Lmdb
             this.jetDirectory = Path.Combine(baseDirectory, "ChainState");
             this.jetDatabase = Path.Combine(this.jetDirectory, "ChainState.edb");
 
+            LmdbStorageManager.PrepareSparseDatabase(this.jetDirectory);
             this.jetInstance = new LightningEnvironment(this.jetDirectory, EnvironmentOpenFlags.NoThreadLocalStorage | EnvironmentOpenFlags.NoSync)
             {
                 MaxDatabases = 10,
