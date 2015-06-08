@@ -92,7 +92,7 @@ namespace BitSharp.Core.Test
 
         public void AddBlock(UInt256 blockHash)
         {
-            var block = this.blockProvider.GetBlock(blockHash.ToHexNumberString());
+            var block = this.blockProvider.GetBlock(blockHash);
             AddBlock(block);
         }
 

@@ -105,7 +105,7 @@
     <Compile Include="BlockReplayerTest.cs" />
     <Compile Include="Builders\ChainBuilderTest.cs" />
     <Compile Include="Domain\ChainTest.cs" />
-    <Compile Include="TestNet3BlockProvider.cs" />
+    <Compile Include="BlockProvider.cs" />
     <Compile Include="MerkleTreeTest.cs" />
     <Compile Include="FakeHeaders.cs" />
     <Compile Include="MainnetTestData.cs" />
@@ -122,7 +122,6 @@
     <Compile Include="MainnetRulesTest.cs" />
     <Compile Include="Miner.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="MainnetBlockProvider.cs" />
     <Compile Include="Script\ScriptBuilderTest.cs" />
     <Compile Include="Script\ScriptEngineTest.cs" />
     <Compile Include="Script\TransactionManagerTest.cs" />
@@ -137,7 +136,7 @@
     <Compile Include="Workers\TargetChainWorkerTest.cs" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="Blocks.zip" />
+    <EmbeddedResource Include="Blocks.Mainnet.zip" />
     <EmbeddedResource Include="Blocks.TestNet3.zip" />
     <None Include="packages.config" />
   </ItemGroup>
