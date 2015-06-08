@@ -24,6 +24,10 @@ namespace BitSharp.Wallet
         private ChainBuilder chainBuilder;
         private int walletHeight;
 
+        private readonly ManualResetEventSlim updatedEvent = new ManualResetEventSlim();
+        private readonly object changedLock = new object();
+        private long changed;
+
         // addresses
         private readonly Dictionary<UInt256, List<MonitoredWalletAddress>> addressesByOutputScriptHash;
         private readonly List<MonitoredWalletAddress> matcherAddresses;
@@ -120,8 +124,22 @@ namespace BitSharp.Wallet
             }
         }
 
+        public void WaitForUpdate()
+        {
+            this.updatedEvent.Wait();
+        }
+
+        public bool WaitForUpdate(TimeSpan timeout)
+        {
+            return this.updatedEvent.Wait(timeout);
+        }
+
         protected override void WorkAction()
         {
+            long origChanged;
+            lock (this.changedLock)
+                origChanged = this.changed;
+
             using (var chainState = this.coreDaemon.GetChainState())
             {
                 var stopwatch = Stopwatch.StartNew();
@@ -142,9 +160,12 @@ namespace BitSharp.Wallet
                     catch (MissingDataException) {/*TODO no wallet state is saved, so missing data will be thrown when started up again due to pruning*/}
                     catch (AggregateException) {/*TODO no wallet state is saved, so missing data will be thrown when started up again due to pruning*/}
 
-                    this.chainBuilder.AddBlock(chainedHeader);
+                    if (forward)
+                        this.chainBuilder.AddBlock(chainedHeader);
+                    else
+                        this.chainBuilder.RemoveBlock(chainedHeader);
 
-                    this.walletHeight = chainedHeader.Height;
+                    this.walletHeight = this.chainBuilder.Height;
                     this.coreDaemon.PrunableHeight = this.walletHeight;
 
                     var handler = this.OnScanned;
@@ -155,9 +176,17 @@ namespace BitSharp.Wallet
                     if (stopwatch.Elapsed > TimeSpan.FromSeconds(15))
                     {
                         this.NotifyWork();
-                        return;
+                        break;
                     }
                 }
+            }
+
+            lock (this.changedLock)
+            {
+                if (this.changed == origChanged)
+                    this.updatedEvent.Set();
+                else
+                    this.NotifyWork();
             }
         }
 
@@ -246,6 +275,11 @@ namespace BitSharp.Wallet
 
         private void HandleChainStateChanged(object sender, EventArgs e)
         {
+            lock (this.changedLock)
+            {
+                this.changed++;
+                this.updatedEvent.Reset();
+            }
             this.NotifyWork();
         }
     }
