@@ -4,6 +4,7 @@ using NLog;
 using NLog.Config;
 using NLog.Targets;
 using NLog.Targets.Wrappers;
+using System.Diagnostics;
 using System.IO;
 
 namespace BitSharp.Node
@@ -46,8 +47,12 @@ namespace BitSharp.Node
             this.Kernel.Bind<Logger>().ToMethod(context => LogManager.GetLogger("BitSharp"));
         }
 
-        private AsyncTargetWrapper WrapAsync(Target target)
+        private Target WrapAsync(Target target)
         {
+            // don't use async logging during debugging so logging is in sync when execution is paused
+            if (Debugger.IsAttached)
+                return target;
+
             return new AsyncTargetWrapper
             {
                 WrappedTarget = target,
