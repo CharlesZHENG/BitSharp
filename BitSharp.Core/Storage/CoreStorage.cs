@@ -6,6 +6,8 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Runtime.Caching;
+using System.Threading;
 
 namespace BitSharp.Core.Storage
 {
@@ -25,6 +27,8 @@ namespace BitSharp.Core.Storage
 
         private readonly ConcurrentDictionary<UInt256, bool> presentBlockTxes = new ConcurrentDictionary<UInt256, bool>();
         private readonly object[] presentBlockTxesLocks = new object[64];
+
+        private readonly MemoryCache txCache = new MemoryCache("CoreStorage.TxCache");
 
         public CoreStorage(IStorageManager storageManager)
         {
@@ -48,6 +52,7 @@ namespace BitSharp.Core.Storage
 
         public void Dispose()
         {
+            this.txCache.Dispose();
         }
 
         public event Action<ChainedHeader> ChainedHeaderAdded;
@@ -67,6 +72,8 @@ namespace BitSharp.Core.Storage
         public int ChainedHeaderCount { get { return -1; } }
 
         public int BlockWithTxesCount { get { return this.blockTxesStorage.BlockCount; } }
+
+        internal IStorageManager StorageManager { get { return this.storageManager; } }
 
         public bool ContainsChainedHeader(UInt256 blockHash)
         {
@@ -268,7 +275,32 @@ namespace BitSharp.Core.Storage
 
         public bool TryGetTransaction(UInt256 blockHash, int txIndex, out Transaction transaction)
         {
-            return this.blockTxesStorage.TryGetTransaction(blockHash, txIndex, out transaction);
+            var key = blockHash.ToString() + txIndex;
+
+            // create the lazy that will be used to load the transaction if it is not yet cached
+            var lazyLoadTx = new Lazy<Transaction>(
+                () =>
+                {
+                    Transaction tx;
+                    if (this.blockTxesStorage.TryGetTransaction(blockHash, txIndex, out tx))
+                        return tx;
+                    else
+                        return null;
+                }, LazyThreadSafetyMode.ExecutionAndPublication);
+
+            var cachedLazyTx = (Lazy<Transaction>)txCache.AddOrGetExisting(key, lazyLoadTx,
+                new CacheItemPolicy { AbsoluteExpiration = DateTimeOffset.UtcNow.AddMinutes(1) });
+
+            // get the cached transaction, or load if added to the cache
+            //      note: if cachedLazyTx is null, lazyLoadTx must have been added to the cache
+            transaction = (cachedLazyTx ?? lazyLoadTx).Value;
+
+            //TODO hacky, isn't synchronized with other threads
+            // ensures null isn't cached
+            if (transaction == null)
+                txCache.Remove(key);
+
+            return transaction != null;
         }
 
         public bool TryReadBlockTransactions(UInt256 blockHash, UInt256 merkleRoot, bool requireTransactions, out IEnumerable<BlockTx> blockTxes)

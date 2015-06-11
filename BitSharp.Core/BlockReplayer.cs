@@ -26,7 +26,6 @@ namespace BitSharp.Core.Builders
         private ChainedHeader replayBlock;
         private bool replayForward;
         private ImmutableDictionary<UInt256, UnmintedTx> unmintedTxes;
-        private ConcurrentDictionary<UInt256, Transaction> txCache;
         private ConcurrentDictionary<UInt256, TxOutput[]> loadingTxes;
         private ConcurrentBlockingQueue<TxInputWithPrevOutputKey> pendingTxes;
         private ConcurrentBlockingQueue<TxWithPrevOutputs> loadedTxes;
@@ -94,7 +93,6 @@ namespace BitSharp.Core.Builders
                 throw new MissingDataException(this.replayBlock.Hash);
             }
 
-            this.txCache = new ConcurrentDictionary<UInt256, Transaction>();
             this.loadingTxes = new ConcurrentDictionary<UInt256, TxOutput[]>();
 
             this.pendingTxes = new ConcurrentBlockingQueue<TxInputWithPrevOutputKey>();
@@ -154,7 +152,6 @@ namespace BitSharp.Core.Builders
             this.chainState = null;
             this.replayBlock = null;
             this.unmintedTxes = null;
-            this.txCache = null;
             this.loadingTxes = null;
             this.pendingTxes = null;
             this.loadedTxes = null;
@@ -189,7 +186,7 @@ namespace BitSharp.Core.Builders
             return this.txLoader.Start(this.pendingTxes,
                 pendingTx =>
                 {
-                    var loadedTx = LoadPendingTx(pendingTx, txCache);
+                    var loadedTx = LoadPendingTx(pendingTx);
                     if (loadedTx != null)
                         this.loadedTxes.Add(loadedTx);
                 },
@@ -245,7 +242,7 @@ namespace BitSharp.Core.Builders
             }
         }
 
-        private TxWithPrevOutputs LoadPendingTx(TxInputWithPrevOutputKey pendingTx, ConcurrentDictionary<UInt256, Transaction> txCache)
+        private TxWithPrevOutputs LoadPendingTx(TxInputWithPrevOutputKey pendingTx)
         {
             try
             {
@@ -261,28 +258,16 @@ namespace BitSharp.Core.Builders
                     var input = transaction.Inputs[inputIndex];
                     TxOutput prevTxOutput;
 
-                    Transaction cachedPrevTx;
-                    if (txCache.TryGetValue(input.PreviousTxOutputKey.TxHash, out cachedPrevTx))
+                    Transaction prevTx;
+                    if (coreStorage.TryGetTransaction(prevOutputTxKey.BlockHash, prevOutputTxKey.TxIndex, out prevTx))
                     {
-                        prevTxOutput = cachedPrevTx.Outputs[input.PreviousTxOutputKey.TxOutputIndex.ToIntChecked()];
+                        if (input.PreviousTxOutputKey.TxHash != prevTx.Hash)
+                            throw new Exception("TODO");
+
+                        prevTxOutput = prevTx.Outputs[input.PreviousTxOutputKey.TxOutputIndex.ToIntChecked()];
                     }
                     else
-                    {
-                        Transaction prevTx;
-                        if (this.coreStorage.TryGetTransaction(prevOutputTxKey.BlockHash, prevOutputTxKey.TxIndex, out prevTx))
-                        {
-                            if (input.PreviousTxOutputKey.TxHash != prevTx.Hash)
-                                throw new Exception("TODO");
-
-                            txCache.TryAdd(prevTx.Hash, prevTx);
-
-                            prevTxOutput = prevTx.Outputs[input.PreviousTxOutputKey.TxOutputIndex.ToIntChecked()];
-                        }
-                        else
-                        {
-                            throw new Exception("TODO");
-                        }
-                    }
+                        throw new Exception("TODO");
 
                     var prevTxOutputs = this.loadingTxes[transaction.Hash];
                     bool completed;

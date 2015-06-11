@@ -18,6 +18,7 @@ namespace BitSharp.Core.Builders
         private readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly IBlockchainRules rules;
+        private readonly CoreStorage coreStorage;
         private readonly IStorageManager storageManager;
 
         private readonly BlockValidator blockValidator;
@@ -33,13 +34,14 @@ namespace BitSharp.Core.Builders
 
         private readonly BuilderStats stats;
 
-        public ChainStateBuilder(IBlockchainRules rules, IStorageManager storageManager)
+        public ChainStateBuilder(IBlockchainRules rules, CoreStorage coreStorage)
         {
             this.rules = rules;
-            this.storageManager = storageManager;
+            this.coreStorage = coreStorage;
+            this.storageManager = coreStorage.StorageManager;
 
             this.stats = new BuilderStats();
-            this.blockValidator = new BlockValidator(this.stats, this.storageManager, this.rules);
+            this.blockValidator = new BlockValidator(this.stats, this.coreStorage, this.rules);
 
             this.chainStateCursorHandle = this.storageManager.OpenChainStateCursor();
             this.chainStateCursor = this.chainStateCursorHandle.Item;

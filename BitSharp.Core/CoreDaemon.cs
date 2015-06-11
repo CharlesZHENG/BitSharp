@@ -47,7 +47,7 @@ namespace BitSharp.Core
             this.coreStorage.TryAddBlock(this.rules.GenesisBlock);
 
             // create chain state builder
-            this.chainStateBuilder = new ChainStateBuilder(this.rules, this.storageManager);
+            this.chainStateBuilder = new ChainStateBuilder(this.rules, this.coreStorage);
 
             // add genesis block to chain state, if needed
             if (this.chainStateBuilder.Chain.Height < 0)
