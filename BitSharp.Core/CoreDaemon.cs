@@ -67,11 +67,11 @@ namespace BitSharp.Core
                 this, this.storageManager, this.chainStateWorker);
 
             this.defragWorker = new DefragWorker(
-                new WorkerConfig(initialNotify: true, minIdleTime: TimeSpan.FromMinutes(1), maxIdleTime: TimeSpan.FromMinutes(5)),
+                new WorkerConfig(initialNotify: true, minIdleTime: TimeSpan.FromMinutes(5), maxIdleTime: TimeSpan.FromMinutes(5)),
                 this.storageManager);
 
             this.gcWorker = new WorkerMethod("GC Worker", GcWorker,
-                initialNotify: true, minIdleTime: TimeSpan.FromSeconds(30), maxIdleTime: TimeSpan.FromMinutes(5));
+                initialNotify: true, minIdleTime: TimeSpan.FromMinutes(5), maxIdleTime: TimeSpan.FromMinutes(5));
 
             this.utxoScanWorker = new WorkerMethod("UTXO Scan Worker", UtxoScanWorker,
                 initialNotify: true, minIdleTime: TimeSpan.FromSeconds(60), maxIdleTime: TimeSpan.FromSeconds(60));

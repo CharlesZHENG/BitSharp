@@ -73,7 +73,7 @@ namespace BitSharp.Node
                 new WorkerConfig(initialNotify: true, minIdleTime: TimeSpan.FromMilliseconds(50), maxIdleTime: TimeSpan.FromSeconds(30)),
                 this, this.coreDaemon);
 
-            this.statsWorker = new WorkerMethod("LocalClient.StatsWorker", StatsWorker, true, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(30));
+            this.statsWorker = new WorkerMethod("LocalClient.StatsWorker", StatsWorker, true, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
 
             this.peerWorker.PeerConnected += HandlePeerConnected;
             this.peerWorker.PeerDisconnected += HandlePeerDisconnected;
