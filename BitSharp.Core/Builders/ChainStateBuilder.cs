@@ -91,72 +91,46 @@ namespace BitSharp.Core.Builders
                 this.BeginTransaction();
                 try
                 {
-                    using (var pendingTxQueue = new ConcurrentBlockingQueue<TxWithInputTxLookupKeys>())
-                    using (this.blockValidator.StartValidation(chainedHeader, pendingTxQueue))
-                    {
-                        // add the block to the chain
-                        this.chain.AddBlock(chainedHeader);
-                        this.chainStateCursor.AddChainedHeader(chainedHeader);
+                    // add the block to the chain
+                    this.chain.AddBlock(chainedHeader);
+                    this.chainStateCursor.AddChainedHeader(chainedHeader);
 
-                        // ignore transactions on geneis block
-                        if (chainedHeader.Height > 0)
+                    this.blockValidator.ValidateTransactions(chainedHeader,
+                        pendingTxQueue =>
                         {
-                            this.stats.calculateUtxoDurationMeasure.Measure(() =>
+                            // ignore transactions on geneis block
+                            if (chainedHeader.Height > 0)
                             {
-                                // calculate the new block utxo, only output availability is checked and updated
-                                var pendingTxCount = 0;
-                                foreach (var pendingTx in this.utxoBuilder.CalculateUtxo(this.chain.ToImmutable(), blockTxes.Select(x => x.Transaction)))
+                                this.stats.calculateUtxoDurationMeasure.Measure(() =>
                                 {
-                                    if (!rules.BypassPrevTxLoading)
-                                        pendingTxQueue.Add(pendingTx);
-
-                                    // track stats, ignore coinbase
-                                    if (pendingTx.TxIndex > 0)
+                                    // calculate the new block utxo, only output availability is checked and updated
+                                    var pendingTxCount = 0;
+                                    foreach (var pendingTx in this.utxoBuilder.CalculateUtxo(this.chain.ToImmutable(), blockTxes.Select(x => x.Transaction)))
                                     {
-                                        pendingTxCount += pendingTx.Transaction.Inputs.Length;
-                                        this.stats.txCount++;
-                                        this.stats.inputCount += pendingTx.Transaction.Inputs.Length;
-                                        this.stats.txRateMeasure.Tick();
-                                        this.stats.inputRateMeasure.Tick(pendingTx.Transaction.Inputs.Length);
+                                        if (!rules.BypassPrevTxLoading)
+                                            pendingTxQueue.Add(pendingTx);
+
+                                        // track stats, ignore coinbase
+                                        if (pendingTx.TxIndex > 0)
+                                        {
+                                            pendingTxCount += pendingTx.Transaction.Inputs.Length;
+                                            this.stats.txCount++;
+                                            this.stats.inputCount += pendingTx.Transaction.Inputs.Length;
+                                            this.stats.txRateMeasure.Tick();
+                                            this.stats.inputRateMeasure.Tick(pendingTx.Transaction.Inputs.Length);
+                                        }
                                     }
-                                }
 
-                                this.stats.pendingTxesTotalAverageMeasure.Tick(pendingTxCount);
-                            });
-                        }
+                                    this.stats.pendingTxesTotalAverageMeasure.Tick(pendingTxCount);
+                                });
+                            }
 
-                        // finished queuing up block's txes
-                        pendingTxQueue.CompleteAdding();
-                        this.stats.pendingTxesAtCompleteAverageMeasure.Tick(this.blockValidator.PendingPrevTxCount);
+                            // finished queuing up block's txes
+                            pendingTxQueue.CompleteAdding();
 
-                        // track stats
-                        this.stats.blockCount++;
-
-                        // wait for block validation to complete
-                        this.stats.waitToCompleteDurationMeasure.Measure(() =>
-                            this.blockValidator.WaitToComplete());
-
-                        // check tx loader results
-                        if (this.blockValidator.TxLoaderExceptions.Count > 0)
-                        {
-                            throw new AggregateException(this.blockValidator.TxLoaderExceptions);
-                        }
-
-                        // check tx validation results
-                        if (this.blockValidator.TxValidatorExceptions.Count > 0)
-                        {
-                            throw new AggregateException(this.blockValidator.TxValidatorExceptions);
-                        }
-
-                        // check script validation results
-                        if (this.blockValidator.ScriptValidatorExceptions.Count > 0)
-                        {
-                            if (!this.rules.IgnoreScriptErrors)
-                                throw new AggregateException(this.blockValidator.ScriptValidatorExceptions);
-                            else
-                                this.logger.Debug("Ignoring script errors in block: {0,9:#,##0}, errors: {1:#,##0}".Format2(chainedHeader.Height, this.blockValidator.ScriptValidatorExceptions.Count));
-                        }
-                    }
+                            // track stats
+                            this.stats.blockCount++;
+                        });
 
                     // commit the chain state
                     this.CommitTransaction();

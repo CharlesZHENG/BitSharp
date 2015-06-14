@@ -27,7 +27,6 @@ namespace BitSharp.Core.Builders
 
         private ConcurrentBlockingQueue<TxWithInputTxLookupKeys> pendingTxes;
         private IDisposable txLoaderStopper;
-        private ConcurrentBag<Exception> pendingTxLoaderExceptions;
 
         public PendingTxLoader(string name, int threadCount)
         {
@@ -47,8 +46,6 @@ namespace BitSharp.Core.Builders
 
         public int PendingCount { get { return this.pendingTxLoader.PendingCount; } }
 
-        public ConcurrentBag<Exception> TxLoaderExceptions { get { return this.pendingTxLoaderExceptions; } }
-
         public IDisposable StartLoading(IChainState chainState, ChainedHeader replayBlock, bool replayForward, IEnumerable<BlockTx> blockTxes, ImmutableDictionary<UInt256, UnmintedTx> unmintedTxes)
         {
             this.chainState = chainState;
@@ -57,8 +54,6 @@ namespace BitSharp.Core.Builders
             this.unmintedTxes = unmintedTxes;
 
             this.pendingTxes = new ConcurrentBlockingQueue<TxWithInputTxLookupKeys>();
-
-            this.pendingTxLoaderExceptions = new ConcurrentBag<Exception>();
 
             this.txLoaderStopper = StartPendingTxLoader(blockTxes);
 
@@ -88,7 +83,6 @@ namespace BitSharp.Core.Builders
 
             this.pendingTxes = null;
             this.txLoaderStopper = null;
-            this.pendingTxLoaderExceptions = null;
         }
 
         private IDisposable StartPendingTxLoader(IEnumerable<BlockTx> blockTxes)
@@ -105,50 +99,41 @@ namespace BitSharp.Core.Builders
 
         private TxWithInputTxLookupKeys LoadPendingTx(BlockTx blockTx)
         {
-            try
+            var tx = blockTx.Transaction;
+            var txIndex = blockTx.Index;
+
+            var prevOutputTxKeys = ImmutableArray.CreateBuilder<TxLookupKey>(txIndex > 0 ? tx.Inputs.Length : 0);
+
+            if (txIndex > 0)
             {
-                var tx = blockTx.Transaction;
-                var txIndex = blockTx.Index;
-
-                var prevOutputTxKeys = ImmutableArray.CreateBuilder<TxLookupKey>(txIndex > 0 ? tx.Inputs.Length : 0);
-
-                if (txIndex > 0)
+                if (this.replayForward)
                 {
-                    if (this.replayForward)
+                    for (var inputIndex = 0; inputIndex < tx.Inputs.Length; inputIndex++)
                     {
-                        for (var inputIndex = 0; inputIndex < tx.Inputs.Length; inputIndex++)
-                        {
-                            var input = tx.Inputs[inputIndex];
+                        var input = tx.Inputs[inputIndex];
 
-                            UnspentTx unspentTx;
-                            if (!this.chainState.TryGetUnspentTx(input.PreviousTxOutputKey.TxHash, out unspentTx))
-                                throw new MissingDataException(this.replayBlock.Hash);
-
-                            var prevOutputBlockHash = this.chainState.Chain.Blocks[unspentTx.BlockIndex].Hash;
-                            var prevOutputTxIndex = unspentTx.TxIndex;
-
-                            prevOutputTxKeys.Add(new TxLookupKey(prevOutputBlockHash, prevOutputTxIndex));
-                        }
-                    }
-                    else
-                    {
-                        UnmintedTx unmintedTx;
-                        if (!this.unmintedTxes.TryGetValue(tx.Hash, out unmintedTx))
+                        UnspentTx unspentTx;
+                        if (!this.chainState.TryGetUnspentTx(input.PreviousTxOutputKey.TxHash, out unspentTx))
                             throw new MissingDataException(this.replayBlock.Hash);
 
-                        prevOutputTxKeys.AddRange(unmintedTx.PrevOutputTxKeys);
+                        var prevOutputBlockHash = this.chainState.Chain.Blocks[unspentTx.BlockIndex].Hash;
+                        var prevOutputTxIndex = unspentTx.TxIndex;
+
+                        prevOutputTxKeys.Add(new TxLookupKey(prevOutputBlockHash, prevOutputTxIndex));
                     }
                 }
+                else
+                {
+                    UnmintedTx unmintedTx;
+                    if (!this.unmintedTxes.TryGetValue(tx.Hash, out unmintedTx))
+                        throw new MissingDataException(this.replayBlock.Hash);
 
-                var pendingTx = new TxWithInputTxLookupKeys(txIndex, tx, this.replayBlock, prevOutputTxKeys.MoveToImmutable());
-                return pendingTx;
+                    prevOutputTxKeys.AddRange(unmintedTx.PrevOutputTxKeys);
+                }
             }
-            catch (Exception e)
-            {
-                this.pendingTxLoaderExceptions.Add(e);
-                //TODO
-                return null;
-            }
+
+            var pendingTx = new TxWithInputTxLookupKeys(txIndex, tx, this.replayBlock, prevOutputTxKeys.MoveToImmutable());
+            return pendingTx;
         }
     }
 }

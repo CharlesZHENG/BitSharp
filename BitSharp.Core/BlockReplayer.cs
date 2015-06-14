@@ -85,28 +85,11 @@ namespace BitSharp.Core.Builders
         public IEnumerable<LoadedTx> ReplayBlock()
         {
             foreach (var tx in this.prevTxLoader.GetQueue().GetConsumingEnumerable())
-            {
-                // fail early if there are any errors
-                this.ThrowIfFailed();
-
                 yield return tx;
-            }
 
-            // wait for loaders to finish
+            // wait for loaders to finish, any exceptions will be rethrown here
             this.pendingTxLoader.WaitToComplete();
             this.prevTxLoader.WaitToComplete();
-
-            // ensure any errors that occurred are thrown
-            this.ThrowIfFailed();
-        }
-
-        private void ThrowIfFailed()
-        {
-            if (this.pendingTxLoader.TxLoaderExceptions.Count > 0)
-                throw new AggregateException(this.pendingTxLoader.TxLoaderExceptions);
-
-            if (this.prevTxLoader.TxLoaderExceptions.Count > 0)
-                throw new AggregateException(this.prevTxLoader.TxLoaderExceptions);
         }
 
         private void StopReplay()
