@@ -104,12 +104,12 @@
     <Compile Include="Domain\UnmintedTx.cs" />
     <Compile Include="Builders\UtxoBuilder.cs" />
     <Compile Include="Builders\TxInputWithPrevOutput.cs" />
-    <Compile Include="Builders\TxWithPrevOutputs.cs" />
-    <Compile Include="Builders\TxWithPrevOutputKeys.cs" />
+    <Compile Include="Domain\LoadedTx.cs" />
+    <Compile Include="Builders\TxWithInputTxLookupKeys.cs" />
     <Compile Include="Domain\IChainState.cs" />
     <Compile Include="PruningMode.cs" />
     <Compile Include="Storage\CoreStorage.cs" />
-    <Compile Include="Domain\BlockTxKey.cs" />
+    <Compile Include="Domain\TxLookupKey.cs" />
     <Compile Include="MerkleTree.cs" />
     <Compile Include="BlockchainWalker.cs" />
     <Compile Include="CoreDaemon.cs" />

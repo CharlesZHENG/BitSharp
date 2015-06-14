@@ -425,15 +425,15 @@ namespace BitSharp.Core
             }
         }
 
-        public static BlockTxKey DecodeBlockTxKey(BinaryReader reader)
+        public static TxLookupKey DecodeBlockTxKey(BinaryReader reader)
         {
-            return new BlockTxKey(
+            return new TxLookupKey(
                 blockHash: reader.ReadUInt256(),
                 txIndex: reader.ReadInt32()
             );
         }
 
-        public static BlockTxKey DecodeBlockTxKey(byte[] bytes)
+        public static TxLookupKey DecodeBlockTxKey(byte[] bytes)
         {
             using (var stream = new MemoryStream(bytes))
             using (var reader = new BinaryReader(stream))
@@ -442,13 +442,13 @@ namespace BitSharp.Core
             }
         }
 
-        public static void EncodeBlockTxKey(BinaryWriter writer, BlockTxKey blockTxKey)
+        public static void EncodeBlockTxKey(BinaryWriter writer, TxLookupKey blockTxKey)
         {
             writer.WriteUInt256(blockTxKey.BlockHash);
             writer.WriteInt32(blockTxKey.TxIndex);
         }
 
-        public static byte[] EncodeBlockTxKey(BlockTxKey blockTxKey)
+        public static byte[] EncodeBlockTxKey(TxLookupKey blockTxKey)
         {
             using (var stream = new MemoryStream())
             using (var writer = new BinaryWriter(stream))

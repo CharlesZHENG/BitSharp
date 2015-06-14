@@ -91,7 +91,7 @@ namespace BitSharp.Core.Builders
                 this.BeginTransaction();
                 try
                 {
-                    using (var pendingTxQueue = new ConcurrentBlockingQueue<TxWithPrevOutputKeys>())
+                    using (var pendingTxQueue = new ConcurrentBlockingQueue<TxWithInputTxLookupKeys>())
                     using (this.blockValidator.StartValidation(chainedHeader, pendingTxQueue))
                     {
                         // add the block to the chain

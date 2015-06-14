@@ -21,7 +21,7 @@ namespace BitSharp.Core.Rules
         //TODO
         //void ValidateBlock(ChainedBlock chainedBlock, ChainStateBuilder chainStateBuilder);
 
-        void ValidateTransaction(ChainedHeader chainedHeader, Transaction tx, int txIndex, ImmutableArray<TxOutput> prevTxOutputs);
+        void ValidateTransaction(ChainedHeader chainedHeader, LoadedTx loadedTx);
 
         void ValidationTransactionScript(ChainedHeader chainedHeader, Transaction tx, int txIndex, TxInput txInput, int txInputIndex, TxOutput prevTxOutput);
     }

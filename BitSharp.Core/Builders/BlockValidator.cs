@@ -22,10 +22,11 @@ namespace BitSharp.Core.Builders
         private readonly IBlockchainRules rules;
 
         private readonly PrevTxLoader prevTxLoader;
-        private readonly ParallelConsumer<TxWithPrevOutputs> txValidator;
+        private readonly ParallelConsumer<LoadedTx> txValidator;
         private readonly ParallelConsumer<TxInputWithPrevOutput> scriptValidator;
 
-        private ConcurrentBlockingQueue<TxWithPrevOutputKeys> pendingTxQueue;
+        private ChainedHeader chainedHeader;
+        private ConcurrentBlockingQueue<TxWithInputTxLookupKeys> pendingTxQueue;
         private ConcurrentBlockingQueue<TxInputWithPrevOutput> validateScriptQueue;
         private IDisposable txLoaderStopper;
         private IDisposable txValidatorStopper;
@@ -47,7 +48,7 @@ namespace BitSharp.Core.Builders
             var cpuThreadCount = Environment.ProcessorCount * 2;
 
             this.prevTxLoader = new PrevTxLoader("BlockValidator", stats, coreStorage, ioThreadCount);
-            this.txValidator = new ParallelConsumer<TxWithPrevOutputs>("BlockValidator.TxValidator", cpuThreadCount);
+            this.txValidator = new ParallelConsumer<LoadedTx>("BlockValidator.TxValidator", cpuThreadCount);
             this.scriptValidator = new ParallelConsumer<TxInputWithPrevOutput>("BlockValidator.ScriptValidator", cpuThreadCount);
         }
 
@@ -69,8 +70,9 @@ namespace BitSharp.Core.Builders
 
         public ConcurrentBag<Exception> ScriptValidatorExceptions { get { return this.scriptValidatorExceptions; } }
 
-        public IDisposable StartValidation(ChainedHeader chainedHeader, ConcurrentBlockingQueue<TxWithPrevOutputKeys> pendingTxQueue)
+        public IDisposable StartValidation(ChainedHeader chainedHeader, ConcurrentBlockingQueue<TxWithInputTxLookupKeys> pendingTxQueue)
         {
+            this.chainedHeader = chainedHeader;
             this.pendingTxQueue = pendingTxQueue;
             this.validateScriptQueue = new ConcurrentBlockingQueue<TxInputWithPrevOutput>();
 
@@ -118,14 +120,13 @@ namespace BitSharp.Core.Builders
                     {
                         var transaction = loadedTx.Transaction;
                         var txIndex = loadedTx.TxIndex;
-                        var prevTxOutputs = loadedTx.PrevTxOutputs;
 
                         if (txIndex > 0)
                         {
                             for (var inputIndex = 0; inputIndex < transaction.Inputs.Length; inputIndex++)
                             {
                                 var txInput = transaction.Inputs[inputIndex];
-                                var prevTxOutput = prevTxOutputs[inputIndex];
+                                var prevTxOutput = loadedTx.GetInputPrevTxOutput(inputIndex);
 
                                 var txInputWithPrevOutput = new TxInputWithPrevOutput(chainedHeader, transaction, txIndex, txInput, inputIndex, prevTxOutput);
                                 this.validateScriptQueue.Add(txInputWithPrevOutput);
@@ -148,16 +149,11 @@ namespace BitSharp.Core.Builders
                 _ => { });
         }
 
-        private void ValidateTransaction(TxWithPrevOutputs loadedTx)
+        private void ValidateTransaction(LoadedTx loadedTx)
         {
             try
             {
-                var chainedHeader = loadedTx.ChainedHeader;
-                var transaction = loadedTx.Transaction;
-                var txIndex = loadedTx.TxIndex;
-                var prevTxOutputs = loadedTx.PrevTxOutputs;
-
-                this.rules.ValidateTransaction(chainedHeader, transaction, txIndex, prevTxOutputs);
+                this.rules.ValidateTransaction(chainedHeader, loadedTx);
             }
             catch (Exception e)
             {

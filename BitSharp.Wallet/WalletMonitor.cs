@@ -194,17 +194,17 @@ namespace BitSharp.Wallet
         {
             using (this.blockReplayer.StartReplay(chainState, scanBlock.Hash, forward))
             {
-                foreach (var txWithPrevOutputs in this.blockReplayer.ReplayBlock())
+                foreach (var loadedTx in this.blockReplayer.ReplayBlock())
                 {
-                    var tx = txWithPrevOutputs.Transaction;
-                    var txIndex = txWithPrevOutputs.TxIndex;
+                    var tx = loadedTx.Transaction;
+                    var txIndex = loadedTx.TxIndex;
 
                     if (txIndex > 0)
                     {
                         for (var inputIndex = 0; inputIndex < tx.Inputs.Length; inputIndex++)
                         {
                             var input = tx.Inputs[inputIndex];
-                            var prevOutput = txWithPrevOutputs.PrevTxOutputs[inputIndex];
+                            var prevOutput = loadedTx.GetInputPrevTxOutput(inputIndex);
                             var prevOutputScriptHash = new UInt256(SHA256Static.ComputeHash(prevOutput.ScriptPublicKey.ToArray()));
 
                             var chainPosition = ChainPosition.Fake();

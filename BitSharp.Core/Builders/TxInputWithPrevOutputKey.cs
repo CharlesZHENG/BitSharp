@@ -8,9 +8,9 @@ namespace BitSharp.Core.Builders
         private readonly int txIndex;
         private readonly ChainedHeader chainedHeader;
         private readonly int inputIndex;
-        private readonly BlockTxKey prevOutputTxKey;
+        private readonly TxLookupKey prevOutputTxKey;
 
-        public TxInputWithPrevOutputKey(int txIndex, Transaction transaction, ChainedHeader chainedHeader, int inputIndex, BlockTxKey prevOutputTxKey)
+        public TxInputWithPrevOutputKey(int txIndex, Transaction transaction, ChainedHeader chainedHeader, int inputIndex, TxLookupKey prevOutputTxKey)
         {
             this.transaction = transaction;
             this.txIndex = txIndex;
@@ -27,6 +27,6 @@ namespace BitSharp.Core.Builders
 
         public int InputIndex { get { return this.inputIndex; } }
 
-        public BlockTxKey PrevOutputTxKey { get { return this.prevOutputTxKey; } }
+        public TxLookupKey PrevOutputTxKey { get { return this.prevOutputTxKey; } }
     }
 }

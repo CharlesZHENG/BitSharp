@@ -82,7 +82,7 @@ namespace BitSharp.Core.Builders
         }
 
         //TODO result should indicate whether block was played forwards or rolled back
-        public IEnumerable<TxWithPrevOutputs> ReplayBlock()
+        public IEnumerable<LoadedTx> ReplayBlock()
         {
             foreach (var tx in this.prevTxLoader.GetQueue().GetConsumingEnumerable())
             {

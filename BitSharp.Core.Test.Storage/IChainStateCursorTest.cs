@@ -866,24 +866,24 @@ namespace BitSharp.Core.Test.Storage
             var unmintedTxes0 = ImmutableList.Create(
                 new UnmintedTx(txHash: 0,
                     prevOutputTxKeys: ImmutableArray.Create(
-                        new BlockTxKey(blockHash: 0, txIndex: 0),
-                        new BlockTxKey(blockHash: 0, txIndex: 1),
-                        new BlockTxKey(blockHash: 0, txIndex: 2))),
+                        new TxLookupKey(blockHash: 0, txIndex: 0),
+                        new TxLookupKey(blockHash: 0, txIndex: 1),
+                        new TxLookupKey(blockHash: 0, txIndex: 2))),
                 new UnmintedTx(txHash: 1,
                     prevOutputTxKeys: ImmutableArray.Create(
-                        new BlockTxKey(blockHash: 0, txIndex: 3),
-                        new BlockTxKey(blockHash: 0, txIndex: 4),
-                        new BlockTxKey(blockHash: 0, txIndex: 5))));
+                        new TxLookupKey(blockHash: 0, txIndex: 3),
+                        new TxLookupKey(blockHash: 0, txIndex: 4),
+                        new TxLookupKey(blockHash: 0, txIndex: 5))));
 
             var unmintedTxes1 = ImmutableList.Create(
                 new UnmintedTx(txHash: 2,
                     prevOutputTxKeys: ImmutableArray.Create(
-                        new BlockTxKey(blockHash: 1, txIndex: 0),
-                        new BlockTxKey(blockHash: 1, txIndex: 1))),
+                        new TxLookupKey(blockHash: 1, txIndex: 0),
+                        new TxLookupKey(blockHash: 1, txIndex: 1))),
                 new UnmintedTx(txHash: 3,
                     prevOutputTxKeys: ImmutableArray.Create(
-                        new BlockTxKey(blockHash: 1, txIndex: 2),
-                        new BlockTxKey(blockHash: 1, txIndex: 3))));
+                        new TxLookupKey(blockHash: 1, txIndex: 2),
+                        new TxLookupKey(blockHash: 1, txIndex: 3))));
 
             using (var storageManager = provider.OpenStorageManager())
             using (var handle = storageManager.OpenChainStateCursor())
@@ -932,24 +932,24 @@ namespace BitSharp.Core.Test.Storage
             var unmintedTxes0 = ImmutableList.Create(
                 new UnmintedTx(txHash: 0,
                     prevOutputTxKeys: ImmutableArray.Create(
-                        new BlockTxKey(blockHash: 0, txIndex: 0),
-                        new BlockTxKey(blockHash: 0, txIndex: 1),
-                        new BlockTxKey(blockHash: 0, txIndex: 2))),
+                        new TxLookupKey(blockHash: 0, txIndex: 0),
+                        new TxLookupKey(blockHash: 0, txIndex: 1),
+                        new TxLookupKey(blockHash: 0, txIndex: 2))),
                 new UnmintedTx(txHash: 1,
                     prevOutputTxKeys: ImmutableArray.Create(
-                        new BlockTxKey(blockHash: 0, txIndex: 3),
-                        new BlockTxKey(blockHash: 0, txIndex: 4),
-                        new BlockTxKey(blockHash: 0, txIndex: 5))));
+                        new TxLookupKey(blockHash: 0, txIndex: 3),
+                        new TxLookupKey(blockHash: 0, txIndex: 4),
+                        new TxLookupKey(blockHash: 0, txIndex: 5))));
 
             var unmintedTxes1 = ImmutableList.Create(
                 new UnmintedTx(txHash: 2,
                     prevOutputTxKeys: ImmutableArray.Create(
-                        new BlockTxKey(blockHash: 1, txIndex: 0),
-                        new BlockTxKey(blockHash: 1, txIndex: 1))),
+                        new TxLookupKey(blockHash: 1, txIndex: 0),
+                        new TxLookupKey(blockHash: 1, txIndex: 1))),
                 new UnmintedTx(txHash: 3,
                     prevOutputTxKeys: ImmutableArray.Create(
-                        new BlockTxKey(blockHash: 1, txIndex: 2),
-                        new BlockTxKey(blockHash: 1, txIndex: 3))));
+                        new TxLookupKey(blockHash: 1, txIndex: 2),
+                        new TxLookupKey(blockHash: 1, txIndex: 3))));
 
             using (var storageManager = provider.OpenStorageManager())
             using (var handle = storageManager.OpenChainStateCursor())

@@ -5,14 +5,14 @@ using System.Linq;
 
 namespace BitSharp.Core.Builders
 {
-    internal class TxWithPrevOutputKeys
+    internal class TxWithInputTxLookupKeys
     {
         private readonly Transaction transaction;
         private readonly int txIndex;
         private readonly ChainedHeader chainedHeader;
-        private readonly ImmutableArray<BlockTxKey> prevOutputTxKeys;
+        private readonly ImmutableArray<TxLookupKey> prevOutputTxKeys;
 
-        public TxWithPrevOutputKeys(int txIndex, Transaction transaction, ChainedHeader chainedHeader, ImmutableArray<BlockTxKey> prevOutputTxKeys)
+        public TxWithInputTxLookupKeys(int txIndex, Transaction transaction, ChainedHeader chainedHeader, ImmutableArray<TxLookupKey> prevOutputTxKeys)
         {
             this.transaction = transaction;
             this.txIndex = txIndex;
@@ -26,7 +26,7 @@ namespace BitSharp.Core.Builders
 
         public ChainedHeader ChainedHeader { get { return this.chainedHeader; } }
 
-        public ImmutableArray<BlockTxKey> PrevOutputTxKeys { get { return this.prevOutputTxKeys; } }
+        public ImmutableArray<TxLookupKey> PrevOutputTxKeys { get { return this.prevOutputTxKeys; } }
 
         public IEnumerable<TxInputWithPrevOutputKey> GetInputs()
         {

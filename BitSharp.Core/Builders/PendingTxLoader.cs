@@ -25,7 +25,7 @@ namespace BitSharp.Core.Builders
         private bool replayForward;
         private ImmutableDictionary<UInt256, UnmintedTx> unmintedTxes;
 
-        private ConcurrentBlockingQueue<TxWithPrevOutputKeys> pendingTxes;
+        private ConcurrentBlockingQueue<TxWithInputTxLookupKeys> pendingTxes;
         private IDisposable txLoaderStopper;
         private ConcurrentBag<Exception> pendingTxLoaderExceptions;
 
@@ -56,7 +56,7 @@ namespace BitSharp.Core.Builders
             this.replayForward = replayForward;
             this.unmintedTxes = unmintedTxes;
 
-            this.pendingTxes = new ConcurrentBlockingQueue<TxWithPrevOutputKeys>();
+            this.pendingTxes = new ConcurrentBlockingQueue<TxWithInputTxLookupKeys>();
 
             this.pendingTxLoaderExceptions = new ConcurrentBag<Exception>();
 
@@ -70,7 +70,7 @@ namespace BitSharp.Core.Builders
             this.pendingTxLoader.WaitToComplete();
         }
 
-        public ConcurrentBlockingQueue<TxWithPrevOutputKeys> GetQueue()
+        public ConcurrentBlockingQueue<TxWithInputTxLookupKeys> GetQueue()
         {
             return this.pendingTxes;
         }
@@ -103,14 +103,14 @@ namespace BitSharp.Core.Builders
                 _ => this.pendingTxes.CompleteAdding());
         }
 
-        private TxWithPrevOutputKeys LoadPendingTx(BlockTx blockTx)
+        private TxWithInputTxLookupKeys LoadPendingTx(BlockTx blockTx)
         {
             try
             {
                 var tx = blockTx.Transaction;
                 var txIndex = blockTx.Index;
 
-                var prevOutputTxKeys = ImmutableArray.CreateBuilder<BlockTxKey>(txIndex > 0 ? tx.Inputs.Length : 0);
+                var prevOutputTxKeys = ImmutableArray.CreateBuilder<TxLookupKey>(txIndex > 0 ? tx.Inputs.Length : 0);
 
                 if (txIndex > 0)
                 {
@@ -127,7 +127,7 @@ namespace BitSharp.Core.Builders
                             var prevOutputBlockHash = this.chainState.Chain.Blocks[unspentTx.BlockIndex].Hash;
                             var prevOutputTxIndex = unspentTx.TxIndex;
 
-                            prevOutputTxKeys.Add(new BlockTxKey(prevOutputBlockHash, prevOutputTxIndex));
+                            prevOutputTxKeys.Add(new TxLookupKey(prevOutputBlockHash, prevOutputTxIndex));
                         }
                     }
                     else
@@ -140,7 +140,7 @@ namespace BitSharp.Core.Builders
                     }
                 }
 
-                var pendingTx = new TxWithPrevOutputKeys(txIndex, tx, this.replayBlock, prevOutputTxKeys.MoveToImmutable());
+                var pendingTx = new TxWithInputTxLookupKeys(txIndex, tx, this.replayBlock, prevOutputTxKeys.MoveToImmutable());
                 return pendingTx;
             }
             catch (Exception e)
