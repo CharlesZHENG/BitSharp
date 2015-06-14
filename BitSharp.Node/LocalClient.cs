@@ -36,7 +36,7 @@ namespace BitSharp.Node
         private readonly IBlockchainRules rules;
         private readonly CoreDaemon coreDaemon;
         private readonly CoreStorage coreStorage;
-        private readonly NetworkPeerCache networkPeerCache;
+        private readonly INetworkPeerStorage networkPeerStorage;
 
         private readonly PeerWorker peerWorker;
         private readonly ListenWorker listenWorker;
@@ -46,7 +46,7 @@ namespace BitSharp.Node
 
         private RateMeasure messageRateMeasure;
 
-        public LocalClient(RulesEnum type, IKernel kernel, IBlockchainRules rules, CoreDaemon coreDaemon, NetworkPeerCache networkPeerCache)
+        public LocalClient(RulesEnum type, IKernel kernel, IBlockchainRules rules, CoreDaemon coreDaemon, INetworkPeerStorage networkPeerStorage)
         {
             this.shutdownToken = new CancellationTokenSource();
 
@@ -55,7 +55,7 @@ namespace BitSharp.Node
             this.rules = rules;
             this.coreDaemon = coreDaemon;
             this.coreStorage = coreDaemon.CoreStorage;
-            this.networkPeerCache = networkPeerCache;
+            this.networkPeerStorage = networkPeerStorage;
 
             this.messageRateMeasure = new RateMeasure();
 
@@ -165,10 +165,10 @@ namespace BitSharp.Node
         {
             // discourage a peer by reducing their last seen time
             NetworkAddressWithTime address;
-            if (this.networkPeerCache.TryGetValue(peerEndPoint.ToNetworkAddressKey(), out address))
+            if (this.networkPeerStorage.TryGetValue(peerEndPoint.ToNetworkAddressKey(), out address))
             {
                 var newTime = (address.Time.UnixTimeToDateTime() - TimeSpan.FromDays(7)).ToUnixTime();
-                this.networkPeerCache[address.NetworkAddress.GetKey()] = address.With(Time: newTime);
+                this.networkPeerStorage[address.NetworkAddress.GetKey()] = address.With(Time: newTime);
             }
         }
 
@@ -220,7 +220,7 @@ namespace BitSharp.Node
         private void AddKnownPeers()
         {
             var count = 0;
-            foreach (var knownAddress in this.networkPeerCache.Values)
+            foreach (var knownAddress in this.networkPeerStorage.Values)
             {
                 this.peerWorker.AddCandidatePeer(
                     new CandidatePeer
@@ -238,7 +238,7 @@ namespace BitSharp.Node
         private void HandlePeerConnected(Peer peer)
         {
             var remoteAddressWithTime = new NetworkAddressWithTime(DateTime.UtcNow.ToUnixTime(), peer.RemoteEndPoint.ToNetworkAddress(/*TODO*/services: 0));
-            this.networkPeerCache[remoteAddressWithTime.NetworkAddress.GetKey()] = remoteAddressWithTime;
+            this.networkPeerStorage[remoteAddressWithTime.NetworkAddress.GetKey()] = remoteAddressWithTime;
 
             WirePeerEvents(peer);
 

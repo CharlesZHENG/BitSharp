@@ -1,6 +1,9 @@
 ﻿using BitSharp.Node.Domain;
+using System.Collections.Concurrent;
 
 namespace BitSharp.Node.Storage.Memory
 {
-    public sealed class MemoryNetworkPeerStorage : MemoryStorage<NetworkAddressKey, NetworkAddressWithTime>, INetworkPeerStorage { }
+    public sealed class MemoryNetworkPeerStorage : ConcurrentDictionary<NetworkAddressKey, NetworkAddressWithTime>, INetworkPeerStorage
+    {
+    }
 }

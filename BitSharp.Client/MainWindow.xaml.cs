@@ -125,9 +125,6 @@ namespace BitSharp.Client
                         modules.Add(new LmdbStorageModule(baseDirectory, rulesType));
                 }
 
-                // add cache modules
-                modules.Add(new NodeCacheModule());
-
                 // add rules module
                 modules.Add(new RulesModule(rulesType));
 

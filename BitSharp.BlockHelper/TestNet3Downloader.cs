@@ -50,9 +50,6 @@ namespace BitSharp.BlockHelper
                 kernel.Load(new MemoryStorageModule());
                 kernel.Load(new NodeMemoryStorageModule());
 
-                // add cache modules
-                kernel.Load(new NodeCacheModule());
-
                 // add rules module
                 var rulesType = RulesEnum.TestNet3;
                 kernel.Load(new RulesModule(rulesType));

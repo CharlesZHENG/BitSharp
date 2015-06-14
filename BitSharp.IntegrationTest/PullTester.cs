@@ -51,9 +51,6 @@ namespace BitSharp.IntegrationTest
                     kernel.Load(new MemoryStorageModule());
                     kernel.Load(new NodeMemoryStorageModule());
 
-                    // add cache modules
-                    kernel.Load(new NodeCacheModule());
-
                     // add rules module
                     var rulesType = RulesEnum.ComparisonToolTestNet;
                     kernel.Load(new RulesModule(rulesType));
