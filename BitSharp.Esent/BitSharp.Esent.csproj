@@ -99,7 +99,6 @@
     <Compile Include="ChainState\EsentChainStateManager.cs" />
     <Compile Include="EsentStorageManager.cs" />
     <Compile Include="NetworkPeerStorage.cs" />
-    <Compile Include="PersistentByteDictionary.cs" />
     <Compile Include="EsentStorageModule.cs" />
     <Compile Include="ChainState\ChainStateCursor.cs" />
     <Compile Include="PersistentObjectDictonary.cs" />
