@@ -26,7 +26,6 @@ namespace BitSharp.Core.Builders
         private ConcurrentDictionary<UInt256, Transaction[]> loadingTxes;
         private ConcurrentBlockingQueue<TxInputWithPrevOutputKey> pendingTxes;
         private ConcurrentBlockingQueue<LoadedTx> loadedTxes;
-        private ConcurrentBlockingQueue<TxInputWithPrevOutput> loadedTxInputs;
         private IDisposable txDispatcherStopper;
         private IDisposable txLoaderStopper;
         private ConcurrentBag<Exception> txLoaderExceptions;
@@ -50,9 +49,6 @@ namespace BitSharp.Core.Builders
 
             if (this.loadedTxes != null)
                 this.loadedTxes.Dispose();
-
-            if (this.loadedTxInputs != null)
-                this.loadedTxInputs.Dispose();
         }
 
         public int PendingCount { get { return this.txLoader.PendingCount; } }
@@ -65,7 +61,6 @@ namespace BitSharp.Core.Builders
 
             this.pendingTxes = new ConcurrentBlockingQueue<TxInputWithPrevOutputKey>();
             this.loadedTxes = new ConcurrentBlockingQueue<LoadedTx>();
-            this.loadedTxInputs = new ConcurrentBlockingQueue<TxInputWithPrevOutput>();
 
             this.txLoaderExceptions = new ConcurrentBag<Exception>();
 
@@ -89,18 +84,15 @@ namespace BitSharp.Core.Builders
         {
             this.pendingTxes.CompleteAdding();
             this.loadedTxes.CompleteAdding();
-            this.loadedTxInputs.CompleteAdding();
 
             this.txDispatcherStopper.Dispose();
             this.txLoaderStopper.Dispose();
             this.pendingTxes.Dispose();
             this.loadedTxes.Dispose();
-            this.loadedTxInputs.Dispose();
 
             this.loadingTxes = null;
             this.pendingTxes = null;
             this.loadedTxes = null;
-            this.loadedTxInputs = null;
             this.txDispatcherStopper = null;
             this.txLoaderStopper = null;
             this.txLoaderExceptions = null;
