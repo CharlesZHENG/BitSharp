@@ -50,7 +50,7 @@ namespace BitSharp.Core.Test.Storage
                 Assert.AreEqual(blocks.Count, coreStorage.TryAddBlocks(blocks).Count());
 
                 // calculate utxo forward and store its state at each step along the way
-                var expectedUtxos = new List<List<UnspentTx>>();
+                var expectedUtxoHashes = new List<UInt256>();
                 for (var blockIndex = 0; blockIndex < blocks.Count; blockIndex++)
                 {
                     Debug.WriteLine("Adding: {0:N0}".Format2(blockIndex));
@@ -61,21 +61,15 @@ namespace BitSharp.Core.Test.Storage
                     chainStateBuilder.AddBlock(chainedHeader, block.Transactions);
 
                     using (var chainState = chainStateBuilder.ToImmutable())
-                    {
-                        expectedUtxos.Add(chainState.ReadUnspentTransactions().ToList());
-                    }
+                        expectedUtxoHashes.Add(UtxoCommitment.ComputeHash(chainState));
                 }
 
                 // verify the utxo state before rolling back
                 //TODO verify the UTXO hash hard-coded here is correct
                 //TODO 5500: 0e9da3d53272cda9ecb6037c411ebc3cd0b65b5c16698baba41665edb29b8eaf
-                var expectedUtxoHash = UInt256.Parse("8e7a5912c6e9e46370841e54c590dab04f37861345ee9946b69e0c8505f602eb", NumberStyles.HexNumber);
-                using (var utxoStream = new UtxoStream(expectedUtxos.Last()))
-                {
-                    var utxoHash = new UInt256(SHA256Static.ComputeDoubleHash(utxoStream));
-                    Assert.AreEqual(expectedUtxoHash, utxoHash);
-                }
-                expectedUtxos.RemoveAt(expectedUtxos.Count - 1);
+                var expectedLastUtxoHash = UInt256.Parse("8e7a5912c6e9e46370841e54c590dab04f37861345ee9946b69e0c8505f602eb", NumberStyles.HexNumber);
+                Assert.AreEqual(expectedLastUtxoHash, expectedUtxoHashes.Last());
+                expectedUtxoHashes.RemoveAt(expectedUtxoHashes.Count - 1);
 
                 // roll utxo backwards and validate its state at each step along the way
                 for (var blockIndex = blocks.Count - 1; blockIndex >= 1; blockIndex--)
@@ -88,16 +82,11 @@ namespace BitSharp.Core.Test.Storage
 
                     chainStateBuilder.RollbackBlock(chainedHeader, blockTxes);
 
-                    var expectedUtxo = expectedUtxos.Last();
-                    expectedUtxos.RemoveAt(expectedUtxos.Count - 1);
+                    var expectedUtxoHash = expectedUtxoHashes.Last();
+                    expectedUtxoHashes.RemoveAt(expectedUtxoHashes.Count - 1);
 
-                    List<UnspentTx> actualUtxo;
                     using (var chainState = chainStateBuilder.ToImmutable())
-                    {
-                        actualUtxo = chainState.ReadUnspentTransactions().ToList();
-                    }
-
-                    CollectionAssert.AreEqual(expectedUtxo, actualUtxo, "UTXO differs at height: {0}".Format2(blockIndex));
+                        Assert.AreEqual(expectedUtxoHash, UtxoCommitment.ComputeHash(chainState));
                 }
             }
         }

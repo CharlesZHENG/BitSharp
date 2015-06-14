@@ -131,7 +131,7 @@
     <Compile Include="Domain\TxOutput.cs" />
     <Compile Include="Domain\TxOutputKey.cs" />
     <Compile Include="Domain\UnspentTx.cs" />
-    <Compile Include="Domain\UtxoStream.cs" />
+    <Compile Include="Domain\UtxoCommitment.cs" />
     <Compile Include="IMerkleTreePruningCursor.cs" />
     <Compile Include="JsonRpc\CoreRpcServer.cs" />
     <Compile Include="Domain\MerkleTreeNode.cs" />
