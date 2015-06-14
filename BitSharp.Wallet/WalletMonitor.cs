@@ -192,7 +192,7 @@ namespace BitSharp.Wallet
 
         private void ScanBlock(IChainState chainState, ChainedHeader scanBlock, bool forward)
         {
-            using (this.blockReplayer.StartReplay(chainState, scanBlock.Hash))
+            using (this.blockReplayer.StartReplay(chainState, scanBlock.Hash, forward))
             {
                 foreach (var txWithPrevOutputs in this.blockReplayer.ReplayBlock())
                 {

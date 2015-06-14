@@ -19,22 +19,15 @@ namespace BitSharp.Core.Builders
         private readonly CoreStorage coreStorage;
         private readonly IBlockchainRules rules;
 
-        private readonly ParallelConsumer<BlockTx> pendingTxLoader;
-        private readonly ParallelConsumer<TxInputWithPrevOutputKey> txLoader;
+        private readonly PendingTxLoader pendingTxLoader;
+        private readonly PrevTxLoader prevTxLoader;
 
         private IChainState chainState;
         private ChainedHeader replayBlock;
         private bool replayForward;
         private ImmutableDictionary<UInt256, UnmintedTx> unmintedTxes;
-        private ConcurrentDictionary<UInt256, TxOutput[]> loadingTxes;
-        private ConcurrentBlockingQueue<TxInputWithPrevOutputKey> pendingTxes;
-        private ConcurrentBlockingQueue<TxWithPrevOutputs> loadedTxes;
         private IDisposable pendingTxLoaderStopper;
-        private IDisposable txLoaderStopper;
-        private ConcurrentBag<Exception> pendingTxLoaderExceptions;
-        private ConcurrentBag<Exception> txLoaderExceptions;
-
-        private readonly LookAhead<BlockTx> blockTxesLookAhead;
+        private IDisposable prevTxLoaderStopper;
 
         public BlockReplayer(CoreStorage coreStorage, IBlockchainRules rules)
         {
@@ -44,39 +37,28 @@ namespace BitSharp.Core.Builders
             // thread count for i/o task (TxLoader)
             var ioThreadCount = 4;
 
-            this.pendingTxLoader = new ParallelConsumer<BlockTx>("BlockReplayer.PendingTxLoader", ioThreadCount);
-            this.txLoader = new ParallelConsumer<TxInputWithPrevOutputKey>("BlockReplayer.TxLoader", ioThreadCount);
-
-            this.blockTxesLookAhead = new LookAhead<BlockTx>("BlockReplayer.BlockTxesLookAhead");
+            this.pendingTxLoader = new PendingTxLoader("BlockReplayer", ioThreadCount);
+            this.prevTxLoader = new PrevTxLoader("BlockReplayer", null, coreStorage, ioThreadCount);
         }
 
         public void Dispose()
         {
             this.pendingTxLoader.Dispose();
-            this.txLoader.Dispose();
-
-            if (this.pendingTxes != null)
-                this.pendingTxes.Dispose();
-
-            if (this.loadedTxes != null)
-                this.loadedTxes.Dispose();
-
-            this.blockTxesLookAhead.Dispose();
+            this.prevTxLoader.Dispose();
         }
 
-        public IDisposable StartReplay(IChainState chainState, UInt256 blockHash)
+        public IDisposable StartReplay(IChainState chainState, UInt256 blockHash, bool replayForward)
         {
             this.chainState = chainState;
             this.replayBlock = this.coreStorage.GetChainedHeader(blockHash);
+            this.replayForward = replayForward;
 
-            if (chainState.Chain.BlocksByHash.ContainsKey(replayBlock.Hash))
+            if (replayForward)
             {
-                this.replayForward = true;
+                this.unmintedTxes = null;
             }
             else
             {
-                this.replayForward = false;
-
                 IImmutableList<UnmintedTx> unmintedTxesList;
                 if (!this.chainState.TryGetBlockUnmintedTxes(this.replayBlock.Hash, out unmintedTxesList))
                 {
@@ -93,28 +75,16 @@ namespace BitSharp.Core.Builders
                 throw new MissingDataException(this.replayBlock.Hash);
             }
 
-            this.loadingTxes = new ConcurrentDictionary<UInt256, TxOutput[]>();
+            this.pendingTxLoaderStopper = this.pendingTxLoader.StartLoading(chainState, replayBlock, replayForward, blockTxes, unmintedTxes);
+            this.prevTxLoaderStopper = this.prevTxLoader.StartLoading(this.pendingTxLoader.GetQueue());
 
-            this.pendingTxes = new ConcurrentBlockingQueue<TxInputWithPrevOutputKey>();
-            this.loadedTxes = new ConcurrentBlockingQueue<TxWithPrevOutputs>();
-
-            this.pendingTxLoaderExceptions = new ConcurrentBag<Exception>();
-            this.txLoaderExceptions = new ConcurrentBag<Exception>();
-
-            this.pendingTxLoaderStopper = StartPendingTxLoader(blockTxes);
-            this.txLoaderStopper = StartTxLoader();
-
-            return new Stopper(this);
+            return new DisposeAction(StopReplay);
         }
-
-        //public IDisposable StartReplayRollback(IChainState chainState, UInt256 blockHash)
-        //{
-        //}
 
         //TODO result should indicate whether block was played forwards or rolled back
         public IEnumerable<TxWithPrevOutputs> ReplayBlock()
         {
-            foreach (var tx in this.loadedTxes.GetConsumingEnumerable())
+            foreach (var tx in this.prevTxLoader.GetQueue().GetConsumingEnumerable())
             {
                 // fail early if there are any errors
                 this.ThrowIfFailed();
@@ -124,7 +94,7 @@ namespace BitSharp.Core.Builders
 
             // wait for loaders to finish
             this.pendingTxLoader.WaitToComplete();
-            this.txLoader.WaitToComplete();
+            this.prevTxLoader.WaitToComplete();
 
             // ensure any errors that occurred are thrown
             this.ThrowIfFailed();
@@ -132,192 +102,23 @@ namespace BitSharp.Core.Builders
 
         private void ThrowIfFailed()
         {
-            if (this.pendingTxLoaderExceptions.Count > 0)
-                throw new AggregateException(this.pendingTxLoaderExceptions);
+            if (this.pendingTxLoader.TxLoaderExceptions.Count > 0)
+                throw new AggregateException(this.pendingTxLoader.TxLoaderExceptions);
 
-            if (this.txLoaderExceptions.Count > 0)
-                throw new AggregateException(this.txLoaderExceptions);
+            if (this.prevTxLoader.TxLoaderExceptions.Count > 0)
+                throw new AggregateException(this.prevTxLoader.TxLoaderExceptions);
         }
 
         private void StopReplay()
         {
-            this.pendingTxes.CompleteAdding();
-            this.loadedTxes.CompleteAdding();
-
             this.pendingTxLoaderStopper.Dispose();
-            this.txLoaderStopper.Dispose();
-            this.pendingTxes.Dispose();
-            this.loadedTxes.Dispose();
+            this.prevTxLoaderStopper.Dispose();
 
             this.chainState = null;
             this.replayBlock = null;
             this.unmintedTxes = null;
-            this.loadingTxes = null;
-            this.pendingTxes = null;
-            this.loadedTxes = null;
             this.pendingTxLoaderStopper = null;
-            this.txLoaderStopper = null;
-            this.pendingTxLoaderExceptions = null;
-            this.txLoaderExceptions = null;
-        }
-
-        private IDisposable StartPendingTxLoader(IEnumerable<BlockTx> blockTxes)
-        {
-            return this.pendingTxLoader.Start(blockTxesLookAhead.ReadAll(blockTxes),
-                blockTx =>
-                {
-                    var pendingTx = LoadPendingTx(blockTx);
-                    if (pendingTx != null)
-                    {
-                        if (pendingTx.TxIndex > 0)
-                        {
-                            if (!this.loadingTxes.TryAdd(pendingTx.Transaction.Hash, new TxOutput[pendingTx.Transaction.Inputs.Length]))
-                                throw new Exception("TODO");
-                        }
-
-                        this.pendingTxes.AddRange(pendingTx.GetInputs());
-                    }
-                },
-                _ => this.pendingTxes.CompleteAdding());
-        }
-
-        private IDisposable StartTxLoader()
-        {
-            return this.txLoader.Start(this.pendingTxes,
-                pendingTx =>
-                {
-                    var loadedTx = LoadPendingTx(pendingTx);
-                    if (loadedTx != null)
-                        this.loadedTxes.Add(loadedTx);
-                },
-                _ => this.loadedTxes.CompleteAdding());
-        }
-
-        //TODO conflicting names
-        private TxWithPrevOutputKeys LoadPendingTx(BlockTx blockTx)
-        {
-            try
-            {
-                var tx = blockTx.Transaction;
-                var txIndex = blockTx.Index;
-
-                var prevOutputTxKeys = ImmutableArray.CreateBuilder<BlockTxKey>(txIndex > 0 ? tx.Inputs.Length : 0);
-
-                if (txIndex > 0)
-                {
-                    if (this.replayForward)
-                    {
-                        for (var inputIndex = 0; inputIndex < tx.Inputs.Length; inputIndex++)
-                        {
-                            var input = tx.Inputs[inputIndex];
-
-                            UnspentTx unspentTx;
-                            if (!this.chainState.TryGetUnspentTx(input.PreviousTxOutputKey.TxHash, out unspentTx))
-                                throw new MissingDataException(this.replayBlock.Hash);
-
-                            var prevOutputBlockHash = this.chainState.Chain.Blocks[unspentTx.BlockIndex].Hash;
-                            var prevOutputTxIndex = unspentTx.TxIndex;
-
-                            prevOutputTxKeys.Add(new BlockTxKey(prevOutputBlockHash, prevOutputTxIndex));
-                        }
-                    }
-                    else
-                    {
-                        UnmintedTx unmintedTx;
-                        if (!this.unmintedTxes.TryGetValue(tx.Hash, out unmintedTx))
-                            throw new MissingDataException(this.replayBlock.Hash);
-
-                        prevOutputTxKeys.AddRange(unmintedTx.PrevOutputTxKeys);
-                    }
-                }
-
-                var pendingTx = new TxWithPrevOutputKeys(txIndex, tx, this.replayBlock, prevOutputTxKeys.MoveToImmutable());
-                return pendingTx;
-            }
-            catch (Exception e)
-            {
-                this.pendingTxLoaderExceptions.Add(e);
-                //TODO
-                return null;
-            }
-        }
-
-        private TxWithPrevOutputs LoadPendingTx(TxInputWithPrevOutputKey pendingTx)
-        {
-            try
-            {
-                var txIndex = pendingTx.TxIndex;
-                var transaction = pendingTx.Transaction;
-                var chainedHeader = pendingTx.ChainedHeader;
-                var inputIndex = pendingTx.InputIndex;
-                var prevOutputTxKey = pendingTx.PrevOutputTxKey;
-
-                // load previous transactions for each input, unless this is a coinbase transaction
-                if (txIndex > 0)
-                {
-                    var input = transaction.Inputs[inputIndex];
-                    TxOutput prevTxOutput;
-
-                    Transaction prevTx;
-                    if (coreStorage.TryGetTransaction(prevOutputTxKey.BlockHash, prevOutputTxKey.TxIndex, out prevTx))
-                    {
-                        if (input.PreviousTxOutputKey.TxHash != prevTx.Hash)
-                            throw new Exception("TODO");
-
-                        prevTxOutput = prevTx.Outputs[input.PreviousTxOutputKey.TxOutputIndex.ToIntChecked()];
-                    }
-                    else
-                        throw new Exception("TODO");
-
-                    var prevTxOutputs = this.loadingTxes[transaction.Hash];
-                    bool completed;
-                    lock (prevTxOutputs)
-                    {
-                        prevTxOutputs[inputIndex] = prevTxOutput;
-                        completed = prevTxOutputs.All(x => x != null);
-                    }
-
-                    if (completed)
-                    {
-                        if (!this.loadingTxes.TryRemove(transaction.Hash, out prevTxOutputs))
-                            throw new Exception("TODO");
-
-                        return new TxWithPrevOutputs(txIndex, transaction, chainedHeader, ImmutableArray.CreateRange(prevTxOutputs));
-                    }
-                    else
-                    {
-                        return null;
-                    }
-                }
-                else
-                {
-                    if (inputIndex == 0)
-                        return new TxWithPrevOutputs(txIndex, transaction, chainedHeader, ImmutableArray.Create<TxOutput>());
-                    else
-                        return null;
-                }
-            }
-            catch (Exception e)
-            {
-                this.txLoaderExceptions.Add(e);
-                //TODO
-                return null;
-            }
-        }
-
-        private sealed class Stopper : IDisposable
-        {
-            private readonly BlockReplayer blockReplayer;
-
-            public Stopper(BlockReplayer blockReplayer)
-            {
-                this.blockReplayer = blockReplayer;
-            }
-
-            public void Dispose()
-            {
-                this.blockReplayer.StopReplay();
-            }
+            this.prevTxLoaderStopper = null;
         }
     }
 }

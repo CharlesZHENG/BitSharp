@@ -91,7 +91,8 @@ namespace BitSharp.Core.Builders
                 this.BeginTransaction();
                 try
                 {
-                    using (this.blockValidator.StartValidation(chainedHeader))
+                    using (var pendingTxQueue = new ConcurrentBlockingQueue<TxWithPrevOutputKeys>())
+                    using (this.blockValidator.StartValidation(chainedHeader, pendingTxQueue))
                     {
                         // add the block to the chain
                         this.chain.AddBlock(chainedHeader);
@@ -106,7 +107,8 @@ namespace BitSharp.Core.Builders
                                 var pendingTxCount = 0;
                                 foreach (var pendingTx in this.utxoBuilder.CalculateUtxo(this.chain.ToImmutable(), blockTxes.Select(x => x.Transaction)))
                                 {
-                                    this.blockValidator.AddPendingTx(pendingTx);
+                                    if (!rules.BypassPrevTxLoading)
+                                        pendingTxQueue.Add(pendingTx);
 
                                     // track stats, ignore coinbase
                                     if (pendingTx.TxIndex > 0)
@@ -124,7 +126,8 @@ namespace BitSharp.Core.Builders
                         }
 
                         // finished queuing up block's txes
-                        this.blockValidator.CompleteAdding();
+                        pendingTxQueue.CompleteAdding();
+                        this.stats.pendingTxesAtCompleteAverageMeasure.Tick(this.blockValidator.PendingPrevTxCount);
 
                         // track stats
                         this.stats.blockCount++;

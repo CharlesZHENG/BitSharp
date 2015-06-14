@@ -37,7 +37,7 @@ namespace BitSharp.Core.Test
                     {
                         var blockHash = chainState.Chain.Blocks[blockHeight].Hash;
 
-                        using (blockReplayer.StartReplay(chainState, blockHash))
+                        using (blockReplayer.StartReplay(chainState, blockHash, replayForward: true))
                         {
                             var expectedTransactions = simulator.BlockProvider.GetBlock(blockHeight).Transactions;
                             var actualTransactions = blockReplayer.ReplayBlock().OrderBy(x => x.TxIndex).ToList();
@@ -92,13 +92,13 @@ namespace BitSharp.Core.Test
                     var replayTransactions = new List<TxWithPrevOutputs>();
                     foreach (var blockHash in chainState.Chain.Blocks.Select(x => x.Hash))
                     {
-                        using (blockReplayer.StartReplay(chainState, blockHash))
+                        using (blockReplayer.StartReplay(chainState, blockHash, replayForward: true))
                         {
                             replayTransactions.AddRange(
                                 blockReplayer.ReplayBlock().OrderBy(x => x.TxIndex));
                         }
                     }
-                    
+
                     // verify all transactions were replayed
                     Assert.AreEqual(6, replayTransactions.Count);
                     Assert.AreEqual(block0.Transactions[0].Hash, replayTransactions[0].Transaction.Hash);
@@ -120,7 +120,7 @@ namespace BitSharp.Core.Test
                     Assert.AreEqual(1, chainState.Chain.Height);
 
                     var replayTransactions = new List<TxWithPrevOutputs>();
-                    using (blockReplayer.StartReplay(chainState, block3.Hash))
+                    using (blockReplayer.StartReplay(chainState, block3.Hash, replayForward: false))
                     {
                         replayTransactions.AddRange(
                             blockReplayer.ReplayBlock().OrderBy(x => -x.TxIndex));
@@ -145,7 +145,7 @@ namespace BitSharp.Core.Test
                     Assert.AreEqual(1, chainState.Chain.Height);
 
                     var replayTransactions = new List<TxWithPrevOutputs>();
-                    using (blockReplayer.StartReplay(chainState, block2.Hash))
+                    using (blockReplayer.StartReplay(chainState, block2.Hash, replayForward: false))
                     {
                         replayTransactions.AddRange(
                             blockReplayer.ReplayBlock().OrderBy(x => -x.TxIndex));

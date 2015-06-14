@@ -89,7 +89,7 @@ namespace BitSharp.Core.Rules
         }
 
         //TODO
-        public bool BypassValidation { get; set; }
+        public bool BypassPrevTxLoading { get; set; }
         public bool IgnoreScripts { get; set; }
         public bool IgnoreSignatures { get; set; }
         public bool IgnoreScriptErrors { get; set; }
