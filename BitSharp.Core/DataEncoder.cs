@@ -425,7 +425,7 @@ namespace BitSharp.Core
             }
         }
 
-        public static TxLookupKey DecodeBlockTxKey(BinaryReader reader)
+        public static TxLookupKey DecodeTxLookupKey(BinaryReader reader)
         {
             return new TxLookupKey(
                 blockHash: reader.ReadUInt256(),
@@ -433,27 +433,27 @@ namespace BitSharp.Core
             );
         }
 
-        public static TxLookupKey DecodeBlockTxKey(byte[] bytes)
+        public static TxLookupKey DecodeTxLookupKey(byte[] bytes)
         {
             using (var stream = new MemoryStream(bytes))
             using (var reader = new BinaryReader(stream))
             {
-                return DecodeBlockTxKey(reader);
+                return DecodeTxLookupKey(reader);
             }
         }
 
-        public static void EncodeBlockTxKey(BinaryWriter writer, TxLookupKey blockTxKey)
+        public static void EncodeTxLookupKey(BinaryWriter writer, TxLookupKey txLookupKey)
         {
-            writer.WriteUInt256(blockTxKey.BlockHash);
-            writer.WriteInt32(blockTxKey.TxIndex);
+            writer.WriteUInt256(txLookupKey.BlockHash);
+            writer.WriteInt32(txLookupKey.TxIndex);
         }
 
-        public static byte[] EncodeBlockTxKey(TxLookupKey blockTxKey)
+        public static byte[] EncodeTxLookupKey(TxLookupKey txLookupKey)
         {
             using (var stream = new MemoryStream())
             using (var writer = new BinaryWriter(stream))
             {
-                EncodeBlockTxKey(writer, blockTxKey);
+                EncodeTxLookupKey(writer, txLookupKey);
                 return stream.ToArray();
             }
         }
@@ -462,7 +462,7 @@ namespace BitSharp.Core
         {
             return new UnmintedTx(
                 txHash: reader.ReadUInt256(),
-                prevOutputTxKeys: reader.ReadList(() => DecodeBlockTxKey(reader))
+                prevOutputTxKeys: reader.ReadList(() => DecodeTxLookupKey(reader))
             );
         }
 
@@ -478,7 +478,7 @@ namespace BitSharp.Core
         public static void EncodeUnmintedTx(BinaryWriter writer, UnmintedTx unmintedTx)
         {
             writer.WriteUInt256(unmintedTx.TxHash);
-            writer.WriteList(unmintedTx.PrevOutputTxKeys, x => EncodeBlockTxKey(writer, x));
+            writer.WriteList(unmintedTx.PrevOutputTxKeys, x => EncodeTxLookupKey(writer, x));
         }
 
         public static byte[] EncodeUnmintedTx(UnmintedTx unmintedTx)
