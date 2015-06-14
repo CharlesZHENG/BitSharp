@@ -9,7 +9,7 @@ namespace BitSharp.Common
     /// Represents a thread-safe blocking, first-in, first-out collection of objects.
     /// </summary>
     /// <typeparam name="T">Specifies the type of elements in the queue.</typeparam>
-    public class ConcurrentBlockingQueue<T> : IDisposable
+    public class ConcurrentBlockingQueue<T> : IEnumerable<T>, IDisposable
     {
         private readonly ConcurrentQueue<T> queue = new ConcurrentQueue<T>();
         private readonly AutoResetEvent workEvent = new AutoResetEvent(false);
@@ -129,6 +129,17 @@ namespace BitSharp.Common
                 // otherwise, wait for additional items to be added and continue
             }
             while (this.workEvent.WaitOne());
+        }
+
+        public IEnumerator<T> GetEnumerator()
+        {
+            foreach (var item in this.queue)
+                yield return item;
+        }
+
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
+        {
+            return this.GetEnumerator();
         }
 
         private void CheckDisposed()

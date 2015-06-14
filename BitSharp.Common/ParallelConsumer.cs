@@ -44,7 +44,7 @@ namespace BitSharp.Common
 
         // the queue of read items that are waiting to be consumed
         private ConcurrentBlockingQueue<T> queue;
-        private bool queueOwned;
+        private bool readToQueue;
 
         // track the number of items currently being processed
         private int processingCount;
@@ -136,62 +136,47 @@ namespace BitSharp.Common
                 this.readWorker.Start();
             }
 
-            // store the source enumerable and actions
-            this.source = source;
+            // store the actions
             this.consumeAction = consumeAction;
             this.completedAction = completedAction;
 
-            // initialize queue and exceptions and reset completed count
-            this.queue = new ConcurrentBlockingQueue<T>();
-            this.queueOwned = true;
+            // initialize queue
+            this.queue = source as ConcurrentBlockingQueue<T>;
+            if (this.queue == null)
+            {
+                this.readToQueue = true;
+                this.queue = new ConcurrentBlockingQueue<T>();
+                this.source = source;
+            }
+            else
+            {
+                this.readToQueue = false;
+                this.source = null;
+            }
+
+            // initialize exceptions and reset completed count
             this.exceptions = new ConcurrentBag<Exception>();
             this.processingCount = 0;
             this.consumeCompletedCount = 0;
 
             // set to the started state
-            this.completedReadingEvent.Reset();
+            if (readToQueue)
+                this.completedReadingEvent.Reset();
+            else
+                this.completedReadingEvent.Set();
             this.completedConsumingEvent.Reset();
             this.isStarted = true;
 
             // notify the read worker to begin
-            this.readWorker.NotifyWork();
+            if (readToQueue)
+                this.readWorker.NotifyWork();
 
             // notify the consume workers to begin
             for (var i = 0; i < this.consumeWorkers.Length; i++)
                 this.consumeWorkers[i].NotifyWork();
 
             // return the IDisposable to cleanup this session
-            return new Stopper(this);
-        }
-
-        public IDisposable Start(ConcurrentBlockingQueue<T> queue, Action<T> consumeAction, Action<AggregateException> completedAction)
-        {
-            if (this.isStarted)
-                throw new InvalidOperationException();
-
-            // store the source enumerable and actions
-            this.source = null;
-            this.consumeAction = consumeAction;
-            this.completedAction = completedAction;
-
-            // initialize queue and exceptions and reset completed count
-            this.queue = queue;
-            this.queueOwned = false;
-            this.exceptions = new ConcurrentBag<Exception>();
-            this.processingCount = 0;
-            this.consumeCompletedCount = 0;
-
-            // set to the started state
-            this.completedReadingEvent.Set();
-            this.completedConsumingEvent.Reset();
-            this.isStarted = true;
-
-            // notify the consume workers to begin
-            for (var i = 0; i < this.consumeWorkers.Length; i++)
-                this.consumeWorkers[i].NotifyWork();
-
-            // return the IDisposable to cleanup this session
-            return new Stopper(this);
+            return new DisposeAction(Stop);
         }
 
         /// <summary>
@@ -223,7 +208,7 @@ namespace BitSharp.Common
             this.completedConsumingEvent.Wait();
 
             // dispose the queue
-            if (this.queueOwned)
+            if (this.readToQueue)
                 this.queue.Dispose();
 
             // null out all the fields used for this session
@@ -304,29 +289,6 @@ namespace BitSharp.Common
                     // notify that consuming has been completed
                     this.completedConsumingEvent.Set();
                 }
-            }
-        }
-
-        // IDisposable to initiate cleanup of a consuming session
-        private sealed class Stopper : IDisposable
-        {
-            private readonly ParallelConsumer<T> worker;
-            private bool isDisposed;
-
-            public Stopper(ParallelConsumer<T> worker)
-            {
-                this.worker = worker;
-            }
-
-            public void Dispose()
-            {
-                if (this.isDisposed)
-                    return;
-
-                // stop the consuming session
-                this.worker.Stop();
-
-                this.isDisposed = true;
             }
         }
     }
