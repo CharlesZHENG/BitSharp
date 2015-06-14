@@ -298,6 +298,11 @@ namespace BitSharp.Common
             return new UInt256(BigInteger.Parse("0" + value, style, provider).ToByteArray());
         }
 
+        public static UInt256 ParseHex(string value)
+        {
+            return new UInt256(BigInteger.Parse("0" + value, NumberStyles.HexNumber).ToByteArray());
+        }
+
         public static double Log(UInt256 value, double baseValue)
         {
             return BigInteger.Log(value.ToBigInteger(), baseValue);

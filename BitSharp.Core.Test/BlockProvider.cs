@@ -34,7 +34,7 @@ namespace BitSharp.Core.Test
             {
                 var chunks = Path.GetFileNameWithoutExtension(entry.Name).Split('_');
                 var blockHeight = int.Parse(chunks[0]);
-                var blockHash = UInt256.Parse(chunks[1], NumberStyles.HexNumber);
+                var blockHash = UInt256.ParseHex(chunks[1]);
 
                 heightNames.Add(blockHeight, entry.Name);
                 hashNames.Add(blockHash, entry.Name);

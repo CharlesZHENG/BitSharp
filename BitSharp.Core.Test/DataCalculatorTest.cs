@@ -15,13 +15,13 @@ namespace BitSharp.Core.Test
         public void TestBitsToTarget()
         {
             var bits1 = 0x1b0404cbU;
-            var expected1 = UInt256.Parse("404cb000000000000000000000000000000000000000000000000", NumberStyles.HexNumber);
+            var expected1 = UInt256.ParseHex("404cb000000000000000000000000000000000000000000000000");
             var actual1 = DataCalculator.BitsToTarget(bits1);
             Assert.AreEqual(expected1, actual1);
 
             // difficulty: 1
             var bits2 = 0x1d00ffffU;
-            var expected2 = UInt256.Parse("ffff0000000000000000000000000000000000000000000000000000", NumberStyles.HexNumber);
+            var expected2 = UInt256.ParseHex("ffff0000000000000000000000000000000000000000000000000000");
             var actual2 = DataCalculator.BitsToTarget(bits2);
             Assert.AreEqual(expected2, actual2);
         }
@@ -29,20 +29,20 @@ namespace BitSharp.Core.Test
         [TestMethod]
         public void TestTargetToBits()
         {
-            var target1 = UInt256.Parse("404cb000000000000000000000000000000000000000000000000", NumberStyles.HexNumber);
+            var target1 = UInt256.ParseHex("404cb000000000000000000000000000000000000000000000000");
             var expected1 = 0x1b0404cbU;
             var actual1 = DataCalculator.TargetToBits(target1);
 
             Assert.AreEqual(expected1, actual1);
 
             // difficulty: 1
-            var target2 = UInt256.Parse("ffff0000000000000000000000000000000000000000000000000000", NumberStyles.HexNumber);
+            var target2 = UInt256.ParseHex("ffff0000000000000000000000000000000000000000000000000000");
             var expected2 = 0x1d00ffffU;
             var actual2 = DataCalculator.TargetToBits(target2);
 
             Assert.AreEqual(expected2, actual2);
 
-            var target3 = UInt256.Parse("7fff0000000000000000000000000000000000000000000000000000", NumberStyles.HexNumber);
+            var target3 = UInt256.ParseHex("7fff0000000000000000000000000000000000000000000000000000");
             var expected3 = 0x1c7fff00U;
             var actual3 = DataCalculator.TargetToBits(target3);
 
@@ -52,12 +52,12 @@ namespace BitSharp.Core.Test
         [TestMethod]
         public void TestCalculateBlockHash()
         {
-            var expectedHash = UInt256.Parse("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f", NumberStyles.HexNumber);
+            var expectedHash = UInt256.ParseHex("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f");
             var blockHeader = new BlockHeader
             (
                 version: 1,
                 previousBlock: 0,
-                merkleRoot: UInt256.Parse("4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b", NumberStyles.HexNumber),
+                merkleRoot: UInt256.ParseHex("4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"),
                 time: 1231006505,
                 bits: 0x1D00FFFF,
                 nonce: 2083236893
@@ -70,7 +70,7 @@ namespace BitSharp.Core.Test
         [TestMethod]
         public void TestCalculateTransactionHash()
         {
-            var expectedHash = UInt256.Parse("4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b", NumberStyles.HexNumber);
+            var expectedHash = UInt256.ParseHex("4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b");
             var tx = new Transaction
             (
                 version: 1,

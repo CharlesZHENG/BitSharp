@@ -13,7 +13,7 @@ namespace BitSharp.Core.Test
 
         public static readonly string GENESIS_BLOCK_HASH_STRING = "000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f";
 
-        public static readonly UInt256 GENESIS_BLOCK_HASH = UInt256.Parse(GENESIS_BLOCK_HASH_STRING, NumberStyles.HexNumber);
+        public static readonly UInt256 GENESIS_BLOCK_HASH = UInt256.ParseHex(GENESIS_BLOCK_HASH_STRING);
 
         public static readonly Block GENESIS_BLOCK = new Block
         (
@@ -21,7 +21,7 @@ namespace BitSharp.Core.Test
             (
                 version: 1,
                 previousBlock: 0,
-                merkleRoot: UInt256.Parse("4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b", NumberStyles.HexNumber),
+                merkleRoot: UInt256.ParseHex("4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"),
                 time: 1231006505,
                 bits: 0x1D00FFFF,
                 nonce: 2083236893

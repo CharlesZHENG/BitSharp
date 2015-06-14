@@ -11,7 +11,7 @@ namespace BitSharp.Core.Test
         (
             previousTxOutputKey: new TxOutputKey
             (
-                txHash: UInt256.Parse("00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff", NumberStyles.HexNumber),
+                txHash: UInt256.ParseHex("00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff"),
                 txOutputIndex: 0x01
             ),
             scriptSignature: new byte[] { 0x00, 0x01, 0x02, 0x03, 0x04 },
@@ -41,8 +41,8 @@ namespace BitSharp.Core.Test
         public static readonly BlockHeader BLOCK_HEADER_1 = new BlockHeader
         (
             version: 0x01,
-            previousBlock: UInt256.Parse("00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff", NumberStyles.HexNumber),
-            merkleRoot: UInt256.Parse("ffeeddccbbaa99887766554433221100ffeeddccbbaa99887766554433221100", NumberStyles.HexNumber),
+            previousBlock: UInt256.ParseHex("00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff"),
+            merkleRoot: UInt256.ParseHex("ffeeddccbbaa99887766554433221100ffeeddccbbaa99887766554433221100"),
             time: 0x02,
             bits: 0x03,
             nonce: 0x04

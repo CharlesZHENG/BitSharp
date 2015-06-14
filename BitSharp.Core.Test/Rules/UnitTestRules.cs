@@ -8,11 +8,11 @@ namespace BitSharp.Core.Test.Rules
 {
     public class UnitTestRules : MainnetRules
     {
-        public static readonly UInt256 Target0 = UInt256.Parse("FFFFFF0000000000000000000000000000000000000000000000000000000000", NumberStyles.HexNumber);
-        public static readonly UInt256 Target1 = UInt256.Parse("0FFFFFF000000000000000000000000000000000000000000000000000000000", NumberStyles.HexNumber);
-        public static readonly UInt256 Target2 = UInt256.Parse("00FFFFFF00000000000000000000000000000000000000000000000000000000", NumberStyles.HexNumber);
-        public static readonly UInt256 Target3 = UInt256.Parse("000FFFFFF0000000000000000000000000000000000000000000000000000000", NumberStyles.HexNumber);
-        public static readonly UInt256 Target4 = UInt256.Parse("0000FFFFFF000000000000000000000000000000000000000000000000000000", NumberStyles.HexNumber);
+        public static readonly UInt256 Target0 = UInt256.ParseHex("FFFFFF0000000000000000000000000000000000000000000000000000000000");
+        public static readonly UInt256 Target1 = UInt256.ParseHex("0FFFFFF000000000000000000000000000000000000000000000000000000000");
+        public static readonly UInt256 Target2 = UInt256.ParseHex("00FFFFFF00000000000000000000000000000000000000000000000000000000");
+        public static readonly UInt256 Target3 = UInt256.ParseHex("000FFFFFF0000000000000000000000000000000000000000000000000000000");
+        public static readonly UInt256 Target4 = UInt256.ParseHex("0000FFFFFF000000000000000000000000000000000000000000000000000000");
 
         private UInt256 _highestTarget;
         private Block _genesisBlock;

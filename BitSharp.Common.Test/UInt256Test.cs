@@ -50,7 +50,7 @@ namespace BitSharp.Common.Test
         [TestMethod]
         public void TestUInt256Inequality()
         {
-            var expected = UInt256.Parse(TestData.HEX_STRING_64, NumberStyles.HexNumber);
+            var expected = UInt256.ParseHex(TestData.HEX_STRING_64);
             var actual = UInt256.Zero;
 
             Assert.AreNotEqual(expected, actual);
@@ -62,7 +62,7 @@ namespace BitSharp.Common.Test
         [TestMethod]
         public void TestUInt256RawBytes()
         {
-            var expected = UInt256.Parse(TestData.HEX_STRING_64, NumberStyles.HexNumber);
+            var expected = UInt256.ParseHex(TestData.HEX_STRING_64);
             var actual1 = new UInt256(expected.ToByteArray());
             var actual2 = new UInt256(new UInt256(expected.ToByteArray()).ToByteArray());
             var actual3 = new UInt256(new UInt256(new UInt256(expected.ToByteArray()).ToByteArray()).ToByteArray());
@@ -75,7 +75,7 @@ namespace BitSharp.Common.Test
         [TestMethod]
         public void TestUInt256Sha256()
         {
-            var expected = SHA256Static.ComputeDoubleHash(UInt256.Parse(TestData.HEX_STRING_64, NumberStyles.HexNumber).ToByteArray());
+            var expected = SHA256Static.ComputeDoubleHash(UInt256.ParseHex(TestData.HEX_STRING_64).ToByteArray());
             var actual = new UInt256(expected).ToByteArray();
 
             CollectionAssert.AreEqual(expected, actual);
@@ -88,8 +88,8 @@ namespace BitSharp.Common.Test
             var expected1 = "4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b";
             var expected2 = "[3b,a3,ed,fd,7a,7b,12,b2,7a,c7,2c,3e,67,76,8f,61,7f,c8,1b,c3,88,8a,51,32,3a,9f,b8,aa,4b,1e,5e,4a]";
 
-            var actual1 = UInt256.Parse(hex, NumberStyles.HexNumber).ToHexNumberString();
-            var actual2 = UInt256.Parse(hex, NumberStyles.HexNumber).ToHexDataString();
+            var actual1 = UInt256.ParseHex(hex).ToHexNumberString();
+            var actual2 = UInt256.ParseHex(hex).ToHexDataString();
 
             Assert.AreEqual(expected1, actual1);
             Assert.AreEqual(expected2, actual2);

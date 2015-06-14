@@ -22,7 +22,7 @@ namespace BitSharp.Core.Rules
                     (
                         version: 1,
                         previousBlock: 0,
-                        merkleRoot: UInt256.Parse("4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b", NumberStyles.HexNumber),
+                        merkleRoot: UInt256.ParseHex("4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"),
                         time: 1296688602,
                         bits: 0x207FFFFF,
                         nonce: 2
@@ -72,7 +72,7 @@ namespace BitSharp.Core.Rules
                     )
                 );
 
-            Debug.Assert(_genesisBlock.Hash == UInt256.Parse("0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206", NumberStyles.HexNumber));
+            Debug.Assert(_genesisBlock.Hash == UInt256.ParseHex("0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206"));
 
             this._genesisChainedHeader = ChainedHeader.CreateForGenesisBlock(this._genesisBlock.Header);
         }

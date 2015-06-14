@@ -14,9 +14,9 @@ namespace BitSharp.Core.Builders
     internal class UtxoBuilder
     {
         private static readonly int DUPE_COINBASE_1_HEIGHT = 91722;
-        private static readonly UInt256 DUPE_COINBASE_1_HASH = UInt256.Parse("e3bf3d07d4b0375638d5f1db5255fe07ba2c4cb067cd81b84ee974b6585fb468", NumberStyles.HexNumber);
+        private static readonly UInt256 DUPE_COINBASE_1_HASH = UInt256.ParseHex("e3bf3d07d4b0375638d5f1db5255fe07ba2c4cb067cd81b84ee974b6585fb468");
         private static readonly int DUPE_COINBASE_2_HEIGHT = 91812;
-        private static readonly UInt256 DUPE_COINBASE_2_HASH = UInt256.Parse("d5d27987d2a3dfc724e359870c6644b40e497bdc0589a033220fe15429d88599", NumberStyles.HexNumber);
+        private static readonly UInt256 DUPE_COINBASE_2_HASH = UInt256.ParseHex("d5d27987d2a3dfc724e359870c6644b40e497bdc0589a033220fe15429d88599");
 
         private readonly Logger logger = LogManager.GetCurrentClassLogger();
 
