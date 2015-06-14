@@ -209,6 +209,7 @@ namespace BitSharp.Client
             base.OnClosed(e);
 
             this.logger.Info("Finished shutting down: {0:#,##0.00}s".Format2(stopwatch.Elapsed.TotalSeconds));
+            LogManager.Flush();
         }
 
         private void ViewFirst_Click(object sender, RoutedEventArgs e)
