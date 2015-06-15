@@ -57,6 +57,7 @@ namespace BitSharp.Common
 
         // whether a consuming session is started
         private bool isStarted;
+        private bool exceptionsThrown;
 
         private bool isDisposed;
 
@@ -166,6 +167,7 @@ namespace BitSharp.Common
                 this.completedReadingEvent.Set();
             this.completedConsumingEvent.Reset();
             this.isStarted = true;
+            this.exceptionsThrown = false;
 
             // notify the read worker to begin
             if (readToQueue)
@@ -194,7 +196,10 @@ namespace BitSharp.Common
 
             // if any exceptions were thrown, rethrow them here
             if (this.exceptions.Count > 0)
+            {
+                this.exceptionsThrown = true;
                 throw new AggregateException(this.exceptions);
+            }
         }
 
         private void Stop()
@@ -211,12 +216,19 @@ namespace BitSharp.Common
             if (this.readToQueue)
                 this.queue.Dispose();
 
+            // capture any unthrown exceptions before clearing
+            var unthrownExceptions = !exceptionsThrown ? this.exceptions : null;
+
             // null out all the fields used for this session
             this.source = null;
             this.consumeAction = null;
             this.completedAction = null;
             this.queue = null;
             this.exceptions = null;
+
+            // if any exceptions were unthrown, rethrow them here
+            if (unthrownExceptions != null && unthrownExceptions.Count > 0)
+                throw new AggregateException(unthrownExceptions);
         }
 
         private void ReadWorker(WorkerMethod instance)

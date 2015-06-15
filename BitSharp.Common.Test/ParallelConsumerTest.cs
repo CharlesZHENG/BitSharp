@@ -151,5 +151,48 @@ namespace BitSharp.Common.Test
                 }
             }
         }
+
+        [TestMethod]
+        public void TestUnthrownExceptionThrowsOnStop()
+        {
+            using (var consumer = new ParallelConsumer<int>("", 4))
+            {
+                // create a source enumerable
+                var source = Enumerable.Range(0, 5).Select(x => x);
+
+                // create a consume action that will throw an exception on the last item
+                var expectedException = new Exception();
+                Action<int> consumeAction = x =>
+                {
+                    if (x == 4)
+                        throw expectedException;
+                };
+
+                // create a completed action
+                AggregateException completedException = null;
+                var wasCompleted = false;
+                Action<AggregateException> completedAction = ex => { completedException = ex; wasCompleted = true; };
+
+                try
+                {
+                    // start and stop consuming the source
+                    using (consumer.Start(source, consumeAction, completedAction))
+                    { }
+                }
+                // the consumer was stopped without having thrown its exception, verify the exception was thrown on stop
+                catch (AggregateException e)
+                {
+                    // verify expected exception
+                    Assert.AreEqual(1, e.InnerExceptions.Count);
+                    Assert.AreSame(expectedException, e.InnerExceptions[0]);
+
+                    // verify completed action was called with exception
+                    Assert.IsNotNull(completedException);
+                    Assert.AreEqual(1, completedException.InnerExceptions.Count);
+                    Assert.AreSame(expectedException, completedException.InnerExceptions[0]);
+                    Assert.IsTrue(wasCompleted);
+                }
+            }
+        }
     }
 }
