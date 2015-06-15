@@ -55,7 +55,7 @@ namespace BitSharp.Core.Test
             this.miner = this.kernel.Get<Miner>();
 
             // create and mine the genesis block
-            this.genesisBlock = genesisBlock ?? MineEmptyBlock(0);
+            this.genesisBlock = genesisBlock ?? MineEmptyBlock(UInt256.Zero);
 
             // add storage module
             this.kernel.Load(new MemoryStorageModule());
@@ -128,7 +128,7 @@ namespace BitSharp.Core.Test
                     (
                         previousTxOutputKey: new TxOutputKey
                         (
-                            txHash: 0,
+                            txHash: UInt256.Zero,
                             txOutputIndex: 0
                         ),
                         scriptSignature: random.NextBytes(100),

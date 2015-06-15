@@ -1,4 +1,5 @@
-﻿using BitSharp.Common.ExtensionMethods;
+﻿using BitSharp.Common;
+using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Script;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Linq;
@@ -26,7 +27,7 @@ namespace BitSharp.Core.Test.Script
             var script = privateKeyScript.Concat(publicKeyScript);
 
             var scriptEngine = new ScriptEngine();
-            Assert.IsTrue(scriptEngine.VerifyScript(0, 0, publicKeyScript.ToArray(), coinbaseTx, 0, script));
+            Assert.IsTrue(scriptEngine.VerifyScript(UInt256.Zero, 0, publicKeyScript.ToArray(), coinbaseTx, 0, script));
         }
     }
 }

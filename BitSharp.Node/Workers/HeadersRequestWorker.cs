@@ -88,7 +88,7 @@ namespace BitSharp.Node.Workers
                 if (this.headersRequestsByPeer.TryAdd(peer, now))
                 {
                     // send out the request for headers
-                    requestTasks.Add(peer.Sender.SendGetHeaders(blockLocatorHashes, hashStop: 0));
+                    requestTasks.Add(peer.Sender.SendGetHeaders(blockLocatorHashes, hashStop: UInt256.Zero));
 
                     // only send out a few header requests at a time
                     requestCount++;

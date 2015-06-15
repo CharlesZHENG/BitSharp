@@ -169,7 +169,7 @@ namespace BitSharp.Core.Test.Script
 
                 var script = GetScriptFromInputPrevOutput(input, prevOutput);
 
-                var result = scriptEngine.VerifyScript(0 /*blockIndex*/, -1 /*txIndex*/, prevOutput.ScriptPublicKey.ToArray(), tx, inputIndex, script.ToArray());
+                var result = scriptEngine.VerifyScript(UInt256.Zero /*blockHash*/, -1 /*txIndex*/, prevOutput.ScriptPublicKey.ToArray(), tx, inputIndex, script.ToArray());
 
                 Assert.IsTrue(result);
             }

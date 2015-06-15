@@ -152,42 +152,42 @@ namespace BitSharp.Common
             return value.ToBigInteger();
         }
 
-        public static implicit operator UInt256(byte value)
+        public static explicit operator UInt256(byte value)
         {
             return new UInt256(value);
         }
 
-        public static implicit operator UInt256(int value)
+        public static explicit operator UInt256(int value)
         {
             return new UInt256(value);
         }
 
-        public static implicit operator UInt256(long value)
+        public static explicit operator UInt256(long value)
         {
             return new UInt256(value);
         }
 
-        public static implicit operator UInt256(sbyte value)
+        public static explicit operator UInt256(sbyte value)
         {
             return new UInt256(value);
         }
 
-        public static implicit operator UInt256(short value)
+        public static explicit operator UInt256(short value)
         {
             return new UInt256(value);
         }
 
-        public static implicit operator UInt256(uint value)
+        public static explicit operator UInt256(uint value)
         {
             return new UInt256(value);
         }
 
-        public static implicit operator UInt256(ulong value)
+        public static explicit operator UInt256(ulong value)
         {
             return new UInt256(value);
         }
 
-        public static implicit operator UInt256(ushort value)
+        public static explicit operator UInt256(ushort value)
         {
             return new UInt256(value);
         }

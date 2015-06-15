@@ -14,13 +14,13 @@ namespace BitSharp.Core.Test
         [TestMethod]
         public void TestPruneMerkleTreeNodes()
         {
-            var node1 = new MerkleTreeNode(index: 0, depth: 0, hash: 1, pruned: false);
-            var node2 = new MerkleTreeNode(index: 1, depth: 0, hash: 2, pruned: false);
-            var node3 = new MerkleTreeNode(index: 2, depth: 0, hash: 3, pruned: false);
-            var node4 = new MerkleTreeNode(index: 3, depth: 0, hash: 4, pruned: false);
-            var node5 = new MerkleTreeNode(index: 4, depth: 0, hash: 5, pruned: false);
-            var node6 = new MerkleTreeNode(index: 5, depth: 0, hash: 6, pruned: false);
-            var node7 = new MerkleTreeNode(index: 6, depth: 0, hash: 7, pruned: false);
+            var node1 = new MerkleTreeNode(index: 0, depth: 0, hash: (UInt256)1, pruned: false);
+            var node2 = new MerkleTreeNode(index: 1, depth: 0, hash: (UInt256)2, pruned: false);
+            var node3 = new MerkleTreeNode(index: 2, depth: 0, hash: (UInt256)3, pruned: false);
+            var node4 = new MerkleTreeNode(index: 3, depth: 0, hash: (UInt256)4, pruned: false);
+            var node5 = new MerkleTreeNode(index: 4, depth: 0, hash: (UInt256)5, pruned: false);
+            var node6 = new MerkleTreeNode(index: 5, depth: 0, hash: (UInt256)6, pruned: false);
+            var node7 = new MerkleTreeNode(index: 6, depth: 0, hash: (UInt256)7, pruned: false);
 
             var depth1Node1 = node1.AsPruned().PairWith(node2.AsPruned());
             var depth1Node2 = node3.AsPruned().PairWith(node4.AsPruned());
@@ -102,10 +102,10 @@ namespace BitSharp.Core.Test
         [TestMethod]
         public void TestReadMerkleTreeNodes()
         {
-            var node1 = new MerkleTreeNode(index: 0, depth: 0, hash: 1, pruned: false);
-            var node2 = new MerkleTreeNode(index: 1, depth: 0, hash: 2, pruned: false);
-            var node3 = new MerkleTreeNode(index: 2, depth: 0, hash: 3, pruned: false);
-            var node4 = new MerkleTreeNode(index: 3, depth: 0, hash: 4, pruned: false);
+            var node1 = new MerkleTreeNode(index: 0, depth: 0, hash: (UInt256)1, pruned: false);
+            var node2 = new MerkleTreeNode(index: 1, depth: 0, hash: (UInt256)2, pruned: false);
+            var node3 = new MerkleTreeNode(index: 2, depth: 0, hash: (UInt256)3, pruned: false);
+            var node4 = new MerkleTreeNode(index: 3, depth: 0, hash: (UInt256)4, pruned: false);
 
             var depth1Hash1 = MerkleTree.PairHashes(node1.Hash, node2.Hash);
             var depth1Hash2 = MerkleTree.PairHashes(node3.Hash, node4.Hash);
@@ -250,19 +250,19 @@ namespace BitSharp.Core.Test
         [ExpectedException(typeof(ArgumentException))]
         public void TestMerkleTreeNodeBadIndex()
         {
-            new MerkleTreeNode(index: 3, depth: 1, hash: 0, pruned: false);
+            new MerkleTreeNode(index: 3, depth: 1, hash: UInt256.Zero, pruned: false);
         }
 
         [TestMethod]
         public void TestCalculateMerkleRoot()
         {
-            var node1 = new MerkleTreeNode(index: 0, depth: 0, hash: 1, pruned: false);
-            var node2 = new MerkleTreeNode(index: 1, depth: 0, hash: 2, pruned: false);
-            var node3 = new MerkleTreeNode(index: 2, depth: 0, hash: 3, pruned: false);
+            var node1 = new MerkleTreeNode(index: 0, depth: 0, hash: (UInt256)1, pruned: false);
+            var node2 = new MerkleTreeNode(index: 1, depth: 0, hash: (UInt256)2, pruned: false);
+            var node3 = new MerkleTreeNode(index: 2, depth: 0, hash: (UInt256)3, pruned: false);
 
             var depth1Hash1 = MerkleTree.PairHashes(node1.Hash, node2.Hash);
             var depth1Hash2 = MerkleTree.PairHashes(node3.Hash, node3.Hash);
-            
+
             var expectedMerkleRoot = MerkleTree.PairHashes(depth1Hash1, depth1Hash2);
 
             var hashes = new List<UInt256> { node1.Hash, node2.Hash, node3.Hash };

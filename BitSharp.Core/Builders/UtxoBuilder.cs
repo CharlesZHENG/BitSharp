@@ -80,7 +80,7 @@ namespace BitSharp.Core.Builders
             }
 
             if (!this.chainStateCursor.TryAddBlockSpentTxes(chainedHeader.Height, blockSpentTxes.ToImmutable()))
-                throw new ValidationException(chainedHeader.Height);
+                throw new ValidationException(chainedHeader.Hash);
         }
 
         private void Mint(Transaction tx, int txIndex, ChainedHeader chainedHeader)

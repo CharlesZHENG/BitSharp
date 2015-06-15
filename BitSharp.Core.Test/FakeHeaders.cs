@@ -1,4 +1,5 @@
-﻿using BitSharp.Common.ExtensionMethods;
+﻿using BitSharp.Common;
+using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Domain;
 using BitSharp.Core.Test.Rules;
 using System;
@@ -45,7 +46,7 @@ namespace BitSharp.Core.Test
             if (this.blockHeaders.Count > 0)
                 throw new InvalidOperationException();
 
-            var blockHeader = new BlockHeader(0, 0, 0, 0, this.bits, this.nonce);
+            var blockHeader = new BlockHeader(0, UInt256.Zero, UInt256.Zero, 0, this.bits, this.nonce);
 
             this.blockHeaders.Add(blockHeader);
             this.totalWork += blockHeader.CalculateWork();
@@ -64,7 +65,7 @@ namespace BitSharp.Core.Test
                 throw new InvalidOperationException();
 
             var prevBlockHeader = this.blockHeaders.Last();
-            var blockHeader = new BlockHeader(0, prevBlockHeader.Hash, 0, 0, bits ?? this.bits, this.nonce);
+            var blockHeader = new BlockHeader(0, prevBlockHeader.Hash, UInt256.Zero, 0, bits ?? this.bits, this.nonce);
 
             this.blockHeaders.Add(blockHeader);
             this.totalWork += blockHeader.CalculateWork();

@@ -62,7 +62,7 @@ namespace BitSharp.Core.Test
             (
                 previousTxOutputKey: new TxOutputKey
                 (
-                    txHash: random.NextUInt32(),
+                    txHash: random.NextUInt256(),
                     txOutputIndex: random.NextUInt32()
                 ),
                 scriptSignature: random.NextBytes(random.Next((options != null ? options.ScriptSignatureSize : null) ?? 100)),

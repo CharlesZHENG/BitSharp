@@ -32,7 +32,7 @@ namespace BitSharp.Core.Rules
                     header: new BlockHeader
                     (
                         version: 1,
-                        previousBlock: 0,
+                        previousBlock: UInt256.Zero,
                         merkleRoot: UInt256.ParseHex("4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"),
                         time: 1231006505,
                         bits: 0x1D00FFFF,
@@ -49,7 +49,7 @@ namespace BitSharp.Core.Rules
                                 (
                                     previousTxOutputKey: new TxOutputKey
                                     (
-                                        txHash: 0,
+                                        txHash: UInt256.Zero,
                                         txOutputIndex: 0xFFFFFFFF
                                     ),
                                     scriptSignature: new byte[]
@@ -170,8 +170,8 @@ namespace BitSharp.Core.Rules
 
                     // calculate the new target
                     var target = startBlockHeader.CalculateTarget();
-                    target *= actualTimespan;
-                    target /= targetTimespan;
+                    target *= (UInt256)actualTimespan;
+                    target /= (UInt256)targetTimespan;
 
                     // make sure target isn't too high (too low difficulty)
                     if (target > HighestTarget)

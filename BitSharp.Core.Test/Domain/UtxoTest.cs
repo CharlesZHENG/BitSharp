@@ -76,7 +76,7 @@ namespace BitSharp.Core.Test.Domain
             var utxo = new ChainState(chain, memoryStorage);
 
             // prepare output reference
-            var prevTxOutput = new TxOutputKey(txHash: 0, txOutputIndex: 0);
+            var prevTxOutput = new TxOutputKey(txHash: UInt256.Zero, txOutputIndex: 0);
 
             // check if output can be spent
             var canSpend = utxo.CanSpend(prevTxOutput);

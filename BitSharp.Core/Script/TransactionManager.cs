@@ -127,7 +127,7 @@ namespace BitSharp.Core.Script
                     (
                         previousTxOutputKey: new TxOutputKey
                         (
-                            txHash: 0,
+                            txHash: UInt256.Zero,
                             txOutputIndex: 0
                         ),
                         scriptSignature: coinbase,

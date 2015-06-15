@@ -239,8 +239,8 @@ namespace BitSharp.Core.Test.Storage
         {
             var fakeHeaders = new FakeHeaders();
             var chainedHeader0 = fakeHeaders.GenesisChained();
-            var unspentTx = new UnspentTx(txHash: 0, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent));
-            var spentTxes = ImmutableList.Create<UInt256>(1);
+            var unspentTx = new UnspentTx(txHash: UInt256.Zero, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent));
+            var spentTxes = ImmutableList.Create((UInt256)1);
 
             using (var storageManager = provider.OpenStorageManager())
             using (var handle = storageManager.OpenChainStateCursor())
@@ -294,9 +294,9 @@ namespace BitSharp.Core.Test.Storage
             var chainedHeader1 = fakeHeaders.NextChained();
             var chainedHeader2 = fakeHeaders.NextChained();
 
-            var unspentTx = new UnspentTx(txHash: 0, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent));
+            var unspentTx = new UnspentTx(txHash: UInt256.Zero, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent));
 
-            var spentTxes = ImmutableList.Create<UInt256>(1);
+            var spentTxes = ImmutableList.Create((UInt256)1);
 
             using (var storageManager = provider.OpenStorageManager())
             using (var handle = storageManager.OpenChainStateCursor())
@@ -539,9 +539,9 @@ namespace BitSharp.Core.Test.Storage
 
         private void TestUnspentTxCount(ITestStorageProvider provider)
         {
-            var unspentTx0 = new UnspentTx(txHash: 0, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent));
-            var unspentTx1 = new UnspentTx(txHash: 1, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent));
-            var unspentTx2 = new UnspentTx(txHash: 2, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent));
+            var unspentTx0 = new UnspentTx(txHash: (UInt256)0, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent));
+            var unspentTx1 = new UnspentTx(txHash: (UInt256)1, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent));
+            var unspentTx2 = new UnspentTx(txHash: (UInt256)2, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent));
 
             using (var storageManager = provider.OpenStorageManager())
             using (var handle = storageManager.OpenChainStateCursor())
@@ -570,8 +570,8 @@ namespace BitSharp.Core.Test.Storage
 
         private void TestContainsUnspentTx(ITestStorageProvider provider)
         {
-            var unspentTx0 = new UnspentTx(txHash: 0, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent));
-            var unspentTx1 = new UnspentTx(txHash: 1, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent));
+            var unspentTx0 = new UnspentTx(txHash: (UInt256)0, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent));
+            var unspentTx1 = new UnspentTx(txHash: (UInt256)1, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent));
 
             using (var storageManager = provider.OpenStorageManager())
             using (var handle = storageManager.OpenChainStateCursor())
@@ -617,8 +617,8 @@ namespace BitSharp.Core.Test.Storage
 
         private void TestTryAddGetRemoveUnspentTx(ITestStorageProvider provider)
         {
-            var unspentTx0 = new UnspentTx(txHash: 0, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent));
-            var unspentTx1 = new UnspentTx(txHash: 1, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent));
+            var unspentTx0 = new UnspentTx(txHash: (UInt256)0, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent));
+            var unspentTx1 = new UnspentTx(txHash: (UInt256)1, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent));
 
             using (var storageManager = provider.OpenStorageManager())
             using (var handle = storageManager.OpenChainStateCursor())
@@ -669,7 +669,7 @@ namespace BitSharp.Core.Test.Storage
 
         private void TestTryUpdateUnspentTx(ITestStorageProvider provider)
         {
-            var unspentTx = new UnspentTx(txHash: 0, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent));
+            var unspentTx = new UnspentTx(txHash: UInt256.Zero, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent));
             var unspentTxUpdated = unspentTx.SetOutputState(0, OutputState.Spent);
             Assert.AreNotEqual(unspentTx, unspentTxUpdated);
 
@@ -709,9 +709,9 @@ namespace BitSharp.Core.Test.Storage
 
         public void TestReadUnspentTransactions(ITestStorageProvider provider)
         {
-            var unspentTx0 = new UnspentTx(txHash: 0, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent));
-            var unspentTx1 = new UnspentTx(txHash: 1, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent));
-            var unspentTx2 = new UnspentTx(txHash: 2, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent));
+            var unspentTx0 = new UnspentTx(txHash: (UInt256)0, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent));
+            var unspentTx1 = new UnspentTx(txHash: (UInt256)1, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent));
+            var unspentTx2 = new UnspentTx(txHash: (UInt256)2, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent));
 
             using (var storageManager = provider.OpenStorageManager())
             using (var handle = storageManager.OpenChainStateCursor())
@@ -764,8 +764,8 @@ namespace BitSharp.Core.Test.Storage
 
         public void TestContainsBlockSpentTxes(ITestStorageProvider provider)
         {
-            var spentTxes0 = ImmutableList.Create<UInt256>(0, 1, 2);
-            var spentTxes1 = ImmutableList.Create<UInt256>(100, 101);
+            var spentTxes0 = ImmutableList.Create((UInt256)0, (UInt256)1, (UInt256)2);
+            var spentTxes1 = ImmutableList.Create((UInt256)100, (UInt256)101);
 
             using (var storageManager = provider.OpenStorageManager())
             using (var handle = storageManager.OpenChainStateCursor())
@@ -811,8 +811,8 @@ namespace BitSharp.Core.Test.Storage
 
         public void TestTryAddGetRemoveBlockSpentTxes(ITestStorageProvider provider)
         {
-            var spentTxes0 = ImmutableList.Create<UInt256>(0, 1, 2);
-            var spentTxes1 = ImmutableList.Create<UInt256>(100, 101);
+            var spentTxes0 = ImmutableList.Create((UInt256)0, (UInt256)1, (UInt256)2);
+            var spentTxes1 = ImmutableList.Create((UInt256)100, (UInt256)101);
 
             using (var storageManager = provider.OpenStorageManager())
             using (var handle = storageManager.OpenChainStateCursor())
@@ -864,26 +864,26 @@ namespace BitSharp.Core.Test.Storage
         public void TestContainsBlockUnmintedTxes(ITestStorageProvider provider)
         {
             var unmintedTxes0 = ImmutableList.Create(
-                new UnmintedTx(txHash: 0,
+                new UnmintedTx(txHash: (UInt256)0,
                     prevOutputTxKeys: ImmutableArray.Create(
-                        new TxLookupKey(blockHash: 0, txIndex: 0),
-                        new TxLookupKey(blockHash: 0, txIndex: 1),
-                        new TxLookupKey(blockHash: 0, txIndex: 2))),
-                new UnmintedTx(txHash: 1,
+                        new TxLookupKey(blockHash: (UInt256)0, txIndex: 0),
+                        new TxLookupKey(blockHash: (UInt256)0, txIndex: 1),
+                        new TxLookupKey(blockHash: (UInt256)0, txIndex: 2))),
+                new UnmintedTx(txHash: (UInt256)1,
                     prevOutputTxKeys: ImmutableArray.Create(
-                        new TxLookupKey(blockHash: 0, txIndex: 3),
-                        new TxLookupKey(blockHash: 0, txIndex: 4),
-                        new TxLookupKey(blockHash: 0, txIndex: 5))));
+                        new TxLookupKey(blockHash: (UInt256)0, txIndex: 3),
+                        new TxLookupKey(blockHash: (UInt256)0, txIndex: 4),
+                        new TxLookupKey(blockHash: (UInt256)0, txIndex: 5))));
 
             var unmintedTxes1 = ImmutableList.Create(
-                new UnmintedTx(txHash: 2,
+                new UnmintedTx(txHash: (UInt256)2,
                     prevOutputTxKeys: ImmutableArray.Create(
-                        new TxLookupKey(blockHash: 1, txIndex: 0),
-                        new TxLookupKey(blockHash: 1, txIndex: 1))),
-                new UnmintedTx(txHash: 3,
+                        new TxLookupKey(blockHash: (UInt256)1, txIndex: 0),
+                        new TxLookupKey(blockHash: (UInt256)1, txIndex: 1))),
+                new UnmintedTx(txHash: (UInt256)3,
                     prevOutputTxKeys: ImmutableArray.Create(
-                        new TxLookupKey(blockHash: 1, txIndex: 2),
-                        new TxLookupKey(blockHash: 1, txIndex: 3))));
+                        new TxLookupKey(blockHash: (UInt256)1, txIndex: 2),
+                        new TxLookupKey(blockHash: (UInt256)1, txIndex: 3))));
 
             using (var storageManager = provider.OpenStorageManager())
             using (var handle = storageManager.OpenChainStateCursor())
@@ -894,62 +894,62 @@ namespace BitSharp.Core.Test.Storage
                 chainStateCursor.BeginTransaction();
 
                 // verify presence
-                Assert.IsFalse(chainStateCursor.ContainsBlockUnmintedTxes(0));
-                Assert.IsFalse(chainStateCursor.ContainsBlockUnmintedTxes(1));
+                Assert.IsFalse(chainStateCursor.ContainsBlockUnmintedTxes((UInt256)0));
+                Assert.IsFalse(chainStateCursor.ContainsBlockUnmintedTxes((UInt256)1));
 
                 // add unminted txes 0
-                chainStateCursor.TryAddBlockUnmintedTxes(0, unmintedTxes0);
+                chainStateCursor.TryAddBlockUnmintedTxes((UInt256)0, unmintedTxes0);
 
                 // verify presence
-                Assert.IsTrue(chainStateCursor.ContainsBlockUnmintedTxes(0));
-                Assert.IsFalse(chainStateCursor.ContainsBlockUnmintedTxes(1));
+                Assert.IsTrue(chainStateCursor.ContainsBlockUnmintedTxes((UInt256)0));
+                Assert.IsFalse(chainStateCursor.ContainsBlockUnmintedTxes((UInt256)1));
 
                 // add ununminted tx 1
-                chainStateCursor.TryAddBlockUnmintedTxes(1, unmintedTxes1);
+                chainStateCursor.TryAddBlockUnmintedTxes((UInt256)1, unmintedTxes1);
 
                 // verify presence
-                Assert.IsTrue(chainStateCursor.ContainsBlockUnmintedTxes(0));
-                Assert.IsTrue(chainStateCursor.ContainsBlockUnmintedTxes(1));
+                Assert.IsTrue(chainStateCursor.ContainsBlockUnmintedTxes((UInt256)0));
+                Assert.IsTrue(chainStateCursor.ContainsBlockUnmintedTxes((UInt256)1));
 
                 // remove ununminted tx 1
-                chainStateCursor.TryRemoveBlockUnmintedTxes(1);
+                chainStateCursor.TryRemoveBlockUnmintedTxes((UInt256)1);
 
                 // verify presence
-                Assert.IsTrue(chainStateCursor.ContainsBlockUnmintedTxes(0));
-                Assert.IsFalse(chainStateCursor.ContainsBlockUnmintedTxes(1));
+                Assert.IsTrue(chainStateCursor.ContainsBlockUnmintedTxes((UInt256)0));
+                Assert.IsFalse(chainStateCursor.ContainsBlockUnmintedTxes((UInt256)1));
 
                 // remove ununminted tx 0
-                chainStateCursor.TryRemoveBlockUnmintedTxes(0);
+                chainStateCursor.TryRemoveBlockUnmintedTxes((UInt256)0);
 
                 // verify presence
-                Assert.IsFalse(chainStateCursor.ContainsBlockUnmintedTxes(0));
-                Assert.IsFalse(chainStateCursor.ContainsBlockUnmintedTxes(1));
+                Assert.IsFalse(chainStateCursor.ContainsBlockUnmintedTxes((UInt256)0));
+                Assert.IsFalse(chainStateCursor.ContainsBlockUnmintedTxes((UInt256)1));
             }
         }
 
         public void TestTryAddGetRemoveBlockUnmintedTxes(ITestStorageProvider provider)
         {
             var unmintedTxes0 = ImmutableList.Create(
-                new UnmintedTx(txHash: 0,
+                new UnmintedTx(txHash: (UInt256)0,
                     prevOutputTxKeys: ImmutableArray.Create(
-                        new TxLookupKey(blockHash: 0, txIndex: 0),
-                        new TxLookupKey(blockHash: 0, txIndex: 1),
-                        new TxLookupKey(blockHash: 0, txIndex: 2))),
-                new UnmintedTx(txHash: 1,
+                        new TxLookupKey(blockHash: (UInt256)0, txIndex: 0),
+                        new TxLookupKey(blockHash: (UInt256)0, txIndex: 1),
+                        new TxLookupKey(blockHash: (UInt256)0, txIndex: 2))),
+                new UnmintedTx(txHash: (UInt256)1,
                     prevOutputTxKeys: ImmutableArray.Create(
-                        new TxLookupKey(blockHash: 0, txIndex: 3),
-                        new TxLookupKey(blockHash: 0, txIndex: 4),
-                        new TxLookupKey(blockHash: 0, txIndex: 5))));
+                        new TxLookupKey(blockHash: (UInt256)0, txIndex: 3),
+                        new TxLookupKey(blockHash: (UInt256)0, txIndex: 4),
+                        new TxLookupKey(blockHash: (UInt256)0, txIndex: 5))));
 
             var unmintedTxes1 = ImmutableList.Create(
-                new UnmintedTx(txHash: 2,
+                new UnmintedTx(txHash: (UInt256)2,
                     prevOutputTxKeys: ImmutableArray.Create(
-                        new TxLookupKey(blockHash: 1, txIndex: 0),
-                        new TxLookupKey(blockHash: 1, txIndex: 1))),
-                new UnmintedTx(txHash: 3,
+                        new TxLookupKey(blockHash: (UInt256)1, txIndex: 0),
+                        new TxLookupKey(blockHash: (UInt256)1, txIndex: 1))),
+                new UnmintedTx(txHash: (UInt256)3,
                     prevOutputTxKeys: ImmutableArray.Create(
-                        new TxLookupKey(blockHash: 1, txIndex: 2),
-                        new TxLookupKey(blockHash: 1, txIndex: 3))));
+                        new TxLookupKey(blockHash: (UInt256)1, txIndex: 2),
+                        new TxLookupKey(blockHash: (UInt256)1, txIndex: 3))));
 
             using (var storageManager = provider.OpenStorageManager())
             using (var handle = storageManager.OpenChainStateCursor())
@@ -961,40 +961,40 @@ namespace BitSharp.Core.Test.Storage
 
                 // verify initial empty state
                 IImmutableList<UnmintedTx> actualUnmintedTxes0, actualUnmintedTxes1;
-                Assert.IsFalse(chainStateCursor.TryGetBlockUnmintedTxes(0, out actualUnmintedTxes0));
-                Assert.IsFalse(chainStateCursor.TryGetBlockUnmintedTxes(1, out actualUnmintedTxes1));
+                Assert.IsFalse(chainStateCursor.TryGetBlockUnmintedTxes((UInt256)0, out actualUnmintedTxes0));
+                Assert.IsFalse(chainStateCursor.TryGetBlockUnmintedTxes((UInt256)1, out actualUnmintedTxes1));
 
                 // add unminted txes 0
-                Assert.IsTrue(chainStateCursor.TryAddBlockUnmintedTxes(0, unmintedTxes0));
+                Assert.IsTrue(chainStateCursor.TryAddBlockUnmintedTxes((UInt256)0, unmintedTxes0));
 
                 // verify unminted txes
-                Assert.IsTrue(chainStateCursor.TryGetBlockUnmintedTxes(0, out actualUnmintedTxes0));
+                Assert.IsTrue(chainStateCursor.TryGetBlockUnmintedTxes((UInt256)0, out actualUnmintedTxes0));
                 CollectionAssert.AreEqual(unmintedTxes0, (ICollection)actualUnmintedTxes0);
-                Assert.IsFalse(chainStateCursor.TryGetBlockUnmintedTxes(1, out actualUnmintedTxes1));
+                Assert.IsFalse(chainStateCursor.TryGetBlockUnmintedTxes((UInt256)1, out actualUnmintedTxes1));
 
                 // add unminted txes 1
-                Assert.IsTrue(chainStateCursor.TryAddBlockUnmintedTxes(1, unmintedTxes1));
+                Assert.IsTrue(chainStateCursor.TryAddBlockUnmintedTxes((UInt256)1, unmintedTxes1));
 
                 // verify unminted txes
-                Assert.IsTrue(chainStateCursor.TryGetBlockUnmintedTxes(0, out actualUnmintedTxes0));
+                Assert.IsTrue(chainStateCursor.TryGetBlockUnmintedTxes((UInt256)0, out actualUnmintedTxes0));
                 CollectionAssert.AreEqual(unmintedTxes0, (ICollection)actualUnmintedTxes0);
-                Assert.IsTrue(chainStateCursor.TryGetBlockUnmintedTxes(1, out actualUnmintedTxes1));
+                Assert.IsTrue(chainStateCursor.TryGetBlockUnmintedTxes((UInt256)1, out actualUnmintedTxes1));
                 CollectionAssert.AreEqual(unmintedTxes1, (ICollection)actualUnmintedTxes1);
 
                 // remove unminted txes 1
-                Assert.IsTrue(chainStateCursor.TryRemoveBlockUnmintedTxes(1));
+                Assert.IsTrue(chainStateCursor.TryRemoveBlockUnmintedTxes((UInt256)1));
 
                 // verify unminted txes
-                Assert.IsTrue(chainStateCursor.TryGetBlockUnmintedTxes(0, out actualUnmintedTxes0));
+                Assert.IsTrue(chainStateCursor.TryGetBlockUnmintedTxes((UInt256)0, out actualUnmintedTxes0));
                 CollectionAssert.AreEqual(unmintedTxes0, (ICollection)actualUnmintedTxes0);
-                Assert.IsFalse(chainStateCursor.TryGetBlockUnmintedTxes(1, out actualUnmintedTxes1));
+                Assert.IsFalse(chainStateCursor.TryGetBlockUnmintedTxes((UInt256)1, out actualUnmintedTxes1));
 
                 // remove unminted txes 0
-                Assert.IsTrue(chainStateCursor.TryRemoveBlockUnmintedTxes(0));
+                Assert.IsTrue(chainStateCursor.TryRemoveBlockUnmintedTxes((UInt256)0));
 
                 // verify unminted txes
-                Assert.IsFalse(chainStateCursor.TryGetBlockUnmintedTxes(0, out actualUnmintedTxes0));
-                Assert.IsFalse(chainStateCursor.TryGetBlockUnmintedTxes(1, out actualUnmintedTxes1));
+                Assert.IsFalse(chainStateCursor.TryGetBlockUnmintedTxes((UInt256)0, out actualUnmintedTxes0));
+                Assert.IsFalse(chainStateCursor.TryGetBlockUnmintedTxes((UInt256)1, out actualUnmintedTxes1));
             }
         }
 

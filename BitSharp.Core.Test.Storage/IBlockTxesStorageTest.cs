@@ -187,7 +187,7 @@ namespace BitSharp.Core.Test.Storage
 
                 // verify missing transactions
                 Transaction transaction;
-                Assert.IsFalse(blockTxesStorage.TryGetTransaction(0, 0, out transaction));
+                Assert.IsFalse(blockTxesStorage.TryGetTransaction(UInt256.Zero, 0, out transaction));
                 Assert.IsFalse(blockTxesStorage.TryGetTransaction(block.Hash, -1, out transaction));
                 Assert.IsFalse(blockTxesStorage.TryGetTransaction(block.Hash, block.Transactions.Length, out transaction));
 

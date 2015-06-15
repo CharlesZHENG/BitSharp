@@ -32,7 +32,7 @@ namespace BitSharp.Core.Monitor
         //TODO
         public static ChainPosition Fake()
         {
-            return new ChainPosition(0, 0, 0, 0, 0);
+            return new ChainPosition(UInt256.Zero, 0, UInt256.Zero, 0, 0);
         }
     }
 }
