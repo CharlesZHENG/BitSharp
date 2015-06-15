@@ -96,7 +96,7 @@ namespace BitSharp.Core.Builders
                     this.chainStateCursor.AddChainedHeader(chainedHeader);
 
                     this.blockValidator.ValidateTransactions(chainedHeader,
-                        pendingTxQueue =>
+                        loadingTxes =>
                         {
                             // ignore transactions on geneis block
                             if (chainedHeader.Height > 0)
@@ -105,19 +105,19 @@ namespace BitSharp.Core.Builders
                                 {
                                     // calculate the new block utxo, only output availability is checked and updated
                                     var pendingTxCount = 0;
-                                    foreach (var pendingTx in this.utxoBuilder.CalculateUtxo(this.chain.ToImmutable(), blockTxes.Select(x => x.Transaction)))
+                                    foreach (var loadingTx in this.utxoBuilder.CalculateUtxo(this.chain.ToImmutable(), blockTxes.Select(x => x.Transaction)))
                                     {
                                         if (!rules.BypassPrevTxLoading)
-                                            pendingTxQueue.Add(pendingTx);
+                                            loadingTxes.Add(loadingTx);
 
                                         // track stats, ignore coinbase
-                                        if (pendingTx.TxIndex > 0)
+                                        if (loadingTx.TxIndex > 0)
                                         {
-                                            pendingTxCount += pendingTx.Transaction.Inputs.Length;
+                                            pendingTxCount += loadingTx.Transaction.Inputs.Length;
                                             this.stats.txCount++;
-                                            this.stats.inputCount += pendingTx.Transaction.Inputs.Length;
+                                            this.stats.inputCount += loadingTx.Transaction.Inputs.Length;
                                             this.stats.txRateMeasure.Tick();
-                                            this.stats.inputRateMeasure.Tick(pendingTx.Transaction.Inputs.Length);
+                                            this.stats.inputRateMeasure.Tick(loadingTx.Transaction.Inputs.Length);
                                         }
                                     }
 
@@ -126,7 +126,7 @@ namespace BitSharp.Core.Builders
                             }
 
                             // finished queuing up block's txes
-                            pendingTxQueue.CompleteAdding();
+                            loadingTxes.CompleteAdding();
 
                             // track stats
                             this.stats.blockCount++;

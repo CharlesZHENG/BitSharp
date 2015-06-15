@@ -17,8 +17,8 @@ namespace BitSharp.Core.Builders
         private readonly CoreStorage coreStorage;
         private readonly IBlockchainRules rules;
 
-        private readonly PendingTxLoader pendingTxLoader;
-        private readonly PrevTxLoader prevTxLoader;
+        private readonly UtxoReplayer pendingTxLoader;
+        private readonly TxLoader txLoader;
         private readonly ParallelConsumer<LoadedTx> txSorter;
 
         public BlockReplayer(CoreStorage coreStorage, IBlockchainRules rules)
@@ -29,15 +29,15 @@ namespace BitSharp.Core.Builders
             // thread count for i/o task (TxLoader)
             var ioThreadCount = 4;
 
-            this.pendingTxLoader = new PendingTxLoader("BlockReplayer", ioThreadCount);
-            this.prevTxLoader = new PrevTxLoader("BlockReplayer", null, coreStorage, ioThreadCount);
+            this.pendingTxLoader = new UtxoReplayer("BlockReplayer", coreStorage, ioThreadCount);
+            this.txLoader = new TxLoader("BlockReplayer", null, coreStorage, ioThreadCount);
             this.txSorter = new ParallelConsumer<LoadedTx>("BlockReplayer", 1);
         }
 
         public void Dispose()
         {
             this.pendingTxLoader.Dispose();
-            this.prevTxLoader.Dispose();
+            this.txLoader.Dispose();
             this.txSorter.Dispose();
         }
 
@@ -54,78 +54,56 @@ namespace BitSharp.Core.Builders
             if (replayBlock == null)
                 throw new MissingDataException(blockHash);
 
-            ImmutableDictionary<UInt256, UnmintedTx> unmintedTxes;
-            if (replayForward)
-            {
-                unmintedTxes = null;
-            }
-            else
-            {
-                IImmutableList<UnmintedTx> unmintedTxesList;
-                if (!chainState.TryGetBlockUnmintedTxes(replayBlock.Hash, out unmintedTxesList))
+            this.pendingTxLoader.ReplayCalculateUtxo(chainState, replayBlock, replayForward,
+                loadingTxes =>
                 {
-                    throw new MissingDataException(replayBlock.Hash);
-                }
+                    this.txLoader.LoadTxes(loadingTxes,
+                        loadedTxes =>
+                        {
+                            using (var sortedTxes = new ConcurrentBlockingQueue<LoadedTx>())
+                            using (StartTxSorter(replayBlock, loadedTxes, sortedTxes))
+                            {
+                                var replayTxes = sortedTxes.GetConsumingEnumerable();
+                                //TODO Reverse() here means everything must be loaded first, the tx sorter should handle this instead
+                                if (!replayForward)
+                                    replayTxes = replayTxes.Reverse();
 
-                unmintedTxes = ImmutableDictionary.CreateRange(
-                    unmintedTxesList.Select(x => new KeyValuePair<UInt256, UnmintedTx>(x.TxHash, x)));
-            }
-
-            IEnumerable<BlockTx> blockTxes;
-            if (!this.coreStorage.TryReadBlockTransactions(replayBlock.Hash, replayBlock.MerkleRoot, /*requireTransaction:*/true, out blockTxes))
-            {
-                throw new MissingDataException(replayBlock.Hash);
-            }
-
-            using (var sortedTxQueue = new ConcurrentBlockingQueue<LoadedTx>())
-            using (this.pendingTxLoader.StartLoading(chainState, replayBlock, replayForward, blockTxes, unmintedTxes))
-            using (this.prevTxLoader.StartLoading(this.pendingTxLoader.GetQueue()))
-            using (StartTxSorter(replayBlock, this.prevTxLoader.GetQueue(), sortedTxQueue))
-            {
-                var replayTxes = sortedTxQueue.GetConsumingEnumerable();
-                //TODO Reverse() here means everything must be loaded first, the tx sorter should handle this instead
-                if (!replayForward)
-                    replayTxes = replayTxes.Reverse();
-
-                foreach (var tx in replayTxes)
-                    replayAction(tx);
-
-                // wait for loaders to finish, any exceptions will be rethrown here
-                pendingTxLoader.WaitToComplete();
-                prevTxLoader.WaitToComplete();
-                txSorter.WaitToComplete();
-            }
+                                foreach (var tx in replayTxes)
+                                    replayAction(tx);
+                            }
+                        });
+                });
         }
 
-        private IDisposable StartTxSorter(ChainedHeader replayBlock, ConcurrentBlockingQueue<LoadedTx> loadedTxQueue, ConcurrentBlockingQueue<LoadedTx> sortedTxQueue)
+        private IDisposable StartTxSorter(ChainedHeader replayBlock, ConcurrentBlockingQueue<LoadedTx> loadedTxes, ConcurrentBlockingQueue<LoadedTx> sortedTxes)
         {
             // txSorter will only have a single consumer thread, so SortedList is safe to use
-            var sortedTxes = new SortedList<int, LoadedTx>();
+            var pendingSortedTxes = new SortedList<int, LoadedTx>();
 
             // keep track of which tx is the next one in order
             var nextTxIndex = 0;
 
-            return this.txSorter.Start(loadedTxQueue,
+            return this.txSorter.Start(loadedTxes,
                 loadedTx =>
                 {
                     // store loaded tx
-                    sortedTxes.Add(loadedTx.TxIndex, loadedTx);
+                    pendingSortedTxes.Add(loadedTx.TxIndex, loadedTx);
 
                     // dequeue any available loaded txes that are in order
-                    while (sortedTxes.Count > 0 && sortedTxes.Keys[0] == nextTxIndex)
+                    while (pendingSortedTxes.Count > 0 && pendingSortedTxes.Keys[0] == nextTxIndex)
                     {
-                        sortedTxQueue.Add(sortedTxes.Values[0]);
-                        sortedTxes.RemoveAt(0);
+                        sortedTxes.Add(pendingSortedTxes.Values[0]);
+                        pendingSortedTxes.RemoveAt(0);
                         nextTxIndex++;
                     }
                 },
                 e =>
                 {
                     // ensure no txes were left unsorted
-                    if (sortedTxes.Count > 0)
+                    if (pendingSortedTxes.Count > 0)
                         throw new InvalidOperationException();
 
-                    sortedTxQueue.CompleteAdding();
+                    sortedTxes.CompleteAdding();
                 });
         }
     }

@@ -26,7 +26,7 @@ namespace BitSharp.Core.Builders
             this.chainStateCursor = chainStateCursor;
         }
 
-        public IEnumerable<TxWithInputTxLookupKeys> CalculateUtxo(Chain chain, IEnumerable<Transaction> blockTxes)
+        public IEnumerable<LoadingTx> CalculateUtxo(Chain chain, IEnumerable<Transaction> blockTxes)
         {
             var blockSpentTxes = ImmutableList.CreateBuilder<UInt256>();
 
@@ -76,7 +76,7 @@ namespace BitSharp.Core.Builders
                 this.chainStateCursor.TotalInputCount += tx.Inputs.Length;
                 this.chainStateCursor.TotalOutputCount += tx.Outputs.Length;
 
-                yield return new TxWithInputTxLookupKeys(txIndex, tx, chainedHeader, prevOutputTxKeys.MoveToImmutable());
+                yield return new LoadingTx(txIndex, tx, chainedHeader, prevOutputTxKeys.MoveToImmutable());
             }
 
             if (!this.chainStateCursor.TryAddBlockSpentTxes(chainedHeader.Height, blockSpentTxes.ToImmutable()))

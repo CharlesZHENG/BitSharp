@@ -97,15 +97,14 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BlockReplayer.cs" />
-    <Compile Include="Builders\PendingTxLoader.cs" />
-    <Compile Include="Builders\PrevTxLoader.cs" />
+    <Compile Include="Builders\CompletionArray.cs" />
+    <Compile Include="Builders\UtxoReplayer.cs" />
+    <Compile Include="Builders\TxLoader.cs" />
     <Compile Include="Builders\BlockValidator.cs" />
-    <Compile Include="Builders\TxInputWithPrevOutputKey.cs" />
     <Compile Include="Domain\UnmintedTx.cs" />
     <Compile Include="Builders\UtxoBuilder.cs" />
-    <Compile Include="Builders\TxInputWithPrevOutput.cs" />
     <Compile Include="Domain\LoadedTx.cs" />
-    <Compile Include="Builders\TxWithInputTxLookupKeys.cs" />
+    <Compile Include="Builders\LoadingTx.cs" />
     <Compile Include="Domain\IChainState.cs" />
     <Compile Include="PruningMode.cs" />
     <Compile Include="Storage\CoreStorage.cs" />
