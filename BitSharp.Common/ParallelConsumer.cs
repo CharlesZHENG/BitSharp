@@ -129,13 +129,6 @@ namespace BitSharp.Common
             if (this.isStarted)
                 throw new InvalidOperationException();
 
-            // initialize the read worker
-            if (this.readWorker == null)
-            {
-                this.readWorker = new WorkerMethod(name + ".ReadWorker", ReadWorker, initialNotify: false, minIdleTime: TimeSpan.Zero, maxIdleTime: TimeSpan.MaxValue);
-                this.readWorker.Start();
-            }
-
             // store the actions
             this.consumeAction = consumeAction;
             this.completedAction = completedAction;
@@ -147,6 +140,13 @@ namespace BitSharp.Common
                 this.readToQueue = true;
                 this.queue = new ConcurrentBlockingQueue<T>();
                 this.source = source;
+
+                // initialize the read worker
+                if (this.readWorker == null)
+                {
+                    this.readWorker = new WorkerMethod(name + ".ReadWorker", ReadWorker, initialNotify: false, minIdleTime: TimeSpan.Zero, maxIdleTime: TimeSpan.MaxValue);
+                    this.readWorker.Start();
+                }
             }
             else
             {
