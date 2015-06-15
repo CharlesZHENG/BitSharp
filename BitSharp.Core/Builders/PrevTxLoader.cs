@@ -105,7 +105,8 @@ namespace BitSharp.Core.Builders
                         if (!this.loadingTxes.TryAdd(pendingTx.Transaction.Hash, new Transaction[pendingTx.Transaction.Inputs.Length]))
                             throw new Exception("TODO");
 
-                        this.pendingTxes.AddRange(pendingTx.GetInputs());
+                        for (var inputIndex = 0; inputIndex < pendingTx.PrevOutputTxKeys.Length; inputIndex++)
+                            this.pendingTxes.Add(new TxInputWithPrevOutputKey(pendingTx.TxIndex, pendingTx.Transaction, pendingTx.ChainedHeader, inputIndex, pendingTx.PrevOutputTxKeys[inputIndex]));
                     }
                     // no inputs to load for the coinbase transactions, queue it up immediately
                     else
@@ -125,7 +126,14 @@ namespace BitSharp.Core.Builders
                     if (loadedTx != null)
                         this.loadedTxes.Add(loadedTx);
                 },
-                _ => this.loadedTxes.CompleteAdding());
+                _ =>
+                {
+                    // ensure all txes were loaded
+                    if (loadingTxes.Count > 0)
+                        throw new InvalidOperationException();
+
+                    this.loadedTxes.CompleteAdding();
+                });
         }
 
         private LoadedTx LoadPendingTx(TxInputWithPrevOutputKey pendingTx)

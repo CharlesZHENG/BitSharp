@@ -27,17 +27,5 @@ namespace BitSharp.Core.Builders
         public ChainedHeader ChainedHeader { get { return this.chainedHeader; } }
 
         public ImmutableArray<TxLookupKey> PrevOutputTxKeys { get { return this.prevOutputTxKeys; } }
-
-        public IEnumerable<TxInputWithPrevOutputKey> GetInputs()
-        {
-            if (txIndex > 0)
-            {
-                return prevOutputTxKeys.Select((prevOutputTxKey, inputIndex) => new TxInputWithPrevOutputKey(txIndex, transaction, chainedHeader, inputIndex, prevOutputTxKey));
-            }
-            else
-            {
-                return new List<TxInputWithPrevOutputKey> { new TxInputWithPrevOutputKey(txIndex, transaction, chainedHeader, 0, null) };
-            }
-        }
     }
 }
