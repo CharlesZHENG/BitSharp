@@ -12,7 +12,6 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using Transaction = BitSharp.Core.Domain.Transaction;
 
 namespace BitSharp.Esent
@@ -203,6 +202,7 @@ namespace BitSharp.Esent
             }
         }
 
+        private readonly DurationMeasure measure = new DurationMeasure(TimeSpan.FromSeconds(10));
         public bool TryGetTransaction(UInt256 blockHash, int txIndex, out Transaction transaction)
         {
             using (var handle = this.cursorCache.TakeItem())
@@ -414,8 +414,11 @@ namespace BitSharp.Esent
             get { return "Blocks"; }
         }
 
-        public IEnumerable<UInt256> TryAddBlockTransactions(IEnumerable<KeyValuePair<UInt256, IEnumerable<Transaction>>> blockTransactions)
+        public bool TryAddBlockTransactions(UInt256 blockHash, IEnumerable<Transaction> blockTxes)
         {
+            if (this.ContainsBlock(blockHash))
+                return false;
+
             try
             {
                 using (var handle = this.cursorCache.TakeItem())
@@ -424,36 +427,24 @@ namespace BitSharp.Esent
 
                     using (var jetTx = cursor.jetSession.BeginTransaction())
                     {
-                        var addedBlocks = new List<UInt256>();
-                        foreach (var keyPair in blockTransactions)
+                        var txIndex = 0;
+                        foreach (var tx in blockTxes)
                         {
-                            var blockHash = keyPair.Key;
-                            var blockTxes = keyPair.Value;
-
-                            if (this.ContainsBlock(blockHash))
-                                continue;
-
-                            var txIndex = 0;
-                            foreach (var tx in blockTxes)
-                            {
-                                AddTransaction(blockHash, txIndex, tx.Hash, DataEncoder.EncodeTransaction(tx), cursor);
-                                txIndex++;
-                            }
-
-                            // increase block count
-                            Api.EscrowUpdate(cursor.jetSession, cursor.globalsTableId, cursor.blockCountColumnId, +1);
-
-                            addedBlocks.Add(blockHash);
+                            AddTransaction(blockHash, txIndex, tx.Hash, DataEncoder.EncodeTransaction(tx), cursor);
+                            txIndex++;
                         }
 
+                        // increase block count
+                        Api.EscrowUpdate(cursor.jetSession, cursor.globalsTableId, cursor.blockCountColumnId, +1);
+
                         jetTx.CommitLazy();
-                        return addedBlocks;
+                        return true;
                     }
                 }
             }
             catch (EsentKeyDuplicateException)
             {
-                return Enumerable.Empty<UInt256>();
+                return false;
             }
         }
 

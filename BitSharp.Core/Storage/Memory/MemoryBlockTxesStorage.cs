@@ -30,21 +30,12 @@ namespace BitSharp.Core.Storage.Memory
             return this.allBlockTxes.ContainsKey(blockHash);
         }
 
-        public IEnumerable<UInt256> TryAddBlockTransactions(IEnumerable<KeyValuePair<UInt256, IEnumerable<Transaction>>> blockTransactions)
+        public bool TryAddBlockTransactions(UInt256 blockHash, IEnumerable<Transaction> blockTxes)
         {
-            foreach (var keyPair in blockTransactions)
-            {
-                var blockHash = keyPair.Key;
-                var blockTxes = keyPair.Value;
-
-                if (this.allBlockTxes.TryAdd(blockHash,
-                    ImmutableSortedDictionary.CreateRange<int, BlockTx>(
-                        blockTxes.Select((tx, txIndex) =>
-                            new KeyValuePair<int, BlockTx>(txIndex, new BlockTx(txIndex, 0, tx.Hash, false, tx))))))
-                {
-                    yield return blockHash;
-                }
-            }
+            return this.allBlockTxes.TryAdd(blockHash,
+                ImmutableSortedDictionary.CreateRange<int, BlockTx>(
+                    blockTxes.Select((tx, txIndex) =>
+                        new KeyValuePair<int, BlockTx>(txIndex, new BlockTx(txIndex, 0, tx.Hash, false, tx)))));
         }
 
         public bool TryGetTransaction(UInt256 blockHash, int txIndex, out Transaction transaction)

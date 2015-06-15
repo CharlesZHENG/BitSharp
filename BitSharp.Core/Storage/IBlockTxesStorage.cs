@@ -2,7 +2,6 @@
 using BitSharp.Core.Domain;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace BitSharp.Core.Storage
 {
@@ -20,7 +19,13 @@ namespace BitSharp.Core.Storage
         /// <returns>true if transacton data is present; otherwise, false</returns>
         bool ContainsBlock(UInt256 blockHash);
 
-        IEnumerable<UInt256> TryAddBlockTransactions(IEnumerable<KeyValuePair<UInt256, IEnumerable<Transaction>>> blockTransactions);
+        /// <summary>
+        /// Add a block's transactions to storage.
+        /// </summary>
+        /// <param name="blockHash">The block's hash.</param>
+        /// <param name="transactions">An enumerable of the block's transactions.</param>
+        /// <returns>true if the transaction data was added; otherwise, false</returns>
+        bool TryAddBlockTransactions(UInt256 blockHash, IEnumerable<Transaction> transactions);
 
         /// <summary>
         /// Retrieve a transaction from a block.
@@ -57,13 +62,5 @@ namespace BitSharp.Core.Storage
 
         //TODO keep this here? IStorageManager?
         void Defragment();
-    }
-
-    public static class IBlockTxesStorage_ExtensionMethods
-    {
-        public static bool TryAddBlockTransactions(this IBlockTxesStorage blockTxesStorage, UInt256 blockHash, IEnumerable<Transaction> blockTxes)
-        {
-            return blockTxesStorage.TryAddBlockTransactions(new[] { new KeyValuePair<UInt256, IEnumerable<Transaction>>(blockHash, blockTxes) }).Count() == 1;
-        }
     }
 }

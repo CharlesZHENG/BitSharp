@@ -338,63 +338,46 @@ namespace BitSharp.Node.Workers
         private void FlushWorkerMethod(WorkerMethod instance)
         {
             var initalCount = this.flushQueue.Count;
-            if (initalCount == 0)
-                return;
-
             var count = 0;
-            var flushedBlockPeers = new Dictionary<UInt256, FlushBlock>();
 
-            foreach (var blockHash in
-                this.coreStorage.TryAddBlocks(
-                    this.flushQueue.DequeueSelect(x =>
-                    {
-                        StoreBlock(x.Block);
-
-                        if (!flushedBlockPeers.ContainsKey(x.Block.Hash))
-                        {
-                            flushedBlockPeers[x.Block.Hash] = x;
-                            return x.Block;
-                        }
-                        else
-                        {
-                            // if block is already being flushed from another peer, discard it but still track the peer's download statistics
-                            DateTime requestTime;
-                            ConcurrentDictionary<UInt256, DateTime> peerBlockRequests;
-                            if (this.blockRequestsByPeer.TryGetValue(x.Peer, out peerBlockRequests)
-                                && peerBlockRequests.TryRemove(x.Block.Hash, out requestTime))
-                            {
-                                this.blockRequestDurationMeasure.Tick(DateTime.UtcNow - requestTime);
-                            }
-                            return null;
-                        }
-                    }).Where(x => x != null).Take(initalCount)))
+            FlushBlock flushBlock;
+            while (this.flushQueue.TryDequeue(out flushBlock))
             {
-                count++;
+                // cooperative loop
+                this.ThrowIfCancelled();
 
-                var peer = flushedBlockPeers[blockHash].Peer;
+                var peer = flushBlock.Peer;
+                var block = flushBlock.Block;
 
-                this.blockDownloadRateMeasure.Tick();
+                StoreBlock(block);
 
-                this.flushBlocks.Remove(blockHash);
+                if (this.coreStorage.TryAddBlock(block))
+                    this.blockDownloadRateMeasure.Tick();
+                else
+                    this.duplicateBlockDownloadCountMeasure.Tick();
+
+                this.flushBlocks.Remove(block.Hash);
 
                 BlockRequest blockRequest;
-                this.allBlockRequests.TryRemove(blockHash, out blockRequest);
+                this.allBlockRequests.TryRemove(block.Hash, out blockRequest);
 
                 if (peer != null)
                 {
                     DateTime requestTime;
                     ConcurrentDictionary<UInt256, DateTime> peerBlockRequests;
                     if (this.blockRequestsByPeer.TryGetValue(peer, out peerBlockRequests)
-                        && peerBlockRequests.TryRemove(blockHash, out requestTime))
+                        && peerBlockRequests.TryRemove(block.Hash, out requestTime))
                     {
                         this.blockRequestDurationMeasure.Tick(DateTime.UtcNow - requestTime);
                     }
                 }
+
+                this.NotifyWork();
+
+                count++;
+                if (count > initalCount)
+                    break;
             }
-
-            this.duplicateBlockDownloadCountMeasure.Tick(flushedBlockPeers.Count - count);
-
-            this.NotifyWork();
 
             //this.blockCache.Flush();
         }

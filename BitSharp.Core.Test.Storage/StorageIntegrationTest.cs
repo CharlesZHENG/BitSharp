@@ -46,7 +46,8 @@ namespace BitSharp.Core.Test.Storage
             {
                 // add blocks to storage
                 coreStorage.AddGenesisBlock(ChainedHeader.CreateForGenesisBlock(blocks[0].Header));
-                Assert.AreEqual(blocks.Count, coreStorage.TryAddBlocks(blocks).Count());
+                foreach (var block in blocks)
+                    coreStorage.TryAddBlock(block);
 
                 // calculate utxo forward and store its state at each step along the way
                 var expectedUtxoHashes = new List<UInt256>();

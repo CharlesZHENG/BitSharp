@@ -214,40 +214,25 @@ namespace BitSharp.Core.Storage
 
         public bool TryAddBlock(Block block)
         {
-            return TryAddBlocks(new[] { block }).Count() == 1;
-        }
+            if (this.ContainsBlockTxes(block.Hash))
+                return false;
 
-        public IEnumerable<UInt256> TryAddBlocks(IEnumerable<Block> blocks)
-        {
-            var takenBlocks = new Dictionary<UInt256, Block>();
-            var addedBlocks = new List<UInt256>();
-
-            foreach (var blockHash in
-                this.blockTxesStorage.TryAddBlockTransactions(blocks
-                    .Where(x => !takenBlocks.ContainsKey(x.Hash) && !this.ContainsBlockTxes(x.Hash))
-                    .Select(x =>
-                    {
-                        takenBlocks[x.Hash] = x;
-                        return new KeyValuePair<UInt256, IEnumerable<Transaction>>(x.Hash, x.Transactions);
-                    })))
+            lock (GetBlockLock(block.Hash))
             {
-                var block = takenBlocks[blockHash];
-
-                lock (GetBlockLock(block.Hash))
+                ChainedHeader chainedHeader;
+                if (TryGetChainedHeader(block.Hash, out chainedHeader) || TryChainHeader(block.Header, out chainedHeader))
                 {
-                    ChainedHeader chainedHeader;
-                    if (TryGetChainedHeader(block.Hash, out chainedHeader) || TryChainHeader(block.Header, out chainedHeader))
+                    if (this.blockTxesStorage.TryAddBlockTransactions(block.Hash, block.Transactions))
                     {
                         this.presentBlockTxes[block.Hash] = true;
                         this.missingBlockTxes.Remove(block.Hash);
                         RaiseBlockTxesAdded(chainedHeader);
+                        return true;
                     }
                 }
 
-                addedBlocks.Add(blockHash);
-            }
-
-            return addedBlocks;
+                return false;
+            };
         }
 
         public bool TryGetBlock(UInt256 blockHash, out Block block)

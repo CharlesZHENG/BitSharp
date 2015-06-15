@@ -178,47 +178,38 @@ namespace BitSharp.Lmdb
             get { return "Blocks"; }
         }
 
-        public IEnumerable<UInt256> TryAddBlockTransactions(IEnumerable<KeyValuePair<UInt256, IEnumerable<Transaction>>> blockTransactions)
+        public bool TryAddBlockTransactions(UInt256 blockHash, IEnumerable<Transaction> blockTxes)
         {
             try
             {
+                if (this.ContainsBlock(blockHash))
+                    return false;
+
                 using (var txn = this.jetInstance.BeginTransaction())
                 {
-                    var addedBlocks = new List<UInt256>();
-                    foreach (var keyPair in blockTransactions)
+                    var txIndex = 0;
+                    foreach (var tx in blockTxes)
                     {
-                        var blockHash = keyPair.Key;
-                        var blockTxes = keyPair.Value;
+                        var blockTx = new BlockTx(txIndex, 0, tx.Hash, false, tx);
 
-                        if (this.ContainsBlock(blockHash))
-                            continue;
+                        var key = DbEncoder.EncodeBlockHashTxIndex(blockHash, txIndex);
+                        var value = DataEncoder.EncodeBlockTx(blockTx);
 
-                        var txIndex = 0;
-                        foreach (var tx in blockTxes)
-                        {
-                            var blockTx = new BlockTx(txIndex, 0, tx.Hash, false, tx);
-
-                            var key = DbEncoder.EncodeBlockHashTxIndex(blockHash, txIndex);
-                            var value = DataEncoder.EncodeBlockTx(blockTx);
-
-                            txn.Put(blocksTableId, key, value);
-                            txIndex++;
-                        }
-
-                        // increase block count
-                        txn.Put(globalsTableId, blockCountKey,
-                            Bits.ToInt32(txn.Get(globalsTableId, blockCountKey)) + 1);
-
-                        addedBlocks.Add(blockHash);
+                        txn.Put(blocksTableId, key, value);
+                        txIndex++;
                     }
 
+                    // increase block count
+                    txn.Put(globalsTableId, blockCountKey,
+                        Bits.ToInt32(txn.Get(globalsTableId, blockCountKey)) + 1);
+
                     txn.Commit();
-                    return addedBlocks;
+                    return true;
                 }
             }
             catch (Exception)
             {
-                return Enumerable.Empty<UInt256>();
+                return false;
             }
         }
 
