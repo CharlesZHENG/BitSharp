@@ -183,9 +183,10 @@ namespace BitSharp.Core
 
         public static ChainedHeader DecodeChainedHeader(BinaryReader reader)
         {
+            var blockHash = reader.ReadUInt256();
             return new ChainedHeader
             (
-                blockHeader: DecodeBlockHeader(reader),
+                blockHeader: DecodeBlockHeader(reader, blockHash),
                 height: reader.ReadInt32(),
                 totalWork: new BigInteger(reader.ReadVarBytes())
             );
@@ -202,6 +203,7 @@ namespace BitSharp.Core
 
         public static void EncodeChainedHeader(BinaryWriter writer, ChainedHeader chainedHeader)
         {
+            writer.WriteUInt256(chainedHeader.Hash);
             EncodeBlockHeader(writer, chainedHeader.BlockHeader);
             writer.WriteInt32(chainedHeader.Height);
             writer.WriteVarBytes(chainedHeader.TotalWork.ToByteArray());
