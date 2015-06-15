@@ -5,10 +5,6 @@ using BitSharp.Core.Rules;
 using BitSharp.Core.Storage;
 using NLog;
 using System;
-using System.Collections.Concurrent;
-using System.Collections.Immutable;
-using System.Diagnostics;
-using System.Linq;
 
 namespace BitSharp.Core.Builders
 {

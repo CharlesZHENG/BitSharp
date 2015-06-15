@@ -1,10 +1,8 @@
 ﻿using BitSharp.Common;
-using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core;
 using BitSharp.Core.Domain;
 using LightningDB;
 using System;
-using System.Diagnostics;
 
 namespace BitSharp.Lmdb
 {

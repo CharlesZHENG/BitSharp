@@ -1,8 +1,6 @@
 ﻿using BitSharp.Common;
 using BitSharp.Core.Domain;
 using BitSharp.Core.Rules;
-using NLog;
-using System.Globalization;
 
 namespace BitSharp.Core.Test.Rules
 {

@@ -4,7 +4,6 @@ using BitSharp.Core.Domain;
 using System;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Globalization;
 
 namespace BitSharp.Core.Rules
 {

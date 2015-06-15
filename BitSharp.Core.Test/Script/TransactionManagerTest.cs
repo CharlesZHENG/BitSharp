@@ -1,7 +1,6 @@
 ﻿using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Script;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using NLog;
 using System.Linq;
 using System.Text;
 

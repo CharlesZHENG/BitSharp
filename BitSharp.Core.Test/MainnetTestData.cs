@@ -3,7 +3,6 @@ using BitSharp.Core.Domain;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Globalization;
 
 namespace BitSharp.Core.Test
 {

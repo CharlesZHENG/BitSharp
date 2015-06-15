@@ -5,11 +5,9 @@ using BitSharp.Core.Domain;
 using BitSharp.Core.Storage;
 using NLog;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Threading;
 
 namespace BitSharp.Core.Workers
 {

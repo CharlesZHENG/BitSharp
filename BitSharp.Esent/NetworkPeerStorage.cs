@@ -2,10 +2,7 @@
 using BitSharp.Node;
 using BitSharp.Node.Domain;
 using BitSharp.Node.Storage;
-using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 
 namespace BitSharp.Esent
 {

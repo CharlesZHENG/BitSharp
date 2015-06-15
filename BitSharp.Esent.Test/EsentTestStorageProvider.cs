@@ -1,6 +1,5 @@
 ﻿using BitSharp.Core.Storage;
 using BitSharp.Core.Test.Storage;
-using NLog;
 using System;
 using System.IO;
 

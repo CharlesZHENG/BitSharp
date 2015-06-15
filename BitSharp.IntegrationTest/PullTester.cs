@@ -5,7 +5,6 @@ using BitSharp.Core.Rules;
 using BitSharp.Core.Storage.Memory;
 using BitSharp.Node;
 using BitSharp.Node.Network;
-using BitSharp.Node.Storage;
 using BitSharp.Node.Storage.Memory;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Ninject;

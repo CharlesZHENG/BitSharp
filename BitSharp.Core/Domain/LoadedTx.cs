@@ -1,5 +1,4 @@
 ﻿using BitSharp.Common.ExtensionMethods;
-using BitSharp.Core.Domain;
 using System.Collections.Immutable;
 
 namespace BitSharp.Core.Domain

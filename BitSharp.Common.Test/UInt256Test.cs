@@ -1,6 +1,5 @@
 ﻿using BitSharp.Common.ExtensionMethods;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using System.Globalization;
 using System.Numerics;
 
 namespace BitSharp.Common.Test

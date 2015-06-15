@@ -1,12 +1,10 @@
-﻿using BitSharp.Common;
-using BitSharp.Common.ExtensionMethods;
+﻿using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core;
 using BitSharp.Core.Rules;
 using BitSharp.Core.Storage.Memory;
 using BitSharp.Esent;
 using BitSharp.Lmdb;
 using BitSharp.Node;
-using BitSharp.Node.Storage;
 using BitSharp.Node.Storage.Memory;
 using BitSharp.Node.Workers;
 using BitSharp.Wallet;

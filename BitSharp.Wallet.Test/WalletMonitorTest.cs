@@ -2,7 +2,6 @@
 using BitSharp.Core.Test;
 using BitSharp.Wallet.Address;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using NLog;
 using System.Collections.Immutable;
 using System.Linq;
 

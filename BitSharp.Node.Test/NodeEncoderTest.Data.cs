@@ -1,7 +1,6 @@
 ﻿using BitSharp.Common;
 using BitSharp.Node.Domain;
 using System.Collections.Immutable;
-using System.Globalization;
 
 namespace BitSharp.Node.Test
 {

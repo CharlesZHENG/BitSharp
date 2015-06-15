@@ -4,7 +4,6 @@ using BitSharp.Node.Domain;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
-using System.Text;
 
 namespace BitSharp.Node
 {

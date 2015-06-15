@@ -4,7 +4,6 @@ using BitSharp.Core.Domain;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Immutable;
-using System.Globalization;
 
 namespace BitSharp.Core.Test
 {

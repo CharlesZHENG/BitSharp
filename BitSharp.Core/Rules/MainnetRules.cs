@@ -5,8 +5,6 @@ using BitSharp.Core.Script;
 using NLog;
 using System;
 using System.Collections.Immutable;
-using System.Diagnostics;
-using System.Globalization;
 using System.Linq;
 using System.Numerics;
 

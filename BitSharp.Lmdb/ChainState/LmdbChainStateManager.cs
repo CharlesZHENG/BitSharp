@@ -1,5 +1,4 @@
 ﻿using BitSharp.Common;
-using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Storage;
 using LightningDB;
 using NLog;

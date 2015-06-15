@@ -7,7 +7,6 @@ using LightningDB;
 using NLog;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 
 namespace BitSharp.Lmdb

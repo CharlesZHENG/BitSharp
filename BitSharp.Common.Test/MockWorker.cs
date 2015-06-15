@@ -1,5 +1,4 @@
-﻿using NLog;
-using System;
+﻿using System;
 
 namespace BitSharp.Common.Test
 {
