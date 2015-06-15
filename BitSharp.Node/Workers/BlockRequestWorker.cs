@@ -65,7 +65,6 @@ namespace BitSharp.Node.Workers
             this.localClient.OnBlock += HandleBlock;
             this.coreDaemon.OnChainStateChanged += HandleChainStateChanged;
             this.coreDaemon.OnTargetChainChanged += HandleTargetChainChanged;
-            this.coreStorage.BlockTxesMissed += HandleBlockTxesMissed;
             this.coreDaemon.BlockMissed += HandleBlockMissed;
 
             this.blockRequestDurationMeasure = new DurationMeasure(sampleCutoff: TimeSpan.FromMinutes(5));
@@ -98,7 +97,6 @@ namespace BitSharp.Node.Workers
             this.localClient.OnBlock -= HandleBlock;
             this.coreDaemon.OnChainStateChanged -= HandleChainStateChanged;
             this.coreDaemon.OnTargetChainChanged -= HandleTargetChainChanged;
-            this.coreStorage.BlockTxesMissed -= HandleBlockTxesMissed;
             this.coreDaemon.BlockMissed -= HandleBlockMissed;
 
             this.blockRequestDurationMeasure.Dispose();

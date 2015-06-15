@@ -51,8 +51,6 @@ namespace BitSharp.Core.Storage
 
         public event Action<ChainedHeader> BlockTxesRemoved;
 
-        public event Action<UInt256> BlockTxesMissed;
-
         public event Action<UInt256> BlockInvalidated;
 
         public int ChainedHeaderCount { get { return -1; } }
@@ -299,7 +297,6 @@ namespace BitSharp.Core.Storage
                         lock (GetBlockLock(blockHash))
                             this.presentBlockTxes[missingBlockHash] = false;
 
-                        RaiseBlockTxesMissed(missingBlockHash);
                         throw;
                     }
 
@@ -309,7 +306,6 @@ namespace BitSharp.Core.Storage
                         if (requireTransactions && blockTx.Pruned)
                         {
                             //TODO distinguish different kinds of missing: pruned and missing entirely
-                            RaiseBlockTxesMissed(blockHash);
                             throw new MissingDataException(blockHash);
                         }
 
@@ -354,13 +350,6 @@ namespace BitSharp.Core.Storage
             var handler = this.BlockTxesRemoved;
             if (handler != null)
                 handler(chainedHeader);
-        }
-
-        private void RaiseBlockTxesMissed(UInt256 blockHash)
-        {
-            var handler = this.BlockTxesMissed;
-            if (handler != null)
-                handler(blockHash);
         }
 
         private void RaiseBlockInvalidated(UInt256 blockHash)

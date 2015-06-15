@@ -50,7 +50,6 @@ namespace BitSharp.Core.Workers
 
             this.coreStorage.BlockInvalidated += HandleChanged;
             this.coreStorage.BlockTxesAdded += HandleChanged;
-            this.coreStorage.BlockTxesMissed += HandleChanged;
             this.coreStorage.BlockTxesRemoved += HandleChanged;
             this.coreStorage.ChainedHeaderAdded += HandleChanged;
             this.targetChainWorker.OnTargetChainChanged += HandleChanged;
@@ -89,7 +88,6 @@ namespace BitSharp.Core.Workers
         {
             this.coreStorage.BlockInvalidated -= HandleChanged;
             this.coreStorage.BlockTxesAdded -= HandleChanged;
-            this.coreStorage.BlockTxesMissed -= HandleChanged;
             this.coreStorage.BlockTxesRemoved -= HandleChanged;
             this.coreStorage.ChainedHeaderAdded -= HandleChanged;
             this.targetChainWorker.OnTargetChainChanged -= HandleChanged;
