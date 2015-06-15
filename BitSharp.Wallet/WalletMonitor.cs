@@ -192,9 +192,8 @@ namespace BitSharp.Wallet
 
         private void ScanBlock(IChainState chainState, ChainedHeader scanBlock, bool forward)
         {
-            using (this.blockReplayer.StartReplay(chainState, scanBlock.Hash, forward))
-            {
-                foreach (var loadedTx in this.blockReplayer.ReplayBlock())
+            this.blockReplayer.ReplayBlock(chainState, scanBlock.Hash, forward,
+                loadedTx =>
                 {
                     var tx = loadedTx.Transaction;
                     var txIndex = loadedTx.TxIndex;
@@ -227,8 +226,7 @@ namespace BitSharp.Wallet
 
                         ScanForEntry(chainPosition, entryType, output, outputScriptHash);
                     }
-                }
-            }
+                });
         }
 
         private void ScanForEntry(ChainPosition chainPosition, EnumWalletEntryType walletEntryType, TxOutput txOutput, UInt256 outputScriptHash)

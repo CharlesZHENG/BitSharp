@@ -180,6 +180,9 @@ namespace BitSharp.Core.Builders
                     }
                 }
 
+                // reverse output keys to match original input order, as the inputs were read in reverse here
+                prevOutputTxKeys.Reverse();
+
                 // store rollback replay information
                 unmintedTxes.Add(new UnmintedTx(tx.Hash, prevOutputTxKeys.MoveToImmutable()));
             }
