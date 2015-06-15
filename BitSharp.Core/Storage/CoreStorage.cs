@@ -19,11 +19,7 @@ namespace BitSharp.Core.Storage
         private readonly IBlockStorage blockStorage;
         private readonly IBlockTxesStorage blockTxesStorage;
 
-        //TODO contains needs synchronization
         private readonly ConcurrentDictionary<UInt256, ChainedHeader> cachedHeaders;
-
-        private readonly ConcurrentSetBuilder<UInt256> missingHeaders;
-        private readonly ConcurrentSetBuilder<UInt256> missingBlockTxes;
 
         private readonly ConcurrentDictionary<UInt256, bool> presentBlockTxes = new ConcurrentDictionary<UInt256, bool>();
         private readonly object[] presentBlockTxesLocks = new object[64];
@@ -40,14 +36,8 @@ namespace BitSharp.Core.Storage
             this.blockTxesStorage = storageManager.BlockTxesStorage;
 
             this.cachedHeaders = new ConcurrentDictionary<UInt256, ChainedHeader>();
-
-            this.missingHeaders = new ConcurrentSetBuilder<UInt256>();
-            this.missingBlockTxes = new ConcurrentSetBuilder<UInt256>();
-
             foreach (var chainedHeader in this.blockStorage.ReadChainedHeaders())
-            {
                 this.cachedHeaders[chainedHeader.Hash] = chainedHeader;
-            }
         }
 
         public void Dispose()
@@ -64,10 +54,6 @@ namespace BitSharp.Core.Storage
         public event Action<UInt256> BlockTxesMissed;
 
         public event Action<UInt256> BlockInvalidated;
-
-        public IImmutableSet<UInt256> MissingHeaders { get { return this.missingHeaders.ToImmutable(); } }
-
-        public IImmutableSet<UInt256> MissingBlockTxes { get { return this.missingBlockTxes.ToImmutable(); } }
 
         public int ChainedHeaderCount { get { return -1; } }
 
@@ -102,7 +88,6 @@ namespace BitSharp.Core.Storage
             else if (this.blockStorage.TryGetChainedHeader(blockHash, out chainedHeader))
             {
                 this.cachedHeaders[blockHash] = chainedHeader;
-                this.missingHeaders.Remove(blockHash);
                 return true;
             }
             else
@@ -116,14 +101,9 @@ namespace BitSharp.Core.Storage
         {
             ChainedHeader chainedHeader;
             if (TryGetChainedHeader(blockHash, out chainedHeader))
-            {
                 return chainedHeader;
-            }
             else
-            {
-                this.missingHeaders.Add(blockHash);
                 throw new MissingDataException(blockHash);
-            }
         }
 
         public void ChainHeaders(IEnumerable<BlockHeader> blockHeaders)
@@ -171,7 +151,6 @@ namespace BitSharp.Core.Storage
                     if (this.blockStorage.TryAddChainedHeader(chainedHeader))
                     {
                         this.cachedHeaders[chainedHeader.Hash] = chainedHeader;
-                        this.missingHeaders.Remove(chainedHeader.Hash);
 
                         if (!suppressEvent)
                             RaiseChainedHeaderAdded(chainedHeader);
@@ -225,7 +204,6 @@ namespace BitSharp.Core.Storage
                     if (this.blockTxesStorage.TryAddBlockTransactions(block.Hash, block.Transactions))
                     {
                         this.presentBlockTxes[block.Hash] = true;
-                        this.missingBlockTxes.Remove(block.Hash);
                         RaiseBlockTxesAdded(chainedHeader);
                         return true;
                     }

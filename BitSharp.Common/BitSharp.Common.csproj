@@ -78,9 +78,7 @@
     <Compile Include="Bits.cs" />
     <Compile Include="DisposeAction.cs" />
     <Compile Include="DisposeHandle.cs" />
-    <Compile Include="ConcurrentDictionaryBuilder.cs" />
     <Compile Include="ConcurrentSet.cs" />
-    <Compile Include="ConcurrentSetBuilder.cs" />
     <Compile Include="DisposableCache.cs" />
     <Compile Include="AverageMeasure.cs" />
     <Compile Include="ExtensionMethods.cs" />
