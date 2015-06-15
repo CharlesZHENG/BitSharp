@@ -33,7 +33,7 @@ namespace BitSharp.Node.Network
         public event Action<InventoryPayload> OnGetData;
         public event Action<ImmutableArray<byte>> OnPing;
 
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly Peer owner;
         private readonly Socket socket;
@@ -139,8 +139,8 @@ namespace BitSharp.Node.Network
 
                 stopwatch.Stop();
 
-                if (this.logger.IsTraceEnabled)
-                    this.logger.Trace("{2,25} Received message {0,12} in {1,6} ms".Format2(message.Command, stopwatch.ElapsedMilliseconds, this.socket.RemoteEndPoint));
+                if (logger.IsTraceEnabled)
+                    logger.Trace("{2,25} Received message {0,12} in {1,6} ms".Format2(message.Command, stopwatch.ElapsedMilliseconds, this.socket.RemoteEndPoint));
             }
         }
 
@@ -310,7 +310,7 @@ namespace BitSharp.Node.Network
 
                 default:
                     {
-                        this.logger.Warn("Unhandled incoming message: {0}".Format2(message.Command));
+                        logger.Warn("Unhandled incoming message: {0}".Format2(message.Command));
                     }
                     break;
             }

@@ -16,7 +16,7 @@ namespace BitSharp.Core.Workers
     {
         public event Action OnChainStateChanged;
 
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly IBlockchainRules rules;
         private readonly CoreStorage coreStorage;
@@ -132,7 +132,7 @@ namespace BitSharp.Core.Workers
                     }
                     else if (direction < 0)
                     {
-                        this.logger.Info("Rolling back block {0:#,##0}: {1}".Format2(chainedHeader.Height, chainedHeader.Hash));
+                        logger.Info("Rolling back block {0:#,##0}: {1}".Format2(chainedHeader.Height, chainedHeader.Hash));
                         this.chainStateBuilder.RollbackBlock(chainedHeader, blockTxesLookAhead.ReadAll(blockTxes));
                     }
                     else
@@ -184,7 +184,7 @@ namespace BitSharp.Core.Workers
             }
             else
             {
-                this.logger.Warn("ChainStateWorker exception.", e);
+                logger.Warn("ChainStateWorker exception.", e);
 
                 var validationException = e as ValidationException;
                 if (validationException != null)
@@ -219,7 +219,7 @@ namespace BitSharp.Core.Workers
         {
             if (this.lastBlockMissHash == null || this.lastBlockMissHash.Value != blockHash)
             {
-                this.logger.Debug("ChainStateWorker stalled, missing block: {0}".Format2(blockHash));
+                logger.Debug("ChainStateWorker stalled, missing block: {0}".Format2(blockHash));
 
                 this.lastBlockMissHash = blockHash;
                 this.blockMissCountMeasure.Tick();

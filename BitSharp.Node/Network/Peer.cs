@@ -19,7 +19,7 @@ namespace BitSharp.Node.Network
         public event Action<Peer, ImmutableArray<byte>> OnPing;
         public event Action<Peer> OnDisconnect;
 
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly object objectLock = new object();
         private readonly SemaphoreSlim semaphore = new SemaphoreSlim(1);
@@ -145,7 +145,7 @@ namespace BitSharp.Node.Network
             }
             catch (Exception e)
             {
-                this.logger.Debug(string.Format("Error on connecting to {0}", remoteEndPoint), e);
+                logger.Debug(string.Format("Error on connecting to {0}", remoteEndPoint), e);
                 Disconnect();
             }
             finally
@@ -187,9 +187,9 @@ namespace BitSharp.Node.Network
         private void HandleFailed(Exception e)
         {
             if (e != null)
-                this.logger.Debug("Remote peer failed: {0}".Format2(this.remoteEndPoint), e);
+                logger.Debug("Remote peer failed: {0}".Format2(this.remoteEndPoint), e);
             else
-                this.logger.Debug("Remote peer failed: {0}".Format2(this.remoteEndPoint));
+                logger.Debug("Remote peer failed: {0}".Format2(this.remoteEndPoint));
 
             Disconnect();
         }

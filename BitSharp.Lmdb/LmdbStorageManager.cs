@@ -12,7 +12,7 @@ namespace BitSharp.Lmdb
 {
     public class LmdbStorageManager : IStorageManager
     {
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly string baseDirectory;
         private readonly long blocksSize;

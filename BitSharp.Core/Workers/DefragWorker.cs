@@ -6,7 +6,7 @@ namespace BitSharp.Core.Workers
 {
     internal class DefragWorker : Worker
     {
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly IStorageManager storageManager;
 
@@ -18,7 +18,7 @@ namespace BitSharp.Core.Workers
 
         protected override void WorkAction()
         {
-            this.logger.Info("Begin defragging");
+            logger.Info("Begin defragging");
 
             this.storageManager.BlockStorage.Defragment();
             this.storageManager.BlockTxesStorage.Defragment();

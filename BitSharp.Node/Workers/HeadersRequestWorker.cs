@@ -17,7 +17,7 @@ namespace BitSharp.Node.Workers
     {
         private static readonly TimeSpan STALE_REQUEST_TIME = TimeSpan.FromSeconds(60);
 
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly LocalClient localClient;
         private readonly CoreDaemon coreDaemon;

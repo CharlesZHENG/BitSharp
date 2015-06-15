@@ -17,7 +17,7 @@ namespace BitSharp.Core.Script
 {
     public class ScriptEngine
     {
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly bool ignoreSignatures;
 
@@ -34,8 +34,8 @@ namespace BitSharp.Core.Script
 
         public bool VerifyScript(UInt256 blockHash, int txIndex, byte[] scriptPubKey, Transaction tx, int inputIndex, byte[] script)
         {
-            if (this.logger.IsTraceEnabled)
-                this.logger.Trace(
+            if (logger.IsTraceEnabled)
+                logger.Trace(
 @"++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 Verifying script for block {0}, transaction {1}, input {2}
 {3}
@@ -73,8 +73,8 @@ Verifying script for block {0}, transaction {1}, input {2}
                     var opByte = opReader.ReadByte();
                     var op = (ScriptOp)Enum.ToObject(typeof(ScriptOp), opByte);
 
-                    if (this.logger.IsTraceEnabled)
-                        this.logger.Trace("Executing {0} with stack count: {1}", OpName(opByte), stack.Count);
+                    if (logger.IsTraceEnabled)
+                        logger.Trace("Executing {0} with stack count: {1}", OpName(opByte), stack.Count);
 
                     switch (op)
                     {
@@ -123,8 +123,8 @@ Verifying script for block {0}, transaction {1}, input {2}
 
                                 var value = stack.PopBytes();
 
-                                if (this.logger.IsTraceEnabled)
-                                    this.logger.Trace("{0} dropped {1}", OpName(opByte), value);
+                                if (logger.IsTraceEnabled)
+                                    logger.Trace("{0} dropped {1}", OpName(opByte), value);
                             }
                             break;
 
@@ -136,8 +136,8 @@ Verifying script for block {0}, transaction {1}, input {2}
                                 var value = stack.PeekBytes();
                                 stack.PushBytes(value);
 
-                                if (this.logger.IsTraceEnabled)
-                                    this.logger.Trace("{0} duplicated {2}", OpName(opByte), value);
+                                if (logger.IsTraceEnabled)
+                                    logger.Trace("{0} duplicated {2}", OpName(opByte), value);
                             }
                             break;
 
@@ -156,8 +156,8 @@ Verifying script for block {0}, transaction {1}, input {2}
                                 var result = value1.SequenceEqual(value2);
                                 stack.PushBool(result);
 
-                                if (this.logger.IsTraceEnabled)
-                                    this.logger.Trace(
+                                if (logger.IsTraceEnabled)
+                                    logger.Trace(
 @"{0} compared values:
     value1: {1}
     value2: {2}
@@ -187,8 +187,8 @@ Verifying script for block {0}, transaction {1}, input {2}
                                 var hash = SHA256Static.ComputeHash(value);
                                 stack.PushBytes(hash);
 
-                                if (this.logger.IsTraceEnabled)
-                                    this.logger.Trace(
+                                if (logger.IsTraceEnabled)
+                                    logger.Trace(
 @"{0} hashed value:
     value:  {1}
     hash:   {2}", OpName(opByte), value, hash);
@@ -205,8 +205,8 @@ Verifying script for block {0}, transaction {1}, input {2}
                                 var hash = RIPEMD160Static.ComputeHash(SHA256Static.ComputeHash(value));
                                 stack.PushBytes(hash);
 
-                                if (this.logger.IsTraceEnabled)
-                                    this.logger.Trace(
+                                if (logger.IsTraceEnabled)
+                                    logger.Trace(
 @"{0} hashed value:
     value:  {1}
     hash:   {2}", OpName(opByte), value, hash);
@@ -230,8 +230,8 @@ Verifying script for block {0}, transaction {1}, input {2}
 
                                 var finishTime = DateTime.UtcNow;
 
-                                if (this.logger.IsTraceEnabled)
-                                    this.logger.Trace(
+                                if (logger.IsTraceEnabled)
+                                    logger.Trace(
 @"{0} executed in {9} ms:
     tx:                 {1}
     inputIndex:         {2}
@@ -264,21 +264,21 @@ Verifying script for block {0}, transaction {1}, input {2}
                             {
                                 stack.PushBytes(opReader.ReadBytes(opByte));
 
-                                if (this.logger.IsTraceEnabled)
-                                    this.logger.Trace("{0} loaded {1} bytes onto the stack: {2}", OpName(opByte), opByte, stack.PeekBytes());
+                                if (logger.IsTraceEnabled)
+                                    logger.Trace("{0} loaded {1} bytes onto the stack: {2}", OpName(opByte), opByte, stack.PeekBytes());
                             }
                             // Unknown op
                             else
                             {
                                 var message = string.Format("Invalid operation in tx {0} input {1}: {2} {3}", tx.Hash.ToHexNumberString(), inputIndex, new[] { opByte }.ToHexNumberString(), OpName(opByte));
-                                //this.logger.Warn(message);
+                                //logger.Warn(message);
                                 throw new Exception(message);
                             }
                             break;
                     }
 
-                    if (this.logger.IsTraceEnabled)
-                        this.logger.Trace(new string('-', 80));
+                    if (logger.IsTraceEnabled)
+                        logger.Trace(new string('-', 80));
                 }
             }
 

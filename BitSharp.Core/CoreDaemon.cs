@@ -19,7 +19,7 @@ namespace BitSharp.Core
         public event EventHandler OnChainStateChanged;
         public event Action<UInt256> BlockMissed;
 
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly IKernel kernel;
         private readonly IBlockchainRules rules;
@@ -204,7 +204,7 @@ namespace BitSharp.Core
 
         private void GcWorker(WorkerMethod instance)
         {
-            this.logger.Info(
+            logger.Info(
                 string.Join("\n",
                     new string('-', 80),
                     "GC Memory:      {0,10:#,##0.00} MB",
@@ -228,7 +228,7 @@ namespace BitSharp.Core
                 chainStateHeight = chainState.Chain.Height;
             }
             stopwatch.Stop();
-            this.logger.Info("GetChainState at {0:#,##0}: {1:#,##0.00}s".Format2(chainStateHeight, stopwatch.Elapsed.TotalSeconds));
+            logger.Info("GetChainState at {0:#,##0}: {1:#,##0.00}s".Format2(chainStateHeight, stopwatch.Elapsed.TotalSeconds));
 
             // time enumerating chain state snapshots
             stopwatch = Stopwatch.StartNew();
@@ -238,16 +238,16 @@ namespace BitSharp.Core
                 chainState.ReadUnspentTransactions().Count();
             }
             stopwatch.Stop();
-            this.logger.Info("Enumerate chain state at {0:#,##0}: {1:#,##0.00}s".Format2(chainStateHeight, stopwatch.Elapsed.TotalSeconds));
+            logger.Info("Enumerate chain state at {0:#,##0}: {1:#,##0.00}s".Format2(chainStateHeight, stopwatch.Elapsed.TotalSeconds));
 
             //using (var chainStateLocal = this.GetChainState())
             //{
-            //    new MethodTimer(this.logger).Time("UTXO Commitment: {0:#,##0}".Format2(chainStateLocal.UnspentTxCount), () =>
+            //    new MethodTimer(logger).Time("UTXO Commitment: {0:#,##0}".Format2(chainStateLocal.UnspentTxCount), () =>
             //    {
-            //        using (var utxoStream = new UtxoStream(this.logger, chainStateLocal.ReadUnspentTransactions()))
+            //        using (var utxoStream = new UtxoStream(logger, chainStateLocal.ReadUnspentTransactions()))
             //        {
             //            var utxoHash = SHA256Pool.ComputeHash(utxoStream);
-            //            this.logger.Info("UXO Commitment Hash: {0}".Format2(utxoHash.ToHexNumberString()));
+            //            logger.Info("UXO Commitment Hash: {0}".Format2(utxoHash.ToHexNumberString()));
             //        }
             //    });
 

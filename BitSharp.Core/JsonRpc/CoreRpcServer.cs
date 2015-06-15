@@ -15,7 +15,7 @@ namespace BitSharp.Core.JsonRpc
     //TODO i'll have to add something non-standard to tell it what addresses to watch, so i can use standard commands like "getreceivedbyaddress"
     public class CoreRpcServer : JsonRpcService, IDisposable
     {
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly CoreDaemon coreDaemon;
         private readonly ListenerWorker listener;
@@ -59,7 +59,7 @@ namespace BitSharp.Core.JsonRpc
 
         private sealed class ListenerWorker : Worker
         {
-            private readonly Logger logger = LogManager.GetCurrentClassLogger();
+            private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
             private readonly CoreRpcServer rpcServer;
             private HttpListener httpListener;

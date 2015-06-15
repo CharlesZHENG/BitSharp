@@ -8,7 +8,7 @@ namespace BitSharp.Common
 {
     public class MethodTimer
     {
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         public MethodTimer()
         {
@@ -115,10 +115,7 @@ namespace BitSharp.Common
 
         private void Log(string line)
         {
-            if (this.logger != null)
-                logger.Info(line);
-            else
-                Debug.WriteLine(line);
+            logger.Info(line);
         }
 
         private void LogIf(bool condition, string line)

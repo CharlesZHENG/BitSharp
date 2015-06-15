@@ -11,7 +11,7 @@ namespace BitSharp.Core.Builders
 {
     internal class UtxoReplayer : IDisposable
     {
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly CoreStorage coreStorage;
         private readonly LookAhead<BlockTx> blockTxesLookAhead;

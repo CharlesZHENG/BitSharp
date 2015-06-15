@@ -16,7 +16,7 @@ namespace BitSharp.Wallet
 {
     public class WalletMonitor : Worker
     {
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly CoreDaemon coreDaemon;
         private readonly BlockReplayer blockReplayer;
@@ -259,7 +259,7 @@ namespace BitSharp.Wallet
 
                 this.entriesLock.DoWrite(() =>
                 {
-                    this.logger.Debug("{0,-10}   {1,20:#,##0.000_000_00} BTC, Entries: {2:#,##0}".Format2(walletEntryType.ToString() + ":", txOutput.Value / (decimal)(100.MILLION()), this.entries.Count));
+                    logger.Debug("{0,-10}   {1,20:#,##0.000_000_00} BTC, Entries: {2:#,##0}".Format2(walletEntryType.ToString() + ":", txOutput.Value / (decimal)(100.MILLION()), this.entries.Count));
 
                     this.entries.Add(entry);
                     this.bitBalance += entry.BitValue * walletEntryType.Direction();

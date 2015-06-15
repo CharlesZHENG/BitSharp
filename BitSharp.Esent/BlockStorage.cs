@@ -17,7 +17,7 @@ namespace BitSharp.Esent
 {
     public class BlockStorage : IBlockStorage
     {
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly string jetDirectory;
         private readonly string jetDatabase;
@@ -477,12 +477,12 @@ namespace BitSharp.Esent
 
                 if (EsentVersion.SupportsWindows81Features)
                 {
-                    this.logger.Info("Begin shrinking block database");
+                    logger.Info("Begin shrinking block database");
 
                     int actualPages;
                     Windows8Api.JetResizeDatabase(cursor.jetSession, cursor.blockDbId, 0, out actualPages, Windows81Grbits.OnlyShrink);
 
-                    this.logger.Info("Finished shrinking block database: {0:#,##0} MB".Format2((float)actualPages * SystemParameters.DatabasePageSize / 1.MILLION()));
+                    logger.Info("Finished shrinking block database: {0:#,##0} MB".Format2((float)actualPages * SystemParameters.DatabasePageSize / 1.MILLION()));
                 }
             }
         }

@@ -21,7 +21,7 @@ namespace BitSharp.Node.Workers
         private static readonly int PENDING_MAX = 2 * CONNECTED_MAX;
         private static readonly int HANDSHAKE_TIMEOUT_MS = 15000;
 
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly Random random = new Random();
         private readonly LocalClient localClient;
@@ -98,7 +98,7 @@ namespace BitSharp.Node.Workers
         public void DisconnectPeer(Peer peer, Exception e)
         {
             if (e != null)
-                this.logger.Debug("Remote peer failed: {0}".Format2(peer.RemoteEndPoint), e);
+                logger.Debug("Remote peer failed: {0}".Format2(peer.RemoteEndPoint), e);
 
             RaisePeerDisconnected(peer);
 
@@ -148,7 +148,7 @@ namespace BitSharp.Node.Workers
                 // disconnect slow peers
                 if (peer.BlockMissCount >= 5)
                 {
-                    this.logger.Info("Disconnecting slow peer: {0}".Format2(peer.RemoteEndPoint));
+                    logger.Info("Disconnecting slow peer: {0}".Format2(peer.RemoteEndPoint));
                     DisconnectPeer(peer, null);
                 }
             }
@@ -193,7 +193,7 @@ namespace BitSharp.Node.Workers
                     // cooperative loop
                     this.ThrowIfCancelled();
 
-                    this.logger.Debug("Too many peers connected ({0}), disconnecting {1}".Format2(overConnected, peer));
+                    logger.Debug("Too many peers connected ({0}), disconnecting {1}".Format2(overConnected, peer));
                     DisconnectPeer(peer, null);
                 }
             }
@@ -217,7 +217,7 @@ namespace BitSharp.Node.Workers
                 }
                 catch (Exception e)
                 {
-                    this.logger.Debug("Could not connect to {0}".Format2(remoteEndPoint), e);
+                    logger.Debug("Could not connect to {0}".Format2(remoteEndPoint), e);
                     DisconnectPeer(peer, e);
                     return null;
                 }

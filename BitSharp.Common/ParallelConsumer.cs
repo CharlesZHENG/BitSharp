@@ -18,7 +18,7 @@ namespace BitSharp.Common
     /// <typeparam name="T">The type of the items to be read and consumed.</typeparam>
     public class ParallelConsumer<T> : IDisposable
     {
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly string name;
         private readonly int consumerThreadCount;

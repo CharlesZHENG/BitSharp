@@ -9,7 +9,7 @@ namespace BitSharp.Lmdb
 {
     internal class LmdbChainStateManager : IDisposable
     {
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly string baseDirectory;
         private readonly string jetDirectory;

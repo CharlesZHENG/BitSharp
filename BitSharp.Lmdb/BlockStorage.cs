@@ -13,7 +13,7 @@ namespace BitSharp.Lmdb
 {
     public class BlockStorage : IBlockStorage
     {
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly string jetDirectory;
         public readonly LightningEnvironment jetInstance;
@@ -205,7 +205,7 @@ namespace BitSharp.Lmdb
 
         public void Defragment()
         {
-            this.logger.Info("Block database: {0:#,##0} MB".Format2(this.jetInstance.UsedSize / 1.MILLION()));
+            logger.Info("Block database: {0:#,##0} MB".Format2(this.jetInstance.UsedSize / 1.MILLION()));
         }
     }
 }

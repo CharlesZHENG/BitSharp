@@ -14,7 +14,7 @@ namespace BitSharp.Node.Workers
     {
         private static readonly int SERVER_BACKLOG = 10;
 
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly LocalClient localClient;
         private readonly PeerWorker peerWorker;
@@ -59,7 +59,7 @@ namespace BitSharp.Node.Workers
             }
             catch (Exception e)
             {
-                this.logger.Error("Failed to start listener socket.", e);
+                logger.Error("Failed to start listener socket.", e);
                 DisposeSocket();
                 throw;
             }
@@ -91,7 +91,7 @@ namespace BitSharp.Node.Workers
             catch (OperationCanceledException) { throw; }
             catch (Exception e)
             {
-                this.logger.Warn("Failed incoming connection.", e);
+                logger.Warn("Failed incoming connection.", e);
             }
         }
 

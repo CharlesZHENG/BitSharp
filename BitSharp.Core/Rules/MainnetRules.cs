@@ -14,7 +14,7 @@ namespace BitSharp.Core.Rules
     {
         private const UInt64 SATOSHI_PER_BTC = 100 * 1000 * 1000;
 
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly UInt256 highestTarget;
         private readonly Block genesisBlock;
@@ -320,7 +320,7 @@ namespace BitSharp.Core.Rules
             var script = txInput.ScriptSignature.Concat(prevTxOutput.ScriptPublicKey);
             if (!scriptEngine.VerifyScript(chainedHeader.Hash, txIndex, prevTxOutput.ScriptPublicKey.ToArray(), tx, txInputIndex, script.ToArray()))
             {
-                this.logger.Debug("Script did not pass in block: {0}, tx: {1}, {2}, input: {3}".Format2(chainedHeader.Hash, txIndex, tx.Hash, txInputIndex));
+                logger.Debug("Script did not pass in block: {0}, tx: {1}, {2}, input: {3}".Format2(chainedHeader.Hash, txIndex, tx.Hash, txInputIndex));
                 throw new ValidationException(chainedHeader.Hash);
             }
         }

@@ -13,7 +13,7 @@ namespace BitSharp.Core.Workers
 {
     internal class PruningWorker : Worker
     {
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly ICoreDaemon coreDaemon;
         private readonly IStorageManager storageManager;
@@ -128,7 +128,7 @@ namespace BitSharp.Core.Workers
                 if (isLagging)
                 {
                     Throttler.IfElapsed(TimeSpan.FromSeconds(5), () =>
-                        this.logger.Info("Pruning is lagging."));
+                        logger.Info("Pruning is lagging."));
 
                     //TODO better way to block chain state worker when pruning is behind
                     if (this.chainStateWorker != null && this.chainStateWorker.IsStarted)
@@ -144,7 +144,7 @@ namespace BitSharp.Core.Workers
                 // log pruning stats periodically
                 Throttler.IfElapsed(TimeSpan.FromSeconds(15), () =>
                 {
-                    this.logger.Info(
+                    logger.Info(
 @"Pruned from block {0:#,##0} to {1:#,##0}:
 - avg tx rate:    {2,8:#,##0}/s
 - per block stats:
@@ -292,7 +292,7 @@ namespace BitSharp.Core.Workers
             else //if (pruneBlock.Height > 0)
             {
                 //TODO can't throw an exception unless the pruned chain is persisted
-                //this.logger.Info("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX: {0:#,##0}".Format2(pruneBlock.Height));
+                //logger.Info("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX: {0:#,##0}".Format2(pruneBlock.Height));
                 //throw new InvalidOperationException();
                 txCount = 0;
             }

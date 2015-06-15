@@ -14,7 +14,7 @@ namespace BitSharp.Common
     /// <typeparam name="T">The type of object being cached, must be IDiposable.</typeparam>
     public class DisposableCache<T> : IDisposable where T : class, IDisposable
     {
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly Func<T> createFunc;
         private readonly Action<T> prepareAction;

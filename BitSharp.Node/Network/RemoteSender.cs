@@ -21,7 +21,7 @@ namespace BitSharp.Node.Network
     {
         public event Action<Exception> OnFailed;
 
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly SemaphoreSlim semaphore = new SemaphoreSlim(1);
         private readonly Socket socket;
@@ -175,8 +175,8 @@ namespace BitSharp.Node.Network
 
                         stopwatch.Stop();
 
-                        if (this.logger.IsTraceEnabled)
-                            this.logger.Trace("Sent {0} in {1} ms\nPayload: {2}".Format2(message.Command, stopwatch.ElapsedMilliseconds, message.Payload.ToArray().ToHexDataString()));
+                        if (logger.IsTraceEnabled)
+                            logger.Trace("Sent {0} in {1} ms\nPayload: {2}".Format2(message.Command, stopwatch.ElapsedMilliseconds, message.Payload.ToArray().ToHexDataString()));
                     }
                 });
             }

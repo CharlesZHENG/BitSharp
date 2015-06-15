@@ -19,7 +19,7 @@ namespace BitSharp.Lmdb
         //TODO
         public static bool IndexOutputs { get; set; }
 
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly bool readOnly;
         private readonly string jetDatabase;
@@ -494,7 +494,7 @@ namespace BitSharp.Lmdb
 
         public void Defragment()
         {
-            this.logger.Info("ChainState database: {0:#,##0} MB".Format2(this.jetInstance.UsedSize / 1.MILLION()));
+            logger.Info("ChainState database: {0:#,##0} MB".Format2(this.jetInstance.UsedSize / 1.MILLION()));
         }
 
         private void CheckTransaction()

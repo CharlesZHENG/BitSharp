@@ -25,7 +25,7 @@ namespace BitSharp.Node.Workers
         private static readonly TimeSpan MISSED_STALE_REQUEST_TIME = TimeSpan.FromSeconds(3);
         private static readonly int MAX_REQUESTS_PER_PEER = 100;
 
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly LocalClient localClient;
         private readonly CoreDaemon coreDaemon;
@@ -151,10 +151,10 @@ namespace BitSharp.Node.Workers
                 var lookAheadTime = TimeSpan.FromSeconds(30);
                 this.targetChainLookAhead = 1 + (int)(lookAheadTime.TotalSeconds / blockProcessingTime.TotalSeconds);
 
-                this.logger.Debug(new string('-', 80));
-                this.logger.Debug("Look Ahead: {0:#,##0}".Format2(this.targetChainLookAhead));
-                this.logger.Debug("Block Request Count: {0:#,##0}".Format2(this.allBlockRequests.Count));
-                this.logger.Debug(new string('-', 80));
+                logger.Debug(new string('-', 80));
+                logger.Debug("Look Ahead: {0:#,##0}".Format2(this.targetChainLookAhead));
+                logger.Debug("Block Request Count: {0:#,##0}".Format2(this.allBlockRequests.Count));
+                logger.Debug(new string('-', 80));
             }
         }
 
@@ -295,7 +295,7 @@ namespace BitSharp.Node.Workers
             // wait for request tasks to complete
             if (!Task.WaitAll(requestTasks.ToArray(), TimeSpan.FromSeconds(10)))
             {
-                this.logger.Info("Request tasks timed out.");
+                logger.Info("Request tasks timed out.");
             }
 
             // notify for another loop of work when there are missed block requests remaining
@@ -382,18 +382,18 @@ namespace BitSharp.Node.Workers
 
         private void DiagnosticWorkerMethod(WorkerMethod instance)
         {
-            this.logger.Info(new string('-', 80));
-            this.logger.Info("allBlockRequests.Count: {0:#,##0}".Format2(this.allBlockRequests.Count));
-            this.logger.Info("blockRequestsByPeer.InnerCount: {0:#,##0}".Format2(this.blockRequestsByPeer.Sum(x => x.Value.Count)));
-            this.logger.Info("targetChainQueue.Count: {0:#,##0}".Format2(this.targetChainQueue.Count));
-            this.logger.Info("targetChainQueueIndex: {0:#,##0}".Format2(this.targetChainQueueIndex));
-            this.logger.Info("targetChainQueueTime: {0}".Format2(this.targetChainQueueTime));
-            this.logger.Info("blockRequestDurationMeasure: {0}".Format2(this.blockRequestDurationMeasure.GetAverage()));
-            this.logger.Info("blockDownloadRateMeasure: {0}/s".Format2(this.blockDownloadRateMeasure.GetAverage(TimeSpan.FromSeconds(1))));
-            this.logger.Info("duplicateBlockDownloadCountMeasure: {0}/s".Format2(this.duplicateBlockDownloadCountMeasure.GetCount()));
-            this.logger.Info("targetChainLookAhead: {0}".Format2(this.targetChainLookAhead));
-            this.logger.Info("flushQueue.Count: {0}".Format2(this.flushQueue.Count));
-            this.logger.Info("flushBlocks.Count: {0}".Format2(this.flushBlocks.Count));
+            logger.Info(new string('-', 80));
+            logger.Info("allBlockRequests.Count: {0:#,##0}".Format2(this.allBlockRequests.Count));
+            logger.Info("blockRequestsByPeer.InnerCount: {0:#,##0}".Format2(this.blockRequestsByPeer.Sum(x => x.Value.Count)));
+            logger.Info("targetChainQueue.Count: {0:#,##0}".Format2(this.targetChainQueue.Count));
+            logger.Info("targetChainQueueIndex: {0:#,##0}".Format2(this.targetChainQueueIndex));
+            logger.Info("targetChainQueueTime: {0}".Format2(this.targetChainQueueTime));
+            logger.Info("blockRequestDurationMeasure: {0}".Format2(this.blockRequestDurationMeasure.GetAverage()));
+            logger.Info("blockDownloadRateMeasure: {0}/s".Format2(this.blockDownloadRateMeasure.GetAverage(TimeSpan.FromSeconds(1))));
+            logger.Info("duplicateBlockDownloadCountMeasure: {0}/s".Format2(this.duplicateBlockDownloadCountMeasure.GetCount()));
+            logger.Info("targetChainLookAhead: {0}".Format2(this.targetChainLookAhead));
+            logger.Info("flushQueue.Count: {0}".Format2(this.flushQueue.Count));
+            logger.Info("flushBlocks.Count: {0}".Format2(this.flushBlocks.Count));
         }
 
         private void HandleBlock(Peer peer, Block block)

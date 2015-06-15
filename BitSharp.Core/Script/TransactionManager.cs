@@ -16,7 +16,7 @@ namespace BitSharp.Core.Script
 {
     public class TransactionManager
     {
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         public Tuple<ECPrivateKeyParameters, ECPublicKeyParameters> CreateKeyPair()
         {

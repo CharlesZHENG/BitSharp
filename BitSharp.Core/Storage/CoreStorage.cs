@@ -13,7 +13,7 @@ namespace BitSharp.Core.Storage
 {
     public class CoreStorage : IDisposable
     {
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly IStorageManager storageManager;
         private readonly IBlockStorage blockStorage;
@@ -157,7 +157,7 @@ namespace BitSharp.Core.Storage
                     }
                     else
                     {
-                        this.logger.Warn("Unexpected condition: validly chained header could not be added");
+                        logger.Warn("Unexpected condition: validly chained header could not be added");
                     }
                 }
             }

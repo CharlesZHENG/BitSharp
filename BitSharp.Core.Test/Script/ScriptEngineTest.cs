@@ -18,7 +18,7 @@ namespace BitSharp.Core.Test.Script
     {
         private static MainnetBlockProvider provider;
 
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private IKernel kernel;
 

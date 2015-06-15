@@ -11,7 +11,7 @@ namespace BitSharp.Esent
 {
     internal class EsentChainStateManager : IDisposable
     {
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly string baseDirectory;
         private readonly string jetDirectory;

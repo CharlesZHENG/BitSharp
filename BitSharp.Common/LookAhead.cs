@@ -7,7 +7,7 @@ namespace BitSharp.Common
 {
     public class LookAhead<T> : IDisposable
     {
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly string name;
 

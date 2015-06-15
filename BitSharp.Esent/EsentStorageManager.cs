@@ -6,7 +6,7 @@ namespace BitSharp.Esent
 {
     public class EsentStorageManager : IStorageManager
     {
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly string baseDirectory;
 

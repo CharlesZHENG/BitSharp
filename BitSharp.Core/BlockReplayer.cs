@@ -12,7 +12,7 @@ namespace BitSharp.Core.Builders
 {
     public class BlockReplayer : IDisposable
     {
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly CoreStorage coreStorage;
         private readonly IBlockchainRules rules;

@@ -14,7 +14,7 @@ namespace BitSharp.Core.Workers
     {
         public event Action OnTargetChainChanged;
 
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly IBlockchainRules rules;
         private readonly CoreStorage coreStorage;
@@ -108,7 +108,7 @@ namespace BitSharp.Core.Workers
                         newTargetChain.AddBlock(advanceBlock);
                     }
 
-                    this.logger.Debug("Winning chained block {0} at height {1}, total work: {2}".Format2(newTargetChain.LastBlock.Hash.ToHexNumberString(), newTargetChain.Height, newTargetChain.LastBlock.TotalWork.ToString("X")));
+                    logger.Debug("Winning chained block {0} at height {1}, total work: {2}".Format2(newTargetChain.LastBlock.Hash.ToHexNumberString(), newTargetChain.Height, newTargetChain.LastBlock.TotalWork.ToString("X")));
                     this.targetChain = newTargetChain.ToImmutable();
 
                     var handler = this.OnTargetChainChanged;

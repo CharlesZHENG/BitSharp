@@ -12,7 +12,7 @@ namespace BitSharp.Core.Builders
 {
     internal class TxLoader : IDisposable
     {
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly ChainStateBuilder.BuilderStats stats;
         private readonly CoreStorage coreStorage;

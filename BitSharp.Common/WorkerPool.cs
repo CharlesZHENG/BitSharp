@@ -8,7 +8,7 @@ namespace BitSharp.Common
 {
     public class WorkerPool : IDisposable
     {
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private bool isDisposed;
         private readonly string name;

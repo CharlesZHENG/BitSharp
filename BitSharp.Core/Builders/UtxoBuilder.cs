@@ -17,7 +17,7 @@ namespace BitSharp.Core.Builders
         private static readonly int DUPE_COINBASE_2_HEIGHT = 91812;
         private static readonly UInt256 DUPE_COINBASE_2_HASH = UInt256.ParseHex("d5d27987d2a3dfc724e359870c6644b40e497bdc0589a033220fe15429d88599");
 
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly IChainStateCursor chainStateCursor;
 
@@ -90,7 +90,7 @@ namespace BitSharp.Core.Builders
             if (!this.chainStateCursor.TryAddUnspentTx(unspentTx))
             {
                 // duplicate transaction
-                this.logger.Warn("Duplicate transaction at block {0:#,##0}, {1}, coinbase".Format2(chainedHeader.Height, chainedHeader.Hash.ToHexNumberString()));
+                logger.Warn("Duplicate transaction at block {0:#,##0}, {1}, coinbase".Format2(chainedHeader.Height, chainedHeader.Hash.ToHexNumberString()));
                 throw new ValidationException(chainedHeader.Hash);
             }
         }
@@ -201,7 +201,7 @@ namespace BitSharp.Core.Builders
             if (!this.chainStateCursor.TryGetUnspentTx(tx.Hash, out unspentTx))
             {
                 // missing transaction output
-                this.logger.Warn("Missing transaction at block {0:#,##0}, {1}, tx {2}".Format2(chainedHeader.Height, chainedHeader.Hash.ToHexNumberString(), tx.Hash));
+                logger.Warn("Missing transaction at block {0:#,##0}, {1}, tx {2}".Format2(chainedHeader.Height, chainedHeader.Hash.ToHexNumberString(), tx.Hash));
                 throw new ValidationException(chainedHeader.Hash);
             }
 

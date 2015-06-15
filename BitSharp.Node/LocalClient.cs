@@ -26,7 +26,7 @@ namespace BitSharp.Node
         public event Action<Peer, Block> OnBlock;
         public event Action<Peer, IImmutableList<BlockHeader>> OnBlockHeaders;
 
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly CancellationTokenSource shutdownToken;
         private readonly Random random = new Random();
@@ -193,7 +193,7 @@ namespace BitSharp.Node
                     }
                     catch (SocketException e)
                     {
-                        this.logger.Warn("Failed to add seed peer {0}".Format2(hostNameOrAddress), e);
+                        logger.Warn("Failed to add seed peer {0}".Format2(hostNameOrAddress), e);
                     }
                 };
 
@@ -232,7 +232,7 @@ namespace BitSharp.Node
                 count++;
             }
 
-            this.logger.Info("LocalClients loaded {0} known peers from database".Format2(count));
+            logger.Info("LocalClients loaded {0} known peers from database".Format2(count));
         }
 
         private void HandlePeerConnected(Peer peer)
@@ -328,8 +328,8 @@ namespace BitSharp.Node
 
         private void OnTransaction(Transaction transaction)
         {
-            if (this.logger.IsTraceEnabled)
-                this.logger.Trace("Received transaction {0}".Format2(transaction.Hash));
+            if (logger.IsTraceEnabled)
+                logger.Trace("Received transaction {0}".Format2(transaction.Hash));
         }
 
         private void OnReceivedAddresses(ImmutableArray<NetworkAddressWithTime> addresses)
@@ -470,7 +470,7 @@ namespace BitSharp.Node
 
         private void StatsWorker(WorkerMethod instance)
         {
-            this.logger.Info(
+            logger.Info(
                 "UNCONNECTED: {0,3}, PENDING: {1,3}, CONNECTED: {2,3}, BAD: {3,3}, INCOMING: {4,3}, MESSAGES/SEC: {5,6:#,##0}".Format2(
                 /*0*/ this.peerWorker.UnconnectedPeersCount,
                 /*1*/ this.peerWorker.PendingPeers.Count,

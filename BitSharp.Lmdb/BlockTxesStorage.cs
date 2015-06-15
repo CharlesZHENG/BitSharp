@@ -15,7 +15,7 @@ namespace BitSharp.Lmdb
 {
     public class BlockTxesStorage : IBlockTxesStorage
     {
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly string jetDirectory;
         private readonly LightningEnvironment jetInstance;
@@ -262,7 +262,7 @@ namespace BitSharp.Lmdb
 
         public void Defragment()
         {
-            this.logger.Info("BlockTxes database: {0:#,##0} MB".Format2(this.jetInstance.UsedSize / 1.MILLION()));
+            logger.Info("BlockTxes database: {0:#,##0} MB".Format2(this.jetInstance.UsedSize / 1.MILLION()));
         }
     }
 }

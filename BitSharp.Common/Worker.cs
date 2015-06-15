@@ -18,7 +18,7 @@ namespace BitSharp.Common
         // dispose timeout, the worker thread will be aborted if it does not stop in a timely fashion on Dispose
         private static readonly TimeSpan DISPOSE_STOP_TIMEOUT = TimeSpan.FromSeconds(10);
 
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         // the WorkerLoop thread
         private readonly Thread workerThread;
@@ -201,7 +201,7 @@ namespace BitSharp.Common
                     {
                         stopped = this.idleEvent.Wait(timeout.Value);
                         if (!stopped && timeout.Value > TimeSpan.Zero)
-                            this.logger.Warn("Worker failed to stop: {0}".Format2(this.Name));
+                            logger.Warn("Worker failed to stop: {0}".Format2(this.Name));
                     }
                     else
                     {
@@ -256,7 +256,7 @@ namespace BitSharp.Common
                 // terminate if still alive
                 if (this.workerThread.IsAlive)
                 {
-                    this.logger.Warn("Worker thread aborted: {0}".Format2(this.Name));
+                    logger.Warn("Worker thread aborted: {0}".Format2(this.Name));
                     this.workerThread.Abort();
                 }
             }
@@ -430,7 +430,7 @@ namespace BitSharp.Common
                         // worker leaked an exception
                         if (!cancelled)
                         {
-                            this.logger.Error("Unhandled worker exception in {0}: ".Format2(this.Name), e);
+                            logger.Error("Unhandled worker exception in {0}: ".Format2(this.Name), e);
 
                             // notify work error
                             var errorHandler = this.OnWorkError;
@@ -453,13 +453,13 @@ namespace BitSharp.Common
                     {
                         lastReportTime = DateTime.Now;
                         var percentWorkerTime = workerTime.Elapsed.TotalSeconds / totalTime.Elapsed.TotalSeconds;
-                        this.logger.Debug("{0,55} work time: {1,10:##0.00%}".Format2(this.Name, percentWorkerTime));
+                        logger.Debug("{0,55} work time: {1,10:##0.00%}".Format2(this.Name, percentWorkerTime));
                     }
                 }
             }
             catch (Exception e)
             {
-                this.logger.Fatal("Unhandled worker exception in {0}: ".Format2(this.Name), e);
+                logger.Fatal("Unhandled worker exception in {0}: ".Format2(this.Name), e);
                 throw;
             }
         }

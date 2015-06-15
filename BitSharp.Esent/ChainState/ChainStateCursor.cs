@@ -21,7 +21,7 @@ namespace BitSharp.Esent
         //TODO
         public static bool IndexOutputs { get; set; }
 
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly string jetDatabase;
         private readonly Instance jetInstance;
@@ -594,12 +594,12 @@ namespace BitSharp.Esent
 
             if (EsentVersion.SupportsWindows81Features)
             {
-                this.logger.Info("Begin shrinking chain state database");
+                logger.Info("Begin shrinking chain state database");
 
                 int actualPages;
                 Windows8Api.JetResizeDatabase(this.jetSession, this.chainStateDbId, 0, out actualPages, Windows81Grbits.OnlyShrink);
 
-                this.logger.Info("Finished shrinking chain state database: {0:#,##0} MB".Format2((float)actualPages * SystemParameters.DatabasePageSize / 1.MILLION()));
+                logger.Info("Finished shrinking chain state database: {0:#,##0} MB".Format2((float)actualPages * SystemParameters.DatabasePageSize / 1.MILLION()));
             }
         }
 

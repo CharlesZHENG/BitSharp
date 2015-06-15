@@ -10,7 +10,7 @@ namespace BitSharp.Core.Builders
 {
     internal class BlockValidator : IDisposable
     {
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly ChainStateBuilder.BuilderStats stats;
         private readonly CoreStorage coreStorage;
@@ -90,7 +90,7 @@ namespace BitSharp.Core.Builders
                 if (!this.rules.IgnoreScriptErrors)
                     throw;
                 else
-                    this.logger.Debug("Ignoring script errors in block: {0,9:#,##0}, errors: {1:#,##0}".Format2(chainedHeader.Height, e.InnerExceptions.Count));
+                    logger.Debug("Ignoring script errors in block: {0,9:#,##0}, errors: {1:#,##0}".Format2(chainedHeader.Height, e.InnerExceptions.Count));
             }
         }
 

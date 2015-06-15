@@ -15,7 +15,7 @@ namespace BitSharp.Core.Builders
 {
     internal class ChainStateBuilder : IDisposable
     {
-        private readonly Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly IBlockchainRules rules;
         private readonly CoreStorage coreStorage;
@@ -204,7 +204,7 @@ namespace BitSharp.Core.Builders
                     var txRate = this.stats.txRateMeasure.GetAverage(TimeSpan.FromSeconds(1));
                     var inputRate = this.stats.inputRateMeasure.GetAverage(TimeSpan.FromSeconds(1));
 
-                    this.logger.Info(
+                    logger.Info(
                         string.Join("\n",
                             new string('-', 80),
                             "Height: {0,10} | Duration: {1} /*| Validation: {2} */| Blocks/s: {3,7} | Tx/s: {4,7} | Inputs/s: {5,7} | Processed Tx: {6,7} | Processed Inputs: {7,7} | Utx Size: {8,7} | Utxo Size: {9,7}",
