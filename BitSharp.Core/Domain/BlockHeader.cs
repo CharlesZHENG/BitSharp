@@ -16,7 +16,7 @@ namespace BitSharp.Core.Domain
 
         private readonly int hashCode;
 
-        public BlockHeader(UInt32 version, UInt256 previousBlock, UInt256 merkleRoot, UInt32 time, UInt32 bits, UInt32 nonce, UInt256? hash = null)
+        public BlockHeader(UInt32 version, UInt256 previousBlock, UInt256 merkleRoot, UInt32 time, UInt32 bits, UInt32 nonce, UInt256 hash = null)
         {
             this._version = version;
             this._previousBlock = previousBlock;
@@ -44,7 +44,7 @@ namespace BitSharp.Core.Domain
 
         public UInt256 Hash { get { return this._hash; } }
 
-        public BlockHeader With(UInt32? Version = null, UInt256? PreviousBlock = null, UInt256? MerkleRoot = null, UInt32? Time = null, UInt32? Bits = null, UInt32? Nonce = null)
+        public BlockHeader With(UInt32? Version = null, UInt256 PreviousBlock = null, UInt256 MerkleRoot = null, UInt32? Time = null, UInt32? Bits = null, UInt32? Nonce = null)
         {
             return new BlockHeader
             (

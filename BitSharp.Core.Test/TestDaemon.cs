@@ -117,7 +117,7 @@ namespace BitSharp.Core.Test
 
         public CoreStorage CoreStorage { get { return this.coreStorage; } }
 
-        public Block CreateEmptyBlock(UInt256 previousBlockHash, UInt256? target = null)
+        public Block CreateEmptyBlock(UInt256 previousBlockHash, UInt256 target = null)
         {
             var coinbaseTx = new Transaction
             (
@@ -168,7 +168,7 @@ namespace BitSharp.Core.Test
             return block;
         }
 
-        public Block CreateEmptyBlock(Block prevBlock, UInt256? target = null)
+        public Block CreateEmptyBlock(Block prevBlock, UInt256 target = null)
         {
             return CreateEmptyBlock(prevBlock.Hash, target);
         }
@@ -184,24 +184,24 @@ namespace BitSharp.Core.Test
             return block;
         }
 
-        public Block MineEmptyBlock(UInt256 previousBlockHash, UInt256? target = null)
+        public Block MineEmptyBlock(UInt256 previousBlockHash, UInt256 target = null)
         {
             return MineBlock(CreateEmptyBlock(previousBlockHash, target));
         }
 
-        public Block MineEmptyBlock(Block previousBlock, UInt256? target = null)
+        public Block MineEmptyBlock(Block previousBlock, UInt256 target = null)
         {
             return MineEmptyBlock(previousBlock.Hash, target);
         }
 
-        public Block MineAndAddEmptyBlock(UInt256 previousBlockHash, UInt256? target = null)
+        public Block MineAndAddEmptyBlock(UInt256 previousBlockHash, UInt256 target = null)
         {
             var block = MineEmptyBlock(previousBlockHash, target);
             AddBlock(block);
             return block;
         }
 
-        public Block MineAndAddEmptyBlock(Block prevBlock, UInt256? target = null)
+        public Block MineAndAddEmptyBlock(Block prevBlock, UInt256 target = null)
         {
             return MineAndAddEmptyBlock(prevBlock.Hash, target);
         }

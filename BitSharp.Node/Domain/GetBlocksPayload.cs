@@ -17,7 +17,7 @@ namespace BitSharp.Node.Domain
             this.HashStop = HashStop;
         }
 
-        public GetBlocksPayload With(UInt32? Version = null, ImmutableArray<UInt256>? BlockLocatorHashes = null, UInt256? HashStop = null)
+        public GetBlocksPayload With(UInt32? Version = null, ImmutableArray<UInt256>? BlockLocatorHashes = null, UInt256 HashStop = null)
         {
             return new GetBlocksPayload
             (

@@ -44,7 +44,7 @@ namespace BitSharp.Core
             }
         }
 
-        public static Block DecodeBlock(BinaryReader reader, UInt256? blockHash = null)
+        public static Block DecodeBlock(BinaryReader reader, UInt256 blockHash = null)
         {
             return new Block
             (
@@ -78,7 +78,7 @@ namespace BitSharp.Core
             }
         }
 
-        public static BlockHeader DecodeBlockHeader(BinaryReader reader, UInt256? blockHash = null)
+        public static BlockHeader DecodeBlockHeader(BinaryReader reader, UInt256 blockHash = null)
         {
             return new BlockHeader
             (
@@ -92,7 +92,7 @@ namespace BitSharp.Core
             );
         }
 
-        public static BlockHeader DecodeBlockHeader(byte[] bytes, UInt256? blockHash = null)
+        public static BlockHeader DecodeBlockHeader(byte[] bytes, UInt256 blockHash = null)
         {
             using (var stream = new MemoryStream(bytes))
             using (var reader = new BinaryReader(stream))
@@ -219,7 +219,7 @@ namespace BitSharp.Core
             }
         }
 
-        public static Transaction DecodeTransaction(BinaryReader reader, UInt256? txHash = null)
+        public static Transaction DecodeTransaction(BinaryReader reader, UInt256 txHash = null)
         {
             return new Transaction
             (
@@ -231,7 +231,7 @@ namespace BitSharp.Core
             );
         }
 
-        public static Transaction DecodeTransaction(byte[] bytes, UInt256? txHash = null)
+        public static Transaction DecodeTransaction(byte[] bytes, UInt256 txHash = null)
         {
             using (var stream = new MemoryStream(bytes))
             using (var reader = new BinaryReader(stream))

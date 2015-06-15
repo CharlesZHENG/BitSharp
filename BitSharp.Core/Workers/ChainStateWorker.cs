@@ -27,7 +27,7 @@ namespace BitSharp.Core.Workers
 
         private readonly DurationMeasure blockProcessingDurationMeasure;
         private readonly CountMeasure blockMissCountMeasure;
-        private UInt256? lastBlockMissHash;
+        private UInt256 lastBlockMissHash;
 
         private readonly TargetChainWorker targetChainWorker;
         private readonly ChainStateBuilder chainStateBuilder;
@@ -217,7 +217,7 @@ namespace BitSharp.Core.Workers
 
         private void RaiseBlockMissed(UInt256 blockHash)
         {
-            if (this.lastBlockMissHash == null || this.lastBlockMissHash.Value != blockHash)
+            if (this.lastBlockMissHash == null || this.lastBlockMissHash != blockHash)
             {
                 logger.Debug("ChainStateWorker stalled, missing block: {0}".Format2(blockHash));
 

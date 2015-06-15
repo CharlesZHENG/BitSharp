@@ -12,7 +12,7 @@ namespace BitSharp.Core.Domain
         private readonly UInt32 _lockTime;
         private readonly UInt256 _hash;
 
-        public Transaction(UInt32 version, ImmutableArray<TxInput> inputs, ImmutableArray<TxOutput> outputs, UInt32 lockTime, UInt256? hash = null)
+        public Transaction(UInt32 version, ImmutableArray<TxInput> inputs, ImmutableArray<TxOutput> outputs, UInt32 lockTime, UInt256 hash = null)
         {
             this._version = version;
             this._inputs = inputs;

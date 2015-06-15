@@ -6,7 +6,7 @@ using System.Numerics;
 
 namespace BitSharp.Common
 {
-    public struct UInt256 : IComparable<UInt256>
+    public class UInt256 : IComparable<UInt256>
     {
         private static readonly UInt256 _zero = new UInt256(new byte[0]);
 
@@ -194,7 +194,7 @@ namespace BitSharp.Common
 
         public static bool operator ==(UInt256 left, UInt256 right)
         {
-            return /*object.ReferenceEquals(left, right) || (!object.ReferenceEquals(left, null) && !object.ReferenceEquals(right, null) &&*/ left.part1 == right.part1 && left.part2 == right.part2 && left.part3 == right.part3 && left.part4 == right.part4/*)*/;
+            return object.ReferenceEquals(left, right) || (!object.ReferenceEquals(left, null) && !object.ReferenceEquals(right, null) && left.part1 == right.part1 && left.part2 == right.part2 && left.part3 == right.part3 && left.part4 == right.part4);
         }
 
         public static bool operator !=(UInt256 left, UInt256 right)
