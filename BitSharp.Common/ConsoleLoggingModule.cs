@@ -41,7 +41,6 @@ namespace BitSharp.Common
 
             // activate configuration and bind
             LogManager.Configuration = config;
-            this.Kernel.Bind<Logger>().ToMethod(context => LogManager.GetLogger("BitSharp"));
         }
     }
 }

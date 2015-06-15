@@ -44,7 +44,6 @@ namespace BitSharp.Node
 
             // activate configuration and bind
             LogManager.Configuration = config;
-            this.Kernel.Bind<Logger>().ToMethod(context => LogManager.GetLogger("BitSharp"));
         }
 
         private Target WrapAsync(Target target)
