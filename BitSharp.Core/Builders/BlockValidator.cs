@@ -54,9 +54,9 @@ namespace BitSharp.Core.Builders
         {
             using (var pendingTxQueue = new ConcurrentBlockingQueue<TxWithInputTxLookupKeys>())
             using (var validateScriptQueue = new ConcurrentBlockingQueue<TxInputWithPrevOutput>())
-            using (var txLoaderStopper = this.prevTxLoader.StartLoading(pendingTxQueue))
-            using (var txValidatorStopper = StartTxValidator(chainedHeader, validateScriptQueue))
-            using (var scriptValidatorStopper = StartScriptValidator(validateScriptQueue))
+            using (this.prevTxLoader.StartLoading(pendingTxQueue))
+            using (StartTxValidator(chainedHeader, validateScriptQueue))
+            using (StartScriptValidator(validateScriptQueue))
             {
                 try
                 {
