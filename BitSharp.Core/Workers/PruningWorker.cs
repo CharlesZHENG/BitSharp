@@ -122,7 +122,6 @@ namespace BitSharp.Core.Workers
                 }
                 else
                 {
-                    Debugger.Break();
                     throw new InvalidOperationException();
                 }
 

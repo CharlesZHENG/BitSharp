@@ -29,7 +29,7 @@ namespace BitSharp.Wallet.Address
                     else if (bytes.Length == 20)
                         yield return PublicKeyHashToOutputScriptHash(bytes);
                     else
-                        Debugger.Break();
+                        throw new InvalidOperationException();
                 }
             }
         }
@@ -53,8 +53,7 @@ namespace BitSharp.Wallet.Address
         private UInt256 PublicKeyToOutputScriptHash(byte[] publicKey)
         {
             if (publicKey.Length != 65)
-                Debugger.Break();
-            //Debug.Assert(publicKey.Length == 65);
+                throw new ArgumentException("publicKey");
 
             var outputScript = new PayToPublicKeyBuilder().CreateOutput(publicKey);
             var outputScriptHash = new UInt256(SHA256Static.ComputeHash(outputScript));
@@ -65,8 +64,7 @@ namespace BitSharp.Wallet.Address
         private UInt256 PublicKeyHashToOutputScriptHash(byte[] publicKeyHash)
         {
             if (publicKeyHash.Length != 20)
-                Debugger.Break();
-            //Debug.Assert(publicKeyHash.Length == 20);
+                throw new ArgumentException("publicKeyHash");
 
             var outputScript = new PayToPublicKeyHashBuilder().CreateOutputFromPublicKeyHash(publicKeyHash);
             var outputScriptHash = new UInt256(SHA256Static.ComputeHash(outputScript));

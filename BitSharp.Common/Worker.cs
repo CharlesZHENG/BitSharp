@@ -460,7 +460,6 @@ namespace BitSharp.Common
             catch (Exception e)
             {
                 this.logger.Fatal("Unhandled worker exception in {0}: ".Format2(this.Name), e);
-                Debugger.Break();
                 throw;
             }
         }

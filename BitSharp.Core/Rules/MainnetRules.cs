@@ -185,7 +185,6 @@ namespace BitSharp.Core.Rules
             catch (ArgumentException)
             {
                 // invalid bits
-                Debugger.Break();
                 throw new ValidationException(chain.LastBlock.Hash);
             }
         }
