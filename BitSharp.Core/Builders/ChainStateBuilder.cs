@@ -31,7 +31,7 @@ namespace BitSharp.Core.Builders
         private Chain rollbackChain;
         private readonly UtxoBuilder utxoBuilder;
 
-        private readonly WorkerPool blockTxesDispatcher;
+        private readonly ParallelConsumer<BlockTx> blockTxesDispatcher;
         private readonly ParallelConsumer<Tuple<UInt256, int, CompletionCount>> utxoReader;
         private readonly WorkerPool blockTxesSorter;
 
@@ -64,7 +64,7 @@ namespace BitSharp.Core.Builders
 
             this.commitLock = new ReaderWriterLockSlim();
 
-            this.blockTxesDispatcher = new WorkerPool("ChainStateBuilder.BlockTxesDispatcher", 1);
+            this.blockTxesDispatcher = new ParallelConsumer<BlockTx>("ChainStateBuilder.BlockTxesDispatcher", 1);
             this.utxoReader = new ParallelConsumer<Tuple<UInt256, int, CompletionCount>>("ChainStateBuilder.UtxoReaer", 4);
             this.blockTxesSorter = new WorkerPool("ChainStateBuilder.BlockTxesSorter", 1);
         }
@@ -117,32 +117,27 @@ namespace BitSharp.Core.Builders
                                     var pendingSortedTxesCompletedAdding = false;
 
                                     using (var chainState = new ChainState(this.chain.ToImmutable(), this.storageManager))
-                                    using (this.blockTxesDispatcher.Start(() =>
-                                    {
-                                        try
+                                    using (this.blockTxesDispatcher.Start(blockTxes,
+                                        blockTx =>
                                         {
-                                            foreach (var blockTx in blockTxes)
+                                            var inputCount = !blockTx.IsCoinbase ? blockTx.Transaction.Inputs.Length : 0;
+                                            var completionCount = new CompletionCount(inputCount + 1);
+                                            pendingSortedTxes.Enqueue(Tuple.Create(blockTx, completionCount));
+
+                                            if (!blockTx.IsCoinbase)
                                             {
-                                                var inputCount = !blockTx.IsCoinbase ? blockTx.Transaction.Inputs.Length : 0;
-                                                var completionCount = new CompletionCount(inputCount + 1);
-                                                pendingSortedTxes.Enqueue(Tuple.Create(blockTx, completionCount));
-
-                                                if (!blockTx.IsCoinbase)
-                                                {
-                                                    blockTxesReadQueue.AddRange(blockTx.Transaction.Inputs.Select(
-                                                       (txInput, inputIndex) => Tuple.Create(txInput.PreviousTxOutputKey.TxHash, inputIndex, completionCount)));
-                                                }
-
-                                                blockTxesReadQueue.Add(Tuple.Create(blockTx.Hash, inputCount, completionCount));
+                                                blockTxesReadQueue.AddRange(blockTx.Transaction.Inputs.Select(
+                                                    (txInput, inputIndex) => Tuple.Create(txInput.PreviousTxOutputKey.TxHash, inputIndex, completionCount)));
                                             }
-                                        }
-                                        finally
+
+                                            blockTxesReadQueue.Add(Tuple.Create(blockTx.Hash, inputCount, completionCount));
+                                        },
+                                        _ =>
                                         {
                                             blockTxesReadQueue.CompleteAdding();
                                             pendingSortedTxesCompletedAdding = true;
                                             txLoadedEvent.Set();
-                                        }
-                                    }))
+                                        }))
                                     using (this.utxoReader.Start(blockTxesReadQueue,
                                         tuple =>
                                         {
