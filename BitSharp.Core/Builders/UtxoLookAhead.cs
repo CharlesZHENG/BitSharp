@@ -18,14 +18,11 @@ namespace BitSharp.Core.Builders
         private readonly ParallelObserver<Tuple<UInt256, CompletionCount>> utxoReader;
         private readonly ParallelObservable<BlockTx> blockTxesSorter;
 
-        private readonly ChainStateBuilder.BuilderStats stats;
-
-        public UtxoLookAhead(ChainStateBuilder.BuilderStats stats)
+        public UtxoLookAhead()
         {
             this.blockTxesDispatcher = new ParallelObservable<Tuple<UInt256, CompletionCount>>("UtxoLookAhead.BlockTxesDispatcher");
             this.utxoReader = new ParallelObserver<Tuple<UInt256, CompletionCount>>("UtxoLookAhead.UtxoReader", 4);
             this.blockTxesSorter = new ParallelObservable<BlockTx>("UtxoLookAhead.BlockTxesSorter");
-            this.stats = stats;
         }
 
         public void Dispose()

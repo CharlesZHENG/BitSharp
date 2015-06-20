@@ -63,7 +63,7 @@ namespace BitSharp.Core.Builders
             }
             this.utxoBuilder = new UtxoBuilder();
 
-            this.utxoLookAhead = new UtxoLookAhead(this.stats);
+            this.utxoLookAhead = new UtxoLookAhead();
 
             this.commitLock = new ReaderWriterLockSlim();
         }
@@ -240,7 +240,6 @@ namespace BitSharp.Core.Builders
                             "Avg. UTXO Calculation Time: {14,12:#,##0.000}ms",
                             "Avg. UTXO Application Time: {15,12:#,##0.000}ms",
                             "Avg. Wait-to-complete Time: {16,12:#,##0.000}ms",
-                            "UTXO Read Rate:             {17,12:#,##0}/s",
                             new string('-', 80)
                         )
                         .Format2
@@ -261,8 +260,7 @@ namespace BitSharp.Core.Builders
                         /*13*/ this.Stats.pendingTxesAtCompleteAverageMeasure.GetAverage(),
                         /*14*/ this.Stats.calculateUtxoDurationMeasure.GetAverage().TotalMilliseconds,
                         /*15*/ this.Stats.applyUtxoDurationMeasure.GetAverage().TotalMilliseconds,
-                        /*16*/ this.Stats.waitToCompleteDurationMeasure.GetAverage().TotalMilliseconds,
-                        /*17*/ this.Stats.utxoReadRateMeasure.GetAverage()
+                        /*16*/ this.Stats.waitToCompleteDurationMeasure.GetAverage().TotalMilliseconds
                         ));
                 }
                 finally
@@ -331,7 +329,6 @@ namespace BitSharp.Core.Builders
             public readonly RateMeasure blockRateMeasure = new RateMeasure(sampleCutoff, sampleResolution);
             public readonly RateMeasure txRateMeasure = new RateMeasure(sampleCutoff, sampleResolution);
             public readonly RateMeasure inputRateMeasure = new RateMeasure(sampleCutoff, sampleResolution);
-            public readonly RateMeasure utxoReadRateMeasure = new RateMeasure(sampleCutoff, sampleResolution);
 
             public DateTime lastLogTime = DateTime.UtcNow;
 
@@ -349,7 +346,6 @@ namespace BitSharp.Core.Builders
                 this.blockRateMeasure.Dispose();
                 this.txRateMeasure.Dispose();
                 this.inputRateMeasure.Dispose();
-                this.utxoReadRateMeasure.Dispose();
             }
         }
     }
