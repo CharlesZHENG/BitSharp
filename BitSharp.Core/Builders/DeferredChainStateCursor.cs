@@ -195,9 +195,9 @@ namespace BitSharp.Core.Builders
             throw new NotSupportedException();
         }
 
-        public void WarmUnspentTx(UInt256 txHash, Func<Tuple<bool, UnspentTx>> getUnspentTx)
+        public void WarmUnspentTx(UInt256 txHash)
         {
-            unspentTxes.WarmupValue(txHash, getUnspentTx);
+            unspentTxes.WarmupValue(txHash);
         }
 
         public void ApplyChangesToParent()

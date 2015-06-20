@@ -114,7 +114,7 @@ namespace BitSharp.Core.Builders
 
                                         // calculate the new block utxo, only output availability is checked and updated
                                         var pendingTxCount = 0;
-                                        var blockTxesCalculateQueue = this.utxoLookAhead.LookAhead(blockTxes, chainState, deferredChainStateCursor);
+                                        var blockTxesCalculateQueue = this.utxoLookAhead.LookAhead(blockTxes, deferredChainStateCursor);
                                         foreach (var loadingTx in this.utxoBuilder.CalculateUtxo(deferredChainStateCursor, this.chain.ToImmutable(), blockTxesCalculateQueue))
                                         {
                                             if (!rules.BypassPrevTxLoading)

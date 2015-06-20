@@ -14,16 +14,16 @@ namespace BitSharp.Core.Builders
 {
     internal class UtxoLookAhead : IDisposable
     {
-        private readonly ParallelObservable<Tuple<UInt256, int, CompletionCount>> blockTxesDispatcher;
-        private readonly ParallelObserver<Tuple<UInt256, int, CompletionCount>> utxoReader;
+        private readonly ParallelObservable<Tuple<UInt256, CompletionCount>> blockTxesDispatcher;
+        private readonly ParallelObserver<Tuple<UInt256, CompletionCount>> utxoReader;
         private readonly ParallelObservable<BlockTx> blockTxesSorter;
 
         private readonly ChainStateBuilder.BuilderStats stats;
 
         public UtxoLookAhead(ChainStateBuilder.BuilderStats stats)
         {
-            this.blockTxesDispatcher = new ParallelObservable<Tuple<UInt256, int, CompletionCount>>("UtxoLookAhead.BlockTxesDispatcher");
-            this.utxoReader = new ParallelObserver<Tuple<UInt256, int, CompletionCount>>("UtxoLookAhead.UtxoReader", 4);
+            this.blockTxesDispatcher = new ParallelObservable<Tuple<UInt256, CompletionCount>>("UtxoLookAhead.BlockTxesDispatcher");
+            this.utxoReader = new ParallelObserver<Tuple<UInt256, CompletionCount>>("UtxoLookAhead.UtxoReader", 4);
             this.blockTxesSorter = new ParallelObservable<BlockTx>("UtxoLookAhead.BlockTxesSorter");
             this.stats = stats;
         }
@@ -35,7 +35,7 @@ namespace BitSharp.Core.Builders
             this.blockTxesSorter.Dispose();
         }
 
-        public IEnumerable<BlockTx> LookAhead(IEnumerable<BlockTx> blockTxes, IChainState chainState, DeferredChainStateCursor deferredChainStateCursor)
+        public IEnumerable<BlockTx> LookAhead(IEnumerable<BlockTx> blockTxes, DeferredChainStateCursor deferredChainStateCursor)
         {
             var pendingWarmedTxes = new ConcurrentQueue<Tuple<BlockTx, CompletionCount>>();
             var completedAdding = false;
@@ -54,8 +54,8 @@ namespace BitSharp.Core.Builders
                             return
                                 blockTx.Transaction.Inputs
                                     .TakeWhile(_ => !blockTx.IsCoinbase)
-                                    .Select((txInput, inputIndex) => Tuple.Create(txInput.PreviousTxOutputKey.TxHash, inputIndex, completionCount))
-                                .Concat(Tuple.Create(blockTx.Hash, inputCount, completionCount));
+                                    .Select(txInput => Tuple.Create(txInput.PreviousTxOutputKey.TxHash, completionCount))
+                                .Concat(Tuple.Create(blockTx.Hash, completionCount));
                         })
                     .ToObservable()
                     .Finally(() =>
@@ -87,20 +87,13 @@ namespace BitSharp.Core.Builders
                     );
 
                 using (this.utxoReader.SubscribeObservers(utxoWarmupSource,
-                    Observer.Create<Tuple<UInt256, int, CompletionCount>>(
+                    Observer.Create<Tuple<UInt256, CompletionCount>>(
                         onNext: tuple =>
                         {
                             var txHash = tuple.Item1;
-                            var inputIndex = tuple.Item2;
-                            var completionCount = tuple.Item3;
+                            var completionCount = tuple.Item2;
 
-                            UnspentTx unspentTx;
-                            deferredChainStateCursor.WarmUnspentTx(txHash, () =>
-                            {
-                                var result = Tuple.Create(chainState.TryGetUnspentTx(txHash, out unspentTx), unspentTx);
-                                this.stats.utxoReadRateMeasure.Tick();
-                                return result;
-                            });
+                            deferredChainStateCursor.WarmUnspentTx(txHash);
 
                             if (completionCount.TryComplete())
                                 txLoadedEvent.Set();

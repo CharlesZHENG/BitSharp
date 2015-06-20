@@ -205,15 +205,15 @@ namespace BitSharp.Core.Builders
             });
         }
 
-        public void WarmupValue(TKey key, Func<Tuple<bool, TValue>> getValue)
+        public void WarmupValue(TKey key)
         {
             warmupLock.DoWrite(() =>
             {
                 if (!read.ContainsKey(key) && !missing.Contains(key) && !updated.ContainsKey(key) && !added.ContainsKey(key) && !deleted.Contains(key))
                 {
-                    var value = getValue();
-                    if (value.Item1)
-                        read.Add(key, value.Item2);
+                    TValue value;
+                    if (TryGetParentValue(key, out value))
+                        read.Add(key, value);
                     else
                         missing.Add(key);
                 }
