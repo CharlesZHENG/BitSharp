@@ -33,8 +33,6 @@ namespace BitSharp.Core.Workers
         private readonly ChainStateBuilder chainStateBuilder;
         private Chain currentChain;
 
-        private readonly LookAhead<BlockTx> blockTxesLookAhead;
-
         public ChainStateWorker(WorkerConfig workerConfig, TargetChainWorker targetChainWorker, ChainStateBuilder chainStateBuilder, IBlockchainRules rules, CoreStorage coreStorage)
             : base("ChainStateWorker", workerConfig.initialNotify, workerConfig.minIdleTime, workerConfig.maxIdleTime)
         {
@@ -53,8 +51,6 @@ namespace BitSharp.Core.Workers
             this.coreStorage.BlockTxesRemoved += HandleChanged;
             this.coreStorage.ChainedHeaderAdded += HandleChanged;
             this.targetChainWorker.OnTargetChainChanged += HandleChanged;
-
-            this.blockTxesLookAhead = new LookAhead<BlockTx>("BlockValidator.BlockTxesLookAhead");
         }
 
         public event Action<UInt256> BlockMissed;
@@ -94,8 +90,6 @@ namespace BitSharp.Core.Workers
 
             this.blockProcessingDurationMeasure.Dispose();
             this.blockMissCountMeasure.Dispose();
-
-            this.blockTxesLookAhead.Dispose();
         }
 
         protected override void WorkAction()
@@ -128,12 +122,12 @@ namespace BitSharp.Core.Workers
                     var blockStopwatch = Stopwatch.StartNew();
                     if (direction > 0)
                     {
-                        this.chainStateBuilder.AddBlock(chainedHeader, blockTxesLookAhead.ReadAll(blockTxes));
+                        this.chainStateBuilder.AddBlock(chainedHeader, blockTxes);
                     }
                     else if (direction < 0)
                     {
                         logger.Info("Rolling back block {0:#,##0}: {1}".Format2(chainedHeader.Height, chainedHeader.Hash));
-                        this.chainStateBuilder.RollbackBlock(chainedHeader, blockTxesLookAhead.ReadAll(blockTxes));
+                        this.chainStateBuilder.RollbackBlock(chainedHeader, blockTxes);
                     }
                     else
                     {
@@ -193,6 +187,8 @@ namespace BitSharp.Core.Workers
                     this.coreStorage.MarkBlockInvalid(validationException.BlockHash);
                 }
             }
+
+            this.chainStateBuilder.LogBlockchainProgress();
         }
 
         private void HandleChanged()
