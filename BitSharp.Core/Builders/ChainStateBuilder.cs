@@ -32,7 +32,7 @@ namespace BitSharp.Core.Builders
         private readonly UtxoBuilder utxoBuilder;
 
         private readonly WorkerPool blockTxesDispatcher;
-        private readonly WorkerPool utxoReadPool;
+        private readonly ParallelConsumer<Tuple<UInt256, int, CompletionCount>> utxoReader;
         private readonly WorkerPool blockTxesSorter;
 
         private readonly ReaderWriterLockSlim commitLock;
@@ -65,7 +65,7 @@ namespace BitSharp.Core.Builders
             this.commitLock = new ReaderWriterLockSlim();
 
             this.blockTxesDispatcher = new WorkerPool("ChainStateBuilder.BlockTxesDispatcher", 1);
-            this.utxoReadPool = new WorkerPool("ChainStateBuilder.UtxoReadPool", 4);
+            this.utxoReader = new ParallelConsumer<Tuple<UInt256, int, CompletionCount>>("ChainStateBuilder.UtxoReaer", 4);
             this.blockTxesSorter = new WorkerPool("ChainStateBuilder.BlockTxesSorter", 1);
         }
 
@@ -76,7 +76,7 @@ namespace BitSharp.Core.Builders
             this.stats.Dispose();
             this.commitLock.Dispose();
             this.blockTxesDispatcher.Dispose();
-            this.utxoReadPool.Dispose();
+            this.utxoReader.Dispose();
             this.blockTxesSorter.Dispose();
         }
 
@@ -143,9 +143,8 @@ namespace BitSharp.Core.Builders
                                             txLoadedEvent.Set();
                                         }
                                     }))
-                                    using (this.utxoReadPool.Start(() =>
-                                    {
-                                        foreach (var tuple in blockTxesReadQueue.GetConsumingEnumerable())
+                                    using (this.utxoReader.Start(blockTxesReadQueue,
+                                        tuple =>
                                         {
                                             var txHash = tuple.Item1;
                                             var inputIndex = tuple.Item2;
@@ -161,8 +160,11 @@ namespace BitSharp.Core.Builders
 
                                             if (completionCount.TryComplete())
                                                 txLoadedEvent.Set();
-                                        }
-                                    }))
+                                        },
+                                        _ =>
+                                        {
+                                            txLoadedEvent.Set();
+                                        }))
                                     using (this.blockTxesSorter.Start(() =>
                                     {
                                         try
