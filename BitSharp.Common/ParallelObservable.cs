@@ -33,7 +33,6 @@ namespace BitSharp.Common
 
         // whether a consuming session is started
         private bool isStarted;
-        private bool exceptionsThrown;
 
         private bool isDisposed;
 
@@ -107,7 +106,6 @@ namespace BitSharp.Common
                     // set to the started state
                     this.completedReadingEvent.Reset();
                     this.isStarted = true;
-                    this.exceptionsThrown = false;
 
                     // notify the read worker to begin
                     this.readWorker.NotifyWork();
