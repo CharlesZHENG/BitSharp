@@ -64,7 +64,7 @@ namespace BitSharp.Client
                     // clean block txes if the chain state is being cleaned and block txes have been pruned, the new chain state will require intact blocks to validate
                     || (cleanChainState && (pruningMode.HasFlag(PruningMode.BlockTxesPreserveMerkle) || pruningMode.HasFlag(PruningMode.BlockTxesDestroyMerkle)));
 
-                int? cacheSizeMaxBytes = null; // 500.MILLION();
+                int? cacheSizeMaxBytes = 500.MILLION();
 
                 // location to store a copy of raw blocks to avoid redownload
                 if (isLocalDev)
