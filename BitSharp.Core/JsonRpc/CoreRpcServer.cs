@@ -20,6 +20,8 @@ namespace BitSharp.Core.JsonRpc
         private readonly CoreDaemon coreDaemon;
         private readonly ListenerWorker listener;
 
+        private bool isDisposed;
+
         public CoreRpcServer(CoreDaemon coreDaemon)
         {
             this.coreDaemon = coreDaemon;
@@ -28,7 +30,18 @@ namespace BitSharp.Core.JsonRpc
 
         public void Dispose()
         {
-            this.listener.Dispose();
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!isDisposed && disposing)
+            {
+                this.listener.Dispose();
+
+                isDisposed = true;
+            }
         }
 
         public void StartListening()

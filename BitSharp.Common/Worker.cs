@@ -231,43 +231,49 @@ namespace BitSharp.Common
         /// </summary>
         public void Dispose()
         {
-            if (this.isDisposed)
-                return;
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
 
-            // stop worker
-            this.Stop(DISPOSE_STOP_TIMEOUT);
-
-            // invoke the dispose hook for the sub-class
-            this.SubDispose();
-
-            // indicate that worker is no longer alive, and worker loop may exit
-            this.isAlive = false;
-
-            // unblock all events so that the worker loop can exit
-            this.startEvent.Set();
-            this.notifyEvent.Set();
-            this.forceNotifyEvent.Set();
-
-            // wait for the worker thread to exit
-            if (this.workerThread.IsAlive)
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!this.isDisposed && disposing)
             {
-                this.workerThread.Join(DISPOSE_STOP_TIMEOUT);
+                // stop worker
+                this.Stop(DISPOSE_STOP_TIMEOUT);
 
-                // terminate if still alive
+                // invoke the dispose hook for the sub-class
+                this.SubDispose();
+
+                // indicate that worker is no longer alive, and worker loop may exit
+                this.isAlive = false;
+
+                // unblock all events so that the worker loop can exit
+                this.startEvent.Set();
+                this.notifyEvent.Set();
+                this.forceNotifyEvent.Set();
+
+                // wait for the worker thread to exit
                 if (this.workerThread.IsAlive)
                 {
-                    logger.Warn("Worker thread aborted: {0}".Format2(this.Name));
-                    this.workerThread.Abort();
+                    this.workerThread.Join(DISPOSE_STOP_TIMEOUT);
+
+                    // terminate if still alive
+                    if (this.workerThread.IsAlive)
+                    {
+                        logger.Warn("Worker thread aborted: {0}".Format2(this.Name));
+                        this.workerThread.Abort();
+                    }
                 }
+
+                // dispose events
+                this.startEvent.Dispose();
+                this.notifyEvent.Dispose();
+                this.forceNotifyEvent.Dispose();
+                this.idleEvent.Dispose();
+
+                this.isDisposed = true;
             }
-
-            // dispose events
-            this.startEvent.Dispose();
-            this.notifyEvent.Dispose();
-            this.forceNotifyEvent.Dispose();
-            this.idleEvent.Dispose();
-
-            this.isDisposed = true;
         }
 
         /// <summary>

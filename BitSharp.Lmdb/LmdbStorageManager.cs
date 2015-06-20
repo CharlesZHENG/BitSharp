@@ -27,6 +27,8 @@ namespace BitSharp.Lmdb
         private BlockTxesStorage blockTxesStorage;
         private LmdbChainStateManager chainStateManager;
 
+        private bool isDisposed;
+
         public LmdbStorageManager(string baseDirectory)
             : this(baseDirectory, blocksSize: 4.BILLION(), blockTxesSize: 128.BILLION(), chainStateSize: 32.BILLION())
         {
@@ -46,14 +48,25 @@ namespace BitSharp.Lmdb
 
         public void Dispose()
         {
-            if (this.chainStateManager != null)
-                this.chainStateManager.Dispose();
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!isDisposed && disposing)
+            {
+                if (this.chainStateManager != null)
+                    this.chainStateManager.Dispose();
 
-            if (this.blockStorage != null)
-                this.blockStorage.Dispose();
+                if (this.blockStorage != null)
+                    this.blockStorage.Dispose();
 
-            if (this.blockTxesStorage != null)
-                this.blockTxesStorage.Dispose();
+                if (this.blockTxesStorage != null)
+                    this.blockTxesStorage.Dispose();
+
+                isDisposed = true;
+            }
         }
 
         public IBlockStorage BlockStorage

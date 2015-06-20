@@ -26,6 +26,8 @@ namespace BitSharp.Core.Storage
 
         private readonly MemoryCache txCache = new MemoryCache("CoreStorage.TxCache");
 
+        private bool isDisposed;
+
         public CoreStorage(IStorageManager storageManager)
         {
             for (var i = 0; i < this.presentBlockTxesLocks.Length; i++)
@@ -42,7 +44,18 @@ namespace BitSharp.Core.Storage
 
         public void Dispose()
         {
-            this.txCache.Dispose();
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!isDisposed && disposing)
+            {
+                this.txCache.Dispose();
+
+                isDisposed = true;
+            }
         }
 
         public event Action<ChainedHeader> ChainedHeaderAdded;

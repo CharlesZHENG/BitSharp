@@ -1,6 +1,7 @@
 ﻿using BitSharp.Common;
 using BitSharp.Core.Storage;
 using NLog;
+using System;
 
 namespace BitSharp.Esent
 {
@@ -18,6 +19,8 @@ namespace BitSharp.Esent
         private BlockTxesStorage blockTxesStorage;
         private EsentChainStateManager chainStateManager;
 
+        private bool isDisposed;
+
         public EsentStorageManager(string baseDirectory)
         {
             this.baseDirectory = baseDirectory;
@@ -29,14 +32,25 @@ namespace BitSharp.Esent
 
         public void Dispose()
         {
-            if (this.chainStateManager != null)
-                this.chainStateManager.Dispose();
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!isDisposed && disposing)
+            {
+                if (this.chainStateManager != null)
+                    this.chainStateManager.Dispose();
 
-            if (this.blockStorage != null)
-                this.blockStorage.Dispose();
+                if (this.blockStorage != null)
+                    this.blockStorage.Dispose();
 
-            if (this.blockTxesStorage != null)
-                this.blockTxesStorage.Dispose();
+                if (this.blockTxesStorage != null)
+                    this.blockTxesStorage.Dispose();
+
+                isDisposed = true;
+            }
         }
 
         public IBlockStorage BlockStorage

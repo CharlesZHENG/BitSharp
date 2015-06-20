@@ -21,6 +21,8 @@ namespace BitSharp.Lmdb
         public readonly LightningDatabase blockHeadersTableId;
         public readonly LightningDatabase invalidBlocksTableId;
 
+        private bool isDisposed;
+
         public BlockStorage(string baseDirectory, long blocksSize)
         {
             this.jetDirectory = Path.Combine(baseDirectory, "Blocks");
@@ -45,7 +47,18 @@ namespace BitSharp.Lmdb
 
         public void Dispose()
         {
-            this.jetInstance.Dispose();
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!isDisposed && disposing)
+            {
+                this.jetInstance.Dispose();
+
+                isDisposed = true;
+            }
         }
 
         public bool ContainsChainedHeader(UInt256 blockHash)

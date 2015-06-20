@@ -15,6 +15,8 @@ namespace BitSharp.Esent
         private readonly Func<byte[], TValue> valueDecoder;
         private readonly PersistentDictionary<string, PersistentBlob> dict;
 
+        private bool isDisposed;
+
         public PersistentObjectDictonary(string directory, Func<TKey, byte[]> keyEncoder, Func<byte[], TKey> keyDecoder, Func<TValue, byte[]> valueEncoder, Func<byte[], TValue> valueDecoder)
         {
             this.directory = directory;
@@ -27,7 +29,18 @@ namespace BitSharp.Esent
 
         public void Dispose()
         {
-            this.dict.Dispose();
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!isDisposed && disposing)
+            {
+                this.dict.Dispose();
+
+                isDisposed = true;
+            }
         }
 
         public void Add(TKey key, TValue value)

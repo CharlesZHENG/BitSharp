@@ -24,6 +24,8 @@ namespace BitSharp.Lmdb
 
         private readonly byte[] blockCountKey = UTF8Encoding.ASCII.GetBytes("BlockCount");
 
+        private bool isDisposed;
+
         public BlockTxesStorage(string baseDirectory, long blockTxesSize)
         {
             this.jetDirectory = Path.Combine(baseDirectory, "BlockTxes");
@@ -50,7 +52,18 @@ namespace BitSharp.Lmdb
 
         public void Dispose()
         {
-            this.jetInstance.Dispose();
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!isDisposed && disposing)
+            {
+                this.jetInstance.Dispose();
+
+                isDisposed = true;
+            }
         }
 
         public bool ContainsBlock(UInt256 blockHash)

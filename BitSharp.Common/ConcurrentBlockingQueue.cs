@@ -22,11 +22,18 @@ namespace BitSharp.Common
         /// </summary>
         public void Dispose()
         {
-            if (isDisposed)
-                return;
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
 
-            this.workEvent.Dispose();
-            this.isDisposed = true;
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!isDisposed && disposing)
+            {
+                this.workEvent.Dispose();
+                
+                this.isDisposed = true;
+            }
         }
 
         /// <summary>

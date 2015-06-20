@@ -17,6 +17,8 @@ namespace BitSharp.Core.Test
         private readonly Dictionary<UInt256, string> hashNames;
         private readonly ZipArchive zip;
 
+        private bool isDisposed;
+
         public BlockProvider(string resourceName)
         {
             this.blocks = new ConcurrentDictionary<string, Block>();
@@ -41,7 +43,18 @@ namespace BitSharp.Core.Test
 
         public void Dispose()
         {
-            this.zip.Dispose();
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!isDisposed && disposing)
+            {
+                this.zip.Dispose();
+
+                isDisposed = true;
+            }
         }
 
         public int Count { get { return heightNames.Count; } }

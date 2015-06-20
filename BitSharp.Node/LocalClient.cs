@@ -46,6 +46,8 @@ namespace BitSharp.Node
 
         private RateMeasure messageRateMeasure;
 
+        private bool isDisposed;
+
         public LocalClient(RulesEnum type, IKernel kernel, IBlockchainRules rules, CoreDaemon coreDaemon, INetworkPeerStorage networkPeerStorage)
         {
             this.shutdownToken = new CancellationTokenSource();
@@ -132,18 +134,29 @@ namespace BitSharp.Node
 
         public void Dispose()
         {
-            this.shutdownToken.Cancel();
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!isDisposed && disposing)
+            {
+                this.shutdownToken.Cancel();
 
-            this.peerWorker.PeerConnected -= HandlePeerConnected;
-            this.peerWorker.PeerDisconnected -= HandlePeerDisconnected;
+                this.peerWorker.PeerConnected -= HandlePeerConnected;
+                this.peerWorker.PeerDisconnected -= HandlePeerDisconnected;
 
-            this.messageRateMeasure.Dispose();
-            this.statsWorker.Dispose();
-            this.headersRequestWorker.Dispose();
-            this.blockRequestWorker.Dispose();
-            this.peerWorker.Dispose();
-            this.listenWorker.Dispose();
-            this.shutdownToken.Dispose();
+                this.messageRateMeasure.Dispose();
+                this.statsWorker.Dispose();
+                this.headersRequestWorker.Dispose();
+                this.blockRequestWorker.Dispose();
+                this.peerWorker.Dispose();
+                this.listenWorker.Dispose();
+                this.shutdownToken.Dispose();
+
+                isDisposed = true;
+            }
         }
 
         public float GetBlockDownloadRate(TimeSpan perUnitTime)

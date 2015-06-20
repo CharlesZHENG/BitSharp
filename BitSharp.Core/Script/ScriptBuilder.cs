@@ -9,6 +9,8 @@ namespace BitSharp.Core.Script
     {
         private readonly MemoryStream stream;
 
+        private bool isDisposed;
+
         public ScriptBuilder()
         {
             this.stream = new MemoryStream();
@@ -16,7 +18,18 @@ namespace BitSharp.Core.Script
 
         public void Dispose()
         {
-            this.stream.Dispose();
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!isDisposed && disposing)
+            {
+                this.stream.Dispose();
+
+                isDisposed = true;
+            }
         }
 
         public byte[] GetScript()

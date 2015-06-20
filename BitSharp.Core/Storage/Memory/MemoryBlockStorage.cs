@@ -1,5 +1,6 @@
 ﻿using BitSharp.Common;
 using BitSharp.Core.Domain;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 
@@ -17,6 +18,12 @@ namespace BitSharp.Core.Storage.Memory
         }
 
         public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
         {
         }
 

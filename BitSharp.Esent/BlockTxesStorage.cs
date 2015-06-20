@@ -26,6 +26,8 @@ namespace BitSharp.Esent
 
         private readonly DisposableCache<BlockTxesCursor> cursorCache;
 
+        private bool isDisposed;
+
         public BlockTxesStorage(string baseDirectory)
         {
             this.jetDirectory = Path.Combine(baseDirectory, "BlockTxes");
@@ -49,8 +51,19 @@ namespace BitSharp.Esent
 
         public void Dispose()
         {
-            this.cursorCache.Dispose();
-            this.jetInstance.Dispose();
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!isDisposed && disposing)
+            {
+                this.cursorCache.Dispose();
+                this.jetInstance.Dispose();
+
+                isDisposed = true;
+            }
         }
 
         internal Instance JetInstance { get { return this.jetInstance; } }

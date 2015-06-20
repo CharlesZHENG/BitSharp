@@ -48,14 +48,19 @@ namespace BitSharp.Common
         /// </summary>
         public void Dispose()
         {
-            if (this.isDisposed)
-                return;
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
 
-            if (this.readWorker != null)
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!this.isDisposed && disposing)
+            {
                 this.readWorker.Dispose();
-            this.completedReadingEvent.Dispose();
+                this.completedReadingEvent.Dispose();
 
-            this.isDisposed = true;
+                this.isDisposed = true;
+            }
         }
 
         /// <summary>

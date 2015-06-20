@@ -22,6 +22,8 @@ namespace BitSharp.Core.Test
         private readonly CoreDaemon coreDaemon;
         private readonly CoreStorage coreStorage;
 
+        private bool isDisposed;
+
         public Simulator(RulesEnum rulesType)
         {
             // initialize kernel
@@ -66,8 +68,19 @@ namespace BitSharp.Core.Test
 
         public void Dispose()
         {
-            this.kernel.Dispose();
-            this.blockProvider.Dispose();
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!isDisposed && disposing)
+            {
+                this.kernel.Dispose();
+                this.blockProvider.Dispose();
+
+                isDisposed = true;
+            }
         }
 
         public BlockProvider BlockProvider { get { return this.blockProvider; } }

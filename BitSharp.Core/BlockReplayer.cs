@@ -21,6 +21,8 @@ namespace BitSharp.Core.Builders
         private readonly TxLoader txLoader;
         private readonly ParallelConsumer<LoadedTx> txSorter;
 
+        private bool isDisposed;
+
         public BlockReplayer(CoreStorage coreStorage, IBlockchainRules rules)
         {
             this.coreStorage = coreStorage;
@@ -36,9 +38,20 @@ namespace BitSharp.Core.Builders
 
         public void Dispose()
         {
-            this.pendingTxLoader.Dispose();
-            this.txLoader.Dispose();
-            this.txSorter.Dispose();
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!isDisposed && disposing)
+            {
+                this.pendingTxLoader.Dispose();
+                this.txLoader.Dispose();
+                this.txSorter.Dispose();
+
+                isDisposed = true;
+            }
         }
 
         public IEnumerable<LoadedTx> ReplayBlock(IChainState chainState, UInt256 blockHash, bool replayForward)

@@ -35,6 +35,8 @@ namespace BitSharp.Core
         private readonly WorkerMethod gcWorker;
         private readonly WorkerMethod utxoScanWorker;
 
+        private bool isDisposed;
+
         public CoreDaemon(IKernel kernel, IBlockchainRules rules, IStorageManager storageManager)
         {
             this.kernel = kernel;
@@ -85,23 +87,34 @@ namespace BitSharp.Core
 
         public void Dispose()
         {
-            this.Stop();
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
 
-            // unwire events
-            this.chainStateWorker.BlockMissed -= HandleBlockMissed;
-            this.targetChainWorker.OnTargetChainChanged -= HandleTargetChainChanged;
-            this.chainStateWorker.OnChainStateChanged -= HandleChainStateChanged;
-            this.pruningWorker.OnWorkFinished -= this.defragWorker.NotifyWork;
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!isDisposed && disposing)
+            {
+                this.Stop();
 
-            // cleanup workers
-            this.defragWorker.Dispose();
-            this.pruningWorker.Dispose();
-            this.chainStateWorker.Dispose();
-            this.targetChainWorker.Dispose();
-            this.gcWorker.Dispose();
-            this.utxoScanWorker.Dispose();
-            this.chainStateBuilder.Dispose();
-            this.coreStorage.Dispose();
+                // unwire events
+                this.chainStateWorker.BlockMissed -= HandleBlockMissed;
+                this.targetChainWorker.OnTargetChainChanged -= HandleTargetChainChanged;
+                this.chainStateWorker.OnChainStateChanged -= HandleChainStateChanged;
+                this.pruningWorker.OnWorkFinished -= this.defragWorker.NotifyWork;
+
+                // cleanup workers
+                this.defragWorker.Dispose();
+                this.pruningWorker.Dispose();
+                this.chainStateWorker.Dispose();
+                this.targetChainWorker.Dispose();
+                this.gcWorker.Dispose();
+                this.utxoScanWorker.Dispose();
+                this.chainStateBuilder.Dispose();
+                this.coreStorage.Dispose();
+
+                isDisposed = true;
+            }
         }
 
         public CoreStorage CoreStorage { get { return this.coreStorage; } }

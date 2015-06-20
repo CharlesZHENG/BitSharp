@@ -1,5 +1,6 @@
 ﻿using BitSharp.Common;
 using BitSharp.Core.Domain;
+using System;
 using System.Collections.Immutable;
 
 namespace BitSharp.Core.Storage.Memory
@@ -9,6 +10,8 @@ namespace BitSharp.Core.Storage.Memory
         private readonly MemoryBlockStorage blockStorage;
         private readonly MemoryBlockTxesStorage blockTxesStorage;
         private readonly MemoryChainStateStorage chainStateStorage;
+
+        private bool isDisposed;
 
         public MemoryStorageManager()
             : this(null, null, null, null)
@@ -23,9 +26,20 @@ namespace BitSharp.Core.Storage.Memory
 
         public void Dispose()
         {
-            this.blockStorage.Dispose();
-            this.blockTxesStorage.Dispose();
-            this.chainStateStorage.Dispose();
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!isDisposed && disposing)
+            {
+                this.blockStorage.Dispose();
+                this.blockTxesStorage.Dispose();
+                this.chainStateStorage.Dispose();
+
+                isDisposed = true;
+            }
         }
 
         public IBlockStorage BlockStorage

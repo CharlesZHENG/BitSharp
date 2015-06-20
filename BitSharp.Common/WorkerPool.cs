@@ -40,13 +40,19 @@ namespace BitSharp.Common
 
         public void Dispose()
         {
-            if (this.isDisposed)
-                return;
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
 
-            this.workers.DisposeList();
-            this.finishedEvent.Dispose();
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!this.isDisposed && disposing)
+            {
+                this.workers.DisposeList();
+                this.finishedEvent.Dispose();
 
-            this.isDisposed = true;
+                this.isDisposed = true;
+            }
         }
 
         public void Do(Action<int> action)

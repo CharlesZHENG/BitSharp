@@ -68,19 +68,28 @@ namespace BitSharp.Node.Network
 
         public void Dispose()
         {
-            lock (this.objectLock)
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!isDisposed && disposing)
             {
-                if (this.isDisposed)
-                    return;
+                lock (this.objectLock)
+                {
+                    if (this.isDisposed)
+                        return;
 
-                UnwireNode();
+                    UnwireNode();
 
-                this.sender.Dispose();
-                this.socket.Dispose();
-                this.blockMissCountMeasure.Dispose();
-                this.semaphore.Dispose();
+                    this.sender.Dispose();
+                    this.socket.Dispose();
+                    this.blockMissCountMeasure.Dispose();
+                    this.semaphore.Dispose();
 
-                this.isDisposed = true;
+                    this.isDisposed = true;
+                }
             }
         }
 

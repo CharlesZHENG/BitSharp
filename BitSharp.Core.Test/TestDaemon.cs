@@ -31,6 +31,8 @@ namespace BitSharp.Core.Test
         private readonly CoreDaemon coreDaemon;
         private readonly CoreStorage coreStorage;
 
+        private bool isDisposed;
+
         public TestDaemon(Block genesisBlock = null)
         {
             // initialize kernel
@@ -96,7 +98,18 @@ namespace BitSharp.Core.Test
 
         public void Dispose()
         {
-            this.kernel.Dispose();
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!isDisposed && disposing)
+            {
+                this.kernel.Dispose();
+
+                isDisposed = true;
+            }
         }
 
         public IKernel Kernel { get { return this.kernel; } }

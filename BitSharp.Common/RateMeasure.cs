@@ -38,16 +38,22 @@ namespace BitSharp.Common
 
         public void Dispose()
         {
-            if (this.isDisposed)
-                return;
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
 
-            this.cancelToken.Cancel();
-            this.sampleTask.Wait();
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!this.isDisposed && disposing)
+            {
+                this.cancelToken.Cancel();
+                this.sampleTask.Wait();
 
-            this.cancelToken.Dispose();
-            this.rwLock.Dispose();
+                this.cancelToken.Dispose();
+                this.rwLock.Dispose();
 
-            this.isDisposed = true;
+                this.isDisposed = true;
+            }
         }
 
         public void Tick()

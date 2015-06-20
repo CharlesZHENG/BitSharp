@@ -26,6 +26,8 @@ namespace BitSharp.Node.Network
         private readonly SemaphoreSlim semaphore = new SemaphoreSlim(1);
         private readonly Socket socket;
 
+        private bool isDisposed;
+
         public RemoteSender(Socket socket)
         {
             this.socket = socket;
@@ -33,7 +35,18 @@ namespace BitSharp.Node.Network
 
         public void Dispose()
         {
-            this.semaphore.Dispose();
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!isDisposed && disposing)
+            {
+                this.semaphore.Dispose();
+
+                isDisposed = true;
+            }
         }
 
         private void Fail(Exception e)

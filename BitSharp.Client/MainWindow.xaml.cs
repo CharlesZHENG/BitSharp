@@ -25,7 +25,7 @@ namespace BitSharp.Client
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
-    public partial class MainWindow : Window, IDisposable
+    public sealed partial class MainWindow : Window, IDisposable
     {
         private readonly Logger logger;
 

@@ -44,6 +44,8 @@ namespace BitSharp.Core.Storage.Memory
         private bool blockSpentTxesModified;
         private bool blockUnmintedTxesModified;
 
+        private bool isDisposed;
+
         internal MemoryChainStateCursor(MemoryChainStateStorage chainStateStorage)
         {
             this.chainStateStorage = chainStateStorage;
@@ -53,8 +55,19 @@ namespace BitSharp.Core.Storage.Memory
 
         public void Dispose()
         {
-            if (this.inTransaction)
-                this.RollbackTransaction();
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!isDisposed && disposing)
+            {
+                if (this.inTransaction)
+                    this.RollbackTransaction();
+
+                isDisposed = true;
+            }
         }
 
         public bool InTransaction

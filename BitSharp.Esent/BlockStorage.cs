@@ -25,6 +25,8 @@ namespace BitSharp.Esent
 
         private readonly DisposableCache<BlockCursor> cursorCache;
 
+        private bool isDisposed;
+
         public BlockStorage(string baseDirectory)
         {
             this.jetDirectory = Path.Combine(baseDirectory, "Blocks");
@@ -48,8 +50,19 @@ namespace BitSharp.Esent
 
         public void Dispose()
         {
-            this.cursorCache.Dispose();
-            this.jetInstance.Dispose();
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!isDisposed && disposing)
+            {
+                this.cursorCache.Dispose();
+                this.jetInstance.Dispose();
+
+                isDisposed = true;
+            }
         }
 
         public bool ContainsChainedHeader(UInt256 blockHash)

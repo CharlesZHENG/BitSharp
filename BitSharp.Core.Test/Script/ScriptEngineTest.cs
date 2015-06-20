@@ -14,7 +14,7 @@ using System.Linq;
 namespace BitSharp.Core.Test.Script
 {
     [TestClass]
-    public class ScriptEngineTest : IDisposable
+    public sealed class ScriptEngineTest : IDisposable
     {
         private static MainnetBlockProvider provider;
 
