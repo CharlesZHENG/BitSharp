@@ -29,7 +29,7 @@ namespace BitSharp.Common
             this.SampleCutoff = sampleCutoff ?? TimeSpan.FromSeconds(30);
             this.SampleResolution = sampleResolution ?? TimeSpan.FromSeconds(1);
 
-            this.sampleTask = Task.Run((Func<Task>)this.SampleThread);
+            this.sampleTask = this.SampleThread();
         }
 
         public TimeSpan SampleCutoff { get; set; }
