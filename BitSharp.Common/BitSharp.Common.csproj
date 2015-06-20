@@ -102,6 +102,8 @@
     <Compile Include="LookAheadMethods.cs" />
     <Compile Include="ParallelConsumer.cs" />
     <Compile Include="ConcurrentBlockingQueue.cs" />
+    <Compile Include="ParallelObservable.cs" />
+    <Compile Include="ParallelObserver.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="MethodTimer.cs" />
     <Compile Include="DurationMeasure.cs" />

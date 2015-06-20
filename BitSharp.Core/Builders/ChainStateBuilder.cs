@@ -11,6 +11,9 @@ using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
+using System.Reactive.Linq;
+using System.Reactive;
+using System.Reactive.Disposables;
 
 namespace BitSharp.Core.Builders
 {
@@ -31,9 +34,7 @@ namespace BitSharp.Core.Builders
         private Chain rollbackChain;
         private readonly UtxoBuilder utxoBuilder;
 
-        private readonly ParallelConsumer<BlockTx> blockTxesDispatcher;
-        private readonly ParallelConsumer<Tuple<UInt256, int, CompletionCount>> utxoReader;
-        private readonly WorkerPool blockTxesSorter;
+        private readonly UtxoLookAhead utxoLookAhead;
 
         private readonly ReaderWriterLockSlim commitLock;
 
@@ -62,11 +63,9 @@ namespace BitSharp.Core.Builders
             }
             this.utxoBuilder = new UtxoBuilder();
 
-            this.commitLock = new ReaderWriterLockSlim();
+            this.utxoLookAhead = new UtxoLookAhead(this.stats);
 
-            this.blockTxesDispatcher = new ParallelConsumer<BlockTx>("ChainStateBuilder.BlockTxesDispatcher", 1);
-            this.utxoReader = new ParallelConsumer<Tuple<UInt256, int, CompletionCount>>("ChainStateBuilder.UtxoReaer", 4);
-            this.blockTxesSorter = new WorkerPool("ChainStateBuilder.BlockTxesSorter", 1);
+            this.commitLock = new ReaderWriterLockSlim();
         }
 
         public void Dispose()
@@ -74,10 +73,8 @@ namespace BitSharp.Core.Builders
             this.blockValidator.Dispose();
             this.chainStateCursorHandle.Dispose();
             this.stats.Dispose();
+            this.utxoLookAhead.Dispose();
             this.commitLock.Dispose();
-            this.blockTxesDispatcher.Dispose();
-            this.utxoReader.Dispose();
-            this.blockTxesSorter.Dispose();
         }
 
         public Chain Chain
@@ -107,87 +104,18 @@ namespace BitSharp.Core.Builders
                         loadingTxes =>
                         {
                             using (var deferredChainStateCursor = new DeferredChainStateCursor(this.chainStateCursor))
-                            using (var blockTxesReadQueue = new ConcurrentBlockingQueue<Tuple<UInt256, int, CompletionCount>>())
-                            using (var blockTxesCalculateQueue = new ConcurrentBlockingQueue<BlockTx>())
-                            using (var txLoadedEvent = new AutoResetEvent(false))
                             {
                                 this.stats.calculateUtxoDurationMeasure.Measure(() =>
                                 {
-                                    var pendingSortedTxes = new ConcurrentQueue<Tuple<BlockTx, CompletionCount>>();
-                                    var pendingSortedTxesCompletedAdding = false;
-
                                     using (var chainState = new ChainState(this.chain.ToImmutable(), this.storageManager))
-                                    using (this.blockTxesDispatcher.Start(blockTxes,
-                                        blockTx =>
-                                        {
-                                            var inputCount = !blockTx.IsCoinbase ? blockTx.Transaction.Inputs.Length : 0;
-                                            var completionCount = new CompletionCount(inputCount + 1);
-                                            pendingSortedTxes.Enqueue(Tuple.Create(blockTx, completionCount));
-
-                                            if (!blockTx.IsCoinbase)
-                                            {
-                                                blockTxesReadQueue.AddRange(blockTx.Transaction.Inputs.Select(
-                                                    (txInput, inputIndex) => Tuple.Create(txInput.PreviousTxOutputKey.TxHash, inputIndex, completionCount)));
-                                            }
-
-                                            blockTxesReadQueue.Add(Tuple.Create(blockTx.Hash, inputCount, completionCount));
-                                        },
-                                        _ =>
-                                        {
-                                            blockTxesReadQueue.CompleteAdding();
-                                            pendingSortedTxesCompletedAdding = true;
-                                            txLoadedEvent.Set();
-                                        }))
-                                    using (this.utxoReader.Start(blockTxesReadQueue,
-                                        tuple =>
-                                        {
-                                            var txHash = tuple.Item1;
-                                            var inputIndex = tuple.Item2;
-                                            var completionCount = tuple.Item3;
-
-                                            UnspentTx unspentTx;
-                                            deferredChainStateCursor.WarmUnspentTx(txHash, () =>
-                                            {
-                                                var result = Tuple.Create(chainState.TryGetUnspentTx(txHash, out unspentTx), unspentTx);
-                                                this.stats.utxoReadRateMeasure.Tick();
-                                                return result;
-                                            });
-
-                                            if (completionCount.TryComplete())
-                                                txLoadedEvent.Set();
-                                        },
-                                        _ =>
-                                        {
-                                            txLoadedEvent.Set();
-                                        }))
-                                    using (this.blockTxesSorter.Start(() =>
-                                    {
-                                        try
-                                        {
-                                            Tuple<BlockTx, CompletionCount> tuple;
-                                            while (!pendingSortedTxesCompletedAdding || pendingSortedTxes.Count > 0)
-                                            {
-                                                txLoadedEvent.WaitOne();
-
-                                                while (pendingSortedTxes.TryPeek(out tuple) && tuple.Item2.IsComplete)
-                                                {
-                                                    blockTxesCalculateQueue.Add(tuple.Item1);
-                                                    pendingSortedTxes.TryDequeue(out tuple);
-                                                }
-                                            }
-                                        }
-                                        finally
-                                        {
-                                            blockTxesCalculateQueue.CompleteAdding();
-                                        }
-                                    }))
                                     {
                                         // add the block to the chain
                                         this.chain.AddBlock(chainedHeader);
 
                                         // calculate the new block utxo, only output availability is checked and updated
                                         var pendingTxCount = 0;
-                                        foreach (var loadingTx in this.utxoBuilder.CalculateUtxo(deferredChainStateCursor, this.chain.ToImmutable(), blockTxesCalculateQueue.GetConsumingEnumerable()))
+                                        var blockTxesCalculateQueue = this.utxoLookAhead.LookAhead(blockTxes, chainState, deferredChainStateCursor);
+                                        foreach (var loadingTx in this.utxoBuilder.CalculateUtxo(deferredChainStateCursor, this.chain.ToImmutable(), blockTxesCalculateQueue))
                                         {
                                             if (!rules.BypassPrevTxLoading)
                                                 loadingTxes.Add(loadingTx);
