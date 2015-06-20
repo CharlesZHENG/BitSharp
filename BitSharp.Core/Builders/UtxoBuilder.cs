@@ -19,75 +19,71 @@ namespace BitSharp.Core.Builders
 
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        private readonly IChainStateCursor chainStateCursor;
-
-        public UtxoBuilder(IChainStateCursor chainStateCursor)
+        public IEnumerable<LoadingTx> CalculateUtxo(IChainStateCursor chainStateCursor, Chain chain, IEnumerable<Transaction> blockTxes)
         {
-            this.chainStateCursor = chainStateCursor;
-        }
-
-        public IEnumerable<LoadingTx> CalculateUtxo(Chain chain, IEnumerable<Transaction> blockTxes)
-        {
+            var chainedHeader = chain.LastBlock;
             var blockSpentTxes = ImmutableList.CreateBuilder<UInt256>();
 
-            var chainedHeader = chain.LastBlock;
-
-            var txIndex = -1;
-            foreach (var tx in blockTxes)
+            // ignore transactions on geneis block
+            if (chainedHeader.Height > 0)
             {
-                txIndex++;
-
-                // there exist two duplicate coinbases in the blockchain, which the design assumes to be impossible
-                // ignore the first occurrences of these duplicates so that they do not need to later be deleted from the utxo, an unsupported operation
-                // no other duplicates will occur again, it is now disallowed
-                if ((chainedHeader.Height == DUPE_COINBASE_1_HEIGHT && tx.Hash == DUPE_COINBASE_1_HASH)
-                    || (chainedHeader.Height == DUPE_COINBASE_2_HEIGHT && tx.Hash == DUPE_COINBASE_2_HASH))
+                var txIndex = -1;
+                foreach (var tx in blockTxes)
                 {
-                    continue;
-                }
+                    txIndex++;
 
-                var prevOutputTxKeys = ImmutableArray.CreateBuilder<TxLookupKey>(txIndex > 0 ? tx.Inputs.Length : 0);
-
-                //TODO apply real coinbase rule
-                // https://github.com/bitcoin/bitcoin/blob/481d89979457d69da07edd99fba451fd42a47f5c/src/core.h#L219
-                if (txIndex > 0)
-                {
-                    // spend each of the transaction's inputs in the utxo
-                    for (var inputIndex = 0; inputIndex < tx.Inputs.Length; inputIndex++)
+                    // there exist two duplicate coinbases in the blockchain, which the design assumes to be impossible
+                    // ignore the first occurrences of these duplicates so that they do not need to later be deleted from the utxo, an unsupported operation
+                    // no other duplicates will occur again, it is now disallowed
+                    if ((chainedHeader.Height == DUPE_COINBASE_1_HEIGHT && tx.Hash == DUPE_COINBASE_1_HASH)
+                        || (chainedHeader.Height == DUPE_COINBASE_2_HEIGHT && tx.Hash == DUPE_COINBASE_2_HASH))
                     {
-                        var input = tx.Inputs[inputIndex];
-                        var unspentTx = this.Spend(txIndex, tx, inputIndex, input, chainedHeader, blockSpentTxes);
-
-                        var unspentTxBlockHash = chain.Blocks[unspentTx.BlockIndex].Hash;
-                        prevOutputTxKeys.Add(new TxLookupKey(unspentTxBlockHash, unspentTx.TxIndex));
+                        continue;
                     }
+
+                    var prevOutputTxKeys = ImmutableArray.CreateBuilder<TxLookupKey>(txIndex > 0 ? tx.Inputs.Length : 0);
+
+                    //TODO apply real coinbase rule
+                    // https://github.com/bitcoin/bitcoin/blob/481d89979457d69da07edd99fba451fd42a47f5c/src/core.h#L219
+                    if (txIndex > 0)
+                    {
+                        // spend each of the transaction's inputs in the utxo
+                        for (var inputIndex = 0; inputIndex < tx.Inputs.Length; inputIndex++)
+                        {
+                            var input = tx.Inputs[inputIndex];
+                            var unspentTx = this.Spend(chainStateCursor, txIndex, tx, inputIndex, input, chainedHeader, blockSpentTxes);
+
+                            var unspentTxBlockHash = chain.Blocks[unspentTx.BlockIndex].Hash;
+                            prevOutputTxKeys.Add(new TxLookupKey(unspentTxBlockHash, unspentTx.TxIndex));
+                        }
+                    }
+
+                    // mint the transaction's outputs in the utxo
+                    this.Mint(chainStateCursor, tx, txIndex, chainedHeader);
+
+                    // increase unspent output count
+                    chainStateCursor.UnspentOutputCount += tx.Outputs.Length;
+
+                    // increment unspent tx count
+                    chainStateCursor.UnspentTxCount++;
+
+                    chainStateCursor.TotalTxCount++;
+                    chainStateCursor.TotalInputCount += tx.Inputs.Length;
+                    chainStateCursor.TotalOutputCount += tx.Outputs.Length;
+
+                    yield return new LoadingTx(txIndex, tx, chainedHeader, prevOutputTxKeys.MoveToImmutable());
                 }
-
-                // mint the transaction's outputs in the utxo
-                this.Mint(tx, txIndex, chainedHeader);
-
-                // increase unspent output count
-                this.chainStateCursor.UnspentOutputCount += tx.Outputs.Length;
-
-                // increment unspent tx count
-                this.chainStateCursor.UnspentTxCount++;
-
-                this.chainStateCursor.TotalTxCount++;
-                this.chainStateCursor.TotalInputCount += tx.Inputs.Length;
-                this.chainStateCursor.TotalOutputCount += tx.Outputs.Length;
-
-                yield return new LoadingTx(txIndex, tx, chainedHeader, prevOutputTxKeys.MoveToImmutable());
             }
 
-            if (!this.chainStateCursor.TryAddBlockSpentTxes(chainedHeader.Height, blockSpentTxes.ToImmutable()))
+            if (!chainStateCursor.TryAddBlockSpentTxes(chainedHeader.Height, blockSpentTxes.ToImmutable()))
                 throw new ValidationException(chainedHeader.Hash);
         }
 
-        private void Mint(Transaction tx, int txIndex, ChainedHeader chainedHeader)
+        private void Mint(IChainStateCursor chainStateCursor, Transaction tx, int txIndex, ChainedHeader chainedHeader)
         {
             // add transaction to the utxo
             var unspentTx = new UnspentTx(tx.Hash, chainedHeader.Height, txIndex, tx.Outputs.Length, OutputState.Unspent);
-            if (!this.chainStateCursor.TryAddUnspentTx(unspentTx))
+            if (!chainStateCursor.TryAddUnspentTx(unspentTx))
             {
                 // duplicate transaction
                 logger.Warn("Duplicate transaction at block {0:#,##0}, {1}, coinbase".Format2(chainedHeader.Height, chainedHeader.Hash.ToHexNumberString()));
@@ -95,10 +91,10 @@ namespace BitSharp.Core.Builders
             }
         }
 
-        private UnspentTx Spend(int txIndex, Transaction tx, int inputIndex, TxInput input, ChainedHeader chainedHeader, ImmutableList<UInt256>.Builder blockSpentTxes)
+        private UnspentTx Spend(IChainStateCursor chainStateCursor, int txIndex, Transaction tx, int inputIndex, TxInput input, ChainedHeader chainedHeader, ImmutableList<UInt256>.Builder blockSpentTxes)
         {
             UnspentTx unspentTx;
-            if (!this.chainStateCursor.TryGetUnspentTx(input.PreviousTxOutputKey.TxHash, out unspentTx))
+            if (!chainStateCursor.TryGetUnspentTx(input.PreviousTxOutputKey.TxHash, out unspentTx))
             {
                 // output wasn't present in utxo, invalid block
                 throw new ValidationException(chainedHeader.Hash);
@@ -122,10 +118,10 @@ namespace BitSharp.Core.Builders
             unspentTx = unspentTx.SetOutputState(outputIndex, OutputState.Spent);
 
             // decrement unspent output count
-            this.chainStateCursor.UnspentOutputCount--;
+            chainStateCursor.UnspentOutputCount--;
 
             // update transaction output states in the utxo
-            var wasUpdated = this.chainStateCursor.TryUpdateUnspentTx(unspentTx);
+            var wasUpdated = chainStateCursor.TryUpdateUnspentTx(unspentTx);
             if (!wasUpdated)
                 throw new ValidationException(chainedHeader.Hash);
 
@@ -135,14 +131,14 @@ namespace BitSharp.Core.Builders
                 blockSpentTxes.Add(unspentTx.TxHash);
 
                 // decrement unspent tx count
-                this.chainStateCursor.UnspentTxCount--;
+                chainStateCursor.UnspentTxCount--;
             }
 
             return unspentTx;
         }
 
         //TODO with the rollback information that's now being stored, rollback could be down without needing the block
-        public void RollbackUtxo(Chain chain, ChainedHeader chainedHeader, IEnumerable<BlockTx> blockTxes, ImmutableList<UnmintedTx>.Builder unmintedTxes)
+        public void RollbackUtxo(IChainStateCursor chainStateCursor, Chain chain, ChainedHeader chainedHeader, IEnumerable<BlockTx> blockTxes, ImmutableList<UnmintedTx>.Builder unmintedTxes)
         {
             //TODO don't reverse here, storage should be read in reverse
             foreach (var blockTx in blockTxes.Reverse())
@@ -151,17 +147,17 @@ namespace BitSharp.Core.Builders
                 var txIndex = blockTx.Index;
 
                 // remove transaction outputs
-                this.Unmint(tx, chainedHeader, isCoinbase: true);
+                this.Unmint(chainStateCursor, tx, chainedHeader, isCoinbase: true);
 
                 // decrease unspent output count
-                this.chainStateCursor.UnspentOutputCount -= tx.Outputs.Length;
+                chainStateCursor.UnspentOutputCount -= tx.Outputs.Length;
 
                 // decrement unspent tx count
-                this.chainStateCursor.UnspentTxCount--;
+                chainStateCursor.UnspentTxCount--;
 
-                this.chainStateCursor.TotalTxCount--;
-                this.chainStateCursor.TotalInputCount -= tx.Inputs.Length;
-                this.chainStateCursor.TotalOutputCount -= tx.Outputs.Length;
+                chainStateCursor.TotalTxCount--;
+                chainStateCursor.TotalInputCount -= tx.Inputs.Length;
+                chainStateCursor.TotalOutputCount -= tx.Outputs.Length;
 
                 var prevOutputTxKeys = ImmutableArray.CreateBuilder<TxLookupKey>(txIndex > 0 ? tx.Inputs.Length : 0);
 
@@ -171,7 +167,7 @@ namespace BitSharp.Core.Builders
                     for (var inputIndex = tx.Inputs.Length - 1; inputIndex >= 0; inputIndex--)
                     {
                         var input = tx.Inputs[inputIndex];
-                        var unspentTx = this.Unspend(input, chainedHeader);
+                        var unspentTx = this.Unspend(chainStateCursor, input, chainedHeader);
 
                         // store rollback replay information
                         var unspentTxBlockHash = chain.Blocks[unspentTx.BlockIndex].Hash;
@@ -187,7 +183,7 @@ namespace BitSharp.Core.Builders
             }
         }
 
-        private void Unmint(Transaction tx, ChainedHeader chainedHeader, bool isCoinbase)
+        private void Unmint(IChainStateCursor chainStateCursor, Transaction tx, ChainedHeader chainedHeader, bool isCoinbase)
         {
             // ignore duplicate coinbases
             if ((chainedHeader.Height == DUPE_COINBASE_1_HEIGHT && tx.Hash == DUPE_COINBASE_1_HASH)
@@ -198,7 +194,7 @@ namespace BitSharp.Core.Builders
 
             // check that transaction exists
             UnspentTx unspentTx;
-            if (!this.chainStateCursor.TryGetUnspentTx(tx.Hash, out unspentTx))
+            if (!chainStateCursor.TryGetUnspentTx(tx.Hash, out unspentTx))
             {
                 // missing transaction output
                 logger.Warn("Missing transaction at block {0:#,##0}, {1}, tx {2}".Format2(chainedHeader.Height, chainedHeader.Hash.ToHexNumberString(), tx.Hash));
@@ -214,18 +210,18 @@ namespace BitSharp.Core.Builders
             }
 
             // remove the transaction
-            if (!this.chainStateCursor.TryRemoveUnspentTx(tx.Hash))
+            if (!chainStateCursor.TryRemoveUnspentTx(tx.Hash))
             {
                 throw new ValidationException(chainedHeader.Hash);
             }
         }
 
-        private UnspentTx Unspend(TxInput input, ChainedHeader chainedHeader)
+        private UnspentTx Unspend(IChainStateCursor chainStateCursor, TxInput input, ChainedHeader chainedHeader)
         {
             bool wasRestored;
 
             UnspentTx unspentTx;
-            if (this.chainStateCursor.TryGetUnspentTx(input.PreviousTxOutputKey.TxHash, out unspentTx))
+            if (chainStateCursor.TryGetUnspentTx(input.PreviousTxOutputKey.TxHash, out unspentTx))
             {
                 wasRestored = false;
             }
@@ -249,24 +245,24 @@ namespace BitSharp.Core.Builders
             unspentTx = unspentTx.SetOutputState(outputIndex, OutputState.Unspent);
 
             // increment unspent output count
-            this.chainStateCursor.UnspentOutputCount++;
+            chainStateCursor.UnspentOutputCount++;
 
             // update storage
             if (!wasRestored)
             {
-                var wasUpdated = this.chainStateCursor.TryUpdateUnspentTx(unspentTx);
+                var wasUpdated = chainStateCursor.TryUpdateUnspentTx(unspentTx);
                 if (!wasUpdated)
                     throw new ValidationException(chainedHeader.Hash);
             }
             else
             {
                 // a restored fully spent transaction must be added back
-                var wasAdded = this.chainStateCursor.TryAddUnspentTx(unspentTx);
+                var wasAdded = chainStateCursor.TryAddUnspentTx(unspentTx);
                 if (!wasAdded)
                     throw new ValidationException(chainedHeader.Hash);
 
                 // increment unspent tx count
-                this.chainStateCursor.UnspentTxCount++;
+                chainStateCursor.UnspentTxCount++;
             }
 
             return unspentTx;

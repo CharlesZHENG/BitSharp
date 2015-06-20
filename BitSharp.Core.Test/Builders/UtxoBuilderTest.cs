@@ -19,7 +19,8 @@ namespace BitSharp.Core.Test.Builders
             var chainedHeader0 = fakeHeaders.GenesisChained();
             var chainedHeader1 = fakeHeaders.NextChained();
             var chainedHeader2 = fakeHeaders.NextChained();
-            var chain = new ChainBuilder();
+            var chainedHeader3 = fakeHeaders.NextChained();
+            var chain = Chain.CreateForGenesisBlock(chainedHeader0).ToBuilder();
             var emptyCoinbaseTx0 = new Transaction(0, ImmutableArray.Create<TxInput>(), ImmutableArray.Create<TxOutput>(), 0);
             var emptyCoinbaseTx1 = new Transaction(1, ImmutableArray.Create<TxInput>(), ImmutableArray.Create<TxOutput>(), 0);
             var emptyCoinbaseTx2 = new Transaction(2, ImmutableArray.Create<TxInput>(), ImmutableArray.Create<TxOutput>(), 0);
@@ -29,11 +30,11 @@ namespace BitSharp.Core.Test.Builders
             var memoryChainStateCursor = memoryStorage.OpenChainStateCursor().Item;
 
             // initialize utxo builder
-            var utxoBuilder = new UtxoBuilder(memoryChainStateCursor);
+            var utxoBuilder = new UtxoBuilder();
 
             // prepare an unspent transaction
             var txHash = new UInt256(100);
-            var unspentTx = new UnspentTx(txHash, chainedHeader0.Height, 0, 3, OutputState.Unspent);
+            var unspentTx = new UnspentTx(txHash, chainedHeader1.Height, 0, 3, OutputState.Unspent);
 
             // prepare unspent output
             var unspentTransactions = ImmutableDictionary.Create<UInt256, UnspentTx>().Add(txHash, unspentTx);
@@ -46,8 +47,8 @@ namespace BitSharp.Core.Test.Builders
             var tx0 = new Transaction(0, ImmutableArray.Create(input0), ImmutableArray.Create<TxOutput>(), 0);
 
             // spend the input
-            chain.AddBlock(chainedHeader0);
-            utxoBuilder.CalculateUtxo(chain.ToImmutable(), new[] { emptyCoinbaseTx0, tx0 }).ToList();
+            chain.AddBlock(chainedHeader1);
+            utxoBuilder.CalculateUtxo(memoryChainStateCursor, chain.ToImmutable(), new[] { emptyCoinbaseTx0, tx0 }).ToList();
 
             // verify utxo storage
             UnspentTx actualUnspentTx;
@@ -62,8 +63,8 @@ namespace BitSharp.Core.Test.Builders
             var tx1 = new Transaction(0, ImmutableArray.Create(input1), ImmutableArray.Create<TxOutput>(), 0);
 
             // spend the input
-            chain.AddBlock(chainedHeader1);
-            utxoBuilder.CalculateUtxo(chain.ToImmutable(), new[] { emptyCoinbaseTx1, tx1 }).ToList();
+            chain.AddBlock(chainedHeader2);
+            utxoBuilder.CalculateUtxo(memoryChainStateCursor, chain.ToImmutable(), new[] { emptyCoinbaseTx1, tx1 }).ToList();
 
             // verify utxo storage
             Assert.IsTrue(memoryChainStateCursor.TryGetUnspentTx(txHash, out actualUnspentTx));
@@ -77,8 +78,8 @@ namespace BitSharp.Core.Test.Builders
             var tx2 = new Transaction(0, ImmutableArray.Create(input2), ImmutableArray.Create<TxOutput>(), 0);
 
             // spend the input
-            chain.AddBlock(chainedHeader2);
-            utxoBuilder.CalculateUtxo(chain.ToImmutable(), new[] { emptyCoinbaseTx2, tx2 }).ToList();
+            chain.AddBlock(chainedHeader3);
+            utxoBuilder.CalculateUtxo(memoryChainStateCursor, chain.ToImmutable(), new[] { emptyCoinbaseTx2, tx2 }).ToList();
 
             // verify utxo storage
             Assert.IsTrue(memoryChainStateCursor.TryGetUnspentTx(txHash, out actualUnspentTx));
@@ -93,7 +94,8 @@ namespace BitSharp.Core.Test.Builders
             var fakeHeaders = new FakeHeaders();
             var chainedHeader0 = fakeHeaders.GenesisChained();
             var chainedHeader1 = fakeHeaders.NextChained();
-            var chain = new ChainBuilder();
+            var chainedHeader2 = fakeHeaders.NextChained();
+            var chain = Chain.CreateForGenesisBlock(chainedHeader0).ToBuilder();
             var emptyCoinbaseTx0 = new Transaction(0, ImmutableArray.Create<TxInput>(), ImmutableArray.Create<TxOutput>(), 0);
             var emptyCoinbaseTx1 = new Transaction(1, ImmutableArray.Create<TxInput>(), ImmutableArray.Create<TxOutput>(), 0);
 
@@ -102,11 +104,11 @@ namespace BitSharp.Core.Test.Builders
             var memoryChainStateCursor = memoryStorage.OpenChainStateCursor().Item;
 
             // initialize utxo builder
-            var utxoBuilder = new UtxoBuilder(memoryChainStateCursor);
+            var utxoBuilder = new UtxoBuilder();
 
             // prepare an unspent transaction
             var txHash = new UInt256(100);
-            var unspentTx = new UnspentTx(txHash, chainedHeader0.Height, 0, 1, OutputState.Unspent);
+            var unspentTx = new UnspentTx(txHash, chainedHeader1.Height, 0, 1, OutputState.Unspent);
 
             // add the unspent transaction
             memoryChainStateCursor.TryAddUnspentTx(unspentTx);
@@ -116,8 +118,8 @@ namespace BitSharp.Core.Test.Builders
             var tx = new Transaction(0, ImmutableArray.Create(input), ImmutableArray.Create<TxOutput>(), 0);
 
             // spend the input
-            chain.AddBlock(chainedHeader0);
-            utxoBuilder.CalculateUtxo(chain.ToImmutable(), new[] { emptyCoinbaseTx0, tx }).ToList();
+            chain.AddBlock(chainedHeader1);
+            utxoBuilder.CalculateUtxo(memoryChainStateCursor, chain.ToImmutable(), new[] { emptyCoinbaseTx0, tx }).ToList();
 
             // verify utxo storage
             UnspentTx actualUnspentTx;
@@ -125,8 +127,8 @@ namespace BitSharp.Core.Test.Builders
             Assert.IsTrue(actualUnspentTx.IsFullySpent);
 
             // attempt to spend the input again
-            chain.AddBlock(chainedHeader1);
-            utxoBuilder.CalculateUtxo(chain.ToImmutable(), new[] { emptyCoinbaseTx1, tx }).ToList();
+            chain.AddBlock(chainedHeader2);
+            utxoBuilder.CalculateUtxo(memoryChainStateCursor, chain.ToImmutable(), new[] { emptyCoinbaseTx1, tx }).ToList();
 
             // validation exception should be thrown
         }

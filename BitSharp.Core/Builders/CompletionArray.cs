@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace BitSharp.Core.Builders
@@ -46,5 +47,22 @@ namespace BitSharp.Core.Builders
                 return completed;
             }
         }
+    }
+
+    public class CompletionCount
+    {
+        private int count;
+
+        public CompletionCount(int count)
+        {
+            this.count = count;
+        }
+
+        public bool TryComplete()
+        {
+            return Interlocked.Decrement(ref count) == 0;
+        }
+
+        public bool IsComplete { get { return count == 0; } }
     }
 }

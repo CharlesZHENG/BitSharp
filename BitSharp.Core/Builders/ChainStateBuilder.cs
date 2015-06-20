@@ -5,6 +5,7 @@ using BitSharp.Core.Rules;
 using BitSharp.Core.Storage;
 using NLog;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
@@ -29,6 +30,10 @@ namespace BitSharp.Core.Builders
         private ChainBuilder chain;
         private Chain rollbackChain;
         private readonly UtxoBuilder utxoBuilder;
+
+        private readonly WorkerPool blockTxesDispatcher;
+        private readonly WorkerPool utxoReadPool;
+        private readonly WorkerPool blockTxesSorter;
 
         private readonly ReaderWriterLockSlim commitLock;
 
@@ -55,9 +60,13 @@ namespace BitSharp.Core.Builders
             {
                 this.chainStateCursor.RollbackTransaction();
             }
-            this.utxoBuilder = new UtxoBuilder(chainStateCursor);
+            this.utxoBuilder = new UtxoBuilder();
 
             this.commitLock = new ReaderWriterLockSlim();
+
+            this.blockTxesDispatcher = new WorkerPool("ChainStateBuilder.BlockTxesDispatcher", 1);
+            this.utxoReadPool = new WorkerPool("ChainStateBuilder.UtxoReadPool", 4);
+            this.blockTxesSorter = new WorkerPool("ChainStateBuilder.BlockTxesSorter", 1);
         }
 
         public void Dispose()
@@ -66,6 +75,9 @@ namespace BitSharp.Core.Builders
             this.chainStateCursorHandle.Dispose();
             this.stats.Dispose();
             this.commitLock.Dispose();
+            this.blockTxesDispatcher.Dispose();
+            this.utxoReadPool.Dispose();
+            this.blockTxesSorter.Dispose();
         }
 
         public Chain Chain
@@ -88,40 +100,130 @@ namespace BitSharp.Core.Builders
         {
             this.commitLock.DoWrite(() =>
             {
-                this.BeginTransaction();
+                this.BeginTransaction(readOnly: true);
                 try
                 {
-                    // add the block to the chain
-                    this.chain.AddBlock(chainedHeader);
-                    this.chainStateCursor.AddChainedHeader(chainedHeader);
-
                     this.blockValidator.ValidateTransactions(chainedHeader,
                         loadingTxes =>
                         {
-                            // ignore transactions on geneis block
-                            if (chainedHeader.Height > 0)
+                            using (var deferredChainStateCursor = new DeferredChainStateCursor(this.chainStateCursor))
+                            using (var blockTxesReadQueue = new ConcurrentBlockingQueue<Tuple<UInt256, int, CompletionCount>>())
+                            using (var blockTxesCalculateQueue = new ConcurrentBlockingQueue<Transaction>())
+                            using (var txLoadedEvent = new AutoResetEvent(false))
                             {
                                 this.stats.calculateUtxoDurationMeasure.Measure(() =>
                                 {
-                                    // calculate the new block utxo, only output availability is checked and updated
-                                    var pendingTxCount = 0;
-                                    foreach (var loadingTx in this.utxoBuilder.CalculateUtxo(this.chain.ToImmutable(), blockTxes.Select(x => x.Transaction)))
+                                    var pendingSortedTxes = new ConcurrentQueue<Tuple<BlockTx, CompletionCount>>();
+                                    var pendingSortedTxesCompletedAdding = false;
+
+                                    using (var chainState = new ChainState(this.chain.ToImmutable(), this.storageManager))
+                                    using (this.blockTxesDispatcher.Start(() =>
                                     {
-                                        if (!rules.BypassPrevTxLoading)
-                                            loadingTxes.Add(loadingTx);
-
-                                        // track stats, ignore coinbase
-                                        if (loadingTx.TxIndex > 0)
+                                        try
                                         {
-                                            pendingTxCount += loadingTx.Transaction.Inputs.Length;
-                                            this.stats.txCount++;
-                                            this.stats.inputCount += loadingTx.Transaction.Inputs.Length;
-                                            this.stats.txRateMeasure.Tick();
-                                            this.stats.inputRateMeasure.Tick(loadingTx.Transaction.Inputs.Length);
-                                        }
-                                    }
+                                            foreach (var blockTx in blockTxes)
+                                            {
+                                                if (blockTx.Index > 0)
+                                                {
+                                                    var inputCount = blockTx.Transaction.Inputs.Length;
+                                                    var completionCount = new CompletionCount(inputCount + 1);
+                                                    pendingSortedTxes.Enqueue(Tuple.Create(blockTx, completionCount));
 
-                                    this.stats.pendingTxesTotalAverageMeasure.Tick(pendingTxCount);
+                                                    blockTxesReadQueue.AddRange(blockTx.Transaction.Inputs.Select(
+                                                        (txInput, inputIndex) => Tuple.Create(txInput.PreviousTxOutputKey.TxHash, inputIndex, completionCount)));
+
+                                                    blockTxesReadQueue.Add(Tuple.Create(blockTx.Hash, inputCount, completionCount));
+                                                }
+                                                else
+                                                {
+                                                    blockTxesCalculateQueue.Add(blockTx.Transaction);
+                                                }
+                                            }
+                                        }
+                                        finally
+                                        {
+                                            blockTxesReadQueue.CompleteAdding();
+                                            pendingSortedTxesCompletedAdding = true;
+                                            txLoadedEvent.Set();
+                                        }
+                                    }))
+                                    using (this.utxoReadPool.Start(() =>
+                                    {
+                                        foreach (var tuple in blockTxesReadQueue.GetConsumingEnumerable())
+                                        {
+                                            var txHash = tuple.Item1;
+                                            var inputIndex = tuple.Item2;
+                                            var completionCount = tuple.Item3;
+
+                                            UnspentTx unspentTx;
+                                            deferredChainStateCursor.WarmUnspentTx(txHash, () =>
+                                            {
+                                                var result = Tuple.Create(chainState.TryGetUnspentTx(txHash, out unspentTx), unspentTx);
+                                                this.stats.utxoReadRateMeasure.Tick();
+                                                return result;
+                                            });
+
+                                            if (completionCount.TryComplete())
+                                                txLoadedEvent.Set();
+                                        }
+                                    }))
+                                    using (this.blockTxesSorter.Start(() =>
+                                    {
+                                        try
+                                        {
+                                            Tuple<BlockTx, CompletionCount> tuple;
+                                            while (!pendingSortedTxesCompletedAdding || pendingSortedTxes.Count > 0)
+                                            {
+                                                if (!txLoadedEvent.WaitOne(TimeSpan.FromSeconds(5)))
+                                                    throw new Exception("TODO");
+
+                                                while (pendingSortedTxes.TryPeek(out tuple) && tuple.Item2.IsComplete)
+                                                {
+                                                    blockTxesCalculateQueue.Add(tuple.Item1.Transaction);
+                                                    pendingSortedTxes.TryDequeue(out tuple);
+                                                }
+                                            }
+                                        }
+                                        finally
+                                        {
+                                            blockTxesCalculateQueue.CompleteAdding();
+                                        }
+                                    }))
+                                    {
+                                        // add the block to the chain
+                                        this.chain.AddBlock(chainedHeader);
+
+                                        // calculate the new block utxo, only output availability is checked and updated
+                                        var pendingTxCount = 0;
+                                        foreach (var loadingTx in this.utxoBuilder.CalculateUtxo(deferredChainStateCursor, this.chain.ToImmutable(), blockTxesCalculateQueue.GetConsumingEnumerable()))
+                                        {
+                                            if (!rules.BypassPrevTxLoading)
+                                                loadingTxes.Add(loadingTx);
+
+                                            // track stats, ignore coinbase
+                                            if (loadingTx.TxIndex > 0)
+                                            {
+                                                pendingTxCount += loadingTx.Transaction.Inputs.Length;
+                                                this.stats.txCount++;
+                                                this.stats.inputCount += loadingTx.Transaction.Inputs.Length;
+                                                this.stats.txRateMeasure.Tick();
+                                                this.stats.inputRateMeasure.Tick(loadingTx.Transaction.Inputs.Length);
+                                            }
+                                        }
+
+                                        this.stats.pendingTxesTotalAverageMeasure.Tick(pendingTxCount);
+                                    }
+                                });
+
+                                this.stats.applyUtxoDurationMeasure.Measure(() =>
+                                {
+                                    // switch to a writeable transaction
+                                    //TODO doesn't account for rollback/begin exceptions
+                                    this.chainStateCursor.RollbackTransaction();
+                                    this.chainStateCursor.BeginTransaction();
+
+                                    deferredChainStateCursor.ApplyChangesToParent();
+                                    this.chainStateCursor.AddChainedHeader(chainedHeader);
                                 });
                             }
 
@@ -164,7 +266,7 @@ namespace BitSharp.Core.Builders
                     var unmintedTxes = ImmutableList.CreateBuilder<UnmintedTx>();
 
                     // rollback the utxo
-                    this.utxoBuilder.RollbackUtxo(this.chain.ToImmutable(), chainedHeader, blockTxes, unmintedTxes);
+                    this.utxoBuilder.RollbackUtxo(this.chainStateCursor, this.chain.ToImmutable(), chainedHeader, blockTxes, unmintedTxes);
 
                     // remove the block from the chain
                     this.chain.RemoveBlock(chainedHeader);
@@ -189,16 +291,16 @@ namespace BitSharp.Core.Builders
 
         public void LogBlockchainProgress()
         {
+            if (DateTime.UtcNow - this.Stats.lastLogTime < TimeSpan.FromSeconds(15))
+                return;
+            else
+                this.Stats.lastLogTime = DateTime.UtcNow;
+
             this.commitLock.DoWrite(() =>
             {
                 this.BeginTransaction(readOnly: true);
                 try
                 {
-                    if (DateTime.UtcNow - this.Stats.lastLogTime < TimeSpan.FromSeconds(15))
-                        return;
-                    else
-                        this.Stats.lastLogTime = DateTime.UtcNow;
-
                     var elapsedSeconds = this.Stats.durationStopwatch.Elapsed.TotalSeconds;
                     var blockRate = this.stats.blockRateMeasure.GetAverage(TimeSpan.FromSeconds(1));
                     var txRate = this.stats.txRateMeasure.GetAverage(TimeSpan.FromSeconds(1));
@@ -216,7 +318,9 @@ namespace BitSharp.Core.Builders
                             "Avg. Pending Prev Txes at UTXO Completion: {13,12:#,##0}",
                             new string('-', 80),
                             "Avg. UTXO Calculation Time: {14,12:#,##0.000}ms",
-                            "Avg. Wait-to-complete Time: {15,12:#,##0.000}ms",
+                            "Avg. UTXO Application Time: {15,12:#,##0.000}ms",
+                            "Avg. Wait-to-complete Time: {16,12:#,##0.000}ms",
+                            "UTXO Read Rate:             {17,12:#,##0.000}/s",
                             new string('-', 80)
                         )
                         .Format2
@@ -236,7 +340,9 @@ namespace BitSharp.Core.Builders
                         /*12*/ this.Stats.pendingTxesTotalAverageMeasure.GetAverage(),
                         /*13*/ this.Stats.pendingTxesAtCompleteAverageMeasure.GetAverage(),
                         /*14*/ this.Stats.calculateUtxoDurationMeasure.GetAverage().TotalMilliseconds,
-                        /*15*/ this.Stats.waitToCompleteDurationMeasure.GetAverage().TotalMilliseconds
+                        /*15*/ this.Stats.applyUtxoDurationMeasure.GetAverage().TotalMilliseconds,
+                        /*16*/ this.Stats.waitToCompleteDurationMeasure.GetAverage().TotalMilliseconds,
+                        /*17*/ this.Stats.utxoReadRateMeasure.GetAverage()
                         ));
                 }
                 finally
@@ -296,6 +402,7 @@ namespace BitSharp.Core.Builders
             public long inputCount;
 
             public readonly DurationMeasure calculateUtxoDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
+            public readonly DurationMeasure applyUtxoDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
             public readonly DurationMeasure prevTxLoadDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
             public readonly RateMeasure prevTxLoadRateMeasure = new RateMeasure(sampleCutoff, sampleResolution);
             public readonly AverageMeasure pendingTxesTotalAverageMeasure = new AverageMeasure(sampleCutoff, sampleResolution);
@@ -304,6 +411,7 @@ namespace BitSharp.Core.Builders
             public readonly RateMeasure blockRateMeasure = new RateMeasure(sampleCutoff, sampleResolution);
             public readonly RateMeasure txRateMeasure = new RateMeasure(sampleCutoff, sampleResolution);
             public readonly RateMeasure inputRateMeasure = new RateMeasure(sampleCutoff, sampleResolution);
+            public readonly RateMeasure utxoReadRateMeasure = new RateMeasure(sampleCutoff, sampleResolution);
 
             public DateTime lastLogTime = DateTime.UtcNow;
 
@@ -312,6 +420,7 @@ namespace BitSharp.Core.Builders
             public void Dispose()
             {
                 this.calculateUtxoDurationMeasure.Dispose();
+                this.applyUtxoDurationMeasure.Dispose();
                 this.prevTxLoadDurationMeasure.Dispose();
                 this.prevTxLoadRateMeasure.Dispose();
                 this.pendingTxesTotalAverageMeasure.Dispose();
@@ -320,6 +429,7 @@ namespace BitSharp.Core.Builders
                 this.blockRateMeasure.Dispose();
                 this.txRateMeasure.Dispose();
                 this.inputRateMeasure.Dispose();
+                this.utxoReadRateMeasure.Dispose();
             }
         }
     }
