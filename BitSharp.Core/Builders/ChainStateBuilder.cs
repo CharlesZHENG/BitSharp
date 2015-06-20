@@ -123,21 +123,17 @@ namespace BitSharp.Core.Builders
                                         {
                                             foreach (var blockTx in blockTxes)
                                             {
+                                                var inputCount = blockTx.Index > 0 ? blockTx.Transaction.Inputs.Length : 0;
+                                                var completionCount = new CompletionCount(inputCount + 1);
+                                                pendingSortedTxes.Enqueue(Tuple.Create(blockTx, completionCount));
+
                                                 if (blockTx.Index > 0)
                                                 {
-                                                    var inputCount = blockTx.Transaction.Inputs.Length;
-                                                    var completionCount = new CompletionCount(inputCount + 1);
-                                                    pendingSortedTxes.Enqueue(Tuple.Create(blockTx, completionCount));
-
                                                     blockTxesReadQueue.AddRange(blockTx.Transaction.Inputs.Select(
-                                                        (txInput, inputIndex) => Tuple.Create(txInput.PreviousTxOutputKey.TxHash, inputIndex, completionCount)));
+                                                       (txInput, inputIndex) => Tuple.Create(txInput.PreviousTxOutputKey.TxHash, inputIndex, completionCount)));
+                                                }
 
-                                                    blockTxesReadQueue.Add(Tuple.Create(blockTx.Hash, inputCount, completionCount));
-                                                }
-                                                else
-                                                {
-                                                    blockTxesCalculateQueue.Add(blockTx.Transaction);
-                                                }
+                                                blockTxesReadQueue.Add(Tuple.Create(blockTx.Hash, inputCount, completionCount));
                                             }
                                         }
                                         finally
