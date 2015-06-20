@@ -25,6 +25,7 @@ namespace BitSharp.Core.Storage.Memory
         {
             this.blockStorage.Dispose();
             this.blockTxesStorage.Dispose();
+            this.chainStateStorage.Dispose();
         }
 
         public IBlockStorage BlockStorage

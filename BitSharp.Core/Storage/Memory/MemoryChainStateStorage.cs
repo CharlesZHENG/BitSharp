@@ -9,7 +9,7 @@ using System.Threading;
 
 namespace BitSharp.Core.Storage.Memory
 {
-    internal class MemoryChainStateStorage
+    internal class MemoryChainStateStorage : IDisposable
     {
         private readonly object lockObject = new object();
         private readonly SemaphoreSlim writeTxLock = new SemaphoreSlim(1);
