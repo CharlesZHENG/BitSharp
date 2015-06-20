@@ -179,19 +179,7 @@ namespace BitSharp.Esent
                         var pruned = depth >= 0;
                         depth = Math.Max(0, depth);
 
-                        Transaction tx;
-                        if (!pruned)
-                        {
-                            // verify transaction is not corrupt
-                            if (txHash != new UInt256(SHA256Static.ComputeDoubleHash(txBytes)))
-                                throw new MissingDataException(blockHash);
-
-                            tx = DataEncoder.DecodeTransaction(txBytes, txHash);
-                        }
-                        else
-                        {
-                            tx = null;
-                        }
+                        var tx = !pruned ? DataEncoder.DecodeTransaction(txBytes, txHash) : null;
 
                         var blockTx = new BlockTx(txIndex, depth, txHash, pruned, tx);
 
@@ -202,7 +190,6 @@ namespace BitSharp.Esent
             }
         }
 
-        private readonly DurationMeasure measure = new DurationMeasure(TimeSpan.FromSeconds(10));
         public bool TryGetTransaction(UInt256 blockHash, int txIndex, out Transaction transaction)
         {
             using (var handle = this.cursorCache.TakeItem())
@@ -218,10 +205,7 @@ namespace BitSharp.Esent
                         var txBytes = Api.RetrieveColumn(cursor.jetSession, cursor.blocksTableId, cursor.blockTxBytesColumnId);
                         if (txBytes != null)
                         {
-                            // verify transaction is not corrupt
                             var txHash = DbEncoder.DecodeUInt256(Api.RetrieveColumn(cursor.jetSession, cursor.blocksTableId, cursor.blockTxHashColumnId));
-                            if (txHash != new UInt256(SHA256Static.ComputeDoubleHash(txBytes)))
-                                throw new MissingDataException(blockHash);
 
                             transaction = DataEncoder.DecodeTransaction(txBytes, txHash);
                             return true;
