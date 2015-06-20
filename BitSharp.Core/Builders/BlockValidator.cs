@@ -127,7 +127,7 @@ namespace BitSharp.Core.Builders
                 var transaction = loadedTx.Transaction;
                 var txIndex = loadedTx.TxIndex;
 
-                if (txIndex > 0)
+                if (!loadedTx.IsCoinbase)
                 {
                     for (var inputIndex = 0; inputIndex < transaction.Inputs.Length; inputIndex++)
                         validateScriptQueue.Add(Tuple.Create(loadedTx, inputIndex));

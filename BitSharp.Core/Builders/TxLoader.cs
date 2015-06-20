@@ -54,7 +54,7 @@ namespace BitSharp.Core.Builders
                 loadingTx =>
                 {
                     // queue up inputs to be loaded for non-coinbase transactions
-                    if (loadingTx.TxIndex > 0)
+                    if (!loadingTx.IsCoinbase)
                     {
                         for (var inputIndex = 0; inputIndex < loadingTx.PrevOutputTxKeys.Length; inputIndex++)
                             loadingTxInputs.Add(Tuple.Create(loadingTx, inputIndex));

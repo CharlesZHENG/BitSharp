@@ -267,7 +267,7 @@ namespace BitSharp.Core.Rules
             var tx = loadedTx.Transaction;
             var txIndex = loadedTx.TxIndex;
 
-            if (txIndex == 0)
+            if (loadedTx.IsCoinbase)
             {
                 // TODO coinbase tx validation
             }

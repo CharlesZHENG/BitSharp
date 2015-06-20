@@ -26,6 +26,11 @@ namespace BitSharp.Core.Domain
         }
 
         /// <summary>
+        /// Indicates whether this is the coinbase transaction.
+        /// </summary>
+        public bool IsCoinbase { get { return this.txIndex == 0; } }
+
+        /// <summary>
         /// Gets the transaction.
         /// </summary>
         public Transaction Transaction { get { return this.transaction; } }

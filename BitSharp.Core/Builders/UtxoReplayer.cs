@@ -62,9 +62,9 @@ namespace BitSharp.Core.Builders
                     {
                         var tx = blockTx.Transaction;
                         var txIndex = blockTx.Index;
-                        var prevOutputTxKeys = ImmutableArray.CreateBuilder<TxLookupKey>(txIndex > 0 ? tx.Inputs.Length : 0);
+                        var prevOutputTxKeys = ImmutableArray.CreateBuilder<TxLookupKey>(!blockTx.IsCoinbase ? tx.Inputs.Length : 0);
 
-                        if (txIndex > 0)
+                        if (!blockTx.IsCoinbase)
                         {
                             UnmintedTx unmintedTx;
                             if (!unmintedTxes.TryGetValue(tx.Hash, out unmintedTx))
@@ -99,9 +99,9 @@ namespace BitSharp.Core.Builders
             var tx = blockTx.Transaction;
             var txIndex = blockTx.Index;
 
-            var prevOutputTxKeys = ImmutableArray.CreateBuilder<TxLookupKey>(txIndex > 0 ? tx.Inputs.Length : 0);
+            var prevOutputTxKeys = ImmutableArray.CreateBuilder<TxLookupKey>(!blockTx.IsCoinbase ? tx.Inputs.Length : 0);
 
-            if (txIndex > 0)
+            if (!blockTx.IsCoinbase)
             {
                 for (var inputIndex = 0; inputIndex < tx.Inputs.Length; inputIndex++)
                 {

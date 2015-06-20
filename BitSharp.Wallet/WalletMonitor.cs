@@ -198,7 +198,7 @@ namespace BitSharp.Wallet
                     var tx = loadedTx.Transaction;
                     var txIndex = loadedTx.TxIndex;
 
-                    if (txIndex > 0)
+                    if (!loadedTx.IsCoinbase)
                     {
                         for (var inputIndex = 0; inputIndex < tx.Inputs.Length; inputIndex++)
                         {
@@ -220,7 +220,7 @@ namespace BitSharp.Wallet
 
                         var chainPosition = ChainPosition.Fake();
                         var entryType =
-                            txIndex == 0 ?
+                            loadedTx.IsCoinbase ?
                                 (forward ? EnumWalletEntryType.Mine : EnumWalletEntryType.UnMine)
                                 : (forward ? EnumWalletEntryType.Receive : EnumWalletEntryType.UnReceieve);
 

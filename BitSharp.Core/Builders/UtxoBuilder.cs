@@ -19,7 +19,7 @@ namespace BitSharp.Core.Builders
 
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        public IEnumerable<LoadingTx> CalculateUtxo(IChainStateCursor chainStateCursor, Chain chain, IEnumerable<Transaction> blockTxes)
+        public IEnumerable<LoadingTx> CalculateUtxo(IChainStateCursor chainStateCursor, Chain chain, IEnumerable<BlockTx> blockTxes)
         {
             var chainedHeader = chain.LastBlock;
             var blockSpentTxes = ImmutableList.CreateBuilder<UInt256>();
@@ -27,10 +27,10 @@ namespace BitSharp.Core.Builders
             // ignore transactions on geneis block
             if (chainedHeader.Height > 0)
             {
-                var txIndex = -1;
-                foreach (var tx in blockTxes)
+                foreach (var blockTx in blockTxes)
                 {
-                    txIndex++;
+                    var tx = blockTx.Transaction;
+                    var txIndex = blockTx.Index;
 
                     // there exist two duplicate coinbases in the blockchain, which the design assumes to be impossible
                     // ignore the first occurrences of these duplicates so that they do not need to later be deleted from the utxo, an unsupported operation
@@ -41,11 +41,11 @@ namespace BitSharp.Core.Builders
                         continue;
                     }
 
-                    var prevOutputTxKeys = ImmutableArray.CreateBuilder<TxLookupKey>(txIndex > 0 ? tx.Inputs.Length : 0);
+                    var prevOutputTxKeys = ImmutableArray.CreateBuilder<TxLookupKey>(!blockTx.IsCoinbase ? tx.Inputs.Length : 0);
 
                     //TODO apply real coinbase rule
                     // https://github.com/bitcoin/bitcoin/blob/481d89979457d69da07edd99fba451fd42a47f5c/src/core.h#L219
-                    if (txIndex > 0)
+                    if (!blockTx.IsCoinbase)
                     {
                         // spend each of the transaction's inputs in the utxo
                         for (var inputIndex = 0; inputIndex < tx.Inputs.Length; inputIndex++)
@@ -159,9 +159,9 @@ namespace BitSharp.Core.Builders
                 chainStateCursor.TotalInputCount -= tx.Inputs.Length;
                 chainStateCursor.TotalOutputCount -= tx.Outputs.Length;
 
-                var prevOutputTxKeys = ImmutableArray.CreateBuilder<TxLookupKey>(txIndex > 0 ? tx.Inputs.Length : 0);
+                var prevOutputTxKeys = ImmutableArray.CreateBuilder<TxLookupKey>(!blockTx.IsCoinbase ? tx.Inputs.Length : 0);
 
-                if (txIndex > 0)
+                if (!blockTx.IsCoinbase)
                 {
                     // remove inputs in reverse order
                     for (var inputIndex = tx.Inputs.Length - 1; inputIndex >= 0; inputIndex--)

@@ -108,7 +108,7 @@ namespace BitSharp.Core.Builders
                         {
                             using (var deferredChainStateCursor = new DeferredChainStateCursor(this.chainStateCursor))
                             using (var blockTxesReadQueue = new ConcurrentBlockingQueue<Tuple<UInt256, int, CompletionCount>>())
-                            using (var blockTxesCalculateQueue = new ConcurrentBlockingQueue<Transaction>())
+                            using (var blockTxesCalculateQueue = new ConcurrentBlockingQueue<BlockTx>())
                             using (var txLoadedEvent = new AutoResetEvent(false))
                             {
                                 this.stats.calculateUtxoDurationMeasure.Measure(() =>
@@ -123,11 +123,11 @@ namespace BitSharp.Core.Builders
                                         {
                                             foreach (var blockTx in blockTxes)
                                             {
-                                                var inputCount = blockTx.Index > 0 ? blockTx.Transaction.Inputs.Length : 0;
+                                                var inputCount = !blockTx.IsCoinbase ? blockTx.Transaction.Inputs.Length : 0;
                                                 var completionCount = new CompletionCount(inputCount + 1);
                                                 pendingSortedTxes.Enqueue(Tuple.Create(blockTx, completionCount));
 
-                                                if (blockTx.Index > 0)
+                                                if (!blockTx.IsCoinbase)
                                                 {
                                                     blockTxesReadQueue.AddRange(blockTx.Transaction.Inputs.Select(
                                                        (txInput, inputIndex) => Tuple.Create(txInput.PreviousTxOutputKey.TxHash, inputIndex, completionCount)));
@@ -174,7 +174,7 @@ namespace BitSharp.Core.Builders
 
                                                 while (pendingSortedTxes.TryPeek(out tuple) && tuple.Item2.IsComplete)
                                                 {
-                                                    blockTxesCalculateQueue.Add(tuple.Item1.Transaction);
+                                                    blockTxesCalculateQueue.Add(tuple.Item1);
                                                     pendingSortedTxes.TryDequeue(out tuple);
                                                 }
                                             }
@@ -196,7 +196,7 @@ namespace BitSharp.Core.Builders
                                                 loadingTxes.Add(loadingTx);
 
                                             // track stats, ignore coinbase
-                                            if (loadingTx.TxIndex > 0)
+                                            if (!loadingTx.IsCoinbase)
                                             {
                                                 pendingTxCount += loadingTx.Transaction.Inputs.Length;
                                                 this.stats.txCount++;
