@@ -174,8 +174,7 @@ namespace BitSharp.Core.Builders
                                             Tuple<BlockTx, CompletionCount> tuple;
                                             while (!pendingSortedTxesCompletedAdding || pendingSortedTxes.Count > 0)
                                             {
-                                                if (!txLoadedEvent.WaitOne(TimeSpan.FromSeconds(5)))
-                                                    throw new Exception("TODO");
+                                                txLoadedEvent.WaitOne();
 
                                                 while (pendingSortedTxes.TryPeek(out tuple) && tuple.Item2.IsComplete)
                                                 {
@@ -320,7 +319,7 @@ namespace BitSharp.Core.Builders
                             "Avg. UTXO Calculation Time: {14,12:#,##0.000}ms",
                             "Avg. UTXO Application Time: {15,12:#,##0.000}ms",
                             "Avg. Wait-to-complete Time: {16,12:#,##0.000}ms",
-                            "UTXO Read Rate:             {17,12:#,##0.000}/s",
+                            "UTXO Read Rate:             {17,12:#,##0}/s",
                             new string('-', 80)
                         )
                         .Format2
