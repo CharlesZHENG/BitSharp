@@ -14,6 +14,7 @@ using Ninject.Modules;
 using NLog;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
@@ -24,7 +25,7 @@ namespace BitSharp.Client
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
-    public partial class MainWindow : Window
+    public partial class MainWindow : Window, IDisposable
     {
         private readonly Logger logger;
 
@@ -188,9 +189,7 @@ namespace BitSharp.Client
             }
         }
 
-        public MainWindowViewModel ViewModel { get { return this.viewModel; } }
-
-        protected override void OnClosed(EventArgs e)
+        public void Dispose()
         {
             var stopwatch = Stopwatch.StartNew();
             this.logger.Info("Shutting down");
@@ -201,10 +200,18 @@ namespace BitSharp.Client
             this.coreDaemon.Dispose();
             this.kernel.Dispose();
 
-            base.OnClosed(e);
-
             this.logger.Info("Finished shutting down: {0:#,##0.00}s".Format2(stopwatch.Elapsed.TotalSeconds));
             LogManager.Flush();
+        }
+
+        public MainWindowViewModel ViewModel { get { return this.viewModel; } }
+
+        protected override void OnClosing(CancelEventArgs e)
+        {
+            this.DataContext = null;
+            Dispose();
+
+            base.OnClosing(e);
         }
 
         private void ViewFirst_Click(object sender, RoutedEventArgs e)
