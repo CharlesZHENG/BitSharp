@@ -220,21 +220,11 @@ namespace BitSharp.Core.Builders
             });
         }
 
-        private static DurationMeasure getValueMeasure = new DurationMeasure(sampleCutoff: TimeSpan.FromMinutes(5));
         private bool TryGetParentValue(TKey key, out TValue value)
         {
-            var stopwatch = Stopwatch.StartNew();
             var result = parentTryGetValue(key);
-            stopwatch.Stop();
-
             if (result.Item1)
             {
-                getValueMeasure.Tick(stopwatch.Elapsed);
-                //Throttler.IfElapsed(TimeSpan.FromMilliseconds(50), () =>
-                //{
-                //    logger.Info("{0:N3}ms".Format2(getValueMeasure.GetAverage().TotalMilliseconds));
-                //});
-
                 value = result.Item2;
                 return true;
             }
