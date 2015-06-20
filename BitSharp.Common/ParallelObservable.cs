@@ -87,8 +87,7 @@ namespace BitSharp.Common
         /// <returns>An IDisposable to cleanup the parallel consuming session.</returns>
         public IObservable<T> Create(IObservable<T> source)
         {
-            return Observable.Create(
-                (Func<IObserver<T>, IDisposable>)(
+            return Observable.Create<T>(
                 observer =>
                 {
                     if (this.isStarted)
@@ -122,7 +121,7 @@ namespace BitSharp.Common
                         observer.OnCompleted();
 
                     return Disposable.Create(() => this.isStarted = false);
-                }));
+                });
         }
 
         /// <summary>

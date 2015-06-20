@@ -66,8 +66,7 @@ namespace BitSharp.Core.Builders
 
                 // create the observable source of warmed-up transactions, in the original block order
                 var warmedTxesSource = this.blockTxesSorter.Create(
-                    Observable.Create(
-                        (Func<IObserver<BlockTx>, IDisposable>)(
+                    Observable.Create<BlockTx>(
                         observer =>
                         {
                             Tuple<BlockTx, CompletionCount> tuple;
@@ -84,7 +83,7 @@ namespace BitSharp.Core.Builders
 
                             observer.OnCompleted();
                             return Disposable.Empty;
-                        }))
+                        })
                     );
 
                 using (this.utxoReader.SubscribeObservers(utxoWarmupSource,
@@ -112,6 +111,7 @@ namespace BitSharp.Core.Builders
                     ex => warmedTxesQueue.CompleteAdding(),
                     () => warmedTxesQueue.CompleteAdding()))
                 {
+                    // yield the warmed-up transactions, in the original block order
                     foreach (var blockTx in warmedTxesQueue.GetConsumingEnumerable())
                         yield return blockTx;
                 }
