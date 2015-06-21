@@ -102,7 +102,7 @@ namespace BitSharp.Core.Builders
             if (coreStorage.TryGetTransaction(prevOutputTxKey.BlockHash, prevOutputTxKey.TxIndex, out inputPrevTx))
             {
                 stopwatch.Stop();
-                if (this.stats != null)
+                if (this.stats != null && chainedHeader.Height > 0)
                 {
                     this.stats.prevTxLoadDurationMeasure.Tick(stopwatch.Elapsed);
                     this.stats.prevTxLoadRateMeasure.Tick();

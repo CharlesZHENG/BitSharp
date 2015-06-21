@@ -75,6 +75,14 @@ namespace BitSharp.Common
             Tick(stopwatch.Elapsed);
         }
 
+        public void MeasureIf(bool condition, Action action)
+        {
+            if (condition)
+                Measure(action);
+            else
+                action();
+        }
+
         public T Measure<T>(Func<T> func)
         {
             var stopwatch = Stopwatch.StartNew();

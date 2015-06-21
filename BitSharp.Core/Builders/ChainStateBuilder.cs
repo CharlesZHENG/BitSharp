@@ -105,7 +105,7 @@ namespace BitSharp.Core.Builders
                         {
                             using (var deferredChainStateCursor = new DeferredChainStateCursor(this.chainStateCursor))
                             {
-                                this.stats.calculateUtxoDurationMeasure.Measure(() =>
+                                this.stats.calculateUtxoDurationMeasure.MeasureIf(chainedHeader.Height > 0, () =>
                                 {
                                     using (var chainState = new ChainState(this.chain.ToImmutable(), this.storageManager))
                                     {
@@ -121,7 +121,7 @@ namespace BitSharp.Core.Builders
                                                 loadingTxes.Add(loadingTx);
 
                                             // track stats, ignore coinbase
-                                            if (!loadingTx.IsCoinbase)
+                                            if (chainedHeader.Height > 0 && !loadingTx.IsCoinbase)
                                             {
                                                 pendingTxCount += loadingTx.Transaction.Inputs.Length;
                                                 this.stats.txCount++;
@@ -131,11 +131,14 @@ namespace BitSharp.Core.Builders
                                             }
                                         }
 
-                                        this.stats.pendingTxesTotalAverageMeasure.Tick(pendingTxCount);
+                                        if (chainedHeader.Height > 0)
+                                            this.stats.pendingTxesTotalAverageMeasure.Tick(pendingTxCount);
+                                        
+                                        this.LogProgressInner();
                                     }
                                 });
 
-                                this.stats.applyUtxoDurationMeasure.Measure(() =>
+                                this.stats.applyUtxoDurationMeasure.MeasureIf(chainedHeader.Height > 0, () =>
                                 {
                                     // switch to a writeable transaction
                                     //TODO doesn't account for rollback/begin exceptions
@@ -149,9 +152,6 @@ namespace BitSharp.Core.Builders
 
                             // finished queuing up block's txes
                             loadingTxes.CompleteAdding();
-
-                            // track stats
-                            this.stats.blockCount++;
                         });
 
                     // commit the chain state
@@ -165,10 +165,8 @@ namespace BitSharp.Core.Builders
                 }
 
                 // MEASURE: Block Rate
-                this.stats.blockRateMeasure.Tick();
-
-                // blockchain processing statistics
-                this.Stats.blockCount++;
+                if (chainedHeader.Height > 0)
+                    this.stats.blockRateMeasure.Tick();
             });
 
             this.LogBlockchainProgress();
@@ -211,63 +209,68 @@ namespace BitSharp.Core.Builders
 
         public void LogBlockchainProgress()
         {
-            if (DateTime.UtcNow - this.Stats.lastLogTime < TimeSpan.FromSeconds(15))
-                return;
-            else
-                this.Stats.lastLogTime = DateTime.UtcNow;
-
             this.commitLock.DoWrite(() =>
             {
                 this.BeginTransaction(readOnly: true);
                 try
                 {
-                    var elapsedSeconds = this.Stats.durationStopwatch.Elapsed.TotalSeconds;
-                    var blockRate = this.stats.blockRateMeasure.GetAverage(TimeSpan.FromSeconds(1));
-                    var txRate = this.stats.txRateMeasure.GetAverage(TimeSpan.FromSeconds(1));
-                    var inputRate = this.stats.inputRateMeasure.GetAverage(TimeSpan.FromSeconds(1));
-
-                    logger.Info(
-                        string.Join("\n",
-                            new string('-', 80),
-                            "Height: {0,10} | Duration: {1} /*| Validation: {2} */| Blocks/s: {3,7} | Tx/s: {4,7} | Inputs/s: {5,7} | Processed Tx: {6,7} | Processed Inputs: {7,7} | Utx Size: {8,7} | Utxo Size: {9,7}",
-                            new string('-', 80),
-                            "Avg. Prev Tx Load Time: {10,12:#,##0.000}ms",
-                            "Prev Tx Load Rate:  {11,12:#,##0}/s",
-                            new string('-', 80),
-                            "Avg. Prev Txes per Block:                  {12,12:#,##0}",
-                            "Avg. Pending Prev Txes at UTXO Completion: {13,12:#,##0}",
-                            new string('-', 80),
-                            "Avg. UTXO Calculation Time: {14,12:#,##0.000}ms",
-                            "Avg. UTXO Application Time: {15,12:#,##0.000}ms",
-                            "Avg. Wait-to-complete Time: {16,12:#,##0.000}ms",
-                            new string('-', 80)
-                        )
-                        .Format2
-                        (
-                        /*0*/ this.chain.Height.ToString("#,##0"),
-                        /*1*/ this.Stats.durationStopwatch.Elapsed.ToString(@"hh\:mm\:ss"),
-                        /*2*/ this.Stats.validateStopwatch.Elapsed.ToString(@"hh\:mm\:ss"),
-                        /*3*/ blockRate.ToString("#,##0"),
-                        /*4*/ txRate.ToString("#,##0"),
-                        /*5*/ inputRate.ToString("#,##0"),
-                        /*6*/ this.chainStateCursor.TotalTxCount.ToString("#,##0"),
-                        /*7*/ this.chainStateCursor.TotalInputCount.ToString("#,##0"),
-                        /*8*/ this.chainStateCursor.UnspentTxCount.ToString("#,##0"),
-                        /*9*/ this.chainStateCursor.UnspentOutputCount.ToString("#,##0"),
-                        /*10*/ this.Stats.prevTxLoadDurationMeasure.GetAverage().TotalMilliseconds,
-                        /*11*/ this.Stats.prevTxLoadRateMeasure.GetAverage(),
-                        /*12*/ this.Stats.pendingTxesTotalAverageMeasure.GetAverage(),
-                        /*13*/ this.Stats.pendingTxesAtCompleteAverageMeasure.GetAverage(),
-                        /*14*/ this.Stats.calculateUtxoDurationMeasure.GetAverage().TotalMilliseconds,
-                        /*15*/ this.Stats.applyUtxoDurationMeasure.GetAverage().TotalMilliseconds,
-                        /*16*/ this.Stats.waitToCompleteDurationMeasure.GetAverage().TotalMilliseconds
-                        ));
+                    LogProgressInner();
                 }
                 finally
                 {
                     this.RollbackTransaction();
                 }
             });
+        }
+
+        private void LogProgressInner()
+        {
+            if (DateTime.UtcNow - this.Stats.lastLogTime < TimeSpan.FromSeconds(15))
+                return;
+            else
+                this.Stats.lastLogTime = DateTime.UtcNow;
+
+            var elapsedSeconds = this.Stats.durationStopwatch.Elapsed.TotalSeconds;
+            var blockRate = this.stats.blockRateMeasure.GetAverage(TimeSpan.FromSeconds(1));
+            var txRate = this.stats.txRateMeasure.GetAverage(TimeSpan.FromSeconds(1));
+            var inputRate = this.stats.inputRateMeasure.GetAverage(TimeSpan.FromSeconds(1));
+
+            logger.Info(
+                string.Join("\n",
+                    new string('-', 80),
+                    "Height: {0,10} | Duration: {1} /*| Validation: {2} */| Blocks/s: {3,7} | Tx/s: {4,7} | Inputs/s: {5,7} | Processed Tx: {6,7} | Processed Inputs: {7,7} | Utx Size: {8,7} | Utxo Size: {9,7}",
+                    new string('-', 80),
+                    "Avg. Prev Tx Load Time: {10,12:#,##0.000}ms",
+                    "Prev Tx Load Rate:  {11,12:#,##0}/s",
+                    new string('-', 80),
+                    "Avg. Prev Txes per Block:                  {12,12:#,##0}",
+                    "Avg. Pending Prev Txes at UTXO Completion: {13,12:#,##0}",
+                    new string('-', 80),
+                    "Avg. UTXO Calculation Time: {14,12:#,##0.000}ms",
+                    "Avg. UTXO Application Time: {15,12:#,##0.000}ms",
+                    "Avg. Wait-to-complete Time: {16,12:#,##0.000}ms",
+                    new string('-', 80)
+                )
+                .Format2
+                (
+                /*0*/ this.chain.Height.ToString("#,##0"),
+                /*1*/ this.Stats.durationStopwatch.Elapsed.ToString(@"hh\:mm\:ss"),
+                /*2*/ this.Stats.validateStopwatch.Elapsed.ToString(@"hh\:mm\:ss"),
+                /*3*/ blockRate.ToString("#,##0"),
+                /*4*/ txRate.ToString("#,##0"),
+                /*5*/ inputRate.ToString("#,##0"),
+                /*6*/ this.chainStateCursor.TotalTxCount.ToString("#,##0"),
+                /*7*/ this.chainStateCursor.TotalInputCount.ToString("#,##0"),
+                /*8*/ this.chainStateCursor.UnspentTxCount.ToString("#,##0"),
+                /*9*/ this.chainStateCursor.UnspentOutputCount.ToString("#,##0"),
+                /*10*/ this.Stats.prevTxLoadDurationMeasure.GetAverage().TotalMilliseconds,
+                /*11*/ this.Stats.prevTxLoadRateMeasure.GetAverage(),
+                /*12*/ this.Stats.pendingTxesTotalAverageMeasure.GetAverage(),
+                /*13*/ this.Stats.pendingTxesAtCompleteAverageMeasure.GetAverage(),
+                /*14*/ this.Stats.calculateUtxoDurationMeasure.GetAverage().TotalMilliseconds,
+                /*15*/ this.Stats.applyUtxoDurationMeasure.GetAverage().TotalMilliseconds,
+                /*16*/ this.Stats.waitToCompleteDurationMeasure.GetAverage().TotalMilliseconds
+                ));
         }
 
         //TODO cache the latest immutable snapshot
@@ -315,7 +318,6 @@ namespace BitSharp.Core.Builders
             public Stopwatch durationStopwatch = Stopwatch.StartNew();
             public Stopwatch validateStopwatch = new Stopwatch();
 
-            public long blockCount;
             public long txCount;
             public long inputCount;
 

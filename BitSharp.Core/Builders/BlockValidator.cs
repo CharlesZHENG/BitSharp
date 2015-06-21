@@ -66,10 +66,11 @@ namespace BitSharp.Core.Builders
                                 loadingTxes.CompleteAdding();
                             }
 
-                            this.stats.pendingTxesAtCompleteAverageMeasure.Tick(this.txLoader.PendingCount);
+                            if (chainedHeader.Height > 0)
+                                this.stats.pendingTxesAtCompleteAverageMeasure.Tick(this.txLoader.PendingCount);
 
                             // wait for block validation to complete, any exceptions that ocurred will be thrown
-                            this.stats.waitToCompleteDurationMeasure.Measure(() =>
+                            this.stats.waitToCompleteDurationMeasure.MeasureIf(chainedHeader.Height > 0, () =>
                                 WaitToComplete(chainedHeader));
                         }
                     });
