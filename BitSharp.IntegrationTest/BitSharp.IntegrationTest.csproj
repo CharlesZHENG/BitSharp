@@ -59,6 +59,10 @@
     <StartupObject />
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="BouncyCastle.Crypto, Version=1.7.4137.9688, Culture=neutral, PublicKeyToken=a4292a325f69b123, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\BouncyCastle.1.7.0\lib\Net40-Client\BouncyCastle.Crypto.dll</HintPath>
+    </Reference>
     <Reference Include="Ninject">
       <HintPath>..\packages\Ninject.3.2.2.0\lib\net45-full\Ninject.dll</HintPath>
     </Reference>
@@ -97,8 +101,10 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
+    <Compile Include="LargeBlockTest.cs" />
     <Compile Include="PullTester.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="IntegrationTestDaemon.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
@@ -111,9 +117,21 @@
       <Project>{b8d21dec-5370-4194-9e6d-2f620804a892}</Project>
       <Name>BitSharp.Common</Name>
     </ProjectReference>
+    <ProjectReference Include="..\BitSharp.Core.Test.Storage\BitSharp.Core.Test.Storage.csproj">
+      <Project>{b0699775-a157-48aa-a62d-2cb18930d6ff}</Project>
+      <Name>BitSharp.Core.Test.Storage</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\BitSharp.Core.Test\BitSharp.Core.Test.csproj">
+      <Project>{91e24b6f-6864-49f4-b6d7-2ad25d514cb6}</Project>
+      <Name>BitSharp.Core.Test</Name>
+    </ProjectReference>
     <ProjectReference Include="..\BitSharp.Core\BitSharp.Core.csproj">
       <Project>{2ecfa6c0-46b6-4587-a662-3f61c7efbc44}</Project>
       <Name>BitSharp.Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\BitSharp.Esent\BitSharp.Esent.csproj">
+      <Project>{6d4d2210-a54f-41f0-bca4-727b7ddb27c2}</Project>
+      <Name>BitSharp.Esent</Name>
     </ProjectReference>
     <ProjectReference Include="..\BitSharp.Node\BitSharp.Node.csproj">
       <Project>{b76235bf-6037-45b8-9341-957e6407f8e1}</Project>
