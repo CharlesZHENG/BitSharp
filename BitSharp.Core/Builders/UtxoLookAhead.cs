@@ -34,77 +34,95 @@ namespace BitSharp.Core.Builders
 
         public IEnumerable<BlockTx> LookAhead(IEnumerable<BlockTx> blockTxes, DeferredChainStateCursor deferredChainStateCursor)
         {
-            var pendingWarmedTxes = new ConcurrentQueue<Tuple<BlockTx, CompletionCount>>();
-            var completedAdding = false;
+            //TODO
+            var progress = new Progress();
 
-            using (var txLoadedEvent = new AutoResetEvent(false))
+            // create the observable source of each utxo entry to be warmed up: each input's previous transactions, and each new transaction
+            var utxoWarmupSource = this.blockTxesDispatcher.Create(CreateBlockTxesSource(progress, blockTxes));
+
+            // create the observable source of warmed-up transactions, in the original block order
+            var warmedTxesSource = this.blockTxesSorter.Create(SubscribeWarmedTxes(progress));
+
+            using (this.utxoReader.SubscribeObservers(utxoWarmupSource, CreateUtxoWarmer(progress, deferredChainStateCursor)))
             {
-                // create the observable source of each utxo entry to be warmed up: each input's previous transactions, and each new transaction
-                var utxoWarmupSource = this.blockTxesDispatcher.Create(
-                    blockTxes.SelectMany(
-                        blockTx =>
-                        {
-                            var inputCount = !blockTx.IsCoinbase ? blockTx.Transaction.Inputs.Length : 0;
-                            var completionCount = new CompletionCount(inputCount + 1);
-                            pendingWarmedTxes.Enqueue(Tuple.Create(blockTx, completionCount));
+                // return the warmed-up transactions, in the original block order
+                return warmedTxesSource.ToEnumerable();
+            }
+        }
 
-                            return
-                                blockTx.Transaction.Inputs
-                                    .TakeWhile(_ => !blockTx.IsCoinbase)
-                                    .Select(txInput => Tuple.Create(txInput.PreviousTxOutputKey.TxHash, completionCount))
-                                .Concat(Tuple.Create(blockTx.Hash, completionCount));
-                        })
-                    .ToObservable()
-                    .Finally(() =>
+        private IObservable<Tuple<UInt256, CompletionCount>> CreateBlockTxesSource(Progress progress, IEnumerable<BlockTx> blockTxes)
+        {
+            return
+                blockTxes.SelectMany(
+                    blockTx =>
                     {
-                        completedAdding = true;
-                        txLoadedEvent.Set();
-                    }));
+                        var inputCount = !blockTx.IsCoinbase ? blockTx.Transaction.Inputs.Length : 0;
+                        var completionCount = new CompletionCount(inputCount + 1);
+                        progress.pendingWarmedTxes.Enqueue(Tuple.Create(blockTx, completionCount));
 
-                // create the observable source of warmed-up transactions, in the original block order
-                var warmedTxesSource = this.blockTxesSorter.Create(
-                    Observable.Create<BlockTx>(
-                        observer =>
-                        {
-                            Tuple<BlockTx, CompletionCount> tuple;
-                            while (!completedAdding || pendingWarmedTxes.Count > 0)
-                            {
-                                txLoadedEvent.WaitOne();
-
-                                while (pendingWarmedTxes.TryPeek(out tuple) && tuple.Item2.IsComplete)
-                                {
-                                    observer.OnNext(tuple.Item1);
-                                    pendingWarmedTxes.TryDequeue(out tuple);
-                                }
-                            }
-
-                            observer.OnCompleted();
-                            return Disposable.Empty;
-                        })
-                    );
-
-                using (this.utxoReader.SubscribeObservers(utxoWarmupSource,
-                    Observer.Create<Tuple<UInt256, CompletionCount>>(
-                        onNext: tuple =>
-                        {
-                            var txHash = tuple.Item1;
-                            var completionCount = tuple.Item2;
-
-                            deferredChainStateCursor.WarmUnspentTx(txHash);
-
-                            if (completionCount.TryComplete())
-                                txLoadedEvent.Set();
-                        })))
-                using (var warmedTxesQueue = new ConcurrentBlockingQueue<BlockTx>())
-                using (warmedTxesSource.Subscribe(
-                    blockTx => warmedTxesQueue.Add(blockTx),
-                    ex => warmedTxesQueue.CompleteAdding(),
-                    () => warmedTxesQueue.CompleteAdding()))
+                        return
+                            blockTx.Transaction.Inputs
+                                .TakeWhile(_ => !blockTx.IsCoinbase)
+                                .Select(txInput => Tuple.Create(txInput.PreviousTxOutputKey.TxHash, completionCount))
+                            .Concat(Tuple.Create(blockTx.Hash, completionCount));
+                    })
+                .ToObservable()
+                .Finally(() =>
                 {
-                    // yield the warmed-up transactions, in the original block order
-                    foreach (var blockTx in warmedTxesQueue.GetConsumingEnumerable())
-                        yield return blockTx;
-                }
+                    progress.completedAdding = true;
+                    progress.txLoadedEvent.Set();
+                });
+        }
+
+        private IObserver<Tuple<UInt256, CompletionCount>> CreateUtxoWarmer(Progress progress, DeferredChainStateCursor deferredChainStateCursor)
+        {
+            return Observer.Create<Tuple<UInt256, CompletionCount>>(
+                tuple =>
+                {
+                    var txHash = tuple.Item1;
+                    var completionCount = tuple.Item2;
+
+                    deferredChainStateCursor.WarmUnspentTx(txHash);
+
+                    if (completionCount.TryComplete())
+                        progress.txLoadedEvent.Set();
+                });
+        }
+
+        private IObservable<BlockTx> SubscribeWarmedTxes(Progress progress)
+        {
+            return Observable.Create<BlockTx>(
+                observer =>
+                {
+                    Tuple<BlockTx, CompletionCount> tuple;
+                    while (!progress.completedAdding || progress.pendingWarmedTxes.Count > 0)
+                    {
+                        progress.txLoadedEvent.WaitOne();
+
+                        while (progress.pendingWarmedTxes.TryPeek(out tuple) && tuple.Item2.IsComplete)
+                        {
+                            observer.OnNext(tuple.Item1);
+                            progress.pendingWarmedTxes.TryDequeue(out tuple);
+                        }
+                    }
+
+                    observer.OnCompleted();
+                    progress.Dispose();
+
+                    return Disposable.Empty;
+                });
+        }
+
+        //TODO
+        private sealed class Progress : IDisposable
+        {
+            public AutoResetEvent txLoadedEvent = new AutoResetEvent(false);
+            public ConcurrentQueue<Tuple<BlockTx, CompletionCount>> pendingWarmedTxes = new ConcurrentQueue<Tuple<BlockTx, CompletionCount>>();
+            public bool completedAdding = false;
+
+            public void Dispose()
+            {
+                txLoadedEvent.Dispose();
             }
         }
     }
