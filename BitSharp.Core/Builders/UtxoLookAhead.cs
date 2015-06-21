@@ -34,26 +34,21 @@ namespace BitSharp.Core.Builders
 
         public IEnumerable<BlockTx> LookAhead(IEnumerable<BlockTx> blockTxes, DeferredChainStateCursor deferredChainStateCursor)
         {
-            //TODO
-            var progress = new Progress();
-            try
+            using (var progress = new Progress())
             {
-                // create the observable source of each utxo entry to be warmed up: each input's previous transactions, and each new transaction
+                // create the observable source of each utxo entry to be warmed up: each input's previous transaction, and each new transaction
                 var utxoWarmupSource = this.blockTxesDispatcher.Create(CreateBlockTxesSource(progress, blockTxes));
 
                 // subscribe the utxo entries to be warmed up
-                progress.warmupSubscription = this.utxoReader.SubscribeObservers(utxoWarmupSource, CreateUtxoWarmer(progress, deferredChainStateCursor));
+                using (this.utxoReader.SubscribeObservers(utxoWarmupSource, CreateUtxoWarmer(progress, deferredChainStateCursor)))
+                {
+                    // create the observable source of warmed-up transactions, in the original block order
+                    var warmedTxesSource = this.blockTxesSorter.Create(CreateWarmedTxesSource(progress));
 
-                // create the observable source of warmed-up transactions, in the original block order
-                var warmedTxesSource = this.blockTxesSorter.Create(SubscribeWarmedTxes(progress));
-
-                // return the warmed-up transactions, in the original block order
-                return warmedTxesSource.ToEnumerable();
-            }
-            catch (Exception)
-            {
-                progress.Dispose();
-                throw;
+                    // return the warmed-up transactions, in the original block order
+                    foreach (var blockTx in warmedTxesSource.ToEnumerable())
+                        yield return blockTx;
+                }
             }
         }
 
@@ -96,7 +91,7 @@ namespace BitSharp.Core.Builders
                 });
         }
 
-        private IObservable<BlockTx> SubscribeWarmedTxes(Progress progress)
+        private IObservable<BlockTx> CreateWarmedTxesSource(Progress progress)
         {
             return Observable.Create<BlockTx>(
                 observer =>
@@ -114,7 +109,6 @@ namespace BitSharp.Core.Builders
                     }
 
                     observer.OnCompleted();
-                    progress.Dispose();
 
                     return Disposable.Empty;
                 });
@@ -126,13 +120,10 @@ namespace BitSharp.Core.Builders
             public AutoResetEvent txLoadedEvent = new AutoResetEvent(false);
             public ConcurrentQueue<Tuple<BlockTx, CompletionCount>> pendingWarmedTxes = new ConcurrentQueue<Tuple<BlockTx, CompletionCount>>();
             public bool completedAdding = false;
-            public IDisposable warmupSubscription;
 
             public void Dispose()
             {
                 txLoadedEvent.Dispose();
-                if (warmupSubscription != null)
-                    warmupSubscription.Dispose();
             }
         }
     }
