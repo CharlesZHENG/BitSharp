@@ -119,7 +119,8 @@ namespace BitSharp.Core.Builders
 
                     using (deferredChainStateCursor)
                     {
-                        var calcUtxoSource = CalculateUtxo(chainedHeader, blockTxes, deferredChainStateCursor);
+                        var blockTxesCalculateQueue = this.utxoLookAhead.LookAhead(blockTxes, deferredChainStateCursor);
+                        var calcUtxoSource = CalculateUtxo(chainedHeader, blockTxesCalculateQueue, deferredChainStateCursor);
                         var loadedTxes = this.txLoader.LoadTxes(calcUtxoSource);
 
                         var cursorInTransaction = false;
@@ -169,7 +170,7 @@ namespace BitSharp.Core.Builders
             this.LogBlockchainProgress();
         }
 
-        private IEnumerable<LoadingTx> CalculateUtxo(ChainedHeader chainedHeader, IEnumerable<BlockTx> blockTxes, DeferredChainStateCursor deferredChainStateCursor)
+        private IEnumerable<LoadingTx> CalculateUtxo(ChainedHeader chainedHeader, IEnumerable<BlockTx> blockTxes, IChainStateCursor chainStateCursor)
         {
             this.chainStateCursor.BeginTransaction(readOnly: true);
             try
@@ -182,8 +183,7 @@ namespace BitSharp.Core.Builders
 
                     // calculate the new block utxo, only output availability is checked and updated
                     var pendingTxCount = 0;
-                    var blockTxesCalculateQueue = this.utxoLookAhead.LookAhead(blockTxes, deferredChainStateCursor);
-                    foreach (var loadingTx in this.utxoBuilder.CalculateUtxo(deferredChainStateCursor, this.chain.ToImmutable(), blockTxesCalculateQueue))
+                    foreach (var loadingTx in this.utxoBuilder.CalculateUtxo(chainStateCursor, this.chain.ToImmutable(), blockTxes))
                     {
                         if (!rules.BypassPrevTxLoading)
                             yield return loadingTx;
