@@ -46,8 +46,8 @@ namespace BitSharp.Core.Builders
         public void ValidateTransactions(ChainedHeader chainedHeader, IEnumerable<LoadedTx> loadedTxes, Action duringValidationAction = null)
         {
             using (var validateScriptQueue = new ConcurrentBlockingQueue<Tuple<LoadedTx, int>>())
-            using (this.txValidator.SubscribeObservers(loadedTxes, StartTxValidator(chainedHeader, validateScriptQueue)))
-            using (this.scriptValidator.SubscribeObservers(validateScriptQueue.GetConsumingEnumerable(), StartScriptValidator(chainedHeader)))
+            using (this.txValidator.SubscribeObservers(loadedTxes, CreateTxValidator(chainedHeader, validateScriptQueue)))
+            using (this.scriptValidator.SubscribeObservers(validateScriptQueue.GetConsumingEnumerable(), CreateScriptValidator(chainedHeader)))
             {
                 if (duringValidationAction != null)
                 {
@@ -66,7 +66,6 @@ namespace BitSharp.Core.Builders
 
         private void WaitToComplete(ChainedHeader chainedHeader)
         {
-            //this.prevTxLoader.WaitToComplete();
             this.txValidator.WaitToComplete();
             //TODO remove IgnoreScriptErrors
             try
@@ -82,7 +81,7 @@ namespace BitSharp.Core.Builders
             }
         }
 
-        private IObserver<LoadedTx> StartTxValidator(ChainedHeader chainedHeader, ConcurrentBlockingQueue<Tuple<LoadedTx, int>> validateScriptQueue)
+        private IObserver<LoadedTx> CreateTxValidator(ChainedHeader chainedHeader, ConcurrentBlockingQueue<Tuple<LoadedTx, int>> validateScriptQueue)
         {
             return Observer.Create<LoadedTx>(
                 loadedTx =>
@@ -94,7 +93,7 @@ namespace BitSharp.Core.Builders
                 () => validateScriptQueue.CompleteAdding());
         }
 
-        private IObserver<Tuple<LoadedTx, int>> StartScriptValidator(ChainedHeader chainedHeader)
+        private IObserver<Tuple<LoadedTx, int>> CreateScriptValidator(ChainedHeader chainedHeader)
         {
             return Observer.Create<Tuple<LoadedTx, int>>(
                 tuple =>
