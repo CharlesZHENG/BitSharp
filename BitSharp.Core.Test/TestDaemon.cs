@@ -106,6 +106,7 @@ namespace BitSharp.Core.Test
         {
             if (!isDisposed && disposing)
             {
+                this.coreDaemon.Dispose();
                 this.kernel.Dispose();
 
                 isDisposed = true;
