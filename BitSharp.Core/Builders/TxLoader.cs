@@ -25,8 +25,8 @@ namespace BitSharp.Core.Builders
             this.stats = stats;
             this.coreStorage = coreStorage;
 
-            this.inputTxQueuer = new ParallelConsumer<LoadingTx>(name + ".PrevTxLoader.1", 1);
-            this.inputTxLoader = new ParallelConsumer<Tuple<LoadingTx, int>>(name + ".PrevTxLoader.2", threadCount);
+            this.inputTxQueuer = new ParallelConsumer<LoadingTx>(name + ".InputTxQueuer", 1);
+            this.inputTxLoader = new ParallelConsumer<Tuple<LoadingTx, int>>(name + ".InputTxLoader", threadCount);
         }
 
         public void Dispose()
