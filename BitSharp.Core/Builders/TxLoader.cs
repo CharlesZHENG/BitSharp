@@ -7,6 +7,11 @@ using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
+using System.Reactive.Linq;
+using System.Reactive.Disposables;
+using System.Reactive;
+using System.Threading;
+using System.Collections.Generic;
 
 namespace BitSharp.Core.Builders
 {
@@ -17,73 +22,69 @@ namespace BitSharp.Core.Builders
         private readonly ChainStateBuilder.BuilderStats stats;
         private readonly CoreStorage coreStorage;
 
-        private readonly ParallelConsumer<LoadingTx> inputTxQueuer;
-        private readonly ParallelConsumer<Tuple<LoadingTx, int>> inputTxLoader;
+        private readonly ParallelObserver<Tuple<LoadingTx, int>> inputTxLoader;
 
         public TxLoader(string name, ChainStateBuilder.BuilderStats stats, CoreStorage coreStorage, int threadCount)
         {
             this.stats = stats;
             this.coreStorage = coreStorage;
 
-            this.inputTxQueuer = new ParallelConsumer<LoadingTx>(name + ".InputTxQueuer", 1);
-            this.inputTxLoader = new ParallelConsumer<Tuple<LoadingTx, int>>(name + ".InputTxLoader", threadCount);
+            this.inputTxLoader = new ParallelObserver<Tuple<LoadingTx, int>>(name + ".InputTxLoader", threadCount);
         }
 
         public void Dispose()
         {
-            this.inputTxQueuer.Dispose();
             this.inputTxLoader.Dispose();
         }
 
         public int PendingCount { get { return this.inputTxLoader.PendingCount; } }
 
-        public void LoadTxes(ConcurrentBlockingQueue<LoadingTx> loadingTxes, Action<ConcurrentBlockingQueue<LoadedTx>> workAction)
+        public IEnumerable<LoadedTx> LoadTxes(IEnumerable<LoadingTx> loadingTxes)
         {
-            using (var loadingTxInputs = new ConcurrentBlockingQueue<Tuple<LoadingTx, int>>())
             using (var loadedTxes = new ConcurrentBlockingQueue<LoadedTx>())
-            using (StartInputTxQueuer(loadingTxes, loadingTxInputs, loadedTxes))
-            using (StartInputTxLoader(loadingTxInputs, loadedTxes))
             {
-                workAction(loadedTxes);
+                var loadTxInputsSource = StartInputTxQueuer(loadingTxes, loadedTxes);
+
+                using (this.inputTxLoader.SubscribeObservers(loadTxInputsSource, StartInputTxLoader(loadedTxes)))
+                {
+                    foreach (var loadedTx in loadedTxes.GetConsumingEnumerable())
+                        yield return loadedTx;
+                }
             }
         }
 
-        private IDisposable StartInputTxQueuer(ConcurrentBlockingQueue<LoadingTx> loadingTxes, ConcurrentBlockingQueue<Tuple<LoadingTx, int>> loadingTxInputs, ConcurrentBlockingQueue<LoadedTx> loadedTxes)
+        private IEnumerable<Tuple<LoadingTx, int>> StartInputTxQueuer(IEnumerable<LoadingTx> loadingTxes, ConcurrentBlockingQueue<LoadedTx> loadedTxes)
         {
-            return this.inputTxQueuer.Start(loadingTxes,
-                loadingTx =>
+            foreach (var loadingTx in loadingTxes)
+            {
+                // queue up inputs to be loaded for non-coinbase transactions
+                if (!loadingTx.IsCoinbase)
                 {
-                    // queue up inputs to be loaded for non-coinbase transactions
-                    if (!loadingTx.IsCoinbase)
-                    {
-                        for (var inputIndex = 0; inputIndex < loadingTx.PrevOutputTxKeys.Length; inputIndex++)
-                            loadingTxInputs.Add(Tuple.Create(loadingTx, inputIndex));
-                    }
-                    // no inputs to load for the coinbase transactions, queue loaded tx immediately
-                    else
-                    {
-                        loadedTxes.Add(new LoadedTx(loadingTx.Transaction, loadingTx.TxIndex, ImmutableArray.Create<Transaction>()));
-                    }
-                },
-                _ => loadingTxInputs.CompleteAdding());
+                    for (var inputIndex = 0; inputIndex < loadingTx.PrevOutputTxKeys.Length; inputIndex++)
+                        yield return Tuple.Create(loadingTx, inputIndex);
+                }
+                // no inputs to load for the coinbase transactions, queue loaded tx immediately
+                else
+                {
+                    loadedTxes.Add(new LoadedTx(loadingTx.Transaction, loadingTx.TxIndex, ImmutableArray.Create<Transaction>()));
+                }
+            }
         }
 
-        private IDisposable StartInputTxLoader(ConcurrentBlockingQueue<Tuple<LoadingTx, int>> loadingTxInputs, ConcurrentBlockingQueue<LoadedTx> loadedTxes)
+        private IObserver<Tuple<LoadingTx, int>> StartInputTxLoader(ConcurrentBlockingQueue<LoadedTx> loadedTxes)
         {
-            return this.inputTxLoader.Start(loadingTxInputs,
-                loadingTxInput =>
+            return Observer.Create<Tuple<LoadingTx, int>>(
+                tuple =>
                 {
-                    var loadingTx = loadingTxInput.Item1;
-                    var inputIndex = loadingTxInput.Item2;
+                    var loadingTx = tuple.Item1;
+                    var inputIndex = tuple.Item2;
 
                     var loadedTx = LoadTxInput(loadingTx, inputIndex);
                     if (loadedTx != null)
                         loadedTxes.Add(loadedTx);
                 },
-                _ =>
-                {
-                    loadedTxes.CompleteAdding();
-                });
+                ex => loadedTxes.CompleteAdding(),
+                () => loadedTxes.CompleteAdding());
         }
 
         private LoadedTx LoadTxInput(LoadingTx loadingTx, int inputIndex)

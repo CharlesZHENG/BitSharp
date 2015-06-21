@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Reactive;
 
 namespace BitSharp.Core.Builders
 {
@@ -19,7 +20,7 @@ namespace BitSharp.Core.Builders
 
         private readonly UtxoReplayer pendingTxLoader;
         private readonly TxLoader txLoader;
-        private readonly ParallelConsumer<LoadedTx> txSorter;
+        private readonly ParallelObserver<LoadedTx> txSorter;
 
         private bool isDisposed;
 
@@ -33,7 +34,7 @@ namespace BitSharp.Core.Builders
 
             this.pendingTxLoader = new UtxoReplayer("BlockReplayer", coreStorage, ioThreadCount);
             this.txLoader = new TxLoader("BlockReplayer", null, coreStorage, ioThreadCount);
-            this.txSorter = new ParallelConsumer<LoadedTx>("BlockReplayer", 1);
+            this.txSorter = new ParallelObserver<LoadedTx>("BlockReplayer", 1);
         }
 
         public void Dispose()
@@ -70,25 +71,23 @@ namespace BitSharp.Core.Builders
             this.pendingTxLoader.ReplayCalculateUtxo(chainState, replayBlock, replayForward,
                 loadingTxes =>
                 {
-                    this.txLoader.LoadTxes(loadingTxes,
-                        loadedTxes =>
-                        {
-                            using (var sortedTxes = new ConcurrentBlockingQueue<LoadedTx>())
-                            using (StartTxSorter(replayBlock, loadedTxes, sortedTxes))
-                            {
-                                var replayTxes = sortedTxes.GetConsumingEnumerable();
-                                //TODO Reverse() here means everything must be loaded first, the tx sorter should handle this instead
-                                if (!replayForward)
-                                    replayTxes = replayTxes.Reverse();
+                    var loadedTxes = this.txLoader.LoadTxes(loadingTxes.GetConsumingEnumerable());
 
-                                foreach (var tx in replayTxes)
-                                    replayAction(tx);
-                            }
-                        });
+                    using (var sortedTxes = new ConcurrentBlockingQueue<LoadedTx>())
+                    using (StartTxSorter(replayBlock, loadedTxes, sortedTxes))
+                    {
+                        var replayTxes = sortedTxes.GetConsumingEnumerable();
+                        //TODO Reverse() here means everything must be loaded first, the tx sorter should handle this instead
+                        if (!replayForward)
+                            replayTxes = replayTxes.Reverse();
+
+                        foreach (var tx in replayTxes)
+                            replayAction(tx);
+                    }
                 });
         }
 
-        private IDisposable StartTxSorter(ChainedHeader replayBlock, ConcurrentBlockingQueue<LoadedTx> loadedTxes, ConcurrentBlockingQueue<LoadedTx> sortedTxes)
+        private IDisposable StartTxSorter(ChainedHeader replayBlock, IEnumerable<LoadedTx> loadedTxes, ConcurrentBlockingQueue<LoadedTx> sortedTxes)
         {
             // txSorter will only have a single consumer thread, so SortedList is safe to use
             var pendingSortedTxes = new SortedList<int, LoadedTx>();
@@ -96,28 +95,23 @@ namespace BitSharp.Core.Builders
             // keep track of which tx is the next one in order
             var nextTxIndex = 0;
 
-            return this.txSorter.Start(loadedTxes,
-                loadedTx =>
-                {
-                    // store loaded tx
-                    pendingSortedTxes.Add(loadedTx.TxIndex, loadedTx);
-
-                    // dequeue any available loaded txes that are in order
-                    while (pendingSortedTxes.Count > 0 && pendingSortedTxes.Keys[0] == nextTxIndex)
+            return this.txSorter.SubscribeObservers(loadedTxes,
+                Observer.Create<LoadedTx>(
+                    loadedTx =>
                     {
-                        sortedTxes.Add(pendingSortedTxes.Values[0]);
-                        pendingSortedTxes.RemoveAt(0);
-                        nextTxIndex++;
-                    }
-                },
-                e =>
-                {
-                    // ensure no txes were left unsorted
-                    if (pendingSortedTxes.Count > 0)
-                        throw new InvalidOperationException();
+                        // store loaded tx
+                        pendingSortedTxes.Add(loadedTx.TxIndex, loadedTx);
 
-                    sortedTxes.CompleteAdding();
-                });
+                        // dequeue any available loaded txes that are in order
+                        while (pendingSortedTxes.Count > 0 && pendingSortedTxes.Keys[0] == nextTxIndex)
+                        {
+                            sortedTxes.Add(pendingSortedTxes.Values[0]);
+                            pendingSortedTxes.RemoveAt(0);
+                            nextTxIndex++;
+                        }
+                    },
+                    ex => sortedTxes.CompleteAdding(),
+                    () => sortedTxes.CompleteAdding()));
         }
     }
 }

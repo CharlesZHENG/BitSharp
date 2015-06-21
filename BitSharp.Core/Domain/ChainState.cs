@@ -18,6 +18,7 @@ namespace BitSharp.Core.Domain
             this.chain = chain;
 
             // create a cache of cursors that are in an open snapshot transaction with the current chain state
+            var success = false;
             this.cursorCache = new DisposableCache<DisposeHandle<IChainStateCursor>>(16);
             try
             {
@@ -39,12 +40,14 @@ namespace BitSharp.Core.Domain
                     if (chainTip != chain.LastBlock)
                         throw new InvalidOperationException();
                 }
+
+                success = true;
             }
-            catch (Exception)
+            finally
             {
                 // ensure any opened cursors are cleaned up on an error
-                this.cursorCache.Dispose();
-                throw;
+                if (!success)
+                    this.cursorCache.Dispose();
             }
         }
 

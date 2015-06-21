@@ -6,6 +6,7 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using BitSharp.Core.Storage;
+using System.Reactive;
 
 namespace BitSharp.Core.Builders
 {
@@ -14,20 +15,17 @@ namespace BitSharp.Core.Builders
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly CoreStorage coreStorage;
-        private readonly LookAhead<BlockTx> blockTxesLookAhead;
-        private readonly ParallelConsumer<BlockTx> loadingTxLookuper;
+        private readonly ParallelObserver<BlockTx> loadingTxLookuper;
 
         public UtxoReplayer(string name, CoreStorage coreStorage, int threadCount)
         {
             this.coreStorage = coreStorage;
-            this.blockTxesLookAhead = new LookAhead<BlockTx>(name + ".BlockTxesLookAhead");
-            this.loadingTxLookuper = new ParallelConsumer<BlockTx>(name + ".PendingTxLoader", threadCount);
+            this.loadingTxLookuper = new ParallelObserver<BlockTx>(name + ".PendingTxLoader", threadCount);
         }
 
         public void Dispose()
         {
             this.loadingTxLookuper.Dispose();
-            this.blockTxesLookAhead.Dispose();
         }
 
         public void ReplayCalculateUtxo(IChainState chainState, ChainedHeader replayBlock, bool replayForward, Action<ConcurrentBlockingQueue<LoadingTx>> workAction)
@@ -58,7 +56,7 @@ namespace BitSharp.Core.Builders
                     var unmintedTxes = ImmutableDictionary.CreateRange(
                         unmintedTxesList.Select(x => new KeyValuePair<UInt256, UnmintedTx>(x.TxHash, x)));
 
-                    foreach (var blockTx in blockTxesLookAhead.ReadAll(blockTxes))
+                    foreach (var blockTx in blockTxes)
                     {
                         var tx = blockTx.Transaction;
                         var txIndex = blockTx.Index;
@@ -84,14 +82,16 @@ namespace BitSharp.Core.Builders
 
         private IDisposable StartLoadingTxLookup(IChainState chainState, ChainedHeader replayBlock, IEnumerable<BlockTx> blockTxes, ConcurrentBlockingQueue<LoadingTx> loadingTxes)
         {
-            return this.loadingTxLookuper.Start(blockTxesLookAhead.ReadAll(blockTxes),
-                blockTx =>
-                {
-                    var loadingTx = LookupLoadingTx(chainState, replayBlock, blockTx);
-                    if (loadingTx != null)
-                        loadingTxes.Add(loadingTx);
-                },
-                _ => loadingTxes.CompleteAdding());
+            return this.loadingTxLookuper.SubscribeObservers(blockTxes,
+                Observer.Create<BlockTx>(
+                    blockTx =>
+                    {
+                        var loadingTx = LookupLoadingTx(chainState, replayBlock, blockTx);
+                        if (loadingTx != null)
+                            loadingTxes.Add(loadingTx);
+                    },
+                    ex => loadingTxes.CompleteAdding(),
+                    () => loadingTxes.CompleteAdding()));
         }
 
         private LoadingTx LookupLoadingTx(IChainState chainState, ChainedHeader replayBlock, BlockTx blockTx)

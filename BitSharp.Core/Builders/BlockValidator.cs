@@ -5,6 +5,9 @@ using BitSharp.Core.Rules;
 using BitSharp.Core.Storage;
 using NLog;
 using System;
+using System.Collections.Generic;
+using System.Reactive;
+using System.Reactive.Linq;
 
 namespace BitSharp.Core.Builders
 {
@@ -17,9 +20,8 @@ namespace BitSharp.Core.Builders
         private readonly IStorageManager storageManager;
         private readonly IBlockchainRules rules;
 
-        private readonly TxLoader txLoader;
-        private readonly ParallelConsumer<LoadedTx> txValidator;
-        private readonly ParallelConsumer<Tuple<LoadedTx, int>> scriptValidator;
+        private readonly ParallelObserver<LoadedTx> txValidator;
+        private readonly ParallelObserver<Tuple<LoadedTx, int>> scriptValidator;
 
         public BlockValidator(ChainStateBuilder.BuilderStats stats, CoreStorage coreStorage, IBlockchainRules rules)
         {
@@ -28,52 +30,37 @@ namespace BitSharp.Core.Builders
             this.storageManager = coreStorage.StorageManager;
             this.rules = rules;
 
-            // thread count for i/o task (TxLoader)
-            var ioThreadCount = Environment.ProcessorCount * 2;
-
             // thread count for cpu tasks (TxValidator, ScriptValidator)
             var cpuThreadCount = Environment.ProcessorCount * 2;
 
-            this.txLoader = new TxLoader("BlockValidator", stats, coreStorage, ioThreadCount);
-            this.txValidator = new ParallelConsumer<LoadedTx>("BlockValidator.TxValidator", cpuThreadCount);
-            this.scriptValidator = new ParallelConsumer<Tuple<LoadedTx, int>>("BlockValidator.ScriptValidator", cpuThreadCount);
+            this.txValidator = new ParallelObserver<LoadedTx>("BlockValidator.TxValidator", cpuThreadCount);
+            this.scriptValidator = new ParallelObserver<Tuple<LoadedTx, int>>("BlockValidator.ScriptValidator", cpuThreadCount);
         }
 
         public void Dispose()
         {
-            this.txLoader.Dispose();
             this.txValidator.Dispose();
             this.scriptValidator.Dispose();
         }
 
-        public void ValidateTransactions(ChainedHeader chainedHeader, Action<ConcurrentBlockingQueue<LoadingTx>> workAction)
+        public void ValidateTransactions(ChainedHeader chainedHeader, IEnumerable<LoadedTx> loadedTxes, Action duringValidationAction = null)
         {
-            using (var loadingTxes = new ConcurrentBlockingQueue<LoadingTx>())
+            using (var validateScriptQueue = new ConcurrentBlockingQueue<Tuple<LoadedTx, int>>())
+            using (this.txValidator.SubscribeObservers(loadedTxes, StartTxValidator(chainedHeader, validateScriptQueue)))
+            using (this.scriptValidator.SubscribeObservers(validateScriptQueue.GetConsumingEnumerable(), StartScriptValidator(chainedHeader)))
             {
-                this.txLoader.LoadTxes(loadingTxes,
-                    loadedTxes =>
-                    {
-                        using (var validateScriptQueue = new ConcurrentBlockingQueue<Tuple<LoadedTx, int>>())
-                        using (StartTxValidator(chainedHeader, loadedTxes, validateScriptQueue))
-                        using (StartScriptValidator(chainedHeader, validateScriptQueue))
-                        {
-                            try
-                            {
-                                workAction(loadingTxes);
-                            }
-                            finally
-                            {
-                                loadingTxes.CompleteAdding();
-                            }
+                if (duringValidationAction != null)
+                {
+                    // wait for the loaded txes to have been fully queued up for validation
+                    this.txValidator.WaitToCompleteReading();
 
-                            if (chainedHeader.Height > 0)
-                                this.stats.pendingTxesAtCompleteAverageMeasure.Tick(this.txLoader.PendingCount);
+                    // perform an action while validation is completing
+                    duringValidationAction();
+                }
 
-                            // wait for block validation to complete, any exceptions that ocurred will be thrown
-                            this.stats.waitToCompleteDurationMeasure.MeasureIf(chainedHeader.Height > 0, () =>
-                                WaitToComplete(chainedHeader));
-                        }
-                    });
+                // wait for block validation to complete, any exceptions that ocurred will be thrown
+                this.stats.waitToCompleteDurationMeasure.MeasureIf(chainedHeader.Height > 0, () =>
+                    WaitToComplete(chainedHeader));
             }
         }
 
@@ -95,30 +82,30 @@ namespace BitSharp.Core.Builders
             }
         }
 
-        private IDisposable StartTxValidator(ChainedHeader chainedHeader, ConcurrentBlockingQueue<LoadedTx> loadedTxes, ConcurrentBlockingQueue<Tuple<LoadedTx, int>> validateScriptQueue)
+        private IObserver<LoadedTx> StartTxValidator(ChainedHeader chainedHeader, ConcurrentBlockingQueue<Tuple<LoadedTx, int>> validateScriptQueue)
         {
-            return this.txValidator.Start(loadedTxes,
+            return Observer.Create<LoadedTx>(
                 loadedTx =>
                 {
                     QueueTransactionScripts(chainedHeader, loadedTx, validateScriptQueue);
                     this.rules.ValidateTransaction(chainedHeader, loadedTx);
                 },
-                _ => validateScriptQueue.CompleteAdding());
+                ex => validateScriptQueue.CompleteAdding(),
+                () => validateScriptQueue.CompleteAdding());
         }
 
-        private IDisposable StartScriptValidator(ChainedHeader chainedHeader, ConcurrentBlockingQueue<Tuple<LoadedTx, int>> validateScriptQueue)
+        private IObserver<Tuple<LoadedTx, int>> StartScriptValidator(ChainedHeader chainedHeader)
         {
-            return this.scriptValidator.Start(validateScriptQueue,
-                loadedTxInput =>
+            return Observer.Create<Tuple<LoadedTx, int>>(
+                tuple =>
                 {
-                    var loadedTx = loadedTxInput.Item1;
-                    var inputIndex = loadedTxInput.Item2;
+                    var loadedTx = tuple.Item1;
+                    var inputIndex = tuple.Item2;
                     var txInput = loadedTx.Transaction.Inputs[inputIndex];
                     var prevTxOutput = loadedTx.GetInputPrevTxOutput(inputIndex);
 
                     this.rules.ValidationTransactionScript(chainedHeader, loadedTx.Transaction, loadedTx.TxIndex, txInput, inputIndex, prevTxOutput);
-                },
-                _ => { });
+                });
         }
 
         private void QueueTransactionScripts(ChainedHeader chainedHeader, LoadedTx loadedTx, ConcurrentBlockingQueue<Tuple<LoadedTx, int>> validateScriptQueue)
