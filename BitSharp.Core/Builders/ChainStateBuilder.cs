@@ -192,8 +192,6 @@ namespace BitSharp.Core.Builders
                         if (chainedHeader.Height > 0 && !loadingTx.IsCoinbase)
                         {
                             pendingTxCount += loadingTx.Transaction.Inputs.Length;
-                            this.stats.txCount++;
-                            this.stats.inputCount += loadingTx.Transaction.Inputs.Length;
                             this.stats.txRateMeasure.Tick();
                             this.stats.inputRateMeasure.Tick(loadingTx.Transaction.Inputs.Length);
                         }
@@ -367,9 +365,6 @@ namespace BitSharp.Core.Builders
 
             public Stopwatch durationStopwatch = Stopwatch.StartNew();
             public Stopwatch validateStopwatch = new Stopwatch();
-
-            public long txCount;
-            public long inputCount;
 
             public readonly DurationMeasure calculateUtxoDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
             public readonly DurationMeasure applyUtxoDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
