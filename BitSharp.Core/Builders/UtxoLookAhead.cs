@@ -34,12 +34,13 @@ namespace BitSharp.Core.Builders
                 var utxoWarmupSource = CreateBlockTxesSource(progress, blockTxes);
 
                 // subscribe the utxo entries to be warmed up
-                using (this.utxoReader.SubscribeObservers(utxoWarmupSource, CreateUtxoWarmer(progress, deferredChainStateCursor)))
-                {
-                    // return the warmed-up transactions, in the original block order
-                    foreach (var blockTx in CreateWarmedTxesSource(progress))
-                        yield return blockTx;
-                }
+                var utxoReaderTask = this.utxoReader.SubscribeObservers(utxoWarmupSource, CreateUtxoWarmer(progress, deferredChainStateCursor));
+
+                // return the warmed-up transactions, in the original block order
+                foreach (var blockTx in CreateWarmedTxesSource(progress))
+                    yield return blockTx;
+
+                utxoReaderTask.Wait();
             }
         }
 

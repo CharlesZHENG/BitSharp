@@ -14,6 +14,7 @@ using System.Threading;
 using System.Reactive.Linq;
 using System.Reactive;
 using System.Reactive.Disposables;
+using System.Threading.Tasks;
 
 namespace BitSharp.Core.Builders
 {
@@ -67,7 +68,7 @@ namespace BitSharp.Core.Builders
 
             this.utxoLookAhead = new UtxoLookAhead();
             this.txLoader = new TxLoader("ChainStateBuilder", stats, coreStorage, ioThreadCount);
-            this.blockValidator = new BlockValidator(this.stats, this.coreStorage, this.rules);
+            this.blockValidator = new BlockValidator(this.coreStorage, this.rules);
 
             this.commitLock = new ReaderWriterLockSlim();
         }
@@ -126,26 +127,33 @@ namespace BitSharp.Core.Builders
                         var cursorInTransaction = false;
                         try
                         {
-                            this.blockValidator.ValidateTransactions(chainedHeader, loadedTxes,
-                                //TODO note - the utxo updates could be applied either while validation is ongoing, or after it is complete
-                                duringValidationAction: () =>
-                                {
-                                    this.stats.applyUtxoDurationMeasure.MeasureIf(chainedHeader.Height > 0, () =>
-                                    {
-                                        // switch to a writeable transaction
-                                        this.chainStateCursor.BeginTransaction();
-                                        cursorInTransaction = true;
+                            Task loadedTxesReadTask;
+                            var blockValidationTask = this.blockValidator.ValidateTransactions(chainedHeader, loadedTxes, out loadedTxesReadTask);
 
-                                        deferredChainStateCursor.ApplyChangesToParent();
-                                        this.chainStateCursor.AddChainedHeader(chainedHeader);
-                                    });
-                                });
+                            //TODO note - the utxo updates could be applied either while validation is ongoing, or after it is complete
+                            loadedTxesReadTask.Wait();
+                            this.stats.applyUtxoDurationMeasure.MeasureIf(chainedHeader.Height > 0, () =>
+                            {
+                                // begin the transaction to apply the utxo changes
+                                this.chainStateCursor.BeginTransaction();
+                                cursorInTransaction = true;
 
+                                // apply the changes, do not yet commit
+                                deferredChainStateCursor.ApplyChangesToParent();
+                                this.chainStateCursor.AddChainedHeader(chainedHeader);
+                            });
+
+                            // wait for block validation to complete, any exceptions that ocurred will be thrown
+                            this.stats.waitToCompleteDurationMeasure.MeasureIf(chainedHeader.Height > 0, () =>
+                                blockValidationTask.Wait());
+
+                            // only commit the utxo changes once block validation has completed
                             this.chainStateCursor.CommitTransaction();
                             cursorInTransaction = false;
                         }
                         finally
                         {
+                            // rollback if the transaction was not comitted
                             if (cursorInTransaction)
                                 this.chainStateCursor.RollbackTransaction();
                         }

@@ -8,6 +8,7 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 
 namespace BitSharp.Core.Workers
@@ -155,17 +156,23 @@ namespace BitSharp.Core.Workers
                 }
             }
             catch (OperationCanceledException) { }
-            catch (AggregateException e)
+            catch (Exception ex)
             {
-                foreach (var innerException in e.InnerExceptions)
-                {
+                foreach (var innerException in WalkInnerExceptions(ex))
                     HandleException(innerException);
-                }
             }
-            catch (Exception e)
+        }
+
+        private IEnumerable<Exception> WalkInnerExceptions(Exception ex)
+        {
+            var aggEx = ex as AggregateException;
+            if (aggEx != null)
             {
-                HandleException(e);
+                foreach (var innerException in aggEx.InnerExceptions.SelectMany(x => WalkInnerExceptions(x)))
+                    yield return innerException;
             }
+            else
+                yield return ex;
         }
 
         private void HandleException(Exception e)

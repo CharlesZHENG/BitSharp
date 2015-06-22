@@ -7,6 +7,8 @@ using System.Threading;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Reactive.Disposables;
+using System.Threading.Tasks;
+using System.Diagnostics;
 
 namespace BitSharp.Common
 {
@@ -25,7 +27,6 @@ namespace BitSharp.Common
 
         // events to track when reading and consuming have been completed
         private readonly ManualResetEventSlim completedReadingEvent = new ManualResetEventSlim(false);
-        private readonly ManualResetEventSlim completedConsumingEvent = new ManualResetEventSlim(false);
 
         // the source to observe
         private IEnumerable<T> source;
@@ -48,7 +49,9 @@ namespace BitSharp.Common
 
         // whether a consuming session is started
         private bool isStarted;
-        private bool exceptionsThrown;
+
+        private TaskCompletionSource<object> tcs;
+        private TaskCompletionSource<object> readTcs;
 
         private bool isDisposed;
 
@@ -92,9 +95,6 @@ namespace BitSharp.Common
                 this.readWorker.Dispose();
                 this.consumeWorkers.DisposeList();
                 this.completedReadingEvent.Dispose();
-                this.completedConsumingEvent.Dispose();
-                if (this.queue != null)
-                    this.queue.Dispose();
 
                 this.isDisposed = true;
             }
@@ -118,6 +118,12 @@ namespace BitSharp.Common
             }
         }
 
+        public Task SubscribeObservers(IEnumerable<T> source, IObserver<T> observer)
+        {
+            Task readTask;
+            return SubscribeObservers(source, observer, out readTask);
+        }
+
         /// <summary>
         /// Start a new parallel consuming session on the provided source, calling the provided actions.
         /// </summary>
@@ -125,10 +131,13 @@ namespace BitSharp.Common
         /// <param name="consumeAction">The action to be called on each item from the source.</param>
         /// <param name="completedAction">An action to be called when all items have been successfully read and consumed. This will not be called if there is an exception.</param>
         /// <returns>An IDisposable to cleanup the parallel consuming session.</returns>
-        public IDisposable SubscribeObservers(IEnumerable<T> source, IObserver<T> observer)
+        public Task SubscribeObservers(IEnumerable<T> source, IObserver<T> observer, out Task readTask)
         {
             if (this.isStarted)
                 throw new InvalidOperationException();
+
+            this.tcs = new TaskCompletionSource<object>();
+            this.readTcs = new TaskCompletionSource<object>();
 
             // store the actions
             this.observer = observer;
@@ -145,9 +154,7 @@ namespace BitSharp.Common
 
             // set to the started state
             this.completedReadingEvent.Reset();
-            this.completedConsumingEvent.Reset();
             this.isStarted = true;
-            this.exceptionsThrown = false;
 
             // notify the read worker to begin
             this.readWorker.NotifyWork();
@@ -157,82 +164,8 @@ namespace BitSharp.Common
                 this.consumeWorkers[i].NotifyWork();
 
             // begin observing
-            return Disposable.Create(Stop);
-        }
-
-        /// <summary>
-        /// Blocks until all reading and consuming has been finished.
-        /// </summary>
-        /// <exception cref="AggregateException">Thrown if any exceptions occurred during reading or consuming. Contains the thrown exceptions.</exception>
-        public void WaitToComplete()
-        {
-            if (!this.isStarted)
-                throw new InvalidOperationException();
-
-            // wait for reading and consuming to completed
-            this.completedReadingEvent.Wait();
-            this.completedConsumingEvent.Wait();
-
-            // if any exceptions were thrown, rethrow them here
-            if (this.readException != null)
-            {
-                this.exceptionsThrown = true;
-                throw this.readException;
-            }
-            else if (this.consumeExceptions.Count > 0)
-            {
-                this.exceptionsThrown = true;
-                throw new AggregateException(this.consumeExceptions);
-            }
-        }
-
-        public void WaitToCompleteReading()
-        {
-            if (!this.isStarted)
-                throw new InvalidOperationException();
-
-            // wait for reading and consuming to completed
-            this.completedReadingEvent.Wait();
-        }
-
-        public void WaitToCompleteConsuming()
-        {
-            if (!this.isStarted)
-                throw new InvalidOperationException();
-
-            // wait for reading and consuming to completed
-            this.completedConsumingEvent.Wait();
-        }
-
-        private void Stop()
-        {
-            if (!this.isStarted)
-                throw new InvalidOperationException();
-
-            // wait for the completed state
-            this.completedReadingEvent.Wait();
-            this.completedConsumingEvent.Wait();
-
-            // dispose the queue
-            this.queue.Dispose();
-
-            // capture any unthrown exceptions before clearing
-            var unthrownReadException = !exceptionsThrown ? this.readException : null;
-            var unthrownConsumeExceptions = !exceptionsThrown ? this.consumeExceptions : null;
-
-            // null out all the fields used for this session
-            this.source = null;
-            this.observer = null;
-            this.queue = null;
-            this.consumeExceptions = null;
-
-            this.isStarted = false;
-
-            // if any exceptions were unthrown, rethrow them here
-            if (unthrownReadException != null)
-                throw unthrownReadException;
-            else if (unthrownConsumeExceptions != null && unthrownConsumeExceptions.Count > 0)
-                throw new AggregateException(unthrownConsumeExceptions);
+            readTask = readTcs.Task;
+            return tcs.Task;
         }
 
         private void ReadWorker(WorkerMethod instance)
@@ -244,16 +177,19 @@ namespace BitSharp.Common
                 {
                     // break early if an exception occurred
                     if (this.consumeExceptions.Count > 0)
-                        return;
+                        break;
 
                     // queue the item to be consumed
                     this.queue.Add(item);
                 }
+
+                readTcs.SetResult(null);
             }
             // capture any thrown exceptions
-            catch (Exception e)
+            catch (Exception ex)
             {
-                this.readException = e;
+                this.readException = ex;
+                readTcs.SetException(ex);
             }
             // ensure queue is marked as complete for adding once reading has finished
             finally
@@ -272,7 +208,7 @@ namespace BitSharp.Common
             {
                 foreach (var value in this.queue.GetConsumingEnumerable())
                 {
-                    // break early on an exception
+                    // break early if an exception occurred
                     if (this.readException != null || this.consumeExceptions.Count > 0)
                         return;
 
@@ -280,9 +216,9 @@ namespace BitSharp.Common
                 }
             }
             // capture any thrown exceptions
-            catch (Exception e)
+            catch (Exception ex)
             {
-                this.consumeExceptions.Add(e);
+                this.consumeExceptions.Add(ex);
             }
             // ensure consumer thread completion is tracked
             finally
@@ -290,20 +226,40 @@ namespace BitSharp.Common
                 // increment the completed consumer count and check if all have been completed
                 if (Interlocked.Increment(ref this.consumeCompletedCount) == this.consumeWorkers.Length)
                 {
+                    this.completedReadingEvent.Wait();
+
+                    var tcsLocal = this.tcs;
+                    var observerLocal = this.observer;
+                    var readExceptionLocal = this.readException;
+                    var consumeExceptionsLocal = this.consumeExceptions;
+
+                    this.queue.Dispose();
+
+                    this.source = null;
+                    this.observer = null;
+                    this.queue = null;
+                    this.consumeExceptions = null;
+
+                    this.isStarted = false;
+
                     try
                     {
-                        if (this.readException != null)
-                            observer.OnError(readException);
-                        if (this.consumeExceptions.Count > 0)
-                            observer.OnError(new AggregateException(this.consumeExceptions));
+                        if (readExceptionLocal != null)
+                            observerLocal.OnError(readExceptionLocal);
+                        else if (consumeExceptionsLocal.Count > 0)
+                            observerLocal.OnError(new AggregateException(consumeExceptionsLocal));
                         else
-                            observer.OnCompleted();
+                            observerLocal.OnCompleted();
                     }
-                    finally
-                    {
-                        // notify that consuming has been completed
-                        this.completedConsumingEvent.Set();
-                    }
+                    catch (Exception) { }
+
+
+                    if (readExceptionLocal != null)
+                        tcsLocal.SetException(readExceptionLocal);
+                    else if (consumeExceptionsLocal.Count > 0)
+                        tcsLocal.SetException(new AggregateException(consumeExceptionsLocal));
+                    else
+                        tcsLocal.SetResult(null);
                 }
             }
         }

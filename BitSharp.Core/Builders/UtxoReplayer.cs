@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using BitSharp.Core.Storage;
 using System.Reactive;
+using System.Threading.Tasks;
 
 namespace BitSharp.Core.Builders
 {
@@ -42,10 +43,9 @@ namespace BitSharp.Core.Builders
                 {
                     //TODO replay backwards should also use this code path if this is not a re-org block, there won't be unminted txes
                     //TODO should be a ReplayRollbackUtxo method
-                    using (StartLoadingTxLookup(chainState, replayBlock, blockTxes, loadingTxes))
-                    {
-                        workAction(loadingTxes);
-                    }
+                    var loadingTxLookupTask = StartLoadingTxLookup(chainState, replayBlock, blockTxes, loadingTxes);
+                    workAction(loadingTxes);
+                    loadingTxLookupTask.Wait();
                 }
                 else
                 {
@@ -80,7 +80,7 @@ namespace BitSharp.Core.Builders
             }
         }
 
-        private IDisposable StartLoadingTxLookup(IChainState chainState, ChainedHeader replayBlock, IEnumerable<BlockTx> blockTxes, ConcurrentBlockingQueue<LoadingTx> loadingTxes)
+        private Task StartLoadingTxLookup(IChainState chainState, ChainedHeader replayBlock, IEnumerable<BlockTx> blockTxes, ConcurrentBlockingQueue<LoadingTx> loadingTxes)
         {
             return this.loadingTxLookuper.SubscribeObservers(blockTxes,
                 Observer.Create<BlockTx>(

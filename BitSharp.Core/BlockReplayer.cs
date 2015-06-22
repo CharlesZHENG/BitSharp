@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Reactive;
+using System.Threading.Tasks;
 
 namespace BitSharp.Core.Builders
 {
@@ -74,8 +75,9 @@ namespace BitSharp.Core.Builders
                     var loadedTxes = this.txLoader.LoadTxes(loadingTxes.GetConsumingEnumerable());
 
                     using (var sortedTxes = new ConcurrentBlockingQueue<LoadedTx>())
-                    using (StartTxSorter(replayBlock, loadedTxes, sortedTxes))
                     {
+                        var txSorterTask = StartTxSorter(replayBlock, loadedTxes, sortedTxes);
+
                         var replayTxes = sortedTxes.GetConsumingEnumerable();
                         //TODO Reverse() here means everything must be loaded first, the tx sorter should handle this instead
                         if (!replayForward)
@@ -83,11 +85,13 @@ namespace BitSharp.Core.Builders
 
                         foreach (var tx in replayTxes)
                             replayAction(tx);
+
+                        txSorterTask.Wait();
                     }
                 });
         }
 
-        private IDisposable StartTxSorter(ChainedHeader replayBlock, IEnumerable<LoadedTx> loadedTxes, ConcurrentBlockingQueue<LoadedTx> sortedTxes)
+        private Task StartTxSorter(ChainedHeader replayBlock, IEnumerable<LoadedTx> loadedTxes, ConcurrentBlockingQueue<LoadedTx> sortedTxes)
         {
             // txSorter will only have a single consumer thread, so SortedList is safe to use
             var pendingSortedTxes = new SortedList<int, LoadedTx>();

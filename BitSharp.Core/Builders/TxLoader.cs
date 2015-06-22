@@ -45,11 +45,12 @@ namespace BitSharp.Core.Builders
             {
                 var loadTxInputsSource = StartInputTxQueuer(loadingTxes, loadedTxes);
 
-                using (this.inputTxLoader.SubscribeObservers(loadTxInputsSource, StartInputTxLoader(loadedTxes)))
-                {
-                    foreach (var loadedTx in loadedTxes.GetConsumingEnumerable())
-                        yield return loadedTx;
-                }
+                var inputTxLoaderTask = this.inputTxLoader.SubscribeObservers(loadTxInputsSource, StartInputTxLoader(loadedTxes));
+
+                foreach (var loadedTx in loadedTxes.GetConsumingEnumerable())
+                    yield return loadedTx;
+
+                inputTxLoaderTask.Wait();
             }
         }
 
