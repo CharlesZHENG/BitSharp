@@ -211,12 +211,13 @@ namespace BitSharp.Core.Builders
                             this.stats.txRateMeasure.Tick();
                             this.stats.inputRateMeasure.Tick(loadingTx.Transaction.Inputs.Length);
                         }
+
+                        if (calcUtxoStopwatch.Elapsed > TimeSpan.FromSeconds(15))
+                            this.LogProgressInner();
                     }
 
                     if (chainedHeader.Height > 0)
                         this.stats.pendingTxesTotalAverageMeasure.Tick(pendingTxCount);
-
-                    this.LogProgressInner();
                 }
 
                 calcUtxoStopwatch.Stop();
