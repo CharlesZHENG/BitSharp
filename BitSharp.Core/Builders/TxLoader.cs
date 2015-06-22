@@ -1,4 +1,5 @@
 ﻿using BitSharp.Common;
+using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Domain;
 using BitSharp.Core.Storage;
 using NLog;
@@ -22,6 +23,7 @@ namespace BitSharp.Core.Builders
         private readonly ChainStateBuilder.BuilderStats stats;
         private readonly CoreStorage coreStorage;
 
+        private readonly ParallelReader<Tuple<LoadingTx, int>> loadTxInputsSource;
         private readonly ParallelObserver<Tuple<LoadingTx, int>> inputTxLoader;
 
         public TxLoader(string name, ChainStateBuilder.BuilderStats stats, CoreStorage coreStorage, int threadCount)
@@ -29,34 +31,32 @@ namespace BitSharp.Core.Builders
             this.stats = stats;
             this.coreStorage = coreStorage;
 
+            this.loadTxInputsSource = new ParallelReader<Tuple<LoadingTx, int>>(name + ".LoadTxInputsSource");
             this.inputTxLoader = new ParallelObserver<Tuple<LoadingTx, int>>(name + ".InputTxLoader", threadCount);
         }
 
         public void Dispose()
         {
+            this.loadTxInputsSource.Dispose();
             this.inputTxLoader.Dispose();
         }
 
         public int PendingCount { get { return this.inputTxLoader.PendingCount; } }
 
-        public IEnumerable<LoadedTx> LoadTxes(IEnumerable<LoadingTx> loadingTxes)
+        public IEnumerable<LoadedTx> LoadTxes(ParallelReader<LoadingTx> loadingTxes)
         {
             using (var loadedTxes = new ConcurrentBlockingQueue<LoadedTx>())
+            using (var loadTxInputsTask = this.loadTxInputsSource.ReadAsync(StartInputTxQueuer(loadingTxes, loadedTxes)).WaitOnDispose())
+            using (var inputTxLoaderTask = this.inputTxLoader.SubscribeObservers(loadTxInputsSource, StartInputTxLoader(loadedTxes)).WaitOnDispose())
             {
-                var loadTxInputsSource = StartInputTxQueuer(loadingTxes, loadedTxes);
-
-                var inputTxLoaderTask = this.inputTxLoader.SubscribeObservers(loadTxInputsSource, StartInputTxLoader(loadedTxes));
-
                 foreach (var loadedTx in loadedTxes.GetConsumingEnumerable())
                     yield return loadedTx;
-
-                inputTxLoaderTask.Wait();
             }
         }
 
-        private IEnumerable<Tuple<LoadingTx, int>> StartInputTxQueuer(IEnumerable<LoadingTx> loadingTxes, ConcurrentBlockingQueue<LoadedTx> loadedTxes)
+        private IEnumerable<Tuple<LoadingTx, int>> StartInputTxQueuer(ParallelReader<LoadingTx> loadingTxes, ConcurrentBlockingQueue<LoadedTx> loadedTxes)
         {
-            foreach (var loadingTx in loadingTxes)
+            foreach (var loadingTx in loadingTxes.GetConsumingEnumerable())
             {
                 // queue up inputs to be loaded for non-coinbase transactions
                 if (!loadingTx.IsCoinbase)

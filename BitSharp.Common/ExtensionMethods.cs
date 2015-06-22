@@ -470,5 +470,10 @@ namespace BitSharp.Common.ExtensionMethods
                 stopwatch.Stop();
             }
         }
+
+        public static IDisposable WaitOnDispose(this Task task)
+        {
+            return new DisposeAction(() => { task.Wait(); task.Dispose(); });
+        }
     }
 }

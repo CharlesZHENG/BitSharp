@@ -1,4 +1,5 @@
 ﻿using BitSharp.Common;
+using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Domain;
 using BitSharp.Core.Rules;
 using BitSharp.Core.Storage;
@@ -20,6 +21,8 @@ namespace BitSharp.Core.Builders
         private readonly IBlockchainRules rules;
 
         private readonly UtxoReplayer pendingTxLoader;
+        private readonly ParallelReader<LoadingTx> loadingTxesSource;
+        private readonly ParallelReader<LoadedTx> loadedTxesSource;
         private readonly TxLoader txLoader;
         private readonly ParallelObserver<LoadedTx> txSorter;
 
@@ -34,6 +37,8 @@ namespace BitSharp.Core.Builders
             var ioThreadCount = 4;
 
             this.pendingTxLoader = new UtxoReplayer("BlockReplayer", coreStorage, ioThreadCount);
+            this.loadingTxesSource = new ParallelReader<LoadingTx>("BlockReplayer.LoadingTxesSource");
+            this.loadedTxesSource = new ParallelReader<LoadedTx>("BlockReplayer.LoadedTxesSource");
             this.txLoader = new TxLoader("BlockReplayer", null, coreStorage, ioThreadCount);
             this.txSorter = new ParallelObserver<LoadedTx>("BlockReplayer", 1);
         }
@@ -49,6 +54,8 @@ namespace BitSharp.Core.Builders
             if (!isDisposed && disposing)
             {
                 this.pendingTxLoader.Dispose();
+                this.loadingTxesSource.Dispose();
+                this.loadedTxesSource.Dispose();
                 this.txLoader.Dispose();
                 this.txSorter.Dispose();
 
@@ -72,12 +79,11 @@ namespace BitSharp.Core.Builders
             this.pendingTxLoader.ReplayCalculateUtxo(chainState, replayBlock, replayForward,
                 loadingTxes =>
                 {
-                    var loadedTxes = this.txLoader.LoadTxes(loadingTxes.GetConsumingEnumerable());
-
+                    using (var loadingTxesTask = this.loadingTxesSource.ReadAsync(loadingTxes.GetConsumingEnumerable()).WaitOnDispose())
+                    using (var loadedTxesTask = this.loadedTxesSource.ReadAsync(this.txLoader.LoadTxes(loadingTxesSource)).WaitOnDispose())
                     using (var sortedTxes = new ConcurrentBlockingQueue<LoadedTx>())
+                    using (var txSorterTask = StartTxSorter(replayBlock, loadedTxesSource, sortedTxes).WaitOnDispose())
                     {
-                        var txSorterTask = StartTxSorter(replayBlock, loadedTxes, sortedTxes);
-
                         var replayTxes = sortedTxes.GetConsumingEnumerable();
                         //TODO Reverse() here means everything must be loaded first, the tx sorter should handle this instead
                         if (!replayForward)
@@ -85,13 +91,11 @@ namespace BitSharp.Core.Builders
 
                         foreach (var tx in replayTxes)
                             replayAction(tx);
-
-                        txSorterTask.Wait();
                     }
                 });
         }
 
-        private Task StartTxSorter(ChainedHeader replayBlock, IEnumerable<LoadedTx> loadedTxes, ConcurrentBlockingQueue<LoadedTx> sortedTxes)
+        private Task StartTxSorter(ChainedHeader replayBlock, ParallelReader<LoadedTx> loadedTxes, ConcurrentBlockingQueue<LoadedTx> sortedTxes)
         {
             // txSorter will only have a single consumer thread, so SortedList is safe to use
             var pendingSortedTxes = new SortedList<int, LoadedTx>();

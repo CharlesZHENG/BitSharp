@@ -112,6 +112,8 @@
     <Compile Include="MockWorker.cs" />
     <Compile Include="DurationMeasureTest.cs" />
     <Compile Include="ParallelConsumerTest.cs" />
+    <Compile Include="ParallelConsumerProducerTest.cs" />
+    <Compile Include="ParallelReaderTest.cs" />
     <Compile Include="RateMeasureTest.cs" />
     <Compile Include="TestData.cs" />
     <Compile Include="UInt256Test.cs" />

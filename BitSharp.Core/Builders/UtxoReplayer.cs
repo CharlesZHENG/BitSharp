@@ -1,4 +1,5 @@
 ﻿using BitSharp.Common;
+using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Domain;
 using NLog;
 using System;
@@ -16,16 +17,21 @@ namespace BitSharp.Core.Builders
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly CoreStorage coreStorage;
+
+        private readonly ParallelReader<BlockTx> blockTxesSource;
         private readonly ParallelObserver<BlockTx> loadingTxLookuper;
 
         public UtxoReplayer(string name, CoreStorage coreStorage, int threadCount)
         {
             this.coreStorage = coreStorage;
+
+            this.blockTxesSource = new ParallelReader<BlockTx>(name + ".BlockTxesSource");
             this.loadingTxLookuper = new ParallelObserver<BlockTx>(name + ".PendingTxLoader", threadCount);
         }
 
         public void Dispose()
         {
+            this.blockTxesSource.Dispose();
             this.loadingTxLookuper.Dispose();
         }
 
@@ -41,11 +47,13 @@ namespace BitSharp.Core.Builders
 
                 if (replayForward)
                 {
+                    using (var blockTxesTask = this.blockTxesSource.ReadAsync(blockTxes).WaitOnDispose())
                     //TODO replay backwards should also use this code path if this is not a re-org block, there won't be unminted txes
                     //TODO should be a ReplayRollbackUtxo method
-                    var loadingTxLookupTask = StartLoadingTxLookup(chainState, replayBlock, blockTxes, loadingTxes);
-                    workAction(loadingTxes);
-                    loadingTxLookupTask.Wait();
+                    using (var loadingTxLookupTask = StartLoadingTxLookup(chainState, replayBlock, blockTxesSource, loadingTxes).WaitOnDispose())
+                    {
+                        workAction(loadingTxes);
+                    }
                 }
                 else
                 {
@@ -80,7 +88,7 @@ namespace BitSharp.Core.Builders
             }
         }
 
-        private Task StartLoadingTxLookup(IChainState chainState, ChainedHeader replayBlock, IEnumerable<BlockTx> blockTxes, ConcurrentBlockingQueue<LoadingTx> loadingTxes)
+        private Task StartLoadingTxLookup(IChainState chainState, ChainedHeader replayBlock, ParallelReader<BlockTx> blockTxes, ConcurrentBlockingQueue<LoadingTx> loadingTxes)
         {
             return this.loadingTxLookuper.SubscribeObservers(blockTxes,
                 Observer.Create<BlockTx>(

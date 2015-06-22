@@ -14,33 +14,33 @@ namespace BitSharp.Core.Builders
 {
     internal class UtxoLookAhead : IDisposable
     {
+        private readonly ParallelReader<Tuple<UInt256, CompletionCount>> utxoWarmupSource;
         private readonly ParallelObserver<Tuple<UInt256, CompletionCount>> utxoReader;
 
         public UtxoLookAhead()
         {
+            this.utxoWarmupSource = new ParallelReader<Tuple<UInt256, CompletionCount>>("UtxoLookAhead.UtxoWarmupSource");
             this.utxoReader = new ParallelObserver<Tuple<UInt256, CompletionCount>>("UtxoLookAhead.UtxoReader", 4);
         }
 
         public void Dispose()
         {
+            this.utxoWarmupSource.Dispose();
             this.utxoReader.Dispose();
         }
 
         public IEnumerable<BlockTx> LookAhead(IEnumerable<BlockTx> blockTxes, DeferredChainStateCursor deferredChainStateCursor)
         {
             using (var progress = new Progress())
+            // create the observable source of each utxo entry to be warmed up: each input's previous transaction, and each new transaction
+            using (var utxoWarmupTask = this.utxoWarmupSource.ReadAsync(CreateBlockTxesSource(progress, blockTxes)).WaitOnDispose())
+            // subscribe the utxo entries to be warmed up
+            using (var utxoReaderTask = this.utxoReader.SubscribeObservers(utxoWarmupSource, CreateUtxoWarmer(progress, deferredChainStateCursor)).WaitOnDispose())
             {
-                // create the observable source of each utxo entry to be warmed up: each input's previous transaction, and each new transaction
-                var utxoWarmupSource = CreateBlockTxesSource(progress, blockTxes);
-
-                // subscribe the utxo entries to be warmed up
-                var utxoReaderTask = this.utxoReader.SubscribeObservers(utxoWarmupSource, CreateUtxoWarmer(progress, deferredChainStateCursor));
 
                 // return the warmed-up transactions, in the original block order
                 foreach (var blockTx in CreateWarmedTxesSource(progress))
                     yield return blockTx;
-
-                utxoReaderTask.Wait();
             }
         }
 

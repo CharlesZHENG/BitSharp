@@ -6,8 +6,10 @@ using BitSharp.Core.Storage;
 using NLog;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Reactive;
 using System.Reactive.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace BitSharp.Core.Builders
@@ -16,14 +18,18 @@ namespace BitSharp.Core.Builders
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
+        private readonly ReaderWriterLockSlim controlLock = new ReaderWriterLockSlim();
+
         private readonly CoreStorage coreStorage;
         private readonly IBlockchainRules rules;
 
-        private readonly ParallelObserver<LoadedTx> txValidator;
+        private readonly ParallelConsumerProducer<LoadedTx, Tuple<LoadedTx, int>> txValidator;
         private readonly ParallelObserver<Tuple<LoadedTx, int>> scriptValidator;
+
         private TaskCompletionSource<object> tcs;
         private ConcurrentBlockingQueue<Tuple<LoadedTx, int>> validateScriptQueue;
         private bool scriptError;
+        private Exception taskException;
 
         public BlockValidator(CoreStorage coreStorage, IBlockchainRules rules)
         {
@@ -33,7 +39,7 @@ namespace BitSharp.Core.Builders
             // thread count for cpu tasks (TxValidator, ScriptValidator)
             var cpuThreadCount = Environment.ProcessorCount * 2;
 
-            this.txValidator = new ParallelObserver<LoadedTx>("BlockValidator.TxValidator", cpuThreadCount);
+            this.txValidator = new ParallelConsumerProducer<LoadedTx, Tuple<LoadedTx, int>>("BlockValidator.TxValidator", cpuThreadCount);
             this.scriptValidator = new ParallelObserver<Tuple<LoadedTx, int>>("BlockValidator.ScriptValidator", cpuThreadCount);
         }
 
@@ -41,18 +47,34 @@ namespace BitSharp.Core.Builders
         {
             this.txValidator.Dispose();
             this.scriptValidator.Dispose();
+            this.controlLock.Dispose();
         }
 
-        public Task ValidateTransactions(ChainedHeader chainedHeader, IEnumerable<LoadedTx> loadedTxes, out Task loadedTxesReadTask)
+        public Task ValidateTransactions(ChainedHeader chainedHeader, ParallelReader<LoadedTx> loadedTxes)
         {
-            this.tcs = new TaskCompletionSource<object>();
-            this.validateScriptQueue = new ConcurrentBlockingQueue<Tuple<LoadedTx, int>>();
-            this.scriptError = false;
+            controlLock.EnterWriteLock();
+            try
+            {
+                if (tcs != null)
+                    throw new InvalidOperationException();
 
-            var txValidatorTask = this.txValidator.SubscribeObservers(loadedTxes, CreateTxValidator(chainedHeader), out loadedTxesReadTask);
-            var scriptValidatorTask = this.scriptValidator.SubscribeObservers(validateScriptQueue.GetConsumingEnumerable(), CreateScriptValidator(chainedHeader, txValidatorTask));
+                this.tcs = new TaskCompletionSource<object>();
+                this.validateScriptQueue = new ConcurrentBlockingQueue<Tuple<LoadedTx, int>>();
+                this.scriptError = false;
+                this.taskException = null;
 
-            return this.tcs.Task;
+                var txValidatorTask = this.txValidator.ConsumeProduceAsync(loadedTxes,
+                    CreateTxValidator(chainedHeader),
+                    loadedTx => QueueTransactionScripts(chainedHeader, loadedTx));
+
+                var scriptValidatorTask = this.scriptValidator.SubscribeObservers(txValidator, CreateScriptValidator(chainedHeader, txValidatorTask));
+
+                return this.tcs.Task;
+            }
+            finally
+            {
+                controlLock.ExitWriteLock();
+            }
         }
 
         private IObserver<LoadedTx> CreateTxValidator(ChainedHeader chainedHeader)
@@ -63,7 +85,7 @@ namespace BitSharp.Core.Builders
                     QueueTransactionScripts(chainedHeader, loadedTx);
                     this.rules.ValidateTransaction(chainedHeader, loadedTx);
                 },
-                ex => validateScriptQueue.CompleteAdding(),
+                ex => { taskException = taskException ?? ex; validateScriptQueue.CompleteAdding(); },
                 () => validateScriptQueue.CompleteAdding());
         }
 
@@ -77,23 +99,21 @@ namespace BitSharp.Core.Builders
                     var txInput = loadedTx.Transaction.Inputs[inputIndex];
                     var prevTxOutput = loadedTx.GetInputPrevTxOutput(inputIndex);
 
-                    var success = false;
                     try
                     {
                         this.rules.ValidationTransactionScript(chainedHeader, loadedTx.Transaction, loadedTx.TxIndex, txInput, inputIndex, prevTxOutput);
-                        success = true;
                     }
-                    finally
+                    catch (Exception ex)
                     {
-                        if (!success)
-                            this.scriptError = true;
+                        taskException = ex;
+                        scriptError = true;
                     }
                 },
                 ex => Finish(chainedHeader, txValidatorTask, ex),
                 () => Finish(chainedHeader, txValidatorTask));
         }
 
-        private void QueueTransactionScripts(ChainedHeader chainedHeader, LoadedTx loadedTx)
+        private IEnumerable<Tuple<LoadedTx, int>> QueueTransactionScripts(ChainedHeader chainedHeader, LoadedTx loadedTx)
         {
             if (!this.rules.IgnoreScripts)
             {
@@ -103,38 +123,53 @@ namespace BitSharp.Core.Builders
                 if (!loadedTx.IsCoinbase)
                 {
                     for (var inputIndex = 0; inputIndex < transaction.Inputs.Length; inputIndex++)
-                        validateScriptQueue.Add(Tuple.Create(loadedTx, inputIndex));
+                        yield return Tuple.Create(loadedTx, inputIndex);
                 }
             }
         }
 
         private void Finish(ChainedHeader chainedHeader, Task txValidatorTask, Exception ex = null)
         {
+            controlLock.EnterUpgradeableReadLock();
             try
             {
-                txValidatorTask.Wait();
-            }
-            catch (Exception txValidatorEx)
-            {
-                ex = txValidatorEx;
-            }
-            var validateScriptQueueLocal = this.validateScriptQueue;
+                taskException = taskException ?? ex;
+                try
+                {
+                    txValidatorTask.Wait();
+                }
+                catch (Exception validatorEx)
+                {
+                    taskException = taskException ?? validatorEx;
+                }
 
-            bool finished;
-            if (ex != null && this.scriptError && this.rules.IgnoreScriptErrors)
-            {
-                logger.Debug("Ignoring script errors in block: {0,9:#,##0}, errors: {1:#,##0}".Format2(chainedHeader.Height, ((AggregateException)ex).InnerExceptions.Count));
-                finished = tcs.TrySetResult(null);
-            }
-            else if (ex != null)
-                finished = tcs.TrySetException(ex);
-            else
-                finished = tcs.TrySetResult(null);
+                controlLock.EnterWriteLock();
+                try
+                {
+                    if (taskException != null)
+                    {
+                        if (this.scriptError && this.rules.IgnoreScriptErrors)
+                        {
+                            var aggEx = taskException as AggregateException;
+                            logger.Debug("Ignoring script errors in block: {0,9:#,##0}, errors: {1:#,##0}".Format2(chainedHeader.Height, aggEx != null ? aggEx.InnerExceptions.Count : -1));
+                            tcs.SetResult(null);
+                        }
+                        else
+                            tcs.SetException(taskException);
+                    }
+                    else
+                        tcs.SetResult(null);
 
-            if (finished)
+                    tcs = null;
+                }
+                finally
+                {
+                    controlLock.ExitWriteLock();
+                }
+            }
+            finally
             {
-                validateScriptQueueLocal.CompleteAdding();
-                validateScriptQueueLocal.Dispose();
+                controlLock.ExitUpgradeableReadLock();
             }
         }
     }
