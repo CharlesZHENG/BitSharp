@@ -124,6 +124,7 @@
     <Compile Include="Builders\LoadingTx.cs" />
     <Compile Include="Domain\IChainState.cs" />
     <Compile Include="PruningMode.cs" />
+    <Compile Include="Storage\SplitBlockTxesStorage.cs" />
     <Compile Include="Storage\CoreStorage.cs" />
     <Compile Include="Domain\TxLookupKey.cs" />
     <Compile Include="MerkleTree.cs" />

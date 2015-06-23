@@ -7,7 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace BitSharp.Esent
+namespace BitSharp.Core.Storage
 {
     public class SplitBlockTxesStorage : IBlockTxesStorage
     {
@@ -57,28 +57,9 @@ namespace BitSharp.Esent
             return GetStorage(blockHash).ContainsBlock(blockHash);
         }
 
-        public IEnumerable<UInt256> TryAddBlockTransactions(IEnumerable<KeyValuePair<UInt256, IEnumerable<Transaction>>> blockTransactions)
+        public bool TryAddBlockTransactions(UInt256 blockHash, IEnumerable<Transaction> blockTxes)
         {
-            var addedBlocks = new List<UInt256>();
-            try
-            {
-                foreach (var keyPair in blockTransactions)
-                {
-                    var blockHash = keyPair.Key;
-                    var blockTxes = keyPair.Value;
-
-                    addedBlocks.AddRange(
-                        GetStorage(blockHash).TryAddBlockTransactions(new[] { new KeyValuePair<UInt256, IEnumerable<Transaction>>(blockHash, blockTxes) }));
-                }
-
-                return addedBlocks;
-            }
-            catch (Exception e)
-            {
-                //TODO
-                logger.Warn(e);
-                return addedBlocks;
-            }
+            return GetStorage(blockHash).TryAddBlockTransactions(blockHash, blockTxes);
         }
 
         public bool TryGetTransaction(UInt256 blockHash, int txIndex, out Transaction transaction)

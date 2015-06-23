@@ -51,8 +51,7 @@ namespace BitSharp.Core.Workers
             this.Mode = PruningMode.None;
 
             // initialize a pool of pruning workers
-            //TODO
-            var txesPruneThreadCount = storageManager.GetType().Name.Contains("Lmdb") ? 1 : Environment.ProcessorCount * 2;
+            var txesPruneThreadCount = Environment.ProcessorCount * 2;
             this.pruneBlockWorkers = new WorkerPool("PruningWorker.PruneBlockWorkers", txesPruneThreadCount);
         }
 

@@ -28,9 +28,11 @@ namespace BitSharp.Esent
 
         private bool isDisposed;
 
-        public BlockTxesStorage(string baseDirectory)
+        public BlockTxesStorage(string baseDirectory, int? index = null)
         {
             this.jetDirectory = Path.Combine(baseDirectory, "BlockTxes");
+            if (index.HasValue)
+                this.jetDirectory = Path.Combine(jetDirectory, index.Value.ToString());
             this.jetDatabase = Path.Combine(this.jetDirectory, "BlockTxes.edb");
 
             this.cursorCache = new DisposableCache<BlockTxesCursor>(64,

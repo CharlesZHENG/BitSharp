@@ -24,7 +24,7 @@ namespace BitSharp.Lmdb
         private readonly object chainStateManagerLock;
 
         private BlockStorage blockStorage;
-        private BlockTxesStorage blockTxesStorage;
+        private SplitBlockTxesStorage blockTxesStorage;
         private LmdbChainStateManager chainStateManager;
 
         private bool isDisposed;
@@ -51,7 +51,7 @@ namespace BitSharp.Lmdb
             Dispose(true);
             GC.SuppressFinalize(this);
         }
-        
+
         protected virtual void Dispose(bool disposing)
         {
             if (!isDisposed && disposing)
@@ -86,10 +86,12 @@ namespace BitSharp.Lmdb
         {
             get
             {
+                const int splitCount = 32;
+
                 if (this.blockTxesStorage == null)
                     lock (this.blockTxesStorageLock)
                         if (this.blockTxesStorage == null)
-                            this.blockTxesStorage = new BlockTxesStorage(this.baseDirectory, this.blockTxesSize);
+                            this.blockTxesStorage = new SplitBlockTxesStorage(splitCount, x => new BlockTxesStorage(this.baseDirectory, this.blockTxesSize / splitCount, x));
 
                 return this.blockTxesStorage;
             }
