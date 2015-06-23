@@ -106,6 +106,7 @@ namespace BitSharp.Core.Builders
         {
             this.commitLock.DoWrite(() =>
             {
+                var stopwatch = Stopwatch.StartNew();
                 var committed = false;
                 this.BeginTransaction(readOnly: true, onCursor: false);
                 try
@@ -121,14 +122,14 @@ namespace BitSharp.Core.Builders
                         this.chainStateCursor.RollbackTransaction();
                     }
 
-                    Task calcUtxoReadsQueueTask;
-                    var blockTxesCalculateQueue = this.utxoLookAhead.LookAhead(blockTxes, deferredChainStateCursor);
-                    using (var calcUtxoTask = this.calcUtxoSource.ReadAsync(CalculateUtxo(chainedHeader, blockTxesCalculateQueue, deferredChainStateCursor), null, null, out calcUtxoReadsQueueTask).WaitOnDispose())
-                    using (var loadedTxesTask = this.txLoader.LoadTxes(calcUtxoSource).WaitOnDispose())
-                    using (var blockValidationTask = this.blockValidator.ValidateTransactions(chainedHeader, txLoader).WaitOnDispose())
+                    var cursorInTransaction = false;
+                    try
                     {
-                        var cursorInTransaction = false;
-                        try
+                        Task calcUtxoReadsQueueTask;
+                        var blockTxesCalculateQueue = this.utxoLookAhead.LookAhead(blockTxes, deferredChainStateCursor);
+                        using (var calcUtxoTask = this.calcUtxoSource.ReadAsync(CalculateUtxo(chainedHeader, blockTxesCalculateQueue, deferredChainStateCursor), null, null, out calcUtxoReadsQueueTask).WaitOnDispose())
+                        using (var loadedTxesTask = this.txLoader.LoadTxes(calcUtxoSource).WaitOnDispose())
+                        using (var blockValidationTask = this.blockValidator.ValidateTransactions(chainedHeader, txLoader).WaitOnDispose())
                         {
                             // wait for the utxo calculation to finish before applying
                             calcUtxoReadsQueueTask.Wait();
@@ -150,29 +151,31 @@ namespace BitSharp.Core.Builders
                             {
                                 blockValidationTask.Dispose();
                             });
+                        }
 
-                            // only commit the utxo changes once block validation has completed
-                            this.chainStateCursor.CommitTransaction();
-                            cursorInTransaction = false;
-                        }
-                        finally
-                        {
-                            // rollback if the transaction was not comitted
-                            if (cursorInTransaction)
-                                this.chainStateCursor.RollbackTransaction();
-                        }
+                        // only commit the utxo changes once block validation has completed
+                        Debug.Assert(cursorInTransaction);
+                        this.chainStateCursor.CommitTransaction();
+                        cursorInTransaction = false;
+
+                        // commit the chain state
+                        this.CommitTransaction(onCursor: false);
+                        committed = true;
+                        
+                        // MEASURE: Block Rate
+                        if (chainedHeader.Height > 0)
+                            this.stats.blockRateMeasure.Tick();
                     }
-
-                    // commit the chain state
-                    this.CommitTransaction(onCursor: false);
-                    committed = true;
-
-                    // MEASURE: Block Rate
-                    if (chainedHeader.Height > 0)
-                        this.stats.blockRateMeasure.Tick();
+                    finally
+                    {
+                        // rollback if the transaction was not comitted
+                        if (cursorInTransaction)
+                            this.chainStateCursor.RollbackTransaction();
+                    }
                 }
                 finally
                 {
+                    stats.addBlockDurationMeasure.Tick(stopwatch.Elapsed);
                     // rollback the chain state on error
                     if (!committed)
                         this.RollbackTransaction(onCursor: false);
@@ -306,6 +309,7 @@ namespace BitSharp.Core.Builders
                     "Avg. UTXO Calculation Time: {14,12:#,##0.000}ms",
                     "Avg. UTXO Application Time: {15,12:#,##0.000}ms",
                     "Avg. Wait-to-complete Time: {16,12:#,##0.000}ms",
+                    "Avg. AddBlock Time:         {17,12:#,##0.000}ms",
                     new string('-', 80)
                 )
                 .Format2
@@ -326,7 +330,8 @@ namespace BitSharp.Core.Builders
                 /*13*/ this.Stats.pendingTxesAtCompleteAverageMeasure.GetAverage(),
                 /*14*/ this.Stats.calculateUtxoDurationMeasure.GetAverage().TotalMilliseconds,
                 /*15*/ this.Stats.applyUtxoDurationMeasure.GetAverage().TotalMilliseconds,
-                /*16*/ this.Stats.waitToCompleteDurationMeasure.GetAverage().TotalMilliseconds
+                /*16*/ this.Stats.waitToCompleteDurationMeasure.GetAverage().TotalMilliseconds,
+                /*17*/ this.Stats.addBlockDurationMeasure.GetAverage().TotalMilliseconds
                 ));
         }
 
@@ -384,6 +389,7 @@ namespace BitSharp.Core.Builders
             public readonly AverageMeasure pendingTxesTotalAverageMeasure = new AverageMeasure(sampleCutoff, sampleResolution);
             public readonly AverageMeasure pendingTxesAtCompleteAverageMeasure = new AverageMeasure(sampleCutoff, sampleResolution);
             public readonly DurationMeasure waitToCompleteDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
+            public readonly DurationMeasure addBlockDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
             public readonly RateMeasure blockRateMeasure = new RateMeasure(sampleCutoff, sampleResolution);
             public readonly RateMeasure txRateMeasure = new RateMeasure(sampleCutoff, sampleResolution);
             public readonly RateMeasure inputRateMeasure = new RateMeasure(sampleCutoff, sampleResolution);
@@ -400,6 +406,7 @@ namespace BitSharp.Core.Builders
                 this.pendingTxesAtCompleteAverageMeasure.Dispose();
                 this.waitToCompleteDurationMeasure.Dispose();
                 this.blockRateMeasure.Dispose();
+                this.addBlockDurationMeasure.Dispose();
                 this.txRateMeasure.Dispose();
                 this.inputRateMeasure.Dispose();
             }
