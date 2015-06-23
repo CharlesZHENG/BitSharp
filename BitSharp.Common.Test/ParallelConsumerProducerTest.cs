@@ -44,10 +44,10 @@ namespace BitSharp.Common.Test
             {
                 var sourceTask = sourceReader.ReadAsync(source.GetConsumingEnumerable());
 
-                var actualConsumed = new List<int>();
+                var actualConsumed = new ConcurrentQueue<int>();
                 var consumeProduceTask = consumerProducer.ConsumeProduceAsync(sourceReader,
                     // track consumed items
-                    Observer.Create<int>(x => actualConsumed.Add(x)),
+                    Observer.Create<int>(x => actualConsumed.Enqueue(x)),
                     // produce a list from x*2 and x*2+1
                     x => new[] { (long)x * 2, x * 2 + 1 });
 
