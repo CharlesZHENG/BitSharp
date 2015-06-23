@@ -16,7 +16,6 @@ namespace BitSharp.Core.Storage
         private readonly int splitCount;
         private readonly Func<int, IBlockTxesStorage> createBlockTxesStorage;
         private readonly IBlockTxesStorage[] storages;
-        private readonly WorkerPool storageWorkers;
 
         public SplitBlockTxesStorage(int splitCount, Func<int, IBlockTxesStorage> createBlockTxesStorage)
         {
@@ -24,7 +23,6 @@ namespace BitSharp.Core.Storage
             this.createBlockTxesStorage = createBlockTxesStorage;
 
             this.storages = new IBlockTxesStorage[splitCount];
-            this.storageWorkers = new WorkerPool("SplitBlockTxesStorage", splitCount);
 
             try
             {
@@ -41,7 +39,6 @@ namespace BitSharp.Core.Storage
         public void Dispose()
         {
             this.storages.DisposeList();
-            this.storageWorkers.Dispose();
         }
 
         public int BlockCount
@@ -101,14 +98,14 @@ namespace BitSharp.Core.Storage
 
         public void Flush()
         {
-            lock (this.storageWorkers)
-                this.storageWorkers.Do(index => this.storages[index].Flush());
+            foreach (var storage in storages)
+                storage.Flush();
         }
 
         public void Defragment()
         {
-            lock (this.storageWorkers)
-                this.storageWorkers.Do(index => this.storages[index].Defragment());
+            foreach (var storage in storages)
+                storage.Defragment();
         }
 
         private IBlockTxesStorage GetStorage(UInt256 blockHash)
