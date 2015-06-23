@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace BitSharp.Common
 {
@@ -10,6 +11,6 @@ namespace BitSharp.Common
 
         IEnumerable<T> GetConsumingEnumerable();
 
-        void Cancel();
+        void Cancel(Exception ex);
     }
 }

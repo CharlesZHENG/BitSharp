@@ -163,7 +163,7 @@ namespace BitSharp.Common
                     this.consumeExceptions.Add(ex);
                 else
                     this.readException = ex;
-                this.source.Cancel();
+                this.source.Cancel(ex);
             }
             // ensure consumer thread completion is tracked
             finally

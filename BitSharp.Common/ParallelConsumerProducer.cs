@@ -127,8 +127,8 @@ namespace BitSharp.Common
                 // cancel readers on exception
                 if (ex != null)
                 {
-                    source.Cancel();
-                    producer.Cancel();
+                    source.Cancel(ex);
+                    producer.Cancel(ex);
                 }
 
                 // wait for the producer task to finish, capture any exception
@@ -184,9 +184,9 @@ namespace BitSharp.Common
             get { return producer.Count; }
         }
 
-        void IParallelReader<TOut>.Cancel()
+        void IParallelReader<TOut>.Cancel(Exception ex)
         {
-            producer.Cancel();
+            producer.Cancel(ex);
         }
 
         // attempt to cleanup any outstanding consume+produce during disposal, without causing Dispose() to throw errors

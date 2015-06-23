@@ -133,10 +133,12 @@ namespace BitSharp.Common
             }
         }
 
-        public void Cancel()
+        public void Cancel(Exception ex)
         {
             try
             {
+                if (ex != null)
+                    readException = ex;
                 if (cancelToken != null)
                     cancelToken.Cancel();
             }
@@ -210,10 +212,10 @@ namespace BitSharp.Common
                     this.queue.CompleteAdding();
 
                     // complete the task indicating that all reads have been queued
-                    if (this.cancelToken.IsCancellationRequested)
-                        this.readsQueuedTcs.SetCanceled();
-                    else if (this.readException != null)
+                    if (this.readException != null)
                         this.readsQueuedTcs.SetException(this.readException);
+                    else if (this.cancelToken.IsCancellationRequested)
+                        this.readsQueuedTcs.SetCanceled();
                     else
                         this.readsQueuedTcs.SetResult(null);
 
@@ -287,10 +289,10 @@ namespace BitSharp.Common
                 this.consumersCompleted.Dispose();
 
                 // set task result
-                if (isCancelled)
-                    tcs.SetCanceled();
-                else if (readException != null)
+                if (readException != null)
                     tcs.SetException(readException);
+                else if (isCancelled)
+                    tcs.SetCanceled();
                 else
                     tcs.SetResult(null);
 
