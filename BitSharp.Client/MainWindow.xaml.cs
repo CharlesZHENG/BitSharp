@@ -173,16 +173,16 @@ namespace BitSharp.Client
 
                 this.DataContext = this.viewModel;
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
                 if (this.logger != null)
                 {
-                    this.logger.Fatal("Application failed", e);
+                    this.logger.Fatal(ex, "Application failed");
                     LogManager.Flush();
                 }
                 else
                 {
-                    Console.WriteLine(e);
+                    Console.WriteLine(ex);
                 }
 
                 Environment.Exit(-1);
