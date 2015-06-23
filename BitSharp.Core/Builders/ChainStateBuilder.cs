@@ -130,7 +130,6 @@ namespace BitSharp.Core.Builders
                         var cursorInTransaction = false;
                         try
                         {
-
                             // wait for the utxo calculation to finish before applying
                             calcUtxoReadsQueueTask.Wait();
 
