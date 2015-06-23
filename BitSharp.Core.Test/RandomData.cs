@@ -8,7 +8,7 @@ using System.Linq;
 
 namespace BitSharp.Core.Test
 {
-    public class RandomDataOptions
+    public struct RandomDataOptions
     {
         public int? MinimumBlockCount { get; set; }
         public int? BlockCount { get; set; }
@@ -28,7 +28,7 @@ namespace BitSharp.Core.Test
             return new Block
             (
                 header: RandomBlockHeader(),
-                transactions: Enumerable.Range(0, random.Next((options != null ? options.TransactionCount : null) ?? 100)).Select(x => RandomTransaction()).ToImmutableArray()
+                transactions: Enumerable.Range(0, random.NextOrExactly(100, options.TransactionCount)).Select(x => RandomTransaction()).ToImmutableArray()
             );
         }
 
@@ -50,8 +50,8 @@ namespace BitSharp.Core.Test
             return new Transaction
             (
                 version: random.NextUInt32(),
-                inputs: Enumerable.Range(0, random.Next((options != null ? options.TxInputCount : null) ?? 100)).Select(x => RandomTxInput()).ToImmutableArray(),
-                outputs: Enumerable.Range(0, random.Next((options != null ? options.TxOutputCount : null) ?? 100)).Select(x => RandomTxOutput()).ToImmutableArray(),
+                inputs: Enumerable.Range(0, random.NextOrExactly(10, options.TxInputCount)).Select(x => RandomTxInput()).ToImmutableArray(),
+                outputs: Enumerable.Range(0, random.NextOrExactly(10, options.TxOutputCount)).Select(x => RandomTxOutput()).ToImmutableArray(),
                 lockTime: random.NextUInt32()
             );
         }
@@ -65,7 +65,7 @@ namespace BitSharp.Core.Test
                     txHash: random.NextUInt256(),
                     txOutputIndex: random.NextUInt32()
                 ),
-                scriptSignature: random.NextBytes(random.Next((options != null ? options.ScriptSignatureSize : null) ?? 100)),
+                scriptSignature: random.NextBytes(random.NextOrExactly(100, options.ScriptSignatureSize)),
                 sequence: random.NextUInt32()
             );
         }
@@ -75,7 +75,7 @@ namespace BitSharp.Core.Test
             return new TxOutput
             (
                 value: random.NextUInt64(),
-                scriptPublicKey: random.NextBytes(random.Next((options != null ? options.ScriptPublicKeySize : null) ?? 100))
+                scriptPublicKey: random.NextBytes(random.NextOrExactly(100, options.ScriptPublicKeySize))
             );
         }
 
@@ -96,7 +96,7 @@ namespace BitSharp.Core.Test
                 txHash: random.NextUInt256(),
                 blockIndex: random.Next(),
                 txIndex: random.Next(),
-                outputStates: new OutputStates(random.NextImmutableBitArray(random.Next((options != null ? options.TxOutputCount : null) ?? 100)))
+                outputStates: new OutputStates(random.NextImmutableBitArray(random.NextOrExactly(100, options.TxOutputCount)))
             );
         }
 
@@ -116,6 +116,14 @@ namespace BitSharp.Core.Test
                 bitArray[i] = random.NextBool();
 
             return bitArray.ToImmutableBitArray();
+        }
+
+        private static int NextOrExactly(this Random random, int maxValue, int? exactValue)
+        {
+            if (exactValue.HasValue)
+                return exactValue.Value;
+            else
+                return random.Next(maxValue);
         }
     }
 }

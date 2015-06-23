@@ -118,6 +118,7 @@
     <Compile Include="BlockchainWalkerTest.cs" />
     <Compile Include="BlockReplayerTest.cs" />
     <Compile Include="Builders\ChainBuilderTest.cs" />
+    <Compile Include="Builders\TxLoaderTest.cs" />
     <Compile Include="Domain\ChainTest.cs" />
     <Compile Include="BlockProvider.cs" />
     <Compile Include="MerkleTreeTest.cs" />

@@ -29,23 +29,23 @@ namespace BitSharp.Core.Builders
         {
             this.coreStorage = coreStorage;
 
-            this.loadTxInputsSource = new ParallelReader<Tuple<LoadingTx, int>>(name + ".LoadTxInputsSource");
-            this.inputTxLoader = new ParallelObserver<Tuple<LoadingTx, int>>(name + ".InputTxLoader", threadCount);
+            loadTxInputsSource = new ParallelReader<Tuple<LoadingTx, int>>(name + ".LoadTxInputsSource");
+            inputTxLoader = new ParallelObserver<Tuple<LoadingTx, int>>(name + ".InputTxLoader", threadCount);
         }
 
         public void Dispose()
         {
-            this.loadTxInputsSource.Dispose();
-            this.inputTxLoader.Dispose();
+            loadTxInputsSource.Dispose();
+            inputTxLoader.Dispose();
         }
 
-        public int PendingCount { get { return this.inputTxLoader.PendingCount; } }
+        public int PendingCount { get { return inputTxLoader.PendingCount; } }
 
-        public IEnumerable<LoadedTx> LoadTxes(ParallelReader<LoadingTx> loadingTxes)
+        public IEnumerable<LoadedTx> LoadTxes(ParallelReader<LoadingTx> loadingTxesReader)
         {
             using (var loadedTxes = new ConcurrentBlockingQueue<LoadedTx>())
-            using (var loadTxInputsTask = this.loadTxInputsSource.ReadAsync(StartInputTxQueuer(loadingTxes, loadedTxes)).WaitOnDispose())
-            using (var inputTxLoaderTask = this.inputTxLoader.SubscribeObservers(loadTxInputsSource, StartInputTxLoader(loadedTxes)).WaitOnDispose())
+            using (loadTxInputsSource.ReadAsync(StartInputTxQueuer(loadingTxesReader, loadedTxes)).WaitOnDispose())
+            using (inputTxLoader.SubscribeObservers(loadTxInputsSource, StartInputTxLoader(loadedTxes)).WaitOnDispose())
             {
                 foreach (var loadedTx in loadedTxes.GetConsumingEnumerable())
                     yield return loadedTx;

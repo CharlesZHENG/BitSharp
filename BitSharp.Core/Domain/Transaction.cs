@@ -32,14 +32,15 @@ namespace BitSharp.Core.Domain
 
         public UInt256 Hash { get { return this._hash; } }
 
-        public Transaction With(UInt32? Version = null, ImmutableArray<TxInput>? Inputs = null, ImmutableArray<TxOutput>? Outputs = null, UInt32? LockTime = null)
+        public Transaction With(UInt32? Version = null, ImmutableArray<TxInput>? Inputs = null, ImmutableArray<TxOutput>? Outputs = null, UInt32? LockTime = null, UInt256 Hash = null)
         {
             return new Transaction
             (
                 Version ?? this.Version,
                 Inputs ?? this.Inputs,
                 Outputs ?? this.Outputs,
-                LockTime ?? this.LockTime
+                LockTime ?? this.LockTime,
+                Hash ?? this.Hash
             );
         }
     }
