@@ -20,15 +20,13 @@ namespace BitSharp.Core.Builders
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        private readonly ChainStateBuilder.BuilderStats stats;
-        private readonly CoreStorage coreStorage;
+        private readonly ICoreStorage coreStorage;
 
         private readonly ParallelReader<Tuple<LoadingTx, int>> loadTxInputsSource;
         private readonly ParallelObserver<Tuple<LoadingTx, int>> inputTxLoader;
 
-        public TxLoader(string name, ChainStateBuilder.BuilderStats stats, CoreStorage coreStorage, int threadCount)
+        public TxLoader(string name, ICoreStorage coreStorage, int threadCount)
         {
-            this.stats = stats;
             this.coreStorage = coreStorage;
 
             this.loadTxInputsSource = new ParallelReader<Tuple<LoadingTx, int>>(name + ".LoadTxInputsSource");
@@ -100,19 +98,10 @@ namespace BitSharp.Core.Builders
             var inputPrevTxHash = input.PreviousTxOutputKey.TxHash;
 
             Transaction inputPrevTx;
-            var stopwatch = Stopwatch.StartNew();
             if (coreStorage.TryGetTransaction(prevOutputTxKey.BlockHash, prevOutputTxKey.TxIndex, out inputPrevTx))
             {
-                stopwatch.Stop();
-                if (this.stats != null && chainedHeader.Height > 0)
-                {
-                    this.stats.prevTxLoadDurationMeasure.Tick(stopwatch.Elapsed);
-                    this.stats.prevTxLoadRateMeasure.Tick();
-                }
-
                 if (input.PreviousTxOutputKey.TxHash != inputPrevTx.Hash)
                     throw new Exception("TODO");
-
             }
             else
                 throw new Exception("TODO");

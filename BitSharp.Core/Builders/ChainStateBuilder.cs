@@ -71,7 +71,7 @@ namespace BitSharp.Core.Builders
             this.utxoLookAhead = new UtxoLookAhead();
             this.calcUtxoSource = new ParallelReader<LoadingTx>("ChainStateBuilder.CalcUtxoSource");
             this.loadedTxesSource = new ParallelReader<LoadedTx>("ChainStateBuilder.LoadedTxesSource");
-            this.txLoader = new TxLoader("ChainStateBuilder", stats, coreStorage, ioThreadCount);
+            this.txLoader = new TxLoader("ChainStateBuilder", coreStorage, ioThreadCount);
             this.blockValidator = new BlockValidator(this.coreStorage, this.rules);
 
             this.commitLock = new ReaderWriterLockSlim();
@@ -324,8 +324,8 @@ namespace BitSharp.Core.Builders
                 /*7*/ this.chainStateCursor.TotalInputCount.ToString("#,##0"),
                 /*8*/ this.chainStateCursor.UnspentTxCount.ToString("#,##0"),
                 /*9*/ this.chainStateCursor.UnspentOutputCount.ToString("#,##0"),
-                /*10*/ this.Stats.prevTxLoadDurationMeasure.GetAverage().TotalMilliseconds,
-                /*11*/ this.Stats.prevTxLoadRateMeasure.GetAverage(),
+                /*10*/ this.coreStorage.GetTxLoadDuration().TotalMilliseconds,
+                /*11*/ this.coreStorage.GetTxLoadRate(),
                 /*12*/ this.Stats.pendingTxesTotalAverageMeasure.GetAverage(),
                 /*13*/ this.Stats.pendingTxesAtCompleteAverageMeasure.GetAverage(),
                 /*14*/ this.Stats.calculateUtxoDurationMeasure.GetAverage().TotalMilliseconds,
@@ -385,8 +385,6 @@ namespace BitSharp.Core.Builders
 
             public readonly DurationMeasure calculateUtxoDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
             public readonly DurationMeasure applyUtxoDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
-            public readonly DurationMeasure prevTxLoadDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
-            public readonly RateMeasure prevTxLoadRateMeasure = new RateMeasure(sampleCutoff, sampleResolution);
             public readonly AverageMeasure pendingTxesTotalAverageMeasure = new AverageMeasure(sampleCutoff, sampleResolution);
             public readonly AverageMeasure pendingTxesAtCompleteAverageMeasure = new AverageMeasure(sampleCutoff, sampleResolution);
             public readonly DurationMeasure waitToCompleteDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
@@ -402,8 +400,6 @@ namespace BitSharp.Core.Builders
             {
                 this.calculateUtxoDurationMeasure.Dispose();
                 this.applyUtxoDurationMeasure.Dispose();
-                this.prevTxLoadDurationMeasure.Dispose();
-                this.prevTxLoadRateMeasure.Dispose();
                 this.pendingTxesTotalAverageMeasure.Dispose();
                 this.pendingTxesAtCompleteAverageMeasure.Dispose();
                 this.waitToCompleteDurationMeasure.Dispose();

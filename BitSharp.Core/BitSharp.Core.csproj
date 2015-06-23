@@ -171,6 +171,7 @@
     <Compile Include="Storage\IBlockTxesStorage.cs" />
     <Compile Include="Storage\IBlockStorage.cs" />
     <Compile Include="ICoreDaemon.cs" />
+    <Compile Include="Storage\ICoreStorage.cs" />
     <Compile Include="Storage\IStorageManager.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Storage\IChainStateCursor.cs" />

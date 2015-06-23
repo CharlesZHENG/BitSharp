@@ -39,7 +39,7 @@ namespace BitSharp.Core.Builders
             this.pendingTxLoader = new UtxoReplayer("BlockReplayer", coreStorage, ioThreadCount);
             this.loadingTxesSource = new ParallelReader<LoadingTx>("BlockReplayer.LoadingTxesSource");
             this.loadedTxesSource = new ParallelReader<LoadedTx>("BlockReplayer.LoadedTxesSource");
-            this.txLoader = new TxLoader("BlockReplayer", null, coreStorage, ioThreadCount);
+            this.txLoader = new TxLoader("BlockReplayer", coreStorage, ioThreadCount);
             this.txSorter = new ParallelObserver<LoadedTx>("BlockReplayer", 1);
         }
 

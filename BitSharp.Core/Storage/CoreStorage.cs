@@ -1,17 +1,19 @@
 ﻿using BitSharp.Common;
+using BitSharp.Core.Builders;
 using BitSharp.Core.Domain;
 using NLog;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.Caching;
 using System.Threading;
 
 namespace BitSharp.Core.Storage
 {
-    public class CoreStorage : IDisposable
+    public class CoreStorage : ICoreStorage, IDisposable
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
@@ -25,6 +27,8 @@ namespace BitSharp.Core.Storage
         private readonly object[] presentBlockTxesLocks = new object[64];
 
         private readonly MemoryCache txCache = new MemoryCache("CoreStorage.TxCache");
+        private readonly DurationMeasure txLoadDurationMeasure = new DurationMeasure(TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(5));
+        private readonly RateMeasure txLoadRateMeasure = new RateMeasure(TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(5));
 
         private bool isDisposed;
 
@@ -53,6 +57,8 @@ namespace BitSharp.Core.Storage
             if (!isDisposed && disposing)
             {
                 this.txCache.Dispose();
+                this.txLoadDurationMeasure.Dispose();
+                this.txLoadRateMeasure.Dispose();
 
                 isDisposed = true;
             }
@@ -256,8 +262,14 @@ namespace BitSharp.Core.Storage
                 () =>
                 {
                     Transaction tx;
+                    var stopwatch = Stopwatch.StartNew();
                     if (this.blockTxesStorage.TryGetTransaction(blockHash, txIndex, out tx))
+                    {
+                        stopwatch.Stop();
+                        this.txLoadDurationMeasure.Tick(stopwatch.Elapsed);
+                        this.txLoadRateMeasure.Tick();
                         return tx;
+                    }
                     else
                         return null;
                 }, LazyThreadSafetyMode.ExecutionAndPublication);
@@ -275,6 +287,16 @@ namespace BitSharp.Core.Storage
                 txCache.Remove(key);
 
             return transaction != null;
+        }
+
+        public float GetTxLoadRate()
+        {
+            return this.txLoadRateMeasure.GetAverage();
+        }
+
+        public TimeSpan GetTxLoadDuration()
+        {
+            return this.txLoadDurationMeasure.GetAverage();
         }
 
         public bool TryReadBlockTransactions(UInt256 blockHash, UInt256 merkleRoot, bool requireTransactions, out IEnumerable<BlockTx> blockTxes)
