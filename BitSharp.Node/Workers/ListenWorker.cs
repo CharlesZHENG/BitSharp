@@ -57,9 +57,9 @@ namespace BitSharp.Node.Workers
                 }
                 this.listenSocket.Listen(SERVER_BACKLOG);
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                logger.Error("Failed to start listener socket.", e);
+                logger.Error(ex, "Failed to start listener socket.");
                 DisposeSocket();
                 throw;
             }
@@ -89,9 +89,9 @@ namespace BitSharp.Node.Workers
                 this.peerWorker.AddIncomingPeer(newSocket);
             }
             catch (OperationCanceledException) { throw; }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                logger.Warn("Failed incoming connection.", e);
+                logger.Warn(ex, "Failed incoming connection.");
             }
         }
 

@@ -152,9 +152,9 @@ namespace BitSharp.Node.Network
                 this.localEndPoint = (IPEndPoint)this.socket.LocalEndPoint;
                 this.isConnected = true;
             }
-            catch (Exception e)
+            catch (Exception ex)
             {
-                logger.Debug(string.Format("Error on connecting to {0}", remoteEndPoint), e);
+                logger.Debug(ex, string.Format("Error on connecting to {0}", remoteEndPoint));
                 Disconnect();
             }
             finally
@@ -193,10 +193,10 @@ namespace BitSharp.Node.Network
             this.receiver.OnPing -= HandlePing;
         }
 
-        private void HandleFailed(Exception e)
+        private void HandleFailed(Exception ex)
         {
-            if (e != null)
-                logger.Debug("Remote peer failed: {0}".Format2(this.remoteEndPoint), e);
+            if (ex != null)
+                logger.Debug(ex, "Remote peer failed: {0}".Format2(this.remoteEndPoint));
             else
                 logger.Debug("Remote peer failed: {0}".Format2(this.remoteEndPoint));
 

@@ -95,10 +95,10 @@ namespace BitSharp.Node.Workers
             DisconnectPeer(peer, null);
         }
 
-        public void DisconnectPeer(Peer peer, Exception e)
+        public void DisconnectPeer(Peer peer, Exception ex)
         {
-            if (e != null)
-                logger.Debug("Remote peer failed: {0}".Format2(peer.RemoteEndPoint), e);
+            if (ex != null)
+                logger.Debug(ex, "Remote peer failed: {0}".Format2(peer.RemoteEndPoint));
 
             RaisePeerDisconnected(peer);
 
@@ -215,10 +215,10 @@ namespace BitSharp.Node.Workers
 
                     return peer;
                 }
-                catch (Exception e)
+                catch (Exception ex)
                 {
-                    logger.Debug("Could not connect to {0}".Format2(remoteEndPoint), e);
-                    DisconnectPeer(peer, e);
+                    logger.Debug(ex, "Could not connect to {0}".Format2(remoteEndPoint));
+                    DisconnectPeer(peer, ex);
                     return null;
                 }
             }

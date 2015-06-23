@@ -175,9 +175,9 @@ namespace BitSharp.Core.Workers
                 yield return ex;
         }
 
-        private void HandleException(Exception e)
+        private void HandleException(Exception ex)
         {
-            var missingException = e as MissingDataException;
+            var missingException = ex as MissingDataException;
             if (missingException != null)
             {
                 var missingBlockHash = (UInt256)missingException.Key;
@@ -185,9 +185,9 @@ namespace BitSharp.Core.Workers
             }
             else
             {
-                logger.Warn("ChainStateWorker exception.", e);
+                logger.Warn(ex, "ChainStateWorker exception.");
 
-                var validationException = e as ValidationException;
+                var validationException = ex as ValidationException;
                 if (validationException != null)
                 {
                     // mark block as invalid

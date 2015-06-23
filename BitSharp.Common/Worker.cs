@@ -420,15 +420,15 @@ namespace BitSharp.Common
                     {
                         WorkAction();
                     }
-                    catch (Exception e)
+                    catch (Exception ex)
                     {
                         // ignore a cancellation exception
                         // workers can throw this to stop the current work action
                         bool cancelled;
-                        if (e is OperationCanceledException)
+                        if (ex is OperationCanceledException)
                             cancelled = true;
-                        else if (e is AggregateException
-                                && ((AggregateException)e).InnerExceptions.All(x => x is OperationCanceledException))
+                        else if (ex is AggregateException
+                                && ((AggregateException)ex).InnerExceptions.All(x => x is OperationCanceledException))
                             cancelled = true;
                         else
                             cancelled = false;
@@ -436,12 +436,12 @@ namespace BitSharp.Common
                         // worker leaked an exception
                         if (!cancelled)
                         {
-                            logger.Error("Unhandled worker exception in {0}: ".Format2(this.Name), e);
+                            logger.Error(ex, "Unhandled worker exception in {0}: ".Format2(this.Name));
 
                             // notify work error
                             var errorHandler = this.OnWorkError;
                             if (errorHandler != null)
-                                errorHandler(e);
+                                errorHandler(ex);
                         }
                     }
                     finally

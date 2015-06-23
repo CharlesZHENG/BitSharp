@@ -204,9 +204,9 @@ namespace BitSharp.Node
                                 isSeed: this.Type == RulesEnum.MainNet ? true : false
                             ));
                     }
-                    catch (SocketException e)
+                    catch (SocketException ex)
                     {
-                        logger.Warn("Failed to add seed peer {0}".Format2(hostNameOrAddress), e);
+                        logger.Warn(ex, "Failed to add seed peer {0}".Format2(hostNameOrAddress));
                     }
                 };
 
