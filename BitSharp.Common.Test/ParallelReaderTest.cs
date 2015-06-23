@@ -39,7 +39,7 @@ namespace BitSharp.Common.Test
 
                 // begin reading
                 Task readsQueuedTask;
-                var readerTask = reader.ReadAsync(source.GetConsumingEnumerable(), null, out readsQueuedTask);
+                var readerTask = reader.ReadAsync(source.GetConsumingEnumerable(), null, null, out readsQueuedTask);
 
                 // verify reader hasn't completed, consumption hasn't started
                 Assert.IsFalse(readerTask.Wait(25));
@@ -137,7 +137,7 @@ namespace BitSharp.Common.Test
                 source.CompleteAdding();
 
                 // begin reading
-                var readerTask = reader.ReadAsync(source.GetConsumingEnumerable(), cancelToken.Token);
+                var readerTask = reader.ReadAsync(source.GetConsumingEnumerable(), cancelToken: cancelToken.Token);
 
                 // create a task to consume single items as events are signalled
                 var results = new ConcurrentQueue<int>();
@@ -215,7 +215,7 @@ namespace BitSharp.Common.Test
                 source.CompleteAdding();
 
                 // begin reading
-                var readerTask = reader.ReadAsync(source.GetConsumingEnumerable(), cancelToken.Token);
+                var readerTask = reader.ReadAsync(source.GetConsumingEnumerable(), cancelToken: cancelToken.Token);
 
                 // cancel the reader
                 cancelToken.Cancel();
@@ -250,7 +250,7 @@ namespace BitSharp.Common.Test
 
                 // begin reading
                 Task readsQueuedTask;
-                var readerTask = reader.ReadAsync(source, null, out readsQueuedTask);
+                var readerTask = reader.ReadAsync(source, null, null, out readsQueuedTask);
 
                 // begin consuming
                 var results = new List<int>();
@@ -302,8 +302,7 @@ namespace BitSharp.Common.Test
                 var source = Enumerable.Range(0, 10);
 
                 // begin reading
-                Task readsQueuedTask;
-                var readerTask = reader.ReadAsync(source, null, out readsQueuedTask);
+                var readerTask = reader.ReadAsync(source);
 
                 // consume half
                 Assert.AreEqual(5, reader.GetConsumingEnumerable().Take(5).Count());
@@ -324,8 +323,7 @@ namespace BitSharp.Common.Test
                 var source = Enumerable.Range(0, 10);
 
                 // begin reading
-                Task readsQueuedTask;
-                var readerTask = reader.ReadAsync(source, null, out readsQueuedTask);
+                var readerTask = reader.ReadAsync(source);
 
                 // consume all
                 reader.GetConsumingEnumerable().Count();

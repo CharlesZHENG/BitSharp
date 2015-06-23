@@ -28,7 +28,7 @@ namespace BitSharp.Core.Test.Builders
                 var txIndex = 1;
                 var tx = RandomData.RandomTransaction(new RandomDataOptions { TxInputCount = prevTxCount, TxOutputCount = 1 });
                 var chainedHeader = RandomData.RandomChainedHeader();
-                
+
                 // create a loading tx with the 4 inputs referencing block hash 0
                 var prevOutputTxKeys = ImmutableArray.CreateRange(
                     Enumerable.Range(0, prevTxCount).Select(x => new TxLookupKey(UInt256.Zero, x)));
@@ -46,11 +46,14 @@ namespace BitSharp.Core.Test.Builders
                     coreStorageMock.Setup(coreStorage => coreStorage.TryGetTransaction(UInt256.Zero, i, out prevTx)).Returns(true);
                 }
 
-                // load the transaction
+                // begin queuing transactions to load
                 using (loadingTxesReader.ReadAsync(new[] { loadingTx }).WaitOnDispose())
+                // begin transaction loading
+                using (txLoader.LoadTxes(loadingTxesReader).WaitOnDispose())
                 {
+
                     // verify the loaded transaction
-                    var actualLoadedTx = txLoader.LoadTxes(loadingTxesReader).Single();
+                    var actualLoadedTx = txLoader.GetConsumingEnumerable().Single();
 
                     Assert.AreEqual(loadingTx.TxIndex, actualLoadedTx.TxIndex);
                     Assert.AreEqual(loadingTx.Transaction, actualLoadedTx.Transaction);

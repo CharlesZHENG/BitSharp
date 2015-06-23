@@ -18,13 +18,12 @@ namespace BitSharp.Common
         private readonly ParallelReader<TOut> producer;
 
         private TaskCompletionSource<object> tcs;
-        private ParallelReader<TIn> source;
+        private IParallelReader<TIn> source;
         private IObserver<TIn> observer;
+        private Action<Exception> finallyAction;
         private CancellationTokenSource cancelToken;
         private CancellationTokenSource internalCancelToken;
         private ConcurrentBlockingQueue<TOut> producerQueue;
-        private Task consumerTask;
-        private Task producerTask;
 
         public ParallelConsumerProducer(string name, int consumerThreadCount)
         {
@@ -50,8 +49,21 @@ namespace BitSharp.Common
             }
         }
 
-        public Task ConsumeProduceAsync(ParallelReader<TIn> source, IObserver<TIn> observer, Func<TIn, IEnumerable<TOut>> producerFunc, CancellationToken? cancelToken = null)
+        public bool IsStarted
         {
+            get { return producer.IsStarted; }
+        }
+
+        public int Count
+        {
+            get { return consumer.PendingCount + producer.Count; }
+        }
+
+        public Task ConsumeProduceAsync(IParallelReader<TIn> source, IObserver<TIn> observer, Func<TIn, IEnumerable<TOut>> producerFunc, Action<Exception> finallyAction = null, CancellationToken? cancelToken = null)
+        {
+            if (observer == null && producerFunc == null)
+                throw new ArgumentNullException("observer, producerFunc");
+
             controlLock.EnterWriteLock();
             try
             {
@@ -60,6 +72,7 @@ namespace BitSharp.Common
 
                 tcs = new TaskCompletionSource<object>();
                 this.source = source;
+                this.finallyAction = finallyAction;
                 this.observer = observer;
                 if (cancelToken.HasValue)
                 {
@@ -74,26 +87,31 @@ namespace BitSharp.Common
 
                 // begin the producer parallel reader to make available any produced results
                 producerQueue = new ConcurrentBlockingQueue<TOut>();
-                producerTask = producer.ReadAsync(producerQueue.GetConsumingEnumerable(), this.cancelToken.Token);
+                producer.ReadAsync(producerQueue.GetConsumingEnumerable(), null, this.cancelToken.Token);
 
                 // begin the consumer+producer task
-                consumerTask = consumer.SubscribeObservers(source,
+                consumer.SubscribeObservers(source,
                     Observer.Create<TIn>(
                         inItem =>
                         {
                             // consume an input item
-                            observer.OnNext(inItem);
+                            if (observer != null)
+                                observer.OnNext(inItem);
                             this.cancelToken.Token.ThrowIfCancellationRequested();
 
                             // produce output items
-                            foreach (var outItem in producerFunc(inItem))
+                            if (producerFunc != null)
                             {
-                                producerQueue.Add(outItem);
-                                this.cancelToken.Token.ThrowIfCancellationRequested();
+                                foreach (var outItem in producerFunc(inItem))
+                                {
+                                    producerQueue.Add(outItem);
+                                    this.cancelToken.Token.ThrowIfCancellationRequested();
+                                }
                             }
                         },
-                        ex => Finish(producerQueue, ex),
-                        () => Finish(producerQueue)));
+                        ex => producerQueue.CompleteAdding(),
+                        () => producerQueue.CompleteAdding()),
+                        finallyAction: ex => Finish(producerQueue, ex));
 
                 return tcs.Task;
             }
@@ -117,12 +135,26 @@ namespace BitSharp.Common
             }
         }
 
+        public void Wait()
+        {
+            consumer.Wait();
+            producer.Wait();
+        }
+
+        public void Cancel(Exception ex)
+        {
+            producer.Cancel(ex);
+        }
+
         private void Finish(ConcurrentBlockingQueue<TOut> producerQueue, Exception ex = null)
         {
+            Action<Exception> finallyActionLocal;
+            Exception exLocal = null;
+
             controlLock.EnterUpgradeableReadLock();
             try
             {
-                producerQueue.CompleteAdding();
+                finallyActionLocal = finallyAction;
 
                 // cancel readers on exception
                 if (ex != null)
@@ -134,7 +166,8 @@ namespace BitSharp.Common
                 // wait for the producer task to finish, capture any exception
                 try
                 {
-                    producerTask.Wait();
+                    consumer.Wait();
+                    producer.Wait();
                 }
                 catch (Exception taskEx)
                 {
@@ -147,14 +180,17 @@ namespace BitSharp.Common
                 {
                     producerQueue.Dispose();
 
-                    try
+                    if (observer != null)
                     {
-                        if (ex != null)
-                            observer.OnError(ex);
-                        else
-                            observer.OnCompleted();
+                        try
+                        {
+                            if (ex != null)
+                                observer.OnError(ex);
+                            else
+                                observer.OnCompleted();
+                        }
+                        catch (Exception) { }
                     }
-                    catch (Exception) { }
 
                     if (ex != null)
                         tcs.SetException(ex);
@@ -172,21 +208,9 @@ namespace BitSharp.Common
             {
                 controlLock.ExitUpgradeableReadLock();
             }
-        }
 
-        bool IParallelReader<TOut>.IsStarted
-        {
-            get { return producer.IsStarted; }
-        }
-
-        int IParallelReader<TOut>.Count
-        {
-            get { return producer.Count; }
-        }
-
-        void IParallelReader<TOut>.Cancel(Exception ex)
-        {
-            producer.Cancel(ex);
+            if (finallyActionLocal != null)
+                finallyActionLocal(exLocal);
         }
 
         // attempt to cleanup any outstanding consume+produce during disposal, without causing Dispose() to throw errors

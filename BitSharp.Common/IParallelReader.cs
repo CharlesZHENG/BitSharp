@@ -11,6 +11,8 @@ namespace BitSharp.Common
 
         IEnumerable<T> GetConsumingEnumerable();
 
+        void Wait();
+
         void Cancel(Exception ex);
     }
 }

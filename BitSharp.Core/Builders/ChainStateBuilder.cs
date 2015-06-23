@@ -28,7 +28,6 @@ namespace BitSharp.Core.Builders
 
         private readonly UtxoLookAhead utxoLookAhead;
         private readonly ParallelReader<LoadingTx> calcUtxoSource;
-        private readonly ParallelReader<LoadedTx> loadedTxesSource;
         private readonly TxLoader txLoader;
         private readonly BlockValidator blockValidator;
 
@@ -70,7 +69,6 @@ namespace BitSharp.Core.Builders
 
             this.utxoLookAhead = new UtxoLookAhead();
             this.calcUtxoSource = new ParallelReader<LoadingTx>("ChainStateBuilder.CalcUtxoSource");
-            this.loadedTxesSource = new ParallelReader<LoadedTx>("ChainStateBuilder.LoadedTxesSource");
             this.txLoader = new TxLoader("ChainStateBuilder", coreStorage, ioThreadCount);
             this.blockValidator = new BlockValidator(this.coreStorage, this.rules);
 
@@ -81,7 +79,6 @@ namespace BitSharp.Core.Builders
         {
             this.utxoLookAhead.Dispose();
             this.calcUtxoSource.Dispose();
-            this.loadedTxesSource.Dispose();
             this.txLoader.Dispose();
             this.blockValidator.Dispose();
             this.chainStateCursorHandle.Dispose();
@@ -126,9 +123,9 @@ namespace BitSharp.Core.Builders
 
                     Task calcUtxoReadsQueueTask;
                     var blockTxesCalculateQueue = this.utxoLookAhead.LookAhead(blockTxes, deferredChainStateCursor);
-                    using (var calcUtxoTask = this.calcUtxoSource.ReadAsync(CalculateUtxo(chainedHeader, blockTxesCalculateQueue, deferredChainStateCursor), null, out calcUtxoReadsQueueTask).WaitOnDispose())
-                    using (var loadedTxesTask = this.loadedTxesSource.ReadAsync(this.txLoader.LoadTxes(calcUtxoSource)).WaitOnDispose())
-                    using (var blockValidationTask = this.blockValidator.ValidateTransactions(chainedHeader, loadedTxesSource).WaitOnDispose())
+                    using (var calcUtxoTask = this.calcUtxoSource.ReadAsync(CalculateUtxo(chainedHeader, blockTxesCalculateQueue, deferredChainStateCursor), null, null, out calcUtxoReadsQueueTask).WaitOnDispose())
+                    using (var loadedTxesTask = this.txLoader.LoadTxes(calcUtxoSource).WaitOnDispose())
+                    using (var blockValidationTask = this.blockValidator.ValidateTransactions(chainedHeader, txLoader).WaitOnDispose())
                     {
                         var cursorInTransaction = false;
                         try
@@ -224,7 +221,7 @@ namespace BitSharp.Core.Builders
                 if (chainedHeader.Height > 0)
                 {
                     this.stats.calculateUtxoDurationMeasure.Tick(calcUtxoStopwatch.Elapsed);
-                    this.stats.pendingTxesAtCompleteAverageMeasure.Tick(this.txLoader.PendingCount);
+                    this.stats.pendingTxesAtCompleteAverageMeasure.Tick(this.txLoader.Count);
                 }
             }
             finally

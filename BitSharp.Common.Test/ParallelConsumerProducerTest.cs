@@ -29,8 +29,7 @@ namespace BitSharp.Common.Test
                 source.CompleteAdding();
 
                 // begin consume-producing, without consuming what's produced
-                var consumeProduceTask = consumerProducer.ConsumeProduceAsync(sourceReader,
-                    Observer.Create<int>(x => { }),
+                var consumeProduceTask = consumerProducer.ConsumeProduceAsync(sourceReader, null,
                     x => new long[0]);
             }
         }
@@ -85,11 +84,15 @@ namespace BitSharp.Common.Test
                 var sourceTask = sourceReader.ReadAsync(source);
 
                 var actualConsumed = new List<int>();
-                var consumeProduceTask = consumerProducer.ConsumeProduceAsync(sourceReader,
-                    Observer.Create<int>(x => { }),
+                var consumeProduceTask = consumerProducer.ConsumeProduceAsync(sourceReader, null,
                     x => new long[0]);
 
-                Assert.AreEqual(0, consumerProducer.GetConsumingEnumerable().Count());
+                try
+                {
+                    Assert.AreEqual(0, consumerProducer.GetConsumingEnumerable().Count());
+                }
+                // the exception may have already been picked up on the producer thread
+                catch (DivideByZeroException) { }
 
                 try
                 {

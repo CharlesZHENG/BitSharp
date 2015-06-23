@@ -20,6 +20,7 @@ namespace BitSharp.Common
         private WorkerMethod readWorker;
 
         private IEnumerable<T> source;
+        private Action<Exception> finallyAction;
 
         // the queue of read items that are waiting to be consumed
         private ConcurrentBlockingQueue<T> queue;
@@ -28,6 +29,7 @@ namespace BitSharp.Common
         private Exception readException;
 
         private TaskCompletionSource<object> tcs;
+        private TaskCompletionSource<object> lastTcs;
         private TaskCompletionSource<object> readsQueuedTcs;
         private CancellationTokenSource cancelToken;
         private CancellationTokenSource internalCancelToken;
@@ -83,13 +85,13 @@ namespace BitSharp.Common
             }
         }
 
-        public Task ReadAsync(IEnumerable<T> source, CancellationToken? cancelToken = null)
+        public Task ReadAsync(IEnumerable<T> source, Action<Exception> finallyAction = null, CancellationToken? cancelToken = null)
         {
             Task readsQueuedTask;
-            return ReadAsync(source, cancelToken, out readsQueuedTask);
+            return ReadAsync(source, finallyAction, cancelToken, out readsQueuedTask);
         }
 
-        public Task ReadAsync(IEnumerable<T> source, CancellationToken? cancelToken, out Task readsQueuedTask)
+        public Task ReadAsync(IEnumerable<T> source, Action<Exception> finallyAction, CancellationToken? cancelToken, out Task readsQueuedTask)
         {
             controlLock.EnterWriteLock();
             try
@@ -98,6 +100,7 @@ namespace BitSharp.Common
 
                 // store the actions
                 this.source = source;
+                this.finallyAction = finallyAction;
 
                 // initialize queue
                 this.queue = new ConcurrentBlockingQueue<T>();
@@ -133,6 +136,13 @@ namespace BitSharp.Common
             }
         }
 
+        public void Wait()
+        {
+            var tcsLocal = controlLock.DoRead(() => this.tcs ?? this.lastTcs);
+            if (tcsLocal != null)
+                tcsLocal.Task.Wait();
+        }
+
         public void Cancel(Exception ex)
         {
             try
@@ -154,7 +164,13 @@ namespace BitSharp.Common
                 // yield nothing if not started
                 // the reader may have fully completed while threads are still connecting, so this is not considered an error condition
                 if (tcs == null)
+                {
+                    // if no current task and the latest task was faulted, rethrow here
+                    if (lastTcs != null && lastTcs.Task.IsFaulted)
+                        lastTcs.Task.Wait();
+
                     yield break;
+                }
 
                 // signal that a new consumer has started
                 IncrementConsumer();
@@ -165,14 +181,15 @@ namespace BitSharp.Common
                         yield return item;
 
                         // throw on cancellation or reader exception
-                        cancelToken.Token.ThrowIfCancellationRequested();
                         if (this.readException != null)
                             throw this.readException;
+                        cancelToken.Token.ThrowIfCancellationRequested();
                     }
 
                     // throw on reader exception
                     if (this.readException != null)
                         throw this.readException;
+                    cancelToken.Token.ThrowIfCancellationRequested();
                 }
                 finally
                 {
@@ -206,6 +223,7 @@ namespace BitSharp.Common
             }
             finally
             {
+                Action finallyActionLocal;
                 controlLock.EnterUpgradeableReadLock();
                 try
                 {
@@ -223,12 +241,15 @@ namespace BitSharp.Common
                     WaitForConsumedOrCancelled();
 
                     // finish the task and cleanup
-                    Finish();
+                    finallyActionLocal = Finish();
                 }
                 finally
                 {
                     controlLock.ExitUpgradeableReadLock();
                 }
+
+                if (finallyActionLocal != null)
+                    finallyActionLocal();
             }
         }
 
@@ -273,7 +294,7 @@ namespace BitSharp.Common
         }
 
         // cleanup and set the task completion result
-        private void Finish()
+        private Action Finish()
         {
             controlLock.EnterWriteLock();
             try
@@ -289,15 +310,31 @@ namespace BitSharp.Common
                 this.consumersCompleted.Dispose();
 
                 // set task result
+                Exception finallyException;
                 if (readException != null)
+                {
+                    finallyException = readException;
                     tcs.SetException(readException);
+                }
                 else if (isCancelled)
+                {
+                    finallyException = new OperationCanceledException();
                     tcs.SetCanceled();
+                }
                 else
+                {
+                    finallyException = null;
                     tcs.SetResult(null);
+                }
 
                 // reset to stopped state
+                lastTcs = tcs;
                 this.tcs = null;
+
+                if (finallyAction != null)
+                    return () => finallyAction(finallyException);
+                else
+                    return null;
             }
             finally
             {

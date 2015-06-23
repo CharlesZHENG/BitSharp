@@ -23,6 +23,7 @@ namespace BitSharp.Common
 
         // the observer to be notified by each consumer thread
         private IObserver<T> observer;
+        private Action<Exception> finallyAction;
 
         // track the number of items currently being processed
         private int processingCount;
@@ -35,6 +36,7 @@ namespace BitSharp.Common
         private ConcurrentBag<Exception> consumeExceptions;
 
         private TaskCompletionSource<object> tcs;
+        private TaskCompletionSource<object> lastTcs;
 
         private bool isDisposed;
 
@@ -104,7 +106,7 @@ namespace BitSharp.Common
         /// <param name="consumeAction">The action to be called on each item from the source.</param>
         /// <param name="completedAction">An action to be called when all items have been successfully read and consumed. This will not be called if there is an exception.</param>
         /// <returns>An IDisposable to cleanup the parallel consuming session.</returns>
-        public Task SubscribeObservers(IParallelReader<T> source, IObserver<T> observer)
+        public Task SubscribeObservers(IParallelReader<T> source, IObserver<T> observer, Action<Exception> finallyAction = null)
         {
             controlLock.EnterWriteLock();
             try
@@ -116,6 +118,7 @@ namespace BitSharp.Common
 
                 // store the actions
                 this.observer = observer;
+                this.finallyAction = finallyAction;
 
                 // initialize queue
                 this.source = source;
@@ -137,6 +140,13 @@ namespace BitSharp.Common
             {
                 controlLock.ExitWriteLock();
             }
+        }
+
+        public void Wait()
+        {
+            var tcsLocal = controlLock.DoRead(() => this.tcs ?? this.lastTcs);
+            if (tcsLocal != null)
+                tcsLocal.Task.Wait();
         }
 
         private void ConsumeWorker(WorkerMethod instance)
@@ -171,9 +181,14 @@ namespace BitSharp.Common
                 // increment the completed consumer count and check if all have been completed
                 if (Interlocked.Increment(ref this.consumeCompletedCount) == this.consumeWorkers.Length)
                 {
+                    Action<Exception> finallyActionLocal;
+                    Exception exLocal = null;
+
                     controlLock.EnterWriteLock();
                     try
                     {
+                        finallyActionLocal = finallyAction;
+
                         try
                         {
                             if (readException != null)
@@ -186,24 +201,35 @@ namespace BitSharp.Common
                         catch (Exception) { }
 
                         if (readException != null)
+                        {
+                            exLocal = readException;
                             tcs.SetException(readException);
+                        }
                         else if (consumeExceptions.Count > 0)
-                            tcs.SetException(new AggregateException(consumeExceptions));
+                        {
+                            exLocal = new AggregateException(consumeExceptions);
+                            tcs.SetException(exLocal);
+                        }
                         else
                             tcs.SetResult(null);
 
                         this.source = null;
                         this.observer = null;
+                        this.finallyAction = null;
                         this.readException = null;
                         this.consumeExceptions = null;
                         this.processingCount = 0;
 
+                        lastTcs = tcs;
                         this.tcs = null;
                     }
                     finally
                     {
                         controlLock.ExitWriteLock();
                     }
+
+                    if (finallyActionLocal != null)
+                        finallyActionLocal(exLocal);
                 }
             }
         }

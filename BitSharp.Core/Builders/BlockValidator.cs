@@ -40,7 +40,7 @@ namespace BitSharp.Core.Builders
             var cpuThreadCount = Environment.ProcessorCount * 2;
 
             this.txValidator = new ParallelConsumerProducer<LoadedTx, Tuple<LoadedTx, int>>("BlockValidator.TxValidator", cpuThreadCount);
-            this.scriptValidator = new ParallelObserver<Tuple<LoadedTx, int>>("BlockValidator.ScriptValidator", cpuThreadCount);
+            this.scriptValidator = new ParallelObserver<Tuple<LoadedTx, int>>("BlockValidator.ScriptValidator", rules.IgnoreScriptErrors ? 1 : cpuThreadCount);
         }
 
         public void Dispose()
@@ -50,7 +50,7 @@ namespace BitSharp.Core.Builders
             this.controlLock.Dispose();
         }
 
-        public Task ValidateTransactions(ChainedHeader chainedHeader, ParallelReader<LoadedTx> loadedTxes)
+        public Task ValidateTransactions(ChainedHeader chainedHeader, IParallelReader<LoadedTx> loadedTxes)
         {
             controlLock.EnterWriteLock();
             try
@@ -63,11 +63,14 @@ namespace BitSharp.Core.Builders
                 this.scriptError = false;
                 this.taskException = null;
 
-                var txValidatorTask = this.txValidator.ConsumeProduceAsync(loadedTxes,
+                this.txValidator.ConsumeProduceAsync(loadedTxes,
                     CreateTxValidator(chainedHeader),
                     loadedTx => QueueTransactionScripts(chainedHeader, loadedTx));
 
-                var scriptValidatorTask = this.scriptValidator.SubscribeObservers(txValidator, CreateScriptValidator(chainedHeader, txValidatorTask));
+                this.scriptValidator.SubscribeObservers(
+                    txValidator,
+                    CreateScriptValidator(chainedHeader),
+                    finallyAction: ex => Finish(chainedHeader, ex));
 
                 return this.tcs.Task;
             }
@@ -89,7 +92,7 @@ namespace BitSharp.Core.Builders
                 () => validateScriptQueue.CompleteAdding());
         }
 
-        private IObserver<Tuple<LoadedTx, int>> CreateScriptValidator(ChainedHeader chainedHeader, Task txValidatorTask)
+        private IObserver<Tuple<LoadedTx, int>> CreateScriptValidator(ChainedHeader chainedHeader)
         {
             return Observer.Create<Tuple<LoadedTx, int>>(
                 tuple =>
@@ -108,9 +111,7 @@ namespace BitSharp.Core.Builders
                         taskException = ex;
                         scriptError = true;
                     }
-                },
-                ex => Finish(chainedHeader, txValidatorTask, ex),
-                () => Finish(chainedHeader, txValidatorTask));
+                });
         }
 
         private IEnumerable<Tuple<LoadedTx, int>> QueueTransactionScripts(ChainedHeader chainedHeader, LoadedTx loadedTx)
@@ -128,7 +129,7 @@ namespace BitSharp.Core.Builders
             }
         }
 
-        private void Finish(ChainedHeader chainedHeader, Task txValidatorTask, Exception ex = null)
+        private void Finish(ChainedHeader chainedHeader, Exception ex = null)
         {
             controlLock.EnterUpgradeableReadLock();
             try
@@ -136,7 +137,8 @@ namespace BitSharp.Core.Builders
                 taskException = taskException ?? ex;
                 try
                 {
-                    txValidatorTask.Wait();
+                    txValidator.Wait();
+                    scriptValidator.Wait();
                 }
                 catch (Exception validatorEx)
                 {

@@ -1,9 +1,11 @@
 ﻿using BitSharp.Common;
 using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Domain;
+using NLog;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Disposables;
@@ -14,8 +16,12 @@ namespace BitSharp.Core.Builders
 {
     internal class UtxoLookAhead : IDisposable
     {
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
+
         private readonly ParallelReader<Tuple<UInt256, CompletionCount>> utxoWarmupSource;
         private readonly ParallelObserver<Tuple<UInt256, CompletionCount>> utxoReader;
+
+        private readonly DurationMeasure lookAheadDurationMeasure = new DurationMeasure(TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(5));
 
         public UtxoLookAhead()
         {
@@ -27,17 +33,25 @@ namespace BitSharp.Core.Builders
         {
             this.utxoWarmupSource.Dispose();
             this.utxoReader.Dispose();
+            this.lookAheadDurationMeasure.Dispose();
         }
 
         public IEnumerable<BlockTx> LookAhead(IEnumerable<BlockTx> blockTxes, DeferredChainStateCursor deferredChainStateCursor)
         {
+            var stopwatch = Stopwatch.StartNew();
             using (var progress = new Progress())
             // create the observable source of each utxo entry to be warmed up: each input's previous transaction, and each new transaction
             using (var utxoWarmupTask = this.utxoWarmupSource.ReadAsync(CreateBlockTxesSource(progress, blockTxes)).WaitOnDispose())
             // subscribe the utxo entries to be warmed up
-            using (var utxoReaderTask = this.utxoReader.SubscribeObservers(utxoWarmupSource, CreateUtxoWarmer(progress, deferredChainStateCursor)).WaitOnDispose())
+            using (var utxoReaderTask = this.utxoReader.SubscribeObservers(utxoWarmupSource, CreateUtxoWarmer(progress, deferredChainStateCursor),
+                finallyAction: ex =>
+                {
+                    stopwatch.Stop();
+                    lookAheadDurationMeasure.Tick(stopwatch.Elapsed);
+                    Throttler.IfElapsed(TimeSpan.FromSeconds(5), () =>
+                        logger.Info("UTXO Look-ahead: {0,12:N3}ms".Format2(lookAheadDurationMeasure.GetAverage().TotalMilliseconds)));
+                }).WaitOnDispose())
             {
-
                 // return the warmed-up transactions, in the original block order
                 foreach (var blockTx in CreateWarmedTxesSource(progress))
                     yield return blockTx;
