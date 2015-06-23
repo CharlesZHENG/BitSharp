@@ -153,14 +153,17 @@ namespace BitSharp.Core.Builders
                             });
                         }
 
-                        // only commit the utxo changes once block validation has completed
-                        Debug.Assert(cursorInTransaction);
-                        this.chainStateCursor.CommitTransaction();
-                        cursorInTransaction = false;
+                        this.stats.commitUtxoDurationMeasure.MeasureIf(chainedHeader.Height > 0, () =>
+                        {
+                            // only commit the utxo changes once block validation has completed
+                            Debug.Assert(cursorInTransaction);
+                            this.chainStateCursor.CommitTransaction();
+                            cursorInTransaction = false;
 
-                        // commit the chain state
-                        this.CommitTransaction(onCursor: false);
-                        committed = true;
+                            // commit the chain state
+                            this.CommitTransaction(onCursor: false);
+                            committed = true;
+                        });
                         
                         // MEASURE: Block Rate
                         if (chainedHeader.Height > 0)
@@ -309,7 +312,8 @@ namespace BitSharp.Core.Builders
                     "Avg. UTXO Calculation Time: {14,12:#,##0.000}ms",
                     "Avg. UTXO Application Time: {15,12:#,##0.000}ms",
                     "Avg. Wait-to-complete Time: {16,12:#,##0.000}ms",
-                    "Avg. AddBlock Time:         {17,12:#,##0.000}ms",
+                    "Avg. UTXO Commit Time:      {17,12:#,##0.000}ms",
+                    "Avg. AddBlock Time:         {18,12:#,##0.000}ms",
                     new string('-', 80)
                 )
                 .Format2
@@ -331,7 +335,8 @@ namespace BitSharp.Core.Builders
                 /*14*/ this.Stats.calculateUtxoDurationMeasure.GetAverage().TotalMilliseconds,
                 /*15*/ this.Stats.applyUtxoDurationMeasure.GetAverage().TotalMilliseconds,
                 /*16*/ this.Stats.waitToCompleteDurationMeasure.GetAverage().TotalMilliseconds,
-                /*17*/ this.Stats.addBlockDurationMeasure.GetAverage().TotalMilliseconds
+                /*17*/ this.Stats.commitUtxoDurationMeasure.GetAverage().TotalMilliseconds,
+                /*18*/ this.Stats.addBlockDurationMeasure.GetAverage().TotalMilliseconds
                 ));
         }
 
@@ -386,6 +391,7 @@ namespace BitSharp.Core.Builders
 
             public readonly DurationMeasure calculateUtxoDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
             public readonly DurationMeasure applyUtxoDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
+            public readonly DurationMeasure commitUtxoDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
             public readonly AverageMeasure pendingTxesTotalAverageMeasure = new AverageMeasure(sampleCutoff, sampleResolution);
             public readonly AverageMeasure pendingTxesAtCompleteAverageMeasure = new AverageMeasure(sampleCutoff, sampleResolution);
             public readonly DurationMeasure waitToCompleteDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
@@ -402,6 +408,7 @@ namespace BitSharp.Core.Builders
             {
                 this.calculateUtxoDurationMeasure.Dispose();
                 this.applyUtxoDurationMeasure.Dispose();
+                this.commitUtxoDurationMeasure.Dispose();
                 this.pendingTxesTotalAverageMeasure.Dispose();
                 this.pendingTxesAtCompleteAverageMeasure.Dispose();
                 this.waitToCompleteDurationMeasure.Dispose();
