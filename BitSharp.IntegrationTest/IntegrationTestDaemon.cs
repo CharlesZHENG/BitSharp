@@ -17,6 +17,7 @@ using System.Collections.Immutable;
 using System.IO;
 using BitSharp.IntegrationTest;
 using BitSharp.Node;
+using BitSharp.Lmdb;
 
 namespace BitSharp.Core.Test
 {
@@ -40,7 +41,7 @@ namespace BitSharp.Core.Test
 
         private bool isDisposed;
 
-        public IntegrationTestDaemon(Block genesisBlock = null)
+        public IntegrationTestDaemon(Block genesisBlock = null, bool useLmdb = false)
         {
             // initialize storage folder
             this.baseDirectory = Path.Combine(Path.GetTempPath(), "BitSharp", "Tests");
@@ -84,7 +85,9 @@ namespace BitSharp.Core.Test
             this.genesisBlock = genesisBlock ?? MineEmptyBlock(UInt256.Zero);
 
             // add storage module
-            this.kernel.Load(new EsentStorageModule(baseDirectory, RulesEnum.TestNet2, cacheSizeMaxBytes: 500.MILLION()));
+            this.kernel.Load(new EsentStorageModule(baseDirectory, RulesEnum.TestNet2, blockStorage: !useLmdb, cacheSizeMaxBytes: 500.MILLION()));
+            if (useLmdb)
+                this.kernel.Load(new LmdbStorageModule(baseDirectory, RulesEnum.TestNet2));
 
             // initialize unit test rules
             this.rules = this.kernel.Get<UnitTestRules>();
