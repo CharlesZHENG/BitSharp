@@ -12,7 +12,7 @@ namespace BitSharp.Core
         TxIndex = 1,
 
         // remove the Block->List<TxHash> mapping of which transactions were fully spent within a block
-        // this information is needed to prune the block txes storage, it indicates which transactions can be pruned
+        // this information is needed to prune the tx index and block txes storage, it indicates which transactions can be pruned
         BlockSpentIndex = 2,
 
         // remove fully spent transactions from block storage, preserving the merkle tree
