@@ -107,25 +107,15 @@ namespace BitSharp.Core.Builders
             this.commitLock.DoWrite(() =>
             {
                 var stopwatch = Stopwatch.StartNew();
+                var cursorInTransaction = false;
                 var committed = false;
                 this.BeginTransaction(readOnly: true, onCursor: false);
                 try
                 {
-                    DeferredChainStateCursor deferredChainStateCursor;
-                    this.chainStateCursor.BeginTransaction(readOnly: true);
-                    try
+                    Task calcUtxoReadsQueueTask;
+                    using (var chainState = new ChainState(this.chain.ToImmutable(), this.storageManager))
+                    using (var deferredChainStateCursor = new DeferredChainStateCursor(chainState))
                     {
-                        deferredChainStateCursor = new DeferredChainStateCursor(this.chainStateCursor);
-                    }
-                    finally
-                    {
-                        this.chainStateCursor.RollbackTransaction();
-                    }
-
-                    var cursorInTransaction = false;
-                    try
-                    {
-                        Task calcUtxoReadsQueueTask;
                         var blockTxesCalculateQueue = this.utxoLookAhead.LookAhead(blockTxes, deferredChainStateCursor);
                         using (var calcUtxoTask = this.calcUtxoSource.ReadAsync(CalculateUtxo(chainedHeader, blockTxesCalculateQueue, deferredChainStateCursor), null, null, out calcUtxoReadsQueueTask).WaitOnDispose())
                         using (var loadedTxesTask = this.txLoader.LoadTxes(calcUtxoSource).WaitOnDispose())
@@ -142,7 +132,7 @@ namespace BitSharp.Core.Builders
                                 cursorInTransaction = true;
 
                                 // apply the changes, do not yet commit
-                                deferredChainStateCursor.ApplyChangesToParent();
+                                deferredChainStateCursor.ApplyChangesToParent(this.chainStateCursor);
                                 this.chainStateCursor.AddChainedHeader(chainedHeader);
                             });
 
@@ -164,21 +154,21 @@ namespace BitSharp.Core.Builders
                             this.CommitTransaction(onCursor: false);
                             committed = true;
                         });
-                        
+
                         // MEASURE: Block Rate
                         if (chainedHeader.Height > 0)
+                        {
                             this.stats.blockRateMeasure.Tick();
-                    }
-                    finally
-                    {
-                        // rollback if the transaction was not comitted
-                        if (cursorInTransaction)
-                            this.chainStateCursor.RollbackTransaction();
+                            stats.addBlockDurationMeasure.Tick(stopwatch.Elapsed);
+                        }
                     }
                 }
                 finally
                 {
-                    stats.addBlockDurationMeasure.Tick(stopwatch.Elapsed);
+                    // rollback if the transaction was not comitted
+                    if (cursorInTransaction)
+                        this.chainStateCursor.RollbackTransaction();
+
                     // rollback the chain state on error
                     if (!committed)
                         this.RollbackTransaction(onCursor: false);
@@ -190,37 +180,34 @@ namespace BitSharp.Core.Builders
 
         private IEnumerable<LoadingTx> CalculateUtxo(ChainedHeader chainedHeader, IEnumerable<BlockTx> blockTxes, IChainStateCursor chainStateCursor)
         {
+            var calcUtxoStopwatch = Stopwatch.StartNew();
             this.chainStateCursor.BeginTransaction(readOnly: true);
             try
             {
-                var calcUtxoStopwatch = Stopwatch.StartNew();
-                using (var chainState = new ChainState(this.chain.ToImmutable(), this.storageManager))
+                // add the block to the chain
+                this.chain.AddBlock(chainedHeader);
+
+                // calculate the new block utxo, only output availability is checked and updated
+                var pendingTxCount = 0;
+                foreach (var loadingTx in this.utxoBuilder.CalculateUtxo(chainStateCursor, this.chain.ToImmutable(), blockTxes))
                 {
-                    // add the block to the chain
-                    this.chain.AddBlock(chainedHeader);
+                    if (!rules.BypassPrevTxLoading)
+                        yield return loadingTx;
 
-                    // calculate the new block utxo, only output availability is checked and updated
-                    var pendingTxCount = 0;
-                    foreach (var loadingTx in this.utxoBuilder.CalculateUtxo(chainStateCursor, this.chain.ToImmutable(), blockTxes))
+                    // track stats, ignore coinbase
+                    if (chainedHeader.Height > 0 && !loadingTx.IsCoinbase)
                     {
-                        if (!rules.BypassPrevTxLoading)
-                            yield return loadingTx;
-
-                        // track stats, ignore coinbase
-                        if (chainedHeader.Height > 0 && !loadingTx.IsCoinbase)
-                        {
-                            pendingTxCount += loadingTx.Transaction.Inputs.Length;
-                            this.stats.txRateMeasure.Tick();
-                            this.stats.inputRateMeasure.Tick(loadingTx.Transaction.Inputs.Length);
-                        }
-
-                        if (calcUtxoStopwatch.Elapsed > TimeSpan.FromSeconds(15))
-                            this.LogProgressInner();
+                        pendingTxCount += loadingTx.Transaction.Inputs.Length;
+                        this.stats.txRateMeasure.Tick();
+                        this.stats.inputRateMeasure.Tick(loadingTx.Transaction.Inputs.Length);
                     }
 
-                    if (chainedHeader.Height > 0)
-                        this.stats.pendingTxesTotalAverageMeasure.Tick(pendingTxCount);
+                    if (calcUtxoStopwatch.Elapsed > TimeSpan.FromSeconds(15))
+                        this.LogProgressInner();
                 }
+
+                if (chainedHeader.Height > 0)
+                    this.stats.pendingTxesTotalAverageMeasure.Tick(pendingTxCount);
 
                 calcUtxoStopwatch.Stop();
                 if (chainedHeader.Height > 0)

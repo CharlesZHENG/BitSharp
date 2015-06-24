@@ -1,6 +1,8 @@
 ﻿using BitSharp.Common;
+using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Domain;
 using BitSharp.Core.Storage;
+using NLog;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -13,7 +15,13 @@ namespace BitSharp.Core.Builders
 {
     internal class DeferredChainStateCursor : IChainStateCursor
     {
-        private readonly IChainStateCursor parent;
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
+
+        //TODO
+        private static readonly DurationMeasure readUtxoDurationMeasure = new DurationMeasure(TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(5));
+        private static readonly RateMeasure readUtxoRateMeasure = new RateMeasure(TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(5));
+
+        private readonly IChainState chainState;
         private readonly ChainedHeader originalChainTip;
 
         private DeferredDictionary<UInt256, UnspentTx> unspentTxes;
@@ -22,39 +30,54 @@ namespace BitSharp.Core.Builders
 
         private bool changesApplied;
 
-        public DeferredChainStateCursor(IChainStateCursor parent)
+        public DeferredChainStateCursor(IChainState chainState)
         {
-            if (!parent.InTransaction)
-                throw new ArgumentException("parent");
+            this.chainState = chainState;
+            this.originalChainTip = chainState.Chain.LastBlock;
 
-            this.parent = parent;
-            this.originalChainTip = parent.GetChainTip();
-
-            UnspentOutputCount = parent.UnspentOutputCount;
-            UnspentTxCount = parent.UnspentTxCount;
-            TotalTxCount = parent.TotalTxCount;
-            TotalInputCount = parent.TotalInputCount;
-            TotalOutputCount = parent.TotalOutputCount;
+            UnspentOutputCount = chainState.UnspentOutputCount;
+            UnspentTxCount = chainState.UnspentTxCount;
+            TotalTxCount = chainState.TotalTxCount;
+            TotalInputCount = chainState.TotalInputCount;
+            TotalOutputCount = chainState.TotalOutputCount;
 
             unspentTxes = new DeferredDictionary<UInt256, UnspentTx>(
                 txHash =>
                 {
+                    var stopwatch = Stopwatch.StartNew();
                     UnspentTx unspentTx;
-                    return Tuple.Create(parent.TryGetUnspentTx(txHash, out unspentTx), unspentTx);
+                    var tuple = Tuple.Create(chainState.TryGetUnspentTx(txHash, out unspentTx), unspentTx);
+                    stopwatch.Stop();
+
+                    if (tuple.Item1)
+                    {
+                        readUtxoDurationMeasure.Tick(stopwatch.Elapsed);
+                        readUtxoRateMeasure.Tick();
+
+                        Throttler.IfElapsed(TimeSpan.FromSeconds(5), () =>
+                        {
+                            logger.Info("---------------------------------------------");
+                            logger.Info("Read UTXO Duration: {0,12:N3}ms".Format2(readUtxoDurationMeasure.GetAverage().TotalMilliseconds));
+                            logger.Info("Read UTXO Rate:     {0,8:N0}/s".Format2(readUtxoRateMeasure.GetAverage()));
+                            logger.Info("---------------------------------------------");
+                        });
+                    }
+
+                    return tuple;
                 });
 
             blockSpentTxes = new DeferredDictionary<int, IImmutableList<UInt256>>(
                 blockHeight =>
                 {
                     IImmutableList<UInt256> spentTxes;
-                    return Tuple.Create(parent.TryGetBlockSpentTxes(blockHeight, out spentTxes), spentTxes);
+                    return Tuple.Create(chainState.TryGetBlockSpentTxes(blockHeight, out spentTxes), spentTxes);
                 });
 
             blockUnmintedTxes = new DeferredDictionary<UInt256, IImmutableList<UnmintedTx>>(
                 blockHash =>
                 {
                     IImmutableList<UnmintedTx> unmintedTxes;
-                    return Tuple.Create(parent.TryGetBlockUnmintedTxes(blockHash, out unmintedTxes), unmintedTxes);
+                    return Tuple.Create(chainState.TryGetBlockUnmintedTxes(blockHash, out unmintedTxes), unmintedTxes);
                 });
         }
 
@@ -200,7 +223,7 @@ namespace BitSharp.Core.Builders
             unspentTxes.WarmupValue(txHash);
         }
 
-        public void ApplyChangesToParent()
+        public void ApplyChangesToParent(IChainStateCursor parent)
         {
             if (changesApplied)
                 throw new InvalidOperationException();

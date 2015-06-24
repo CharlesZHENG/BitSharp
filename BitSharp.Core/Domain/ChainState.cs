@@ -80,6 +80,54 @@ namespace BitSharp.Core.Domain
             }
         }
 
+        public int UnspentOutputCount
+        {
+            get
+            {
+                using (var handle = this.cursorCache.TakeItem())
+                {
+                    var cursor = handle.Item.Item;
+                    return cursor.UnspentOutputCount;
+                }
+            }
+        }
+
+        public int TotalTxCount
+        {
+            get
+            {
+                using (var handle = this.cursorCache.TakeItem())
+                {
+                    var cursor = handle.Item.Item;
+                    return cursor.TotalTxCount;
+                }
+            }
+        }
+
+        public int TotalInputCount
+        {
+            get
+            {
+                using (var handle = this.cursorCache.TakeItem())
+                {
+                    var cursor = handle.Item.Item;
+                    return cursor.TotalInputCount;
+                }
+            }
+        }
+
+        public int TotalOutputCount
+        {
+            get
+            {
+                using (var handle = this.cursorCache.TakeItem())
+                {
+                    var cursor = handle.Item.Item;
+                    return cursor.TotalOutputCount;
+                }
+            }
+        }
+
         public bool ContainsUnspentTx(UInt256 txHash)
         {
             using (var handle = this.cursorCache.TakeItem())

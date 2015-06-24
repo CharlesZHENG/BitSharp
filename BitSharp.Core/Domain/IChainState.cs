@@ -22,6 +22,14 @@ namespace BitSharp.Core.Domain
         /// </summary>
         int UnspentTxCount { get; }
 
+        int UnspentOutputCount { get; }
+
+        int TotalTxCount { get; }
+
+        int TotalInputCount { get; }
+
+        int TotalOutputCount { get; }
+
         /// <summary>
         /// Determine whether an unspent transaction is present.
         /// </summary>
