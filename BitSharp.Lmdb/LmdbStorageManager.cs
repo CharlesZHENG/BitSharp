@@ -15,6 +15,7 @@ namespace BitSharp.Lmdb
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly string baseDirectory;
+        private readonly string[] blockTxesStorageLocations;
         private readonly long blocksSize;
         private readonly long blockTxesSize;
         private readonly long chainStateSize;
@@ -24,19 +25,20 @@ namespace BitSharp.Lmdb
         private readonly object chainStateManagerLock;
 
         private BlockStorage blockStorage;
-        private SplitBlockTxesStorage blockTxesStorage;
+        private IBlockTxesStorage blockTxesStorage;
         private LmdbChainStateManager chainStateManager;
 
         private bool isDisposed;
 
-        public LmdbStorageManager(string baseDirectory)
-            : this(baseDirectory, blocksSize: 4.BILLION(), blockTxesSize: 128.BILLION(), chainStateSize: 32.BILLION())
+        public LmdbStorageManager(string baseDirectory, string[] blockTxesStorageLocations = null)
+            : this(baseDirectory, blocksSize: 4.BILLION(), blockTxesSize: 128.BILLION(), chainStateSize: 32.BILLION(), blockTxesStorageLocations: blockTxesStorageLocations)
         {
         }
 
-        public LmdbStorageManager(string baseDirectory, long blocksSize, long blockTxesSize, long chainStateSize)
+        public LmdbStorageManager(string baseDirectory, long blocksSize, long blockTxesSize, long chainStateSize, string[] blockTxesStorageLocations = null)
         {
             this.baseDirectory = baseDirectory;
+            this.blockTxesStorageLocations = blockTxesStorageLocations;
             this.blocksSize = blocksSize;
             this.blockTxesSize = blockTxesSize;
             this.chainStateSize = chainStateSize;
@@ -86,12 +88,22 @@ namespace BitSharp.Lmdb
         {
             get
             {
-                const int splitCount = 32;
-
                 if (this.blockTxesStorage == null)
                     lock (this.blockTxesStorageLock)
                         if (this.blockTxesStorage == null)
-                            this.blockTxesStorage = new SplitBlockTxesStorage(splitCount, x => new BlockTxesStorage(this.baseDirectory, this.blockTxesSize / splitCount, x));
+                        {
+                            if (blockTxesStorageLocations == null)
+                            {
+                                // split LMDB storage since only one writer is allowed at a time
+                                const int splitCount = 32;
+                                this.blockTxesStorage = new SplitBlockTxesStorage(splitCount, x => new BlockTxesStorage(this.baseDirectory, this.blockTxesSize / splitCount, x));
+                            }
+                            else
+                            {
+                                // LMDB storage should still be further split up within each split location, since only one writer is allowed at a time
+                                this.blockTxesStorage = new SplitBlockTxesStorage(blockTxesStorageLocations, path => new BlockTxesStorage(path, this.blockTxesSize / blockTxesStorageLocations.Length));
+                            }
+                        }
 
                 return this.blockTxesStorage;
             }

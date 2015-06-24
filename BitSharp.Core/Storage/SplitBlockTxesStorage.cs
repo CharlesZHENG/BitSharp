@@ -14,20 +14,34 @@ namespace BitSharp.Core.Storage
         private readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly int splitCount;
-        private readonly Func<int, IBlockTxesStorage> createBlockTxesStorage;
         private readonly IBlockTxesStorage[] storages;
 
         public SplitBlockTxesStorage(int splitCount, Func<int, IBlockTxesStorage> createBlockTxesStorage)
         {
             this.splitCount = splitCount;
-            this.createBlockTxesStorage = createBlockTxesStorage;
 
             this.storages = new IBlockTxesStorage[splitCount];
-
             try
             {
                 for (var i = 0; i < this.storages.Length; i++)
                     this.storages[i] = createBlockTxesStorage(i);
+            }
+            catch (Exception)
+            {
+                this.storages.DisposeList();
+                throw;
+            }
+        }
+
+        public SplitBlockTxesStorage(string[] storageLocations, Func<string, IBlockTxesStorage> createBlockTxesStorage)
+        {
+            this.splitCount = storageLocations.Length;
+
+            this.storages = new IBlockTxesStorage[splitCount];
+            try
+            {
+                for (var i = 0; i < storageLocations.Length; i++)
+                    this.storages[i] = createBlockTxesStorage(storageLocations[i]);
             }
             catch (Exception)
             {

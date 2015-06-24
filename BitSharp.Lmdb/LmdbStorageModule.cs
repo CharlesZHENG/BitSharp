@@ -9,12 +9,14 @@ namespace BitSharp.Lmdb
     public class LmdbStorageModule : NinjectModule
     {
         private readonly string baseDirectory;
+        private readonly string[] blockTxesStorageLocations;
         private readonly string dataDirectory;
         private readonly RulesEnum rulesType;
 
-        public LmdbStorageModule(string baseDirectory, RulesEnum rulesType)
+        public LmdbStorageModule(string baseDirectory, RulesEnum rulesType, string[] blockTxesStorageLocations = null)
         {
             this.baseDirectory = baseDirectory;
+            this.blockTxesStorageLocations = blockTxesStorageLocations;
             this.dataDirectory = Path.Combine(baseDirectory, "Data", rulesType.ToString());
             this.rulesType = rulesType;
         }
@@ -22,7 +24,9 @@ namespace BitSharp.Lmdb
         public override void Load()
         {
             // bind concrete storage providers
-            this.Bind<LmdbStorageManager>().ToSelf().InSingletonScope().WithConstructorArgument("baseDirectory", this.dataDirectory);
+            this.Bind<LmdbStorageManager>().ToSelf().InSingletonScope()
+                .WithConstructorArgument("baseDirectory", this.dataDirectory)
+                .WithConstructorArgument("blockTxesStorageLocations", this.blockTxesStorageLocations);
 
             // bind storage providers interfaces
             this.Bind<IStorageManager>().ToMethod(x => this.Kernel.Get<LmdbStorageManager>()).InSingletonScope();

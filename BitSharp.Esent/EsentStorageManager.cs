@@ -10,20 +10,22 @@ namespace BitSharp.Esent
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly string baseDirectory;
+        private readonly string[] blockTxesStorageLocations;
 
         private readonly object blockStorageLock;
         private readonly object blockTxesStorageLock;
         private readonly object chainStateManagerLock;
 
         private BlockStorage blockStorage;
-        private BlockTxesStorage blockTxesStorage;
+        private IBlockTxesStorage blockTxesStorage;
         private EsentChainStateManager chainStateManager;
 
         private bool isDisposed;
 
-        public EsentStorageManager(string baseDirectory)
+        public EsentStorageManager(string baseDirectory, string[] blockTxesStorageLocations = null)
         {
             this.baseDirectory = baseDirectory;
+            this.blockTxesStorageLocations = blockTxesStorageLocations;
 
             this.blockStorageLock = new object();
             this.blockTxesStorageLock = new object();
@@ -35,7 +37,7 @@ namespace BitSharp.Esent
             Dispose(true);
             GC.SuppressFinalize(this);
         }
-        
+
         protected virtual void Dispose(bool disposing)
         {
             if (!isDisposed && disposing)
@@ -73,7 +75,12 @@ namespace BitSharp.Esent
                 if (this.blockTxesStorage == null)
                     lock (this.blockTxesStorageLock)
                         if (this.blockTxesStorage == null)
-                            this.blockTxesStorage = new BlockTxesStorage(this.baseDirectory);
+                        {
+                            if (blockTxesStorageLocations == null)
+                                this.blockTxesStorage = new BlockTxesStorage(this.baseDirectory);
+                            else
+                                this.blockTxesStorage = new SplitBlockTxesStorage(blockTxesStorageLocations, path => new BlockTxesStorage(path));
+                        }
 
                 return this.blockTxesStorage;
             }

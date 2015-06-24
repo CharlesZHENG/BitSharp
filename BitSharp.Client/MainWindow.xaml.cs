@@ -64,16 +64,11 @@ namespace BitSharp.Client
                 var cleanBlockTxes = false
                     // clean block txes if the chain state is being cleaned and block txes have been pruned, the new chain state will require intact blocks to validate
                     || (cleanChainState && (pruningMode.HasFlag(PruningMode.BlockTxesPreserveMerkle) || pruningMode.HasFlag(PruningMode.BlockTxesDestroyMerkle)));
-
-                int? cacheSizeMaxBytes = 500.MILLION();
-
-                // location to store a copy of raw blocks to avoid redownload
-                if (isLocalDev)
-                    BlockRequestWorker.SecondaryBlockFolder = @"D:\BitSharp.Blocks\RawBlocks";
-
                 //NOTE: Running with a cleaned chained state against a pruned blockchain does not work.
                 //      It will see the data is missing, but won't redownload the blocks.
                 //**************************************************************
+
+                int? cacheSizeMaxBytes = 500.MILLION();
 
                 // directories
                 var baseDirectory = Config.LocalStoragePath;
@@ -81,6 +76,18 @@ namespace BitSharp.Client
                 //    baseDirectory = Path.Combine(baseDirectory, "Debugger");
 
                 var rulesType = useTestNet ? RulesEnum.TestNet3 : RulesEnum.MainNet;
+
+                string[] blockTxesStorageLocations = null;
+
+                if (isLocalDev)
+                {
+                    // location to store a copy of raw blocks to avoid redownload
+                    BlockRequestWorker.SecondaryBlockFolder = @"D:\BitSharp.Blocks\RawBlocks";
+
+                    // split block txes storage across 3 SSDs
+                    var defaultBlockTxesPath = Path.Combine(baseDirectory, "Data", rulesType.ToString());
+                    blockTxesStorageLocations = new[] { defaultBlockTxesPath, @"Y:\BitSharp", @"Z:\BitSharp" };
+                }
 
                 //TODO
                 if (cleanData)
@@ -119,9 +126,9 @@ namespace BitSharp.Client
                 }
                 else
                 {
-                    modules.Add(new EsentStorageModule(baseDirectory, rulesType, blockStorage: !useLmdb, cacheSizeMaxBytes: cacheSizeMaxBytes));
+                    modules.Add(new EsentStorageModule(baseDirectory, rulesType, blockStorage: !useLmdb, cacheSizeMaxBytes: cacheSizeMaxBytes, blockTxesStorageLocations: blockTxesStorageLocations));
                     if (useLmdb)
-                        modules.Add(new LmdbStorageModule(baseDirectory, rulesType));
+                        modules.Add(new LmdbStorageModule(baseDirectory, rulesType, blockTxesStorageLocations));
                 }
 
                 // add rules module
