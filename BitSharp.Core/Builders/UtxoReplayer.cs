@@ -59,7 +59,13 @@ namespace BitSharp.Core.Builders
                 {
                     IImmutableList<UnmintedTx> unmintedTxesList;
                     if (!chainState.TryGetBlockUnmintedTxes(replayBlock.Hash, out unmintedTxesList))
+                    {
+                        //TODO if a wallet/monitor were to see a chainstate block that wasn't flushed to disk yet,
+                        //TODO and if bitsharp crashed, and if the block was orphaned: then the orphaned block would
+                        //TODO not be present in the chainstate, and it would not get rolled back to generate unminted information.
+                        //TODO DeferredChainStateCursor should be used in order to re-org the chainstate in memory and calculate the unminted information
                         throw new MissingDataException(replayBlock.Hash);
+                    }
 
                     var unmintedTxes = ImmutableDictionary.CreateRange(
                         unmintedTxesList.Select(x => new KeyValuePair<UInt256, UnmintedTx>(x.TxHash, x)));
