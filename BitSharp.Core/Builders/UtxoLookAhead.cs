@@ -21,6 +21,7 @@ namespace BitSharp.Core.Builders
         private readonly ParallelReader<Tuple<UInt256, CompletionCount>> utxoWarmupSource;
         private readonly ParallelObserver<Tuple<UInt256, CompletionCount>> utxoReader;
 
+        private readonly DurationMeasure txesReadDurationMeasure = new DurationMeasure(TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(5));
         private readonly DurationMeasure lookAheadDurationMeasure = new DurationMeasure(TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(5));
 
         public UtxoLookAhead()
@@ -33,24 +34,17 @@ namespace BitSharp.Core.Builders
         {
             this.utxoWarmupSource.Dispose();
             this.utxoReader.Dispose();
+            this.txesReadDurationMeasure.Dispose();
             this.lookAheadDurationMeasure.Dispose();
         }
 
         public IEnumerable<BlockTx> LookAhead(IEnumerable<BlockTx> blockTxes, DeferredChainStateCursor deferredChainStateCursor)
         {
-            var stopwatch = Stopwatch.StartNew();
             using (var progress = new Progress())
             // create the observable source of each utxo entry to be warmed up: each input's previous transaction, and each new transaction
             using (var utxoWarmupTask = this.utxoWarmupSource.ReadAsync(CreateBlockTxesSource(progress, blockTxes)).WaitOnDispose())
             // subscribe the utxo entries to be warmed up
-            using (var utxoReaderTask = this.utxoReader.SubscribeObservers(utxoWarmupSource, CreateUtxoWarmer(progress, deferredChainStateCursor),
-                finallyAction: ex =>
-                {
-                    stopwatch.Stop();
-                    lookAheadDurationMeasure.Tick(stopwatch.Elapsed);
-                    Throttler.IfElapsed(TimeSpan.FromSeconds(5), () =>
-                        logger.Info("UTXO Look-ahead: {0,12:N3}ms".Format2(lookAheadDurationMeasure.GetAverage().TotalMilliseconds)));
-                }).WaitOnDispose())
+            using (var utxoReaderTask = this.utxoReader.SubscribeObservers(utxoWarmupSource, CreateUtxoWarmer(progress, deferredChainStateCursor)).WaitOnDispose())
             {
                 // return the warmed-up transactions, in the original block order
                 foreach (var blockTx in CreateWarmedTxesSource(progress))
@@ -74,6 +68,10 @@ namespace BitSharp.Core.Builders
                         foreach (var txHash in blockTx.Transaction.Inputs.Select(x => x.PreviousTxOutputKey.TxHash))
                             yield return Tuple.Create(txHash, completionCount);
                 }
+
+                txesReadDurationMeasure.Tick(progress.stopwatch.Elapsed);
+                Throttler.IfElapsed(TimeSpan.FromSeconds(5), () =>
+                    logger.Info("Block Txes Read: {0,12:N3}ms".Format2(txesReadDurationMeasure.GetAverage().TotalMilliseconds)));
             }
             finally
             {
@@ -94,6 +92,13 @@ namespace BitSharp.Core.Builders
 
                     if (completionCount.TryComplete())
                         progress.txLoadedEvent.Set();
+                },
+                ex => { },
+                () =>
+                {
+                    lookAheadDurationMeasure.Tick(progress.stopwatch.Elapsed);
+                    Throttler.IfElapsed(TimeSpan.FromSeconds(5), () =>
+                        logger.Info("UTXO Look-ahead: {0,12:N3}ms".Format2(lookAheadDurationMeasure.GetAverage().TotalMilliseconds)));
                 });
         }
 
@@ -115,8 +120,10 @@ namespace BitSharp.Core.Builders
         //TODO
         private sealed class Progress : IDisposable
         {
-            public AutoResetEvent txLoadedEvent = new AutoResetEvent(false);
-            public ConcurrentQueue<Tuple<BlockTx, CompletionCount>> pendingWarmedTxes = new ConcurrentQueue<Tuple<BlockTx, CompletionCount>>();
+            public readonly Stopwatch stopwatch = Stopwatch.StartNew();
+            public readonly AutoResetEvent txLoadedEvent = new AutoResetEvent(false);
+            public readonly ConcurrentQueue<Tuple<BlockTx, CompletionCount>> pendingWarmedTxes = new ConcurrentQueue<Tuple<BlockTx, CompletionCount>>();
+
             public bool completedAdding = false;
 
             public void Dispose()
