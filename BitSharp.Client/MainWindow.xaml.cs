@@ -86,7 +86,13 @@ namespace BitSharp.Client
 
                     // split block txes storage across 3 SSDs
                     var defaultBlockTxesPath = Path.Combine(baseDirectory, "Data", rulesType.ToString());
-                    blockTxesStorageLocations = new[] { defaultBlockTxesPath, @"Y:\BitSharp", @"Z:\BitSharp" };
+                    blockTxesStorageLocations = new[]
+                    {
+                        defaultBlockTxesPath,
+                        // weight locations to do more block txes work on the non-chainstate drive
+                        @"Y:\BitSharp\1", @"Y:\BitSharp\2",
+                        @"Z:\BitSharp\1", @"Z:\BitSharp\2"
+                    };
                 }
 
                 //TODO
