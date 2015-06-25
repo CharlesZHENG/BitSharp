@@ -205,14 +205,19 @@ namespace BitSharp.Core.Builders
             });
         }
 
-        public void WarmupValue(TKey key)
+        public bool ShouldWarmupValue(TKey key)
+        {
+            return warmupLock.DoWrite(() =>
+                !read.ContainsKey(key) && !missing.Contains(key) && !updated.ContainsKey(key) && !added.ContainsKey(key) && !deleted.Contains(key));
+        }
+
+        public void WarmupValue(TKey key, TValue value)
         {
             warmupLock.DoWrite(() =>
             {
                 if (!read.ContainsKey(key) && !missing.Contains(key) && !updated.ContainsKey(key) && !added.ContainsKey(key) && !deleted.Contains(key))
                 {
-                    TValue value;
-                    if (TryGetParentValue(key, out value))
+                    if (value != null)
                         read.Add(key, value);
                     else
                         missing.Add(key);

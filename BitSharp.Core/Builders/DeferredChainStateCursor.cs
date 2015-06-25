@@ -220,7 +220,14 @@ namespace BitSharp.Core.Builders
 
         public void WarmUnspentTx(UInt256 txHash)
         {
-            unspentTxes.WarmupValue(txHash);
+            if (unspentTxes.ShouldWarmupValue(txHash))
+            {
+                UnspentTx unspentTx;
+                if (chainState.TryGetUnspentTx(txHash, out unspentTx))
+                    unspentTxes.WarmupValue(txHash, unspentTx);
+                else
+                    unspentTxes.WarmupValue(txHash, null);
+            }
         }
 
         public void ApplyChangesToParent(IChainStateCursor parent)

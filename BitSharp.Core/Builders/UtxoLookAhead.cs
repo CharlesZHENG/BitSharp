@@ -27,7 +27,7 @@ namespace BitSharp.Core.Builders
         public UtxoLookAhead()
         {
             this.utxoWarmupSource = new ParallelReader<Tuple<UInt256, CompletionCount>>("UtxoLookAhead.UtxoWarmupSource");
-            this.utxoReader = new ParallelObserver<Tuple<UInt256, CompletionCount>>("UtxoLookAhead.UtxoReader", 4);
+            this.utxoReader = new ParallelObserver<Tuple<UInt256, CompletionCount>>("UtxoLookAhead.UtxoReader", 16);
         }
 
         public void Dispose()
