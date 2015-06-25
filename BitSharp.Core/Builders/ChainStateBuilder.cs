@@ -165,6 +165,9 @@ namespace BitSharp.Core.Builders
                 }
                 finally
                 {
+                    //TODO rollback can fail (e.g. out of space), the cursor should be abandoned and recreated if this happens,
+                    //TODO it leaves the builder in an invalid state
+
                     // rollback if the transaction was not comitted
                     if (cursorInTransaction)
                         this.chainStateCursor.RollbackTransaction();
