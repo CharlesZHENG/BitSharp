@@ -10,6 +10,7 @@ using System.Collections.Immutable;
 using System.Linq;
 using System.Reactive;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 
 namespace BitSharp.Core.Builders
 {
@@ -22,7 +23,6 @@ namespace BitSharp.Core.Builders
 
         private readonly UtxoReplayer pendingTxLoader;
         private readonly ParallelReader<LoadingTx> loadingTxesSource;
-        private readonly TxLoader txLoader;
         private readonly ParallelObserver<LoadedTx> txSorter;
 
         private bool isDisposed;
@@ -37,7 +37,6 @@ namespace BitSharp.Core.Builders
 
             this.pendingTxLoader = new UtxoReplayer("BlockReplayer", coreStorage, ioThreadCount);
             this.loadingTxesSource = new ParallelReader<LoadingTx>("BlockReplayer.LoadingTxesSource");
-            this.txLoader = new TxLoader("BlockReplayer", coreStorage, ioThreadCount);
             this.txSorter = new ParallelObserver<LoadedTx>("BlockReplayer", 1);
         }
 
@@ -53,7 +52,6 @@ namespace BitSharp.Core.Builders
             {
                 this.pendingTxLoader.Dispose();
                 this.loadingTxesSource.Dispose();
-                this.txLoader.Dispose();
                 this.txSorter.Dispose();
 
                 isDisposed = true;
@@ -77,9 +75,9 @@ namespace BitSharp.Core.Builders
                 loadingTxes =>
                 {
                     using (var loadingTxesTask = this.loadingTxesSource.ReadAsync(loadingTxes.GetConsumingEnumerable()).WaitOnDispose())
-                    using (var loadedTxesTask = this.txLoader.LoadTxes(loadingTxesSource).WaitOnDispose())
+                    using (var txLoader = new TxLoader("BlockReplayer", coreStorage, 4, loadingTxesSource))
                     using (var sortedTxes = new ConcurrentBlockingQueue<LoadedTx>())
-                    using (var txSorterTask = StartTxSorter(replayBlock, txLoader, sortedTxes).WaitOnDispose())
+                    using (var txSorterTask = StartTxSorter(replayBlock, txLoader.LoadedTxes, sortedTxes).WaitOnDispose())
                     {
                         var replayTxes = sortedTxes.GetConsumingEnumerable();
                         //TODO Reverse() here means everything must be loaded first, the tx sorter should handle this instead
@@ -92,7 +90,7 @@ namespace BitSharp.Core.Builders
                 });
         }
 
-        private Task StartTxSorter(ChainedHeader replayBlock, IParallelReader<LoadedTx> loadedTxes, ConcurrentBlockingQueue<LoadedTx> sortedTxes)
+        private async Task StartTxSorter(ChainedHeader replayBlock, ISourceBlock<LoadedTx> loadedTxes, ConcurrentBlockingQueue<LoadedTx> sortedTxes)
         {
             // txSorter will only have a single consumer thread, so SortedList is safe to use
             var pendingSortedTxes = new SortedList<int, LoadedTx>();
@@ -100,23 +98,31 @@ namespace BitSharp.Core.Builders
             // keep track of which tx is the next one in order
             var nextTxIndex = 0;
 
-            return this.txSorter.SubscribeObservers(loadedTxes,
-                Observer.Create<LoadedTx>(
-                    loadedTx =>
-                    {
-                        // store loaded tx
-                        pendingSortedTxes.Add(loadedTx.TxIndex, loadedTx);
+            var txSorter = new ActionBlock<LoadedTx>(
+                loadedTx =>
+                {
+                    // store loaded tx
+                    pendingSortedTxes.Add(loadedTx.TxIndex, loadedTx);
 
-                        // dequeue any available loaded txes that are in order
-                        while (pendingSortedTxes.Count > 0 && pendingSortedTxes.Keys[0] == nextTxIndex)
-                        {
-                            sortedTxes.Add(pendingSortedTxes.Values[0]);
-                            pendingSortedTxes.RemoveAt(0);
-                            nextTxIndex++;
-                        }
-                    },
-                    ex => sortedTxes.CompleteAdding(),
-                    () => sortedTxes.CompleteAdding()));
+                    // dequeue any available loaded txes that are in order
+                    while (pendingSortedTxes.Count > 0 && pendingSortedTxes.Keys[0] == nextTxIndex)
+                    {
+                        sortedTxes.Add(pendingSortedTxes.Values[0]);
+                        pendingSortedTxes.RemoveAt(0);
+                        nextTxIndex++;
+                    }
+                });
+
+            loadedTxes.LinkTo(txSorter, new DataflowLinkOptions { PropagateCompletion = true });
+
+            try
+            {
+                await txSorter.Completion;
+            }
+            finally
+            {
+                sortedTxes.CompleteAdding();
+            }
         }
     }
 }

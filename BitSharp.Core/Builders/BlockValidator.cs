@@ -5,12 +5,14 @@ using BitSharp.Core.Rules;
 using BitSharp.Core.Storage;
 using NLog;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 
 namespace BitSharp.Core.Builders
 {
@@ -18,83 +20,76 @@ namespace BitSharp.Core.Builders
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        private readonly ReaderWriterLockSlim controlLock = new ReaderWriterLockSlim();
-
         private readonly CoreStorage coreStorage;
         private readonly IBlockchainRules rules;
+        private readonly ChainedHeader chainedHeader;
+        private readonly ISourceBlock<LoadedTx> loadedTxes;
 
-        private readonly ParallelConsumerProducer<LoadedTx, Tuple<LoadedTx, int>> txValidator;
-        private readonly ParallelObserver<Tuple<LoadedTx, int>> scriptValidator;
+        private readonly CancellationTokenSource cancelToken = new CancellationTokenSource();
+        private Task completion;
 
-        private TaskCompletionSource<object> tcs;
-        private ConcurrentBlockingQueue<Tuple<LoadedTx, int>> validateScriptQueue;
-        private bool scriptError;
-        private Exception taskException;
+        private TransformManyBlock<LoadedTx, Tuple<LoadedTx, int>> txValidator;
+        private ActionBlock<Tuple<LoadedTx, int>> scriptValidator;
 
-        public BlockValidator(CoreStorage coreStorage, IBlockchainRules rules)
+        public BlockValidator(CoreStorage coreStorage, IBlockchainRules rules, ChainedHeader chainedHeader, ISourceBlock<LoadedTx> loadedTxes)
         {
             this.coreStorage = coreStorage;
             this.rules = rules;
+            this.chainedHeader = chainedHeader;
+            this.loadedTxes = loadedTxes;
 
-            // thread count for cpu tasks (TxValidator, ScriptValidator)
-            var cpuThreadCount = Environment.ProcessorCount * 2;
-
-            this.txValidator = new ParallelConsumerProducer<LoadedTx, Tuple<LoadedTx, int>>("BlockValidator.TxValidator", cpuThreadCount);
-            this.scriptValidator = new ParallelObserver<Tuple<LoadedTx, int>>("BlockValidator.ScriptValidator", rules.IgnoreScriptErrors ? 1 : cpuThreadCount);
+            completion = ValidateTransactions();
         }
 
         public void Dispose()
         {
-            this.txValidator.Dispose();
-            this.scriptValidator.Dispose();
-            this.controlLock.Dispose();
+            cancelToken.Dispose();
         }
 
-        public Task ValidateTransactions(ChainedHeader chainedHeader, IParallelReader<LoadedTx> loadedTxes)
+        public Task Completion { get { return completion; } }
+
+        private async Task ValidateTransactions()
         {
-            controlLock.EnterWriteLock();
-            try
-            {
-                if (tcs != null)
-                    throw new InvalidOperationException();
+            // validate transactions
+            txValidator = InitTxValidator();
 
-                this.tcs = new TaskCompletionSource<object>();
-                this.validateScriptQueue = new ConcurrentBlockingQueue<Tuple<LoadedTx, int>>();
-                this.scriptError = false;
-                this.taskException = null;
+            // validate scripts
+            scriptValidator = InitScriptValidator();
 
-                this.txValidator.ConsumeProduceAsync(loadedTxes,
-                    CreateTxValidator(chainedHeader),
-                    loadedTx => QueueTransactionScripts(chainedHeader, loadedTx));
+            // begin feeding the tx validator
+            loadedTxes.LinkTo(txValidator, new DataflowLinkOptions { PropagateCompletion = true });
 
-                this.scriptValidator.SubscribeObservers(
-                    txValidator,
-                    CreateScriptValidator(chainedHeader),
-                    finallyAction: ex => Finish(chainedHeader, ex));
+            // begin feeding the script validator
+            txValidator.LinkTo(scriptValidator, new DataflowLinkOptions { PropagateCompletion = true });
 
-                return this.tcs.Task;
-            }
-            finally
-            {
-                controlLock.ExitWriteLock();
-            }
+            await txValidator.Completion;
+            await scriptValidator.Completion;
         }
 
-        private IObserver<LoadedTx> CreateTxValidator(ChainedHeader chainedHeader)
+        private TransformManyBlock<LoadedTx, Tuple<LoadedTx, int>> InitTxValidator()
         {
-            return Observer.Create<LoadedTx>(
+            return new TransformManyBlock<LoadedTx, Tuple<LoadedTx, int>>(
                 loadedTx =>
                 {
-                    QueueTransactionScripts(chainedHeader, loadedTx);
-                    this.rules.ValidateTransaction(chainedHeader, loadedTx);
+                    rules.ValidateTransaction(chainedHeader, loadedTx);
+
+                    if (!this.rules.IgnoreScripts && !loadedTx.IsCoinbase)
+                    {
+                        var scripts = new Tuple<LoadedTx, int>[loadedTx.Transaction.Inputs.Length];
+                        for (var i = 0; i < loadedTx.Transaction.Inputs.Length; i++)
+                            scripts[i] = Tuple.Create(loadedTx, i);
+
+                        return scripts;
+                    }
+                    else
+                        return new Tuple<LoadedTx, int>[0];
                 },
-                ex => { taskException = taskException ?? ex; validateScriptQueue.CompleteAdding(); },
-                () => validateScriptQueue.CompleteAdding());
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken.Token, MaxDegreeOfParallelism = 16 });
         }
 
-        private IObserver<Tuple<LoadedTx, int>> CreateScriptValidator(ChainedHeader chainedHeader)
+        private ActionBlock<Tuple<LoadedTx, int>> InitScriptValidator()
         {
-            return Observer.Create<Tuple<LoadedTx, int>>(
+            return new ActionBlock<Tuple<LoadedTx, int>>(
                 tuple =>
                 {
                     var loadedTx = tuple.Item1;
@@ -102,77 +97,24 @@ namespace BitSharp.Core.Builders
                     var txInput = loadedTx.Transaction.Inputs[inputIndex];
                     var prevTxOutput = loadedTx.GetInputPrevTxOutput(inputIndex);
 
-                    try
+                    if (!this.rules.IgnoreScriptErrors)
                     {
                         this.rules.ValidationTransactionScript(chainedHeader, loadedTx.Transaction, loadedTx.TxIndex, txInput, inputIndex, prevTxOutput);
                     }
-                    catch (Exception ex)
-                    {
-                        taskException = ex;
-                        scriptError = true;
-                    }
-                });
-        }
-
-        private IEnumerable<Tuple<LoadedTx, int>> QueueTransactionScripts(ChainedHeader chainedHeader, LoadedTx loadedTx)
-        {
-            if (!this.rules.IgnoreScripts)
-            {
-                var transaction = loadedTx.Transaction;
-                var txIndex = loadedTx.TxIndex;
-
-                if (!loadedTx.IsCoinbase)
-                {
-                    for (var inputIndex = 0; inputIndex < transaction.Inputs.Length; inputIndex++)
-                        yield return Tuple.Create(loadedTx, inputIndex);
-                }
-            }
-        }
-
-        private void Finish(ChainedHeader chainedHeader, Exception ex = null)
-        {
-            controlLock.EnterUpgradeableReadLock();
-            try
-            {
-                taskException = taskException ?? ex;
-                try
-                {
-                    txValidator.Wait();
-                    scriptValidator.Wait();
-                }
-                catch (Exception validatorEx)
-                {
-                    taskException = taskException ?? validatorEx;
-                }
-
-                controlLock.EnterWriteLock();
-                try
-                {
-                    if (taskException != null)
-                    {
-                        if (this.scriptError && this.rules.IgnoreScriptErrors)
-                        {
-                            var aggEx = taskException as AggregateException;
-                            logger.Debug("Ignoring script errors in block: {0,9:#,##0}, errors: {1:#,##0}".Format2(chainedHeader.Height, aggEx != null ? aggEx.InnerExceptions.Count : -1));
-                            tcs.SetResult(null);
-                        }
-                        else
-                            tcs.SetException(taskException);
-                    }
                     else
-                        tcs.SetResult(null);
-
-                    tcs = null;
-                }
-                finally
-                {
-                    controlLock.ExitWriteLock();
-                }
-            }
-            finally
-            {
-                controlLock.ExitUpgradeableReadLock();
-            }
+                    {
+                        try
+                        {
+                            this.rules.ValidationTransactionScript(chainedHeader, loadedTx.Transaction, loadedTx.TxIndex, txInput, inputIndex, prevTxOutput);
+                        }
+                        catch (Exception ex)
+                        {
+                            var aggEx = ex as AggregateException;
+                            logger.Debug("Ignoring script errors in block: {0,9:#,##0}, errors: {1:#,##0}".Format2(chainedHeader.Height, aggEx != null ? aggEx.InnerExceptions.Count : -1));
+                        }
+                    }
+                },
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken.Token, MaxDegreeOfParallelism = 16 });
         }
     }
 }

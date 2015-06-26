@@ -14,113 +14,130 @@ using System.Reactive;
 using System.Threading;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 
 namespace BitSharp.Core.Builders
 {
-    internal class TxLoader : IParallelReader<LoadedTx>, IDisposable
+    internal class TxLoader : IDisposable
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        private readonly ReaderWriterLockSlim controlLock = new ReaderWriterLockSlim();
         private readonly ICoreStorage coreStorage;
+        private readonly int threadCount;
+        private readonly ParallelReader<LoadingTx> loadingTxesReader;
 
-        private readonly ParallelConsumerProducer<LoadingTx, Tuple<LoadingTx, int>> loadTxInputsSource;
-        private readonly ParallelConsumerProducer<Tuple<LoadingTx, int>, LoadedTx> inputTxLoader;
+        private readonly CancellationTokenSource cancelToken = new CancellationTokenSource();
+        private readonly Task completion;
 
-        private TaskCompletionSource<object> tcs;
-        private ParallelReader<LoadingTx> loadingTxesReader;
+        private TransformManyBlock<LoadingTx, Tuple<LoadingTx, int>> createTxInputList;
+        private TransformManyBlock<Tuple<LoadingTx, int>, LoadedTx> loadTxInputAndReturnLoadedTx;
 
-        public TxLoader(string name, ICoreStorage coreStorage, int threadCount)
+        public TxLoader(string name, ICoreStorage coreStorage, int threadCount, ParallelReader<LoadingTx> loadingTxesReader)
         {
             this.coreStorage = coreStorage;
+            this.threadCount = threadCount;
+            this.loadingTxesReader = loadingTxesReader;
 
-            loadTxInputsSource = new ParallelConsumerProducer<LoadingTx, Tuple<LoadingTx, int>>(name + ".LoadTxInputsSource", threadCount);
-            inputTxLoader = new ParallelConsumerProducer<Tuple<LoadingTx, int>, LoadedTx>(name + ".InputTxLoader", threadCount);
+            completion = LoadTxes();
         }
 
         public void Dispose()
         {
-            loadTxInputsSource.Dispose();
-            inputTxLoader.Dispose();
-            controlLock.Dispose();
+            cancelToken.Dispose();
         }
 
+        public Task Completion { get { return completion; } }
+
+        //TODO remove
         public bool IsStarted
         {
-            get { return inputTxLoader.IsStarted; }
+            get { return true; }
         }
 
+        //TODO remove
         public int Count
         {
-            get { return loadingTxesReader.Count + inputTxLoader.Count; }
+            get { return 0; }
         }
 
-        public Task LoadTxes(ParallelReader<LoadingTx> loadingTxesReader)
+        public ISourceBlock<LoadedTx> LoadedTxes
         {
-            controlLock.EnterWriteLock();
-            try
+            get
             {
-                if (tcs != null)
-                    throw new InvalidOperationException();
-
-                tcs = new TaskCompletionSource<object>();
-                this.loadingTxesReader = loadingTxesReader;
-
-                loadTxInputsSource.ConsumeProduceAsync(loadingTxesReader, null,
-                    loadingTx => QueueLoadingTxInputs(loadingTx));
-
-                inputTxLoader.ConsumeProduceAsync(loadTxInputsSource, null,
-                    tuple => LoadTxInputAndQueueLoadedTx(tuple),
-                    finallyAction: ex => Finish(ex));
-
-                return tcs.Task;
-            }
-            finally
-            {
-                controlLock.ExitWriteLock();
+                return loadTxInputAndReturnLoadedTx;
             }
         }
 
-        public IEnumerable<LoadedTx> GetConsumingEnumerable()
+        private async Task LoadTxes()
         {
-            return inputTxLoader.GetConsumingEnumerable();
+            // split incoming LoadingTx by its number of inputs
+            createTxInputList = InitCreateTxInputList();
+
+            // load each input, and return and fully loaded txes
+            loadTxInputAndReturnLoadedTx = InitLoadTxInputAndReturnLoadedTx();
+
+            // link the input splitter to the input loader
+            createTxInputList.LinkTo(loadTxInputAndReturnLoadedTx, new DataflowLinkOptions { PropagateCompletion = true });
+
+            // begin feeding the input splitter
+            var readLoadingTxes = Task.Factory.StartNew(() =>
+            {
+                foreach (var loadingTx in loadingTxesReader.GetConsumingEnumerable())
+                    createTxInputList.Post(loadingTx);
+
+                createTxInputList.Complete();
+            }, cancelToken.Token, TaskCreationOptions.AttachedToParent, TaskScheduler.Default);
+
+            await readLoadingTxes;
+            await createTxInputList.Completion;
+            await loadTxInputAndReturnLoadedTx.Completion;
         }
 
         public void Wait()
         {
-            loadTxInputsSource.Wait();
-            inputTxLoader.Wait();
+            completion.Wait();
         }
 
         public void Cancel(Exception ex)
         {
-            loadTxInputsSource.Cancel(ex);
-            inputTxLoader.Cancel(ex);
+            cancelToken.Cancel();
         }
 
-        private IEnumerable<Tuple<LoadingTx, int>> QueueLoadingTxInputs(LoadingTx loadingTx)
+        private TransformManyBlock<LoadingTx, Tuple<LoadingTx, int>> InitCreateTxInputList()
         {
-            // queue up inputs to be loaded for non-coinbase transactions
-            if (!loadingTx.IsCoinbase)
-            {
-                for (var inputIndex = 0; inputIndex < loadingTx.PrevOutputTxKeys.Length; inputIndex++)
-                    yield return Tuple.Create(loadingTx, inputIndex);
-            }
-            // queue coinbase transaction with no inputs to load
-            else
-            {
-                yield return Tuple.Create(loadingTx, -1);
-            }
+            return new TransformManyBlock<LoadingTx, Tuple<LoadingTx, int>>(
+                loadingTx =>
+                {
+                    // queue up inputs to be loaded for non-coinbase transactions
+                    if (!loadingTx.IsCoinbase)
+                    {
+                        return Enumerable.Range(0, loadingTx.PrevOutputTxKeys.Length).Select(
+                            inputIndex => Tuple.Create(loadingTx, inputIndex));
+                    }
+                    // queue coinbase transaction with no inputs to load
+                    else
+                    {
+                        return new[] { Tuple.Create(loadingTx, -1) };
+                    }
+                },
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken.Token });
         }
 
-        private IEnumerable<LoadedTx> LoadTxInputAndQueueLoadedTx(Tuple<LoadingTx, int> tuple)
+        private TransformManyBlock<Tuple<LoadingTx, int>, LoadedTx> InitLoadTxInputAndReturnLoadedTx()
         {
-            var loadingTx = tuple.Item1;
-            var inputIndex = tuple.Item2;
+            return new TransformManyBlock<Tuple<LoadingTx, int>, LoadedTx>(
+                tuple =>
+                {
+                    var loadingTx = tuple.Item1;
+                    var inputIndex = tuple.Item2;
 
-            var loadedTx = LoadTxInput(loadingTx, inputIndex);
-            if (loadedTx != null)
-                yield return loadedTx;
+                    var loadedTx = LoadTxInput(loadingTx, inputIndex);
+                    if (loadedTx != null)
+                        return new[] { loadedTx };
+                    else
+                        return new LoadedTx[0];
+                },
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken.Token, MaxDegreeOfParallelism = 16 });
         }
 
         private LoadedTx LoadTxInput(LoadingTx loadingTx, int inputIndex)
@@ -155,42 +172,6 @@ namespace BitSharp.Core.Builders
             {
                 Debug.Assert(inputIndex == -1);
                 return new LoadedTx(transaction, txIndex, ImmutableArray.Create<Transaction>());
-            }
-        }
-
-        private void Finish(Exception ex = null)
-        {
-            controlLock.EnterUpgradeableReadLock();
-            try
-            {
-                try
-                {
-                    loadTxInputsSource.Wait();
-                    inputTxLoader.Wait();
-                }
-                catch (Exception taskEx)
-                {
-                    ex = ex ?? taskEx;
-                }
-
-                controlLock.EnterWriteLock();
-                try
-                {
-                    if (ex != null)
-                        tcs.SetException(ex);
-                    else
-                        tcs.SetResult(null);
-
-                    tcs = null;
-                }
-                finally
-                {
-                    controlLock.ExitWriteLock();
-                }
-            }
-            finally
-            {
-                controlLock.ExitUpgradeableReadLock();
             }
         }
     }

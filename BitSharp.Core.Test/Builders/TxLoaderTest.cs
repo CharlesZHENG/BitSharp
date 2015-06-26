@@ -5,8 +5,10 @@ using BitSharp.Core.Domain;
 using BitSharp.Core.Storage;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Threading.Tasks.Dataflow;
 
 namespace BitSharp.Core.Test.Builders
 {
@@ -20,7 +22,6 @@ namespace BitSharp.Core.Test.Builders
         public void TestReadOneLoadingTx()
         {
             var coreStorageMock = new Mock<ICoreStorage>();
-            using (var txLoader = new TxLoader("", coreStorageMock.Object, threadCount: 1))
             using (var loadingTxesReader = new ParallelReader<LoadingTx>(""))
             {
                 // create a fake transaction with 4 inputs
@@ -49,11 +50,17 @@ namespace BitSharp.Core.Test.Builders
                 // begin queuing transactions to load
                 using (loadingTxesReader.ReadAsync(new[] { loadingTx }).WaitOnDispose())
                 // begin transaction loading
-                using (txLoader.LoadTxes(loadingTxesReader).WaitOnDispose())
+                using (var txLoader = new TxLoader("", coreStorageMock.Object, 1, loadingTxesReader))
                 {
-
                     // verify the loaded transaction
-                    var actualLoadedTx = txLoader.GetConsumingEnumerable().Single();
+                    var loadedTxesBuffer = new BufferBlock<LoadedTx>();
+                    txLoader.LoadedTxes.LinkTo(loadedTxesBuffer, new DataflowLinkOptions { PropagateCompletion = true });
+                    txLoader.Completion.Wait();
+
+                    IList<LoadedTx> actualLoadedTxes;
+                    Assert.IsTrue(loadedTxesBuffer.TryReceiveAll(out actualLoadedTxes));
+
+                    var actualLoadedTx = actualLoadedTxes.Single();
 
                     Assert.AreEqual(loadingTx.TxIndex, actualLoadedTx.TxIndex);
                     Assert.AreEqual(loadingTx.Transaction, actualLoadedTx.Transaction);

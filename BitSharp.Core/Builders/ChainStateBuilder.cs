@@ -26,10 +26,7 @@ namespace BitSharp.Core.Builders
         private readonly CoreStorage coreStorage;
         private readonly IStorageManager storageManager;
 
-        private readonly UtxoLookAhead utxoLookAhead;
         private readonly ParallelReader<LoadingTx> calcUtxoSource;
-        private readonly TxLoader txLoader;
-        private readonly BlockValidator blockValidator;
 
         private bool inTransaction;
         private readonly DisposeHandle<IChainStateCursor> chainStateCursorHandle;
@@ -67,20 +64,14 @@ namespace BitSharp.Core.Builders
             // thread count for i/o task (TxLoader)
             var ioThreadCount = Environment.ProcessorCount * 2;
 
-            this.utxoLookAhead = new UtxoLookAhead();
             this.calcUtxoSource = new ParallelReader<LoadingTx>("ChainStateBuilder.CalcUtxoSource");
-            this.txLoader = new TxLoader("ChainStateBuilder", coreStorage, ioThreadCount);
-            this.blockValidator = new BlockValidator(this.coreStorage, this.rules);
 
             this.commitLock = new ReaderWriterLockSlim();
         }
 
         public void Dispose()
         {
-            this.utxoLookAhead.Dispose();
             this.calcUtxoSource.Dispose();
-            this.txLoader.Dispose();
-            this.blockValidator.Dispose();
             this.chainStateCursorHandle.Dispose();
             this.stats.Dispose();
             this.commitLock.Dispose();
@@ -115,52 +106,52 @@ namespace BitSharp.Core.Builders
                     Task calcUtxoReadsQueueTask;
                     using (var chainState = new ChainState(this.chain.ToImmutable(), this.storageManager))
                     using (var deferredChainStateCursor = new DeferredChainStateCursor(chainState))
+                    using (var utxoLookAhead = new UtxoLookAhead(blockTxes, deferredChainStateCursor))
+                    using (var calcUtxoTask = this.calcUtxoSource.ReadAsync(CalculateUtxo(chainedHeader, utxoLookAhead.ConsumeWarmedTxes(), deferredChainStateCursor), null, null, out calcUtxoReadsQueueTask).WaitOnDispose())
+                    using (var txLoader = new TxLoader("ChainStateBuilder", coreStorage, Environment.ProcessorCount * 2, calcUtxoSource))
+                    using (var blockValidator = new BlockValidator(coreStorage, rules, chainedHeader, txLoader.LoadedTxes))
                     {
-                        var blockTxesCalculateQueue = this.utxoLookAhead.LookAhead(blockTxes, deferredChainStateCursor);
-                        using (var calcUtxoTask = this.calcUtxoSource.ReadAsync(CalculateUtxo(chainedHeader, blockTxesCalculateQueue, deferredChainStateCursor), null, null, out calcUtxoReadsQueueTask).WaitOnDispose())
-                        using (var loadedTxesTask = this.txLoader.LoadTxes(calcUtxoSource).WaitOnDispose())
-                        using (var blockValidationTask = this.blockValidator.ValidateTransactions(chainedHeader, txLoader).WaitOnDispose())
+                        // wait for the utxo calculation to finish before applying
+                        calcUtxoReadsQueueTask.Wait();
+
+                        //TODO note - the utxo updates could be applied either while validation is ongoing, or after it is complete
+                        this.stats.applyUtxoDurationMeasure.MeasureIf(chainedHeader.Height > 0, () =>
                         {
-                            // wait for the utxo calculation to finish before applying
-                            calcUtxoReadsQueueTask.Wait();
+                            // begin the transaction to apply the utxo changes
+                            this.chainStateCursor.BeginTransaction();
+                            cursorInTransaction = true;
 
-                            //TODO note - the utxo updates could be applied either while validation is ongoing, or after it is complete
-                            this.stats.applyUtxoDurationMeasure.MeasureIf(chainedHeader.Height > 0, () =>
-                            {
-                                // begin the transaction to apply the utxo changes
-                                this.chainStateCursor.BeginTransaction();
-                                cursorInTransaction = true;
-
-                                // apply the changes, do not yet commit
-                                deferredChainStateCursor.ApplyChangesToParent(this.chainStateCursor);
-                                this.chainStateCursor.AddChainedHeader(chainedHeader);
-                            });
-
-                            // wait for block validation to complete, any exceptions that ocurred will be thrown
-                            this.stats.waitToCompleteDurationMeasure.MeasureIf(chainedHeader.Height > 0, () =>
-                            {
-                                blockValidationTask.Dispose();
-                            });
-                        }
-
-                        this.stats.commitUtxoDurationMeasure.MeasureIf(chainedHeader.Height > 0, () =>
-                        {
-                            // only commit the utxo changes once block validation has completed
-                            Debug.Assert(cursorInTransaction);
-                            this.chainStateCursor.CommitTransaction();
-                            cursorInTransaction = false;
-
-                            // commit the chain state
-                            this.CommitTransaction(onCursor: false);
-                            committed = true;
+                            // apply the changes, do not yet commit
+                            deferredChainStateCursor.ApplyChangesToParent(this.chainStateCursor);
+                            this.chainStateCursor.AddChainedHeader(chainedHeader);
                         });
 
-                        // MEASURE: Block Rate
-                        if (chainedHeader.Height > 0)
+                        // wait for block validation to complete, any exceptions that ocurred will be thrown
+                        this.stats.waitToCompleteDurationMeasure.MeasureIf(chainedHeader.Height > 0, () =>
                         {
-                            this.stats.blockRateMeasure.Tick();
-                            stats.addBlockDurationMeasure.Tick(stopwatch.Elapsed);
-                        }
+                            utxoLookAhead.Completion.Wait();
+                            txLoader.Completion.Wait();
+                            blockValidator.Completion.Wait();
+                        });
+                    }
+
+                    this.stats.commitUtxoDurationMeasure.MeasureIf(chainedHeader.Height > 0, () =>
+                    {
+                        // only commit the utxo changes once block validation has completed
+                        Debug.Assert(cursorInTransaction);
+                        this.chainStateCursor.CommitTransaction();
+                        cursorInTransaction = false;
+
+                        // commit the chain state
+                        this.CommitTransaction(onCursor: false);
+                        committed = true;
+                    });
+
+                    // MEASURE: Block Rate
+                    if (chainedHeader.Height > 0)
+                    {
+                        this.stats.blockRateMeasure.Tick();
+                        stats.addBlockDurationMeasure.Tick(stopwatch.Elapsed);
                     }
                 }
                 finally
@@ -216,7 +207,8 @@ namespace BitSharp.Core.Builders
                 if (chainedHeader.Height > 0)
                 {
                     this.stats.calculateUtxoDurationMeasure.Tick(calcUtxoStopwatch.Elapsed);
-                    this.stats.pendingTxesAtCompleteAverageMeasure.Tick(this.txLoader.Count);
+                    //TODO
+                    //this.stats.pendingTxesAtCompleteAverageMeasure.Tick(this.txLoader.Count);
                 }
             }
             finally

@@ -11,6 +11,8 @@ using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Threading;
+using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 
 namespace BitSharp.Core.Builders
 {
@@ -18,71 +20,149 @@ namespace BitSharp.Core.Builders
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        private readonly ParallelReader<Tuple<UInt256, CompletionCount>> utxoWarmupSource;
-        private readonly ParallelObserver<Tuple<UInt256, CompletionCount>> utxoReader;
+        private static readonly DurationMeasure txesReadDurationMeasure = new DurationMeasure(TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(5));
+        private static readonly DurationMeasure lookAheadDurationMeasure = new DurationMeasure(TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(5));
 
-        private readonly DurationMeasure txesReadDurationMeasure = new DurationMeasure(TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(5));
-        private readonly DurationMeasure lookAheadDurationMeasure = new DurationMeasure(TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(5));
+        private readonly IEnumerable<BlockTx> blockTxes;
+        private readonly DeferredChainStateCursor deferredChainStateCursor;
 
-        public UtxoLookAhead()
+        private readonly CancellationTokenSource cancelToken = new CancellationTokenSource();
+        private readonly Task completion;
+
+        private readonly AutoResetEvent txLoadedEvent = new AutoResetEvent(false);
+        private readonly ConcurrentQueue<Tuple<BlockTx, CompletionCount>> pendingWarmedTxes = new ConcurrentQueue<Tuple<BlockTx, CompletionCount>>();
+        private TransformManyBlock<BlockTx, Tuple<UInt256, CompletionCount>> queueUnspentTxLookup;
+        private BlockingCollection<BlockTx> warmedTxes;
+        private bool completeAdding;
+
+        public UtxoLookAhead(IEnumerable<BlockTx> blockTxes, DeferredChainStateCursor deferredChainStateCursor)
         {
-            this.utxoWarmupSource = new ParallelReader<Tuple<UInt256, CompletionCount>>("UtxoLookAhead.UtxoWarmupSource");
-            this.utxoReader = new ParallelObserver<Tuple<UInt256, CompletionCount>>("UtxoLookAhead.UtxoReader", 16);
+            this.blockTxes = blockTxes;
+            this.deferredChainStateCursor = deferredChainStateCursor;
+
+            completion = LookAhead();
         }
 
         public void Dispose()
         {
-            this.utxoWarmupSource.Dispose();
-            this.utxoReader.Dispose();
-            this.txesReadDurationMeasure.Dispose();
-            this.lookAheadDurationMeasure.Dispose();
+            txLoadedEvent.Dispose();
+            cancelToken.Dispose();
         }
 
-        public IEnumerable<BlockTx> LookAhead(IEnumerable<BlockTx> blockTxes, DeferredChainStateCursor deferredChainStateCursor)
+        public Task Completion { get { return completion; } }
+
+        public IEnumerable<BlockTx> ConsumeWarmedTxes()
         {
-            using (var progress = new Progress())
-            // create the observable source of each utxo entry to be warmed up: each input's previous transaction, and each new transaction
-            using (var utxoWarmupTask = this.utxoWarmupSource.ReadAsync(CreateBlockTxesSource(progress, blockTxes)).WaitOnDispose())
-            // subscribe the utxo entries to be warmed up
-            using (var utxoReaderTask = this.utxoReader.SubscribeObservers(utxoWarmupSource, CreateUtxoWarmer(progress, deferredChainStateCursor)).WaitOnDispose())
+            using (var enumerator = warmedTxes.GetConsumingEnumerable(cancelToken.Token).GetEnumerator())
             {
-                // return the warmed-up transactions, in the original block order
-                foreach (var blockTx in CreateWarmedTxesSource(progress))
-                    yield return blockTx;
+                bool result;
+                do
+                {
+                    try
+                    {
+                        result = enumerator.MoveNext();
+                    }
+                    //TODO
+                    catch (OperationCanceledException)
+                    {
+                        result = false;
+                    }
+
+                    if (result)
+                        yield return enumerator.Current;
+                }
+                while (result);
             }
         }
 
-        private IEnumerable<Tuple<UInt256, CompletionCount>> CreateBlockTxesSource(Progress progress, IEnumerable<BlockTx> blockTxes)
+        private async Task LookAhead()
         {
             try
             {
-                foreach (var blockTx in blockTxes)
+                var stopwatch = Stopwatch.StartNew();
+                warmedTxes = new BlockingCollection<BlockTx>();
+
+                // queue each utxo entry to be warmed up: each input's previous transaction, and each new transaction
+                queueUnspentTxLookup = InitQueueUnspentTxLookup();
+
+                // warm up a uxto entry
+                var warmupUtxo = InitWarmupUtxo();
+
+                // link the utxo entry queuer to the warmer
+                queueUnspentTxLookup.LinkTo(warmupUtxo, new DataflowLinkOptions { PropagateCompletion = true });
+
+                // begin feeding the unspent tx queuer
+                var readBlockTxes = Task.Factory.StartNew(() =>
                 {
-                    var inputCount = !blockTx.IsCoinbase ? blockTx.Transaction.Inputs.Length : 0;
-                    var completionCount = new CompletionCount(inputCount + 1);
-                    progress.pendingWarmedTxes.Enqueue(Tuple.Create(blockTx, completionCount));
+                    foreach (var blockTx in blockTxes)
+                        queueUnspentTxLookup.Post(blockTx);
 
-                    yield return Tuple.Create(blockTx.Hash, completionCount);
+                    queueUnspentTxLookup.Complete();
 
-                    if (!blockTx.IsCoinbase)
-                        foreach (var txHash in blockTx.Transaction.Inputs.Select(x => x.PreviousTxOutputKey.TxHash))
-                            yield return Tuple.Create(txHash, completionCount);
-                }
+                }, cancelToken.Token, TaskCreationOptions.AttachedToParent, TaskScheduler.Default);
 
-                txesReadDurationMeasure.Tick(progress.stopwatch.Elapsed);
+                // begin posting warmed txes
+                var postWarmedTxes = Task.Factory.StartNew(() => PostWarmedTxes(), cancelToken.Token, TaskCreationOptions.AttachedToParent, TaskScheduler.Default);
+
+                await readBlockTxes;
+
+                txesReadDurationMeasure.Tick(stopwatch.Elapsed);
                 Throttler.IfElapsed(TimeSpan.FromSeconds(5), () =>
                     logger.Info("Block Txes Read: {0,12:N3}ms".Format2(txesReadDurationMeasure.GetAverage().TotalMilliseconds)));
+
+                await queueUnspentTxLookup.Completion;
+
+                completeAdding = true;
+                txLoadedEvent.Set();
+
+                await warmupUtxo.Completion;
+                await postWarmedTxes;
+
+                lookAheadDurationMeasure.Tick(stopwatch.Elapsed);
+                Throttler.IfElapsed(TimeSpan.FromSeconds(5), () =>
+                    logger.Info("UTXO Look-ahead: {0,12:N3}ms".Format2(lookAheadDurationMeasure.GetAverage().TotalMilliseconds)));
             }
             finally
             {
-                progress.completedAdding = true;
-                progress.txLoadedEvent.Set();
+                // ensure any consumers of the warmed txes queue are unblocked if warming failed to complete
+                if (!warmedTxes.IsAddingCompleted)
+                {
+                    cancelToken.Cancel();
+                    txLoadedEvent.Set();
+                }
             }
         }
 
-        private IObserver<Tuple<UInt256, CompletionCount>> CreateUtxoWarmer(Progress progress, DeferredChainStateCursor deferredChainStateCursor)
+        private TransformManyBlock<BlockTx, Tuple<UInt256, CompletionCount>> InitQueueUnspentTxLookup()
         {
-            return Observer.Create<Tuple<UInt256, CompletionCount>>(
+            return new TransformManyBlock<BlockTx, Tuple<UInt256, CompletionCount>>(
+                blockTx =>
+                {
+                    var inputCount = !blockTx.IsCoinbase ? blockTx.Transaction.Inputs.Length : 0;
+                    var completionCount = new CompletionCount(inputCount + 1);
+                    pendingWarmedTxes.Enqueue(Tuple.Create(blockTx, completionCount));
+
+                    var txHashes = new Tuple<UInt256, CompletionCount>[inputCount + 1];
+
+                    txHashes[0] = Tuple.Create(blockTx.Hash, completionCount);
+
+                    if (!blockTx.IsCoinbase)
+                    {
+                        for (var inputIndex = 0; inputIndex < blockTx.Transaction.Inputs.Length; inputIndex++)
+                        {
+                            var txHash = blockTx.Transaction.Inputs[inputIndex].PreviousTxOutputKey.TxHash;
+                            txHashes[inputIndex + 1] = Tuple.Create(txHash, completionCount);
+                        }
+                    }
+
+                    return txHashes;
+                },
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken.Token });
+        }
+
+        private ActionBlock<Tuple<UInt256, CompletionCount>> InitWarmupUtxo()
+        {
+            return new ActionBlock<Tuple<UInt256, CompletionCount>>(
                 tuple =>
                 {
                     var txHash = tuple.Item1;
@@ -91,44 +171,33 @@ namespace BitSharp.Core.Builders
                     deferredChainStateCursor.WarmUnspentTx(txHash);
 
                     if (completionCount.TryComplete())
-                        progress.txLoadedEvent.Set();
+                        txLoadedEvent.Set();
                 },
-                ex => { },
-                () =>
-                {
-                    lookAheadDurationMeasure.Tick(progress.stopwatch.Elapsed);
-                    Throttler.IfElapsed(TimeSpan.FromSeconds(5), () =>
-                        logger.Info("UTXO Look-ahead: {0,12:N3}ms".Format2(lookAheadDurationMeasure.GetAverage().TotalMilliseconds)));
-                });
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken.Token, MaxDegreeOfParallelism = 16 });
         }
 
-        private IEnumerable<BlockTx> CreateWarmedTxesSource(Progress progress)
+        private void PostWarmedTxes()
         {
-            Tuple<BlockTx, CompletionCount> tuple;
-            while (!progress.completedAdding || progress.pendingWarmedTxes.Count > 0)
+            try
             {
-                progress.txLoadedEvent.WaitOne();
-
-                while (progress.pendingWarmedTxes.TryPeek(out tuple) && tuple.Item2.IsComplete)
+                Tuple<BlockTx, CompletionCount> tuple;
+                while (!completeAdding || !pendingWarmedTxes.IsEmpty)
                 {
-                    yield return tuple.Item1;
-                    progress.pendingWarmedTxes.TryDequeue(out tuple);
+                    txLoadedEvent.WaitOne();
+                    cancelToken.Token.ThrowIfCancellationRequested();
+
+                    while (pendingWarmedTxes.TryPeek(out tuple) && tuple.Item2.IsComplete)
+                    {
+                        warmedTxes.Add(tuple.Item1);
+                        pendingWarmedTxes.TryDequeue(out tuple);
+                    }
                 }
+
+                warmedTxes.CompleteAdding();
             }
-        }
-
-        //TODO
-        private sealed class Progress : IDisposable
-        {
-            public readonly Stopwatch stopwatch = Stopwatch.StartNew();
-            public readonly AutoResetEvent txLoadedEvent = new AutoResetEvent(false);
-            public readonly ConcurrentQueue<Tuple<BlockTx, CompletionCount>> pendingWarmedTxes = new ConcurrentQueue<Tuple<BlockTx, CompletionCount>>();
-
-            public bool completedAdding = false;
-
-            public void Dispose()
+            catch (Exception)
             {
-                txLoadedEvent.Dispose();
+                throw;
             }
         }
     }
