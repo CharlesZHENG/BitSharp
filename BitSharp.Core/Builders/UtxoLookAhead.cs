@@ -40,7 +40,7 @@ namespace BitSharp.Core.Builders
             this.blockTxes = blockTxes;
             this.deferredChainStateCursor = deferredChainStateCursor;
 
-            completion = LookAhead();
+            completion = Task.Factory.StartNew(async () => await LookAhead(), cancelToken.Token, TaskCreationOptions.AttachedToParent, TaskScheduler.Default);
         }
 
         public void Dispose()
@@ -102,7 +102,7 @@ namespace BitSharp.Core.Builders
                 }, cancelToken.Token, TaskCreationOptions.AttachedToParent, TaskScheduler.Default);
 
                 // begin posting warmed txes
-                var postWarmedTxes = Task.Factory.StartNew(() => PostWarmedTxes(), cancelToken.Token, TaskCreationOptions.AttachedToParent, TaskScheduler.Default);
+                var postWarmedTxes = Task.Factory.StartNew(PostWarmedTxes, cancelToken.Token, TaskCreationOptions.AttachedToParent, TaskScheduler.Default);
 
                 await readBlockTxes;
 

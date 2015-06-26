@@ -38,7 +38,7 @@ namespace BitSharp.Core.Builders
             this.chainedHeader = chainedHeader;
             this.loadedTxes = loadedTxes;
 
-            completion = ValidateTransactions();
+            completion = Task.Factory.StartNew(async () => await ValidateTransactions(), cancelToken.Token, TaskCreationOptions.AttachedToParent, TaskScheduler.Default);
         }
 
         public void Dispose()

@@ -38,7 +38,7 @@ namespace BitSharp.Core.Builders
             this.threadCount = threadCount;
             this.loadingTxesReader = loadingTxesReader;
 
-            completion = LoadTxes();
+            completion = Task.Factory.StartNew(async () => await LoadTxes(), cancelToken.Token, TaskCreationOptions.AttachedToParent, TaskScheduler.Default);
         }
 
         public void Dispose()
