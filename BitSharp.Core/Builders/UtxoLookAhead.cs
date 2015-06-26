@@ -32,7 +32,7 @@ namespace BitSharp.Core.Builders
         private readonly AutoResetEvent txLoadedEvent = new AutoResetEvent(false);
         private readonly ConcurrentQueue<Tuple<BlockTx, CompletionCount>> pendingWarmedTxes = new ConcurrentQueue<Tuple<BlockTx, CompletionCount>>();
         private TransformManyBlock<BlockTx, Tuple<UInt256, CompletionCount>> queueUnspentTxLookup;
-        private BlockingCollection<BlockTx> warmedTxes;
+        private BlockingCollection<BlockTx> warmedTxes = new BlockingCollection<BlockTx>();
         private bool completeAdding;
 
         public UtxoLookAhead(IEnumerable<BlockTx> blockTxes, DeferredChainStateCursor deferredChainStateCursor)
@@ -80,7 +80,6 @@ namespace BitSharp.Core.Builders
             try
             {
                 var stopwatch = Stopwatch.StartNew();
-                warmedTxes = new BlockingCollection<BlockTx>();
 
                 // queue each utxo entry to be warmed up: each input's previous transaction, and each new transaction
                 queueUnspentTxLookup = InitQueueUnspentTxLookup();
