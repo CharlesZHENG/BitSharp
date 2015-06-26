@@ -10,6 +10,7 @@ using NLog;
 using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 
 namespace BitSharp.Core
 {
@@ -39,6 +40,9 @@ namespace BitSharp.Core
 
         public CoreDaemon(IKernel kernel, IBlockchainRules rules, IStorageManager storageManager)
         {
+            //TODO
+            ThreadPool.SetMinThreads(48, 16);
+
             this.kernel = kernel;
             this.rules = rules;
             this.storageManager = storageManager;
