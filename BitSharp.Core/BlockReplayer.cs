@@ -23,7 +23,6 @@ namespace BitSharp.Core.Builders
 
         private readonly UtxoReplayer pendingTxLoader;
         private readonly ParallelReader<LoadingTx> loadingTxesSource;
-        private readonly ParallelObserver<LoadedTx> txSorter;
 
         private bool isDisposed;
 
@@ -37,7 +36,6 @@ namespace BitSharp.Core.Builders
 
             this.pendingTxLoader = new UtxoReplayer("BlockReplayer", coreStorage, ioThreadCount);
             this.loadingTxesSource = new ParallelReader<LoadingTx>("BlockReplayer.LoadingTxesSource");
-            this.txSorter = new ParallelObserver<LoadedTx>("BlockReplayer", 1);
         }
 
         public void Dispose()
@@ -52,7 +50,6 @@ namespace BitSharp.Core.Builders
             {
                 this.pendingTxLoader.Dispose();
                 this.loadingTxesSource.Dispose();
-                this.txSorter.Dispose();
 
                 isDisposed = true;
             }
