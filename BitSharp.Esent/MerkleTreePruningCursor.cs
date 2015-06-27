@@ -67,14 +67,18 @@ namespace BitSharp.Esent
 
         public MerkleTreeNode ReadNode()
         {
+            var blockHashTxIndexColumn = new BytesColumnValue { Columnid = cursor.blockHashTxIndexColumnId };
+            var depthColumn = new Int32ColumnValue { Columnid = cursor.blockDepthColumnId };
+            var txHashColumn = new BytesColumnValue { Columnid = cursor.blockTxHashColumnId };
+            Api.RetrieveColumns(cursor.jetSession, cursor.blocksTableId, blockHashTxIndexColumn, depthColumn, txHashColumn);
+
             UInt256 recordBlockHash; int txIndex;
-            DbEncoder.DecodeBlockHashTxIndex(Api.RetrieveColumn(cursor.jetSession, cursor.blocksTableId, cursor.blockHashTxIndexColumnId),
-                out recordBlockHash, out txIndex);
+            DbEncoder.DecodeBlockHashTxIndex(blockHashTxIndexColumn.Value, out recordBlockHash, out txIndex);
             if (this.blockHash != recordBlockHash)
                 throw new InvalidOperationException();
 
-            var depth = Api.RetrieveColumnAsInt32(cursor.jetSession, cursor.blocksTableId, cursor.blockDepthColumnId).Value;
-            var txHash = DbEncoder.DecodeUInt256(Api.RetrieveColumn(cursor.jetSession, cursor.blocksTableId, cursor.blockTxHashColumnId));
+            var depth = depthColumn.Value.Value;
+            var txHash = DbEncoder.DecodeUInt256(txHashColumn.Value);
 
             var pruned = depth >= 0;
             depth = Math.Max(0, depth);
@@ -98,9 +102,10 @@ namespace BitSharp.Esent
 
             using (var jetUpdate = cursor.jetSession.BeginUpdate(cursor.blocksTableId, JET_prep.Replace))
             {
-                Api.SetColumn(cursor.jetSession, cursor.blocksTableId, cursor.blockDepthColumnId, node.Depth);
-                Api.SetColumn(cursor.jetSession, cursor.blocksTableId, cursor.blockTxHashColumnId, DbEncoder.EncodeUInt256(node.Hash));
-                Api.SetColumn(cursor.jetSession, cursor.blocksTableId, cursor.blockTxBytesColumnId, null);
+                Api.SetColumns(cursor.jetSession, cursor.blocksTableId,
+                    new Int32ColumnValue { Columnid = cursor.blockDepthColumnId, Value = node.Depth },
+                    new BytesColumnValue { Columnid = cursor.blockTxHashColumnId, Value = DbEncoder.EncodeUInt256(node.Hash) },
+                    new Int32ColumnValue { Columnid = cursor.blockTxBytesColumnId, Value = null });
 
                 jetUpdate.Save();
             }

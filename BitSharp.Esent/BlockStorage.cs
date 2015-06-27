@@ -90,11 +90,12 @@ namespace BitSharp.Esent
                     {
                         using (var jetUpdate = cursor.jetSession.BeginUpdate(cursor.blockHeadersTableId, JET_prep.Insert))
                         {
-                            Api.SetColumn(cursor.jetSession, cursor.blockHeadersTableId, cursor.blockHeaderHashColumnId, DbEncoder.EncodeUInt256(chainedHeader.Hash));
-                            Api.SetColumn(cursor.jetSession, cursor.blockHeadersTableId, cursor.blockHeaderPreviousHashColumnId, DbEncoder.EncodeUInt256(chainedHeader.PreviousBlockHash));
-                            Api.SetColumn(cursor.jetSession, cursor.blockHeadersTableId, cursor.blockHeaderHeightColumnId, chainedHeader.Height);
-                            Api.SetColumn(cursor.jetSession, cursor.blockHeadersTableId, cursor.blockHeaderTotalWorkColumnId, DataEncoder.EncodeTotalWork(chainedHeader.TotalWork));
-                            Api.SetColumn(cursor.jetSession, cursor.blockHeadersTableId, cursor.blockHeaderBytesColumnId, DataEncoder.EncodeChainedHeader(chainedHeader));
+                            Api.SetColumns(cursor.jetSession, cursor.blockHeadersTableId,
+                                new BytesColumnValue { Columnid = cursor.blockHeaderHashColumnId, Value = DbEncoder.EncodeUInt256(chainedHeader.Hash) },
+                                new BytesColumnValue { Columnid = cursor.blockHeaderPreviousHashColumnId, Value = DbEncoder.EncodeUInt256(chainedHeader.PreviousBlockHash) },
+                                new Int32ColumnValue { Columnid = cursor.blockHeaderHeightColumnId, Value = chainedHeader.Height },
+                                new BytesColumnValue { Columnid = cursor.blockHeaderTotalWorkColumnId, Value = DataEncoder.EncodeTotalWork(chainedHeader.TotalWork) },
+                                new BytesColumnValue { Columnid = cursor.blockHeaderBytesColumnId, Value = DataEncoder.EncodeChainedHeader(chainedHeader) });
 
                             jetUpdate.Save();
                         }

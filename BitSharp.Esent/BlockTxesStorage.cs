@@ -460,11 +460,12 @@ namespace BitSharp.Esent
         {
             using (var jetUpdate = cursor.jetSession.BeginUpdate(cursor.blocksTableId, JET_prep.Insert))
             {
-                Api.SetColumn(cursor.jetSession, cursor.blocksTableId, cursor.blockHashTxIndexColumnId, DbEncoder.EncodeBlockHashTxIndex(blockHash, txIndex));
-                //TODO i'm using -1 depth to mean not pruned, this should be interpreted as depth 0
-                Api.SetColumn(cursor.jetSession, cursor.blocksTableId, cursor.blockDepthColumnId, -1);
-                Api.SetColumn(cursor.jetSession, cursor.blocksTableId, cursor.blockTxHashColumnId, DbEncoder.EncodeUInt256(txHash));
-                Api.SetColumn(cursor.jetSession, cursor.blocksTableId, cursor.blockTxBytesColumnId, txBytes);
+                Api.SetColumns(cursor.jetSession, cursor.blocksTableId,
+                    new BytesColumnValue { Columnid = cursor.blockHashTxIndexColumnId, Value = DbEncoder.EncodeBlockHashTxIndex(blockHash, txIndex) },
+                    //TODO i'm using -1 depth to mean not pruned, this should be interpreted as depth 0
+                    new Int32ColumnValue { Columnid = cursor.blockDepthColumnId, Value = -1 },
+                    new BytesColumnValue { Columnid = cursor.blockTxHashColumnId, Value = DbEncoder.EncodeUInt256(txHash) },
+                    new BytesColumnValue { Columnid = cursor.blockTxBytesColumnId, Value = txBytes });
 
                 jetUpdate.Save();
             }
