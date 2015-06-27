@@ -44,7 +44,7 @@ namespace BitSharp.Wallet
             : base("WalletMonitor", initialNotify: true, minIdleTime: TimeSpan.FromMilliseconds(100), maxIdleTime: TimeSpan.MaxValue)
         {
             this.coreDaemon = coreDaemon;
-            this.blockReplayer = new BlockReplayer(coreDaemon.CoreStorage, coreDaemon.Rules);
+            this.blockReplayer = new BlockReplayer(coreDaemon.CoreStorage);
 
             //this.chainBuilder = Chain.CreateForGenesisBlock(coreDaemon.Rules.GenesisChainedHeader).ToBuilder();
             //TODO start from the currently processed chain tip since wallet state isn't persisted

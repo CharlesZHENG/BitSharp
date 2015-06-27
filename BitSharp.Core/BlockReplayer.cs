@@ -19,17 +19,15 @@ namespace BitSharp.Core.Builders
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly CoreStorage coreStorage;
-        private readonly IBlockchainRules rules;
 
         private readonly UtxoReplayer pendingTxLoader;
         private readonly ParallelReader<LoadingTx> loadingTxesSource;
 
         private bool isDisposed;
 
-        public BlockReplayer(CoreStorage coreStorage, IBlockchainRules rules)
+        public BlockReplayer(CoreStorage coreStorage)
         {
             this.coreStorage = coreStorage;
-            this.rules = rules;
 
             // thread count for i/o task (TxLoader)
             var ioThreadCount = 4;
