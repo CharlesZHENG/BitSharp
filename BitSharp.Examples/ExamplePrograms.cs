@@ -53,7 +53,7 @@ namespace BitSharp.Examples
             using (storageManager)
             {
                 // report core daemon's progress
-                Console.WriteLine(string.Format("Core daemon height:   {0:N0}", coreDaemon.CurrentChain.Height));
+                Console.WriteLine(string.Format("Core daemon height: {0:N0}", coreDaemon.CurrentChain.Height));
             }
         }
 
