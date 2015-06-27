@@ -108,16 +108,34 @@ namespace BitSharp.Core.Builders
                         var loadingTxes = new BufferBlock<LoadingTx>();
                         var loadedTxes = TxLoader.LoadTxes("ChainStateBuilder", coreStorage, Environment.ProcessorCount * 2, loadingTxes);
 
-                        var blockValidator = BlockValidator.ValidateBlock(coreStorage, rules, chainedHeader, loadedTxes);
+                        // inject a transform block to count input previous transactions that have been loaded
+                        var loadedTxInputCount = 0;
+                        var loadedTxInputsCounter = new TransformBlock<LoadedTx, LoadedTx>(loadingTx =>
+                        {
+                            if (!loadingTx.IsCoinbase)
+                                loadedTxInputCount += loadingTx.InputTxes.Length;
+                            
+                            return loadingTx;
+                        });
+                        loadedTxes.LinkTo(loadedTxInputsCounter, new DataflowLinkOptions { PropagateCompletion = true });
+
+                        var blockValidator = BlockValidator.ValidateBlock(coreStorage, rules, chainedHeader, loadedTxInputsCounter);
 
                         var sendBlockTxes = blockTxesBuffer.SendAndCompleteAsync(blockTxes);
 
                         using (var warmedBlockTxesQueue = warmedBlockTxes.LinkToQueue())
                         {
+                            var totalTxInputCount = 0;
                             foreach (var loadingTx in CalculateUtxo(chainedHeader, warmedBlockTxesQueue.GetConsumingEnumerable(), deferredChainStateCursor))
+                            {
                                 loadingTxes.Post(loadingTx);
-                            
+
+                                if (!loadingTx.IsCoinbase)
+                                    totalTxInputCount += loadingTx.Transaction.Inputs.Length;
+                            }
+
                             loadingTxes.Complete();
+                            this.stats.pendingTxesAtCompleteAverageMeasure.Tick(totalTxInputCount - loadedTxInputCount);
                         }
 
                         sendBlockTxes.Wait();
@@ -214,11 +232,7 @@ namespace BitSharp.Core.Builders
 
                 calcUtxoStopwatch.Stop();
                 if (chainedHeader.Height > 0)
-                {
                     this.stats.calculateUtxoDurationMeasure.Tick(calcUtxoStopwatch.Elapsed);
-                    //TODO
-                    //this.stats.pendingTxesAtCompleteAverageMeasure.Tick(this.txLoader.Count);
-                }
             }
             finally
             {
