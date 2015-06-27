@@ -57,7 +57,7 @@ namespace BitSharp.Lmdb
             Dispose(true);
             GC.SuppressFinalize(this);
         }
-        
+
         protected virtual void Dispose(bool disposing)
         {
             if (!isDisposed && disposing)
@@ -78,34 +78,34 @@ namespace BitSharp.Lmdb
 
         public void PruneElements(IEnumerable<KeyValuePair<UInt256, IEnumerable<int>>> blockTxIndices)
         {
-            using (var txn = this.jetInstance.BeginTransaction())
-            using (var cursor = txn.CreateCursor(blocksTableId))
+            foreach (var keyPair in blockTxIndices)
             {
-                foreach (var keyPair in blockTxIndices)
-                {
-                    var blockHash = keyPair.Key;
-                    var txIndices = keyPair.Value;
+                var blockHash = keyPair.Key;
+                var txIndices = keyPair.Value;
 
+                using (var txn = this.jetInstance.BeginTransaction())
+                using (var cursor = txn.CreateCursor(blocksTableId))
+                {
                     var pruningCursor = new MerkleTreePruningCursor(blockHash, txn, blocksTableId, cursor);
 
                     // prune the transactions
                     foreach (var index in txIndices)
                         MerkleTree.PruneNode(pruningCursor, index);
-                }
 
-                cursor.Dispose();
-                txn.Commit();
+                    cursor.Dispose();
+                    txn.Commit();
+                }
             }
         }
 
         public void DeleteElements(IEnumerable<KeyValuePair<UInt256, IEnumerable<int>>> blockTxIndices)
         {
-            using (var txn = this.jetInstance.BeginTransaction())
+            foreach (var keyPair in blockTxIndices)
             {
-                foreach (var keyPair in blockTxIndices)
+                var blockHash = keyPair.Key;
+                var txIndices = keyPair.Value;
+                using (var txn = this.jetInstance.BeginTransaction())
                 {
-                    var blockHash = keyPair.Key;
-                    var txIndices = keyPair.Value;
 
                     // prune the transactions
                     foreach (var index in txIndices)
@@ -114,9 +114,9 @@ namespace BitSharp.Lmdb
                         if (txn.ContainsKey(blocksTableId, key))
                             txn.Delete(blocksTableId, key);
                     }
-                }
 
-                txn.Commit();
+                    txn.Commit();
+                }
             }
         }
 

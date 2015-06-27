@@ -56,7 +56,7 @@ namespace BitSharp.Esent
             Dispose(true);
             GC.SuppressFinalize(this);
         }
-        
+
         protected virtual void Dispose(bool disposing)
         {
             if (!isDisposed && disposing)
@@ -100,22 +100,22 @@ namespace BitSharp.Esent
             {
                 var cursor = handle.Item;
 
-                using (var jetTx = cursor.jetSession.BeginTransaction())
+                foreach (var keyPair in blockTxIndices)
                 {
-                    foreach (var keyPair in blockTxIndices)
-                    {
-                        var blockHash = keyPair.Key;
-                        var txIndices = keyPair.Value;
+                    var blockHash = keyPair.Key;
+                    var txIndices = keyPair.Value;
 
+                    using (var jetTx = cursor.jetSession.BeginTransaction())
+                    {
                         var pruningCursor = new MerkleTreePruningCursor(blockHash, cursor);
                         //var cachedCursor = new CachedMerkleTreePruningCursor(pruningCursor);
 
                         // prune the transactions
                         foreach (var index in txIndices)
                             MerkleTree.PruneNode(pruningCursor, index);
-                    }
 
-                    jetTx.CommitLazy();
+                        jetTx.CommitLazy();
+                    }
                 }
             }
         }
@@ -126,13 +126,13 @@ namespace BitSharp.Esent
             {
                 var cursor = handle.Item;
 
-                using (var jetTx = cursor.jetSession.BeginTransaction())
+                foreach (var keyPair in blockTxIndices)
                 {
-                    foreach (var keyPair in blockTxIndices)
-                    {
-                        var blockHash = keyPair.Key;
-                        var txIndices = keyPair.Value;
+                    var blockHash = keyPair.Key;
+                    var txIndices = keyPair.Value;
 
+                    using (var jetTx = cursor.jetSession.BeginTransaction())
+                    {
                         // prune the transactions
                         foreach (var index in txIndices)
                         {
@@ -143,9 +143,9 @@ namespace BitSharp.Esent
                             if (Api.TrySeek(cursor.jetSession, cursor.blocksTableId, SeekGrbit.SeekEQ))
                                 Api.JetDelete(cursor.jetSession, cursor.blocksTableId);
                         }
-                    }
 
-                    jetTx.CommitLazy();
+                        jetTx.CommitLazy();
+                    }
                 }
             }
         }
@@ -180,15 +180,20 @@ namespace BitSharp.Esent
 
                     do
                     {
+                        var blockHashTxIndexColumn = new BytesColumnValue { Columnid = cursor.blockHashTxIndexColumnId };
+                        var blockDepthColumn = new Int32ColumnValue { Columnid = cursor.blockDepthColumnId };
+                        var blockTxHashColumn = new BytesColumnValue { Columnid = cursor.blockTxHashColumnId };
+                        var blockTxBytesColumn = new BytesColumnValue { Columnid = cursor.blockTxBytesColumnId };
+                        Api.RetrieveColumns(cursor.jetSession, cursor.blocksTableId, blockHashTxIndexColumn, blockDepthColumn, blockTxHashColumn, blockTxBytesColumn);
+
                         UInt256 recordBlockHash; int txIndex;
-                        DbEncoder.DecodeBlockHashTxIndex(Api.RetrieveColumn(cursor.jetSession, cursor.blocksTableId, cursor.blockHashTxIndexColumnId),
-                            out recordBlockHash, out txIndex);
+                        DbEncoder.DecodeBlockHashTxIndex(blockHashTxIndexColumn.Value, out recordBlockHash, out txIndex);
                         if (blockHash != recordBlockHash)
                             yield break;
 
-                        var depth = Api.RetrieveColumnAsInt32(cursor.jetSession, cursor.blocksTableId, cursor.blockDepthColumnId).Value;
-                        var txHash = DbEncoder.DecodeUInt256(Api.RetrieveColumn(cursor.jetSession, cursor.blocksTableId, cursor.blockTxHashColumnId));
-                        var txBytes = Api.RetrieveColumn(cursor.jetSession, cursor.blocksTableId, cursor.blockTxBytesColumnId);
+                        var depth = blockDepthColumn.Value.Value;
+                        var txHash = DbEncoder.DecodeUInt256(blockTxHashColumn.Value);
+                        var txBytes = blockTxBytesColumn.Value;
 
                         // determine if transaction is pruned by its depth
                         var pruned = depth >= 0;
@@ -217,10 +222,14 @@ namespace BitSharp.Esent
                     Api.MakeKey(cursor.jetSession, cursor.blocksTableId, DbEncoder.EncodeBlockHashTxIndex(blockHash, txIndex), MakeKeyGrbit.NewKey);
                     if (Api.TrySeek(cursor.jetSession, cursor.blocksTableId, SeekGrbit.SeekEQ))
                     {
-                        var txBytes = Api.RetrieveColumn(cursor.jetSession, cursor.blocksTableId, cursor.blockTxBytesColumnId);
+                        var blockTxHashColumn = new BytesColumnValue { Columnid = cursor.blockTxHashColumnId };
+                        var blockTxBytesColumn = new BytesColumnValue { Columnid = cursor.blockTxBytesColumnId };
+                        Api.RetrieveColumns(cursor.jetSession, cursor.blocksTableId, blockTxHashColumn, blockTxBytesColumn);
+
+                        var txBytes = blockTxBytesColumn.Value;
                         if (txBytes != null)
                         {
-                            var txHash = DbEncoder.DecodeUInt256(Api.RetrieveColumn(cursor.jetSession, cursor.blocksTableId, cursor.blockTxHashColumnId));
+                            var txHash = DbEncoder.DecodeUInt256(blockTxHashColumn.Value);
 
                             transaction = DataEncoder.DecodeTransaction(txBytes, txHash);
                             return true;
