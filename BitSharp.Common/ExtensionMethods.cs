@@ -84,6 +84,7 @@ namespace BitSharp.Common.ExtensionMethods
             return unixEpoch.AddSeconds(value);
         }
 
+        [DebuggerStepThrough]
         public static void Do(this SemaphoreSlim semaphore, Action action)
         {
             semaphore.Wait();
@@ -97,6 +98,7 @@ namespace BitSharp.Common.ExtensionMethods
             }
         }
 
+        [DebuggerStepThrough]
         public static T Do<T>(this SemaphoreSlim semaphore, Func<T> func)
         {
             semaphore.Wait();
@@ -110,6 +112,7 @@ namespace BitSharp.Common.ExtensionMethods
             }
         }
 
+        [DebuggerStepThrough]
         public async static Task DoAsync(this SemaphoreSlim semaphore, Action action)
         {
             await semaphore.WaitAsync();
@@ -123,6 +126,7 @@ namespace BitSharp.Common.ExtensionMethods
             }
         }
 
+        [DebuggerStepThrough]
         public async static Task DoAsync(this SemaphoreSlim semaphore, Func<Task> action)
         {
             await semaphore.WaitAsync();
@@ -196,6 +200,7 @@ namespace BitSharp.Common.ExtensionMethods
         {
         }
 
+        [DebuggerStepThrough]
         public static void DoRead(this ReaderWriterLockSlim rwLock, Action action)
         {
             rwLock.EnterReadLock();
@@ -209,6 +214,7 @@ namespace BitSharp.Common.ExtensionMethods
             }
         }
 
+        [DebuggerStepThrough]
         public static T DoRead<T>(this ReaderWriterLockSlim rwLock, Func<T> func)
         {
             rwLock.EnterReadLock();
@@ -222,6 +228,7 @@ namespace BitSharp.Common.ExtensionMethods
             }
         }
 
+        [DebuggerStepThrough]
         public static void DoWrite(this ReaderWriterLockSlim rwLock, Action action)
         {
             rwLock.EnterWriteLock();
@@ -235,6 +242,7 @@ namespace BitSharp.Common.ExtensionMethods
             }
         }
 
+        [DebuggerStepThrough]
         public static T DoWrite<T>(this ReaderWriterLockSlim rwLock, Func<T> func)
         {
             rwLock.EnterWriteLock();
@@ -455,6 +463,7 @@ namespace BitSharp.Common.ExtensionMethods
                 yield return selector(result);
         }
 
+        [DebuggerStepThrough]
         public static void Time(this Stopwatch stopwatch, Action action)
         {
             if (stopwatch.IsRunning)

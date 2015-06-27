@@ -66,6 +66,7 @@ namespace BitSharp.Common
             });
         }
 
+        [DebuggerStepThrough]
         public void Measure(Action action)
         {
             var stopwatch = Stopwatch.StartNew();
@@ -75,6 +76,7 @@ namespace BitSharp.Common
             Tick(stopwatch.Elapsed);
         }
 
+        [DebuggerStepThrough]
         public void MeasureIf(bool condition, Action action)
         {
             if (condition)
@@ -83,6 +85,7 @@ namespace BitSharp.Common
                 action();
         }
 
+        [DebuggerStepThrough]
         public T Measure<T>(Func<T> func)
         {
             var stopwatch = Stopwatch.StartNew();
