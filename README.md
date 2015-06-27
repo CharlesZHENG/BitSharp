@@ -16,7 +16,7 @@ Examples can be found in the BitSharp.Examples project.
 
 ## ExampleCoreDaemon
 
-### Source
+**Source**
 ```csharp
 public void ExampleDaemon()
 {
@@ -52,7 +52,7 @@ private CoreDaemon CreateExampleDaemon(out BlockProvider embeddedBlocks, out ISt
 }
 ```
 
-### Output
+**Output**
 ```
 Core daemon height: 99
 ```
