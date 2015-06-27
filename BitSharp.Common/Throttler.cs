@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace BitSharp.Common
@@ -8,6 +9,7 @@ namespace BitSharp.Common
     {
         private static readonly ConcurrentDictionary<Tuple<string, string, int>, DateTime> lastTimes = new ConcurrentDictionary<Tuple<string, string, int>, DateTime>();
 
+        [DebuggerStepThrough]
         public static bool IfElapsed(TimeSpan interval, Action action, [CallerMemberName] string memberName = "", [CallerFilePath] string filePath = "", [CallerLineNumber] int lineNumber = 0)
         {
             var key = Tuple.Create(memberName, filePath, lineNumber);
