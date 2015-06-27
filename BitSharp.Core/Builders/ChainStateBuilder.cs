@@ -15,6 +15,7 @@ using System.Reactive.Linq;
 using System.Reactive;
 using System.Reactive.Disposables;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 
 namespace BitSharp.Core.Builders
 {
@@ -25,8 +26,6 @@ namespace BitSharp.Core.Builders
         private readonly IBlockchainRules rules;
         private readonly CoreStorage coreStorage;
         private readonly IStorageManager storageManager;
-
-        private readonly ParallelReader<LoadingTx> calcUtxoSource;
 
         private bool inTransaction;
         private readonly DisposeHandle<IChainStateCursor> chainStateCursorHandle;
@@ -64,14 +63,11 @@ namespace BitSharp.Core.Builders
             // thread count for i/o task (TxLoader)
             var ioThreadCount = Environment.ProcessorCount * 2;
 
-            this.calcUtxoSource = new ParallelReader<LoadingTx>("ChainStateBuilder.CalcUtxoSource");
-
             this.commitLock = new ReaderWriterLockSlim();
         }
 
         public void Dispose()
         {
-            this.calcUtxoSource.Dispose();
             this.chainStateCursorHandle.Dispose();
             this.stats.Dispose();
             this.commitLock.Dispose();
@@ -103,16 +99,28 @@ namespace BitSharp.Core.Builders
                 this.BeginTransaction(readOnly: true, onCursor: false);
                 try
                 {
-                    Task calcUtxoReadsQueueTask;
                     using (var chainState = new ChainState(this.chain.ToImmutable(), this.storageManager))
                     using (var deferredChainStateCursor = new DeferredChainStateCursor(chainState))
-                    using (var utxoLookAhead = new UtxoLookAhead(blockTxes, deferredChainStateCursor))
-                    using (var calcUtxoTask = this.calcUtxoSource.ReadAsync(CalculateUtxo(chainedHeader, utxoLookAhead.ConsumeWarmedTxes(), deferredChainStateCursor), null, null, out calcUtxoReadsQueueTask).WaitOnDispose())
-                    using (var txLoader = new TxLoader("ChainStateBuilder", coreStorage, Environment.ProcessorCount * 2, calcUtxoSource))
-                    using (var blockValidator = new BlockValidator(coreStorage, rules, chainedHeader, txLoader.LoadedTxes))
                     {
-                        // wait for the utxo calculation to finish before applying
-                        calcUtxoReadsQueueTask.Wait();
+                        var blockTxesBuffer = new BufferBlock<BlockTx>();
+                        var warmedBlockTxes = UtxoLookAhead.LookAhead(blockTxesBuffer, deferredChainStateCursor);
+
+                        var loadingTxes = new BufferBlock<LoadingTx>();
+                        var loadedTxes = TxLoader.LoadTxes("ChainStateBuilder", coreStorage, Environment.ProcessorCount * 2, loadingTxes);
+
+                        var blockValidator = BlockValidator.ValidateBlock(coreStorage, rules, chainedHeader, loadedTxes);
+
+                        var sendBlockTxes = blockTxesBuffer.SendAndCompleteAsync(blockTxes);
+
+                        using (var warmedBlockTxesQueue = warmedBlockTxes.LinkToQueue())
+                        {
+                            foreach (var loadingTx in CalculateUtxo(chainedHeader, warmedBlockTxesQueue.GetConsumingEnumerable(), deferredChainStateCursor))
+                                loadingTxes.Post(loadingTx);
+                            
+                            loadingTxes.Complete();
+                        }
+
+                        sendBlockTxes.Wait();
 
                         //TODO note - the utxo updates could be applied either while validation is ongoing, or after it is complete
                         this.stats.applyUtxoDurationMeasure.MeasureIf(chainedHeader.Height > 0, () =>
@@ -129,9 +137,10 @@ namespace BitSharp.Core.Builders
                         // wait for block validation to complete, any exceptions that ocurred will be thrown
                         this.stats.waitToCompleteDurationMeasure.MeasureIf(chainedHeader.Height > 0, () =>
                         {
-                            utxoLookAhead.Completion.Wait();
-                            txLoader.Completion.Wait();
-                            blockValidator.Completion.Wait();
+                            blockTxesBuffer.Completion.Wait();
+                            warmedBlockTxes.Completion.Wait();
+                            loadedTxes.Completion.Wait();
+                            blockValidator.Wait();
                         });
                     }
 

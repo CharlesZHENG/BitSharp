@@ -18,92 +18,28 @@ using System.Threading.Tasks.Dataflow;
 
 namespace BitSharp.Core.Builders
 {
-    internal class TxLoader : IDisposable
+    internal static class TxLoader
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        private readonly ICoreStorage coreStorage;
-        private readonly int threadCount;
-        private readonly ParallelReader<LoadingTx> loadingTxesReader;
-
-        private readonly CancellationTokenSource cancelToken = new CancellationTokenSource();
-        private readonly Task completion;
-
-        private TransformManyBlock<LoadingTx, Tuple<LoadingTx, int>> createTxInputList;
-        private TransformManyBlock<Tuple<LoadingTx, int>, LoadedTx> loadTxInputAndReturnLoadedTx;
-
-        public TxLoader(string name, ICoreStorage coreStorage, int threadCount, ParallelReader<LoadingTx> loadingTxesReader)
-        {
-            this.coreStorage = coreStorage;
-            this.threadCount = threadCount;
-            this.loadingTxesReader = loadingTxesReader;
-
-            completion = Task.Factory.StartNew(async () => await LoadTxes(), cancelToken.Token, TaskCreationOptions.AttachedToParent, TaskScheduler.Default);
-        }
-
-        public void Dispose()
-        {
-            cancelToken.Dispose();
-        }
-
-        public Task Completion { get { return completion; } }
-
-        //TODO remove
-        public bool IsStarted
-        {
-            get { return true; }
-        }
-
-        //TODO remove
-        public int Count
-        {
-            get { return 0; }
-        }
-
-        public ISourceBlock<LoadedTx> LoadedTxes
-        {
-            get
-            {
-                return loadTxInputAndReturnLoadedTx;
-            }
-        }
-
-        private async Task LoadTxes()
+        public static ISourceBlock<LoadedTx> LoadTxes(string name, ICoreStorage coreStorage, int threadCount, ISourceBlock<LoadingTx> loadingTxes, CancellationToken cancelToken = default(CancellationToken))
         {
             // split incoming LoadingTx by its number of inputs
-            createTxInputList = InitCreateTxInputList();
+            var createTxInputList = InitCreateTxInputList(cancelToken);
 
             // load each input, and return and fully loaded txes
-            loadTxInputAndReturnLoadedTx = InitLoadTxInputAndReturnLoadedTx();
+            var loadTxInputAndReturnLoadedTx = InitLoadTxInputAndReturnLoadedTx(coreStorage, cancelToken);
 
             // link the input splitter to the input loader
             createTxInputList.LinkTo(loadTxInputAndReturnLoadedTx, new DataflowLinkOptions { PropagateCompletion = true });
 
-            // begin feeding the input splitter
-            var readLoadingTxes = Task.Factory.StartNew(() =>
-            {
-                foreach (var loadingTx in loadingTxesReader.GetConsumingEnumerable())
-                    createTxInputList.Post(loadingTx);
+            // link the loading txes to the input splitter
+            loadingTxes.LinkTo(createTxInputList, new DataflowLinkOptions { PropagateCompletion = true });
 
-                createTxInputList.Complete();
-            }, cancelToken.Token, TaskCreationOptions.AttachedToParent, TaskScheduler.Default);
-
-            await readLoadingTxes;
-            await createTxInputList.Completion;
-            await loadTxInputAndReturnLoadedTx.Completion;
+            return loadTxInputAndReturnLoadedTx;
         }
 
-        public void Wait()
-        {
-            completion.Wait();
-        }
-
-        public void Cancel(Exception ex)
-        {
-            cancelToken.Cancel();
-        }
-
-        private TransformManyBlock<LoadingTx, Tuple<LoadingTx, int>> InitCreateTxInputList()
+        private static TransformManyBlock<LoadingTx, Tuple<LoadingTx, int>> InitCreateTxInputList(CancellationToken cancelToken)
         {
             return new TransformManyBlock<LoadingTx, Tuple<LoadingTx, int>>(
                 loadingTx =>
@@ -120,10 +56,10 @@ namespace BitSharp.Core.Builders
                         return new[] { Tuple.Create(loadingTx, -1) };
                     }
                 },
-                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken.Token });
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken });
         }
 
-        private TransformManyBlock<Tuple<LoadingTx, int>, LoadedTx> InitLoadTxInputAndReturnLoadedTx()
+        private static TransformManyBlock<Tuple<LoadingTx, int>, LoadedTx> InitLoadTxInputAndReturnLoadedTx(ICoreStorage coreStorage, CancellationToken cancelToken)
         {
             return new TransformManyBlock<Tuple<LoadingTx, int>, LoadedTx>(
                 tuple =>
@@ -131,16 +67,16 @@ namespace BitSharp.Core.Builders
                     var loadingTx = tuple.Item1;
                     var inputIndex = tuple.Item2;
 
-                    var loadedTx = LoadTxInput(loadingTx, inputIndex);
+                    var loadedTx = LoadTxInput(coreStorage, loadingTx, inputIndex);
                     if (loadedTx != null)
                         return new[] { loadedTx };
                     else
                         return new LoadedTx[0];
                 },
-                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken.Token, MaxDegreeOfParallelism = 16 });
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, MaxDegreeOfParallelism = 16 });
         }
 
-        private LoadedTx LoadTxInput(LoadingTx loadingTx, int inputIndex)
+        private static LoadedTx LoadTxInput(ICoreStorage coreStorage, LoadingTx loadingTx, int inputIndex)
         {
             var txIndex = loadingTx.TxIndex;
             var transaction = loadingTx.Transaction;

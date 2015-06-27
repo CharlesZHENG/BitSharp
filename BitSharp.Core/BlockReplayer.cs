@@ -71,11 +71,17 @@ namespace BitSharp.Core.Builders
             this.pendingTxLoader.ReplayCalculateUtxo(chainState, replayBlock, replayForward,
                 loadingTxes =>
                 {
+                    var loadingTxesBuffer = new BufferBlock<LoadingTx>();
+                    var txLoader = TxLoader.LoadTxes("BlockReplayer", coreStorage, 4, loadingTxesBuffer);
+
                     using (var loadingTxesTask = this.loadingTxesSource.ReadAsync(loadingTxes.GetConsumingEnumerable()).WaitOnDispose())
-                    using (var txLoader = new TxLoader("BlockReplayer", coreStorage, 4, loadingTxesSource))
                     using (var sortedTxes = new ConcurrentBlockingQueue<LoadedTx>())
-                    using (var txSorterTask = StartTxSorter(replayBlock, txLoader.LoadedTxes, sortedTxes).WaitOnDispose())
+                    using (var txSorterTask = StartTxSorter(replayBlock, txLoader, sortedTxes).WaitOnDispose())
                     {
+                        foreach (var loadingTx in loadingTxesSource.GetConsumingEnumerable())
+                            loadingTxesBuffer.Post(loadingTx);
+                        loadingTxesBuffer.Complete();
+
                         var replayTxes = sortedTxes.GetConsumingEnumerable();
                         //TODO Reverse() here means everything must be loaded first, the tx sorter should handle this instead
                         if (!replayForward)

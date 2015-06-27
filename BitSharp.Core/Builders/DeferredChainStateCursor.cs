@@ -13,7 +13,7 @@ using System.Threading.Tasks;
 
 namespace BitSharp.Core.Builders
 {
-    internal class DeferredChainStateCursor : IChainStateCursor
+    internal class DeferredChainStateCursor : IDeferredChainStateCursor
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 

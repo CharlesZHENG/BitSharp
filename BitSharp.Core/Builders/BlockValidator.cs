@@ -16,45 +16,17 @@ using System.Threading.Tasks.Dataflow;
 
 namespace BitSharp.Core.Builders
 {
-    internal class BlockValidator : IDisposable
+    internal static class BlockValidator
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        private readonly CoreStorage coreStorage;
-        private readonly IBlockchainRules rules;
-        private readonly ChainedHeader chainedHeader;
-        private readonly ISourceBlock<LoadedTx> loadedTxes;
-
-        private readonly CancellationTokenSource cancelToken = new CancellationTokenSource();
-        private Task completion;
-
-        private TransformManyBlock<LoadedTx, Tuple<LoadedTx, int>> txValidator;
-        private ActionBlock<Tuple<LoadedTx, int>> scriptValidator;
-
-        public BlockValidator(CoreStorage coreStorage, IBlockchainRules rules, ChainedHeader chainedHeader, ISourceBlock<LoadedTx> loadedTxes)
-        {
-            this.coreStorage = coreStorage;
-            this.rules = rules;
-            this.chainedHeader = chainedHeader;
-            this.loadedTxes = loadedTxes;
-
-            completion = Task.Factory.StartNew(async () => await ValidateTransactions(), cancelToken.Token, TaskCreationOptions.AttachedToParent, TaskScheduler.Default);
-        }
-
-        public void Dispose()
-        {
-            cancelToken.Dispose();
-        }
-
-        public Task Completion { get { return completion; } }
-
-        private async Task ValidateTransactions()
+        public static async Task ValidateBlock(CoreStorage coreStorage, IBlockchainRules rules, ChainedHeader chainedHeader, ISourceBlock<LoadedTx> loadedTxes, CancellationToken cancelToken = default(CancellationToken))
         {
             // validate transactions
-            txValidator = InitTxValidator();
+            var txValidator = InitTxValidator(rules, chainedHeader, cancelToken);
 
             // validate scripts
-            scriptValidator = InitScriptValidator();
+            var scriptValidator = InitScriptValidator(rules, chainedHeader, cancelToken);
 
             // begin feeding the tx validator
             loadedTxes.LinkTo(txValidator, new DataflowLinkOptions { PropagateCompletion = true });
@@ -66,14 +38,14 @@ namespace BitSharp.Core.Builders
             await scriptValidator.Completion;
         }
 
-        private TransformManyBlock<LoadedTx, Tuple<LoadedTx, int>> InitTxValidator()
+        private static TransformManyBlock<LoadedTx, Tuple<LoadedTx, int>> InitTxValidator(IBlockchainRules rules, ChainedHeader chainedHeader, CancellationToken cancelToken)
         {
             return new TransformManyBlock<LoadedTx, Tuple<LoadedTx, int>>(
                 loadedTx =>
                 {
                     rules.ValidateTransaction(chainedHeader, loadedTx);
 
-                    if (!this.rules.IgnoreScripts && !loadedTx.IsCoinbase)
+                    if (!rules.IgnoreScripts && !loadedTx.IsCoinbase)
                     {
                         var scripts = new Tuple<LoadedTx, int>[loadedTx.Transaction.Inputs.Length];
                         for (var i = 0; i < loadedTx.Transaction.Inputs.Length; i++)
@@ -84,10 +56,10 @@ namespace BitSharp.Core.Builders
                     else
                         return new Tuple<LoadedTx, int>[0];
                 },
-                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken.Token, MaxDegreeOfParallelism = 16 });
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, MaxDegreeOfParallelism = 16 });
         }
 
-        private ActionBlock<Tuple<LoadedTx, int>> InitScriptValidator()
+        private static ActionBlock<Tuple<LoadedTx, int>> InitScriptValidator(IBlockchainRules rules, ChainedHeader chainedHeader, CancellationToken cancelToken)
         {
             return new ActionBlock<Tuple<LoadedTx, int>>(
                 tuple =>
@@ -97,15 +69,15 @@ namespace BitSharp.Core.Builders
                     var txInput = loadedTx.Transaction.Inputs[inputIndex];
                     var prevTxOutput = loadedTx.GetInputPrevTxOutput(inputIndex);
 
-                    if (!this.rules.IgnoreScriptErrors)
+                    if (!rules.IgnoreScriptErrors)
                     {
-                        this.rules.ValidationTransactionScript(chainedHeader, loadedTx.Transaction, loadedTx.TxIndex, txInput, inputIndex, prevTxOutput);
+                        rules.ValidationTransactionScript(chainedHeader, loadedTx.Transaction, loadedTx.TxIndex, txInput, inputIndex, prevTxOutput);
                     }
                     else
                     {
                         try
                         {
-                            this.rules.ValidationTransactionScript(chainedHeader, loadedTx.Transaction, loadedTx.TxIndex, txInput, inputIndex, prevTxOutput);
+                            rules.ValidationTransactionScript(chainedHeader, loadedTx.Transaction, loadedTx.TxIndex, txInput, inputIndex, prevTxOutput);
                         }
                         catch (Exception ex)
                         {
@@ -114,7 +86,7 @@ namespace BitSharp.Core.Builders
                         }
                     }
                 },
-                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken.Token, MaxDegreeOfParallelism = 16 });
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, MaxDegreeOfParallelism = 16 });
         }
     }
 }

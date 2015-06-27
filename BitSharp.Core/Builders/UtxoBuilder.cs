@@ -24,7 +24,7 @@ namespace BitSharp.Core.Builders
             var chainedHeader = chain.LastBlock;
             var blockSpentTxes = ImmutableList.CreateBuilder<UInt256>();
 
-            // ignore transactions on geneis block
+            // ignore transactions on genesis block
             if (chainedHeader.Height > 0)
             {
                 foreach (var blockTx in blockTxes)
@@ -73,6 +73,11 @@ namespace BitSharp.Core.Builders
 
                     yield return new LoadingTx(txIndex, tx, chainedHeader, prevOutputTxKeys.MoveToImmutable());
                 }
+            }
+            // only consume the block txes enumerator for the genesis block
+            else
+            {
+                blockTxes.Count();
             }
 
             if (!chainStateCursor.TryAddBlockSpentTxes(chainedHeader.Height, blockSpentTxes.ToImmutable()))

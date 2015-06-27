@@ -115,9 +115,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="BlockReplayer.cs" />
+    <Compile Include="Builders\IDeferredChainStateCursor.cs" />
     <Compile Include="Builders\DeferredChainStateCursor.cs" />
     <Compile Include="Builders\CompletionArray.cs" />
     <Compile Include="Builders\DeferredDictionary.cs" />
+    <Compile Include="Builders\BuilderExtensionMethods.cs" />
     <Compile Include="Builders\UtxoLookAhead.cs" />
     <Compile Include="Builders\UtxoReplayer.cs" />
     <Compile Include="Builders\TxLoader.cs" />

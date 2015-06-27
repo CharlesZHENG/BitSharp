@@ -48,24 +48,26 @@ namespace BitSharp.Core.Test.Builders
                 }
 
                 // begin queuing transactions to load
-                using (loadingTxesReader.ReadAsync(new[] { loadingTx }).WaitOnDispose())
+                var loadingTxes = new BufferBlock<LoadingTx>();
+                loadingTxes.Post(loadingTx);
+                loadingTxes.Complete();
+
                 // begin transaction loading
-                using (var txLoader = new TxLoader("", coreStorageMock.Object, 1, loadingTxesReader))
-                {
-                    // verify the loaded transaction
-                    var loadedTxesBuffer = new BufferBlock<LoadedTx>();
-                    txLoader.LoadedTxes.LinkTo(loadedTxesBuffer, new DataflowLinkOptions { PropagateCompletion = true });
-                    txLoader.Completion.Wait();
+                var txLoader = TxLoader.LoadTxes("", coreStorageMock.Object, 1, loadingTxes);
+                
+                // verify the loaded transaction
+                var loadedTxesBuffer = new BufferBlock<LoadedTx>();
+                txLoader.LinkTo(loadedTxesBuffer, new DataflowLinkOptions { PropagateCompletion = true });
+                txLoader.Completion.Wait();
 
-                    IList<LoadedTx> actualLoadedTxes;
-                    Assert.IsTrue(loadedTxesBuffer.TryReceiveAll(out actualLoadedTxes));
+                IList<LoadedTx> actualLoadedTxes;
+                Assert.IsTrue(loadedTxesBuffer.TryReceiveAll(out actualLoadedTxes));
 
-                    var actualLoadedTx = actualLoadedTxes.Single();
+                var actualLoadedTx = actualLoadedTxes.Single();
 
-                    Assert.AreEqual(loadingTx.TxIndex, actualLoadedTx.TxIndex);
-                    Assert.AreEqual(loadingTx.Transaction, actualLoadedTx.Transaction);
-                    CollectionAssert.AreEqual(prevTxes, actualLoadedTx.InputTxes);
-                }
+                Assert.AreEqual(loadingTx.TxIndex, actualLoadedTx.TxIndex);
+                Assert.AreEqual(loadingTx.Transaction, actualLoadedTx.Transaction);
+                CollectionAssert.AreEqual(prevTxes, actualLoadedTx.InputTxes);
             }
         }
     }
