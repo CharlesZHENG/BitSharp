@@ -156,23 +156,15 @@ namespace BitSharp.Core.Workers
                 }
             }
             catch (OperationCanceledException) { }
-            catch (Exception ex)
+            catch (AggregateException ex)
             {
-                foreach (var innerException in WalkInnerExceptions(ex))
+                foreach (var innerException in ex.Flatten().InnerExceptions)
                     HandleException(innerException);
             }
-        }
-
-        private IEnumerable<Exception> WalkInnerExceptions(Exception ex)
-        {
-            var aggEx = ex as AggregateException;
-            if (aggEx != null)
+            catch (Exception ex)
             {
-                foreach (var innerException in aggEx.InnerExceptions.SelectMany(x => WalkInnerExceptions(x)))
-                    yield return innerException;
+                HandleException(ex);
             }
-            else
-                yield return ex;
         }
 
         private void HandleException(Exception ex)
