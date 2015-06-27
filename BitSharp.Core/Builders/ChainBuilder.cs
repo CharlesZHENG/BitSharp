@@ -118,6 +118,18 @@ namespace BitSharp.Core.Builders
             this.blocksByHash.Remove(chainedHeader.Hash);
         }
 
+        public IEnumerable<Tuple<int, ChainedHeader>> NavigateTowards(Chain chain)
+        {
+            Tuple<int, ChainedHeader> singleStep;
+            do
+            {
+                singleStep = this.ToImmutable().NavigateTowards(chain).FirstOrDefault();
+                if (singleStep != null)
+                    yield return singleStep;
+            }
+            while (singleStep != null);
+        }
+
         /// <summary>
         /// Create a new Chain instance from this builder. Changes to the builder have no effect on the new chain.
         /// </summary>
