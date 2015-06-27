@@ -14,7 +14,7 @@ See [LICENSE](https://github.com/pmlyon/BitSharp/blob/master/LICENSE).
 
 Examples can be found in the BitSharp.Examples project.
 
-## ExampleCoreDaemon
+## ExampleDaemon
 
 **Source**
 ```csharp
@@ -119,7 +119,7 @@ Block 1 coinbase output states:    [Unspent]
 Block 381 spent txes count:               21
 ```
 
-## BlockReplayExample
+## ReplayBlockExample
 
 **Source**
 ```csharp
