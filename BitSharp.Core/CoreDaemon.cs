@@ -55,10 +55,6 @@ namespace BitSharp.Core
             // create chain state builder
             this.chainStateBuilder = new ChainStateBuilder(this.rules, this.coreStorage);
 
-            // add genesis block to chain state, if needed
-            if (this.chainStateBuilder.Chain.Height < 0)
-                this.chainStateBuilder.AddBlock(this.rules.GenesisChainedHeader, this.rules.GenesisBlock.Transactions);
-
             // create workers
             this.targetChainWorker = new TargetChainWorker(
                 new WorkerConfig(initialNotify: true, minIdleTime: TimeSpan.FromMilliseconds(50), maxIdleTime: TimeSpan.FromSeconds(30)),
