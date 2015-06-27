@@ -37,7 +37,7 @@ namespace BitSharp.Core.Test
             this.logger.Info("Starting up: {0}".Format2(DateTime.Now));
 
             this.random = new Random();
-            this.blockProvider = BlockProvider.CreateForRules(rulesType);
+            this.blockProvider = TestBlockProvider.CreateForRules(rulesType);
 
             // add storage module
             this.kernel.Load(new MemoryStorageModule());

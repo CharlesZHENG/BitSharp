@@ -22,7 +22,8 @@ namespace BitSharp.Core
 
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        private readonly IKernel kernel;
+        private readonly ReaderWriterLockSlim controlLock = new ReaderWriterLockSlim();
+
         private readonly IBlockchainRules rules;
         private readonly IStorageManager storageManager;
         private readonly CoreStorage coreStorage;
@@ -36,14 +37,14 @@ namespace BitSharp.Core
         private readonly WorkerMethod gcWorker;
         private readonly WorkerMethod utxoScanWorker;
 
+        private bool isStarted;
         private bool isDisposed;
 
-        public CoreDaemon(IKernel kernel, IBlockchainRules rules, IStorageManager storageManager)
+        public CoreDaemon(IBlockchainRules rules, IStorageManager storageManager)
         {
             //TODO
             ThreadPool.SetMinThreads(48, 16);
 
-            this.kernel = kernel;
             this.rules = rules;
             this.storageManager = storageManager;
             this.coreStorage = new CoreStorage(storageManager);
@@ -112,6 +113,7 @@ namespace BitSharp.Core
                 this.utxoScanWorker.Dispose();
                 this.chainStateBuilder.Dispose();
                 this.coreStorage.Dispose();
+                this.controlLock.Dispose();
 
                 isDisposed = true;
             }
@@ -138,6 +140,30 @@ namespace BitSharp.Core
         public Chain CurrentChain
         {
             get { return this.chainStateWorker.CurrentChain; }
+        }
+
+        public int? MaxHeight
+        {
+            get { return chainStateWorker.MaxHeight; }
+            set { chainStateWorker.MaxHeight = value; }
+        }
+
+        public bool IsStarted
+        {
+            get { return controlLock.DoRead(() => isStarted); }
+            set
+            {
+                controlLock.DoWrite(() =>
+                {
+                    if (isStarted == value)
+                        return;
+                    
+                    if (value)
+                        InternalStart();
+                    else
+                        InternalStop();
+                });
+            }
         }
 
         public PruningMode PruningMode
@@ -182,6 +208,11 @@ namespace BitSharp.Core
 
         public void Start()
         {
+            controlLock.DoWrite(() =>InternalStart());
+        }
+
+        private void InternalStart()
+        {
             // startup workers
             //this.utxoScanWorker.Start();
             this.gcWorker.Start();
@@ -189,9 +220,15 @@ namespace BitSharp.Core
             this.chainStateWorker.Start();
             this.pruningWorker.Start();
             this.defragWorker.Start();
+            isStarted = true;
         }
 
         public void Stop()
+        {
+            controlLock.DoWrite(() => InternalStop());
+        }
+
+        private void InternalStop()
         {
             // stop workers
             this.defragWorker.Stop();
@@ -200,6 +237,7 @@ namespace BitSharp.Core
             this.targetChainWorker.Stop();
             this.gcWorker.Stop();
             this.utxoScanWorker.Stop();
+            isStarted = false;
         }
 
         public void WaitForUpdate()

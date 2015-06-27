@@ -86,7 +86,6 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\System.Collections.Immutable.1.1.36\lib\portable-net45+win8+wp8+wpa81\System.Collections.Immutable.dll</HintPath>
     </Reference>
-    <Reference Include="System.IO.Compression" />
     <Reference Include="System.Numerics" />
     <Reference Include="System.Reactive.Core">
       <HintPath>..\packages\Rx-Core.2.2.5\lib\net45\System.Reactive.Core.dll</HintPath>
@@ -125,7 +124,7 @@
     <Compile Include="Builders\TxLoaderTest.cs" />
     <Compile Include="Builders\UtxoLookAheadTest.cs" />
     <Compile Include="Domain\ChainTest.cs" />
-    <Compile Include="BlockProvider.cs" />
+    <Compile Include="TestBlockProvider.cs" />
     <Compile Include="MerkleTreeTest.cs" />
     <Compile Include="FakeHeaders.cs" />
     <Compile Include="MainnetTestData.cs" />

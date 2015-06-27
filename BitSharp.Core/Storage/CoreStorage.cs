@@ -230,6 +230,12 @@ namespace BitSharp.Core.Storage
             };
         }
 
+        public void AddBlocks(IEnumerable<Block> blocks)
+        {
+            foreach (var block in blocks)
+                TryAddBlock(block);
+        }
+
         public bool TryGetBlock(UInt256 blockHash, out Block block)
         {
             ChainedHeader chainedHeader;

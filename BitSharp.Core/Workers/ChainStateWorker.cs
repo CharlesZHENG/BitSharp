@@ -56,6 +56,8 @@ namespace BitSharp.Core.Workers
 
         public event Action<UInt256> BlockMissed;
 
+        public int? MaxHeight { get; set; }
+
         public TimeSpan AverageBlockProcessingTime()
         {
             return this.blockProcessingDurationMeasure.GetAverage();
@@ -103,7 +105,8 @@ namespace BitSharp.Core.Workers
 
                 // calculate the new blockchain along the target path
                 var didWork = false;
-                foreach (var pathElement in this.chainStateBuilder.Chain.NavigateTowards(() => this.targetChainWorker.TargetChain))
+                foreach (var pathElement in this.chainStateBuilder.Chain.NavigateTowards(() => this.targetChainWorker.TargetChain)
+                    .Where(pathElement => pathElement.Item2.Height <= (MaxHeight ?? int.MaxValue)))
                 {
                     // cooperative loop
                     this.ThrowIfCancelled();

@@ -89,6 +89,7 @@
     </Reference>
     <Reference Include="System.Core" />
     <Reference Include="System.Data.Linq" />
+    <Reference Include="System.IO.Compression" />
     <Reference Include="System.Numerics" />
     <Reference Include="System.Reactive.Core">
       <HintPath>..\packages\Rx-Core.2.2.5\lib\net45\System.Reactive.Core.dll</HintPath>
@@ -114,6 +115,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BlockProvider.cs" />
     <Compile Include="BlockReplayer.cs" />
     <Compile Include="Builders\IDeferredChainStateCursor.cs" />
     <Compile Include="Builders\DeferredChainStateCursor.cs" />

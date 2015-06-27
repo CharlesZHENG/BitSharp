@@ -8,9 +8,9 @@ using System.IO;
 using System.IO.Compression;
 using System.Reflection;
 
-namespace BitSharp.Core.Test
+namespace BitSharp.Core
 {
-    public abstract class BlockProvider : IDisposable
+    public class BlockProvider : IDisposable
     {
         private readonly ConcurrentDictionary<string, Block> blocks;
         private readonly Dictionary<int, string> heightNames;
@@ -25,7 +25,7 @@ namespace BitSharp.Core.Test
             this.heightNames = new Dictionary<int, string>();
             this.hashNames = new Dictionary<UInt256, string>();
 
-            var assembly = Assembly.GetExecutingAssembly();
+            var assembly = Assembly.GetCallingAssembly();
             var stream = assembly.GetManifestResourceStream(resourceName);
 
             this.zip = new ZipArchive(stream);
@@ -102,35 +102,6 @@ namespace BitSharp.Core.Test
             blocks[name] = block;
 
             return block;
-        }
-
-        public static BlockProvider CreateForRules(RulesEnum rulesType)
-        {
-            switch (rulesType)
-            {
-                case RulesEnum.MainNet:
-                    return new MainnetBlockProvider();
-                case RulesEnum.TestNet3:
-                    return new TestNet3BlockProvider();
-                default:
-                    return null;
-            }
-        }
-    }
-
-    public class MainnetBlockProvider : BlockProvider
-    {
-        public MainnetBlockProvider()
-            : base("BitSharp.Core.Test.Blocks.Mainnet.zip")
-        {
-        }
-    }
-
-    public class TestNet3BlockProvider : BlockProvider
-    {
-        public TestNet3BlockProvider()
-            : base("BitSharp.Core.Test.Blocks.TestNet3.zip")
-        {
         }
     }
 }
