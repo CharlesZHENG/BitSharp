@@ -348,6 +348,7 @@ namespace BitSharp.Core.Storage
 
         private IEnumerable<BlockTx> ReadBlockTransactions(UInt256 blockHash, UInt256 merkleRoot, bool requireTransactions, IEnumerable<BlockTx> blockTxes)
         {
+            //TODO merkle validation should happen in BlockValidator
             using (var blockTxesEnumerator = MerkleTree.ReadMerkleTreeNodes(merkleRoot, blockTxes).GetEnumerator())
             {
                 while (true)
