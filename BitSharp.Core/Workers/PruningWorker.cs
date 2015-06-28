@@ -5,9 +5,11 @@ using BitSharp.Core.Domain;
 using BitSharp.Core.Storage;
 using NLog;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Threading.Tasks;
 
 namespace BitSharp.Core.Workers
 {
@@ -21,8 +23,6 @@ namespace BitSharp.Core.Workers
 
         private readonly DisposeHandle<IChainStateCursor> chainStateCursorHandle;
         private readonly IChainStateCursor chainStateCursor;
-
-        private readonly WorkerPool pruneBlockWorkers;
 
         private readonly AverageMeasure txCountMeasure = new AverageMeasure();
         private readonly AverageMeasure txRateMeasure = new AverageMeasure();
@@ -52,13 +52,11 @@ namespace BitSharp.Core.Workers
 
             // initialize a pool of pruning workers
             var txesPruneThreadCount = Environment.ProcessorCount * 2;
-            this.pruneBlockWorkers = new WorkerPool("PruningWorker.PruneBlockWorkers", txesPruneThreadCount);
         }
 
         protected override void SubDispose()
         {
             this.chainStateCursorHandle.Dispose();
-            this.pruneBlockWorkers.Dispose();
             this.txCountMeasure.Dispose();
             this.txRateMeasure.Dispose();
             this.totalDurationMeasure.Dispose();
@@ -231,25 +229,33 @@ namespace BitSharp.Core.Workers
                     {
                         pruneBlocksStopwatch.Time(() =>
                         {
-                            using (var blockTxesPruneQueue = new ConcurrentBlockingQueue<KeyValuePair<UInt256, IEnumerable<int>>>())
-                            using (this.pruneBlockWorkers.Start(() =>
+                            using (var blockTxesPruneQueue = new BlockingCollection<KeyValuePair<UInt256, IEnumerable<int>>>())
                             {
-                                if (mode.HasFlag(PruningMode.BlockTxesPreserveMerkle))
-                                    this.storageManager.BlockTxesStorage.PruneElements(blockTxesPruneQueue.GetConsumingEnumerable());
-                                else
-                                    this.storageManager.BlockTxesStorage.DeleteElements(blockTxesPruneQueue.GetConsumingEnumerable());
-                            }))
-                            {
-                                foreach (var keyPair in pruneData)
+                                var blocksPruneTask = Task.Run(() => Parallel.ForEach(blockTxesPruneQueue.GetConsumingPartitioner(),
+                                    new ParallelOptions { MaxDegreeOfParallelism = 16 },
+                                    tuple =>
+                                    {
+                                        if (mode.HasFlag(PruningMode.BlockTxesPreserveMerkle))
+                                            this.storageManager.BlockTxesStorage.PruneElements(new[] { tuple });
+                                        else
+                                            this.storageManager.BlockTxesStorage.DeleteElements(new[] { tuple });
+                                    }));
+                                try
                                 {
-                                    var confirmedBlockIndex = keyPair.Key;
-                                    var confirmedBlockHash = chain.Blocks[confirmedBlockIndex].Hash;
-                                    var spentTxIndices = keyPair.Value;
+                                    foreach (var keyPair in pruneData)
+                                    {
+                                        var confirmedBlockIndex = keyPair.Key;
+                                        var confirmedBlockHash = chain.Blocks[confirmedBlockIndex].Hash;
+                                        var spentTxIndices = keyPair.Value;
 
-                                    blockTxesPruneQueue.Add(new KeyValuePair<UInt256, IEnumerable<int>>(confirmedBlockHash, spentTxIndices));
+                                        blockTxesPruneQueue.Add(new KeyValuePair<UInt256, IEnumerable<int>>(confirmedBlockHash, spentTxIndices));
+                                    }
                                 }
-
-                                blockTxesPruneQueue.CompleteAdding();
+                                finally
+                                {
+                                    blockTxesPruneQueue.CompleteAdding();
+                                    blocksPruneTask.Wait();
+                                }
                             }
                         });
                     }
