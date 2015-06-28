@@ -34,28 +34,10 @@ namespace BitSharp.Core.Storage
         void RollbackTransaction();
 
         /// <summary>
-        /// Enumerate the chain's headers.
-        /// </summary>
-        /// <returns>An enumerable of the chain's headers</returns>
-        IEnumerable<ChainedHeader> ReadChain();
-
-        /// <summary>
         /// Retrieve the tip of the chain.
         /// </summary>
         /// <returns>The chained header for the tip, or null for an empty chain.</returns>
-        ChainedHeader GetChainTip();
-
-        /// <summary>
-        /// Add a new header to the chain.
-        /// </summary>
-        /// <param name="chainedHeader">The header to add.</param>
-        void AddChainedHeader(ChainedHeader chainedHeader);
-
-        /// <summary>
-        /// Remove a header from the chain.
-        /// </summary>
-        /// <param name="chainedHeader">The header to remove.</param>
-        void RemoveChainedHeader(ChainedHeader chainedHeader);
+        ChainedHeader ChainTip { get; set; }
 
         /// <summary>
         /// The current unspent transaction count.

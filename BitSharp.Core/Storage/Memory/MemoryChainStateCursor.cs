@@ -14,7 +14,7 @@ namespace BitSharp.Core.Storage.Memory
         private bool inTransaction;
         private bool readOnly;
 
-        private ChainBuilder chain;
+        private ChainedHeader chainTip;
         private int? unspentTxCount;
         private int? unspentOutputCount;
         private int? totalTxCount;
@@ -34,7 +34,7 @@ namespace BitSharp.Core.Storage.Memory
         private long blockSpentTxesVersion;
         private long blockUnmintedTxesVersion;
 
-        private bool chainModified;
+        private bool chainTipModified;
         private bool unspentTxCountModified;
         private bool unspentOutputCountModified;
         private bool totalTxCountModified;
@@ -84,9 +84,9 @@ namespace BitSharp.Core.Storage.Memory
             if (!readOnly)
                 chainStateStorage.WriteTxLock.Wait();
 
-            this.chainStateStorage.BeginTransaction(out this.chain, out this.unspentTxCount, out this.unspentOutputCount, out this.totalTxCount, out this.totalInputCount, out this.totalOutputCount, out this.unspentTransactions, out this.blockSpentTxes, out this.blockUnmintedTxes, out this.chainVersion, out this.unspentTxCountVersion, out this.unspentOutputCountVersion, out this.totalTxCountVersion, out this.totalInputCountVersion, out this.totalOutputCountVersion, out this.unspentTxesVersion, out this.blockSpentTxesVersion, out this.blockUnmintedTxesVersion);
+            this.chainStateStorage.BeginTransaction(out this.chainTip, out this.unspentTxCount, out this.unspentOutputCount, out this.totalTxCount, out this.totalInputCount, out this.totalOutputCount, out this.unspentTransactions, out this.blockSpentTxes, out this.blockUnmintedTxes, out this.chainVersion, out this.unspentTxCountVersion, out this.unspentOutputCountVersion, out this.totalTxCountVersion, out this.totalInputCountVersion, out this.totalOutputCountVersion, out this.unspentTxesVersion, out this.blockSpentTxesVersion, out this.blockUnmintedTxesVersion);
 
-            this.chainModified = false;
+            this.chainTipModified = false;
             this.unspentTxCountModified = false;
             this.unspentOutputCountModified = false;
             this.totalTxCountModified = false;
@@ -105,7 +105,7 @@ namespace BitSharp.Core.Storage.Memory
                 throw new InvalidOperationException();
 
             this.chainStateStorage.CommitTransaction(
-                this.chainModified ? this.chain : null,
+                this.chainTipModified ? this.chainTip : null,
                 this.unspentTxCountModified ? this.unspentTxCount : null,
                 this.unspentOutputCountModified ? this.unspentOutputCount : null,
                 this.totalTxCountModified ? this.totalTxCount : null,
@@ -116,7 +116,7 @@ namespace BitSharp.Core.Storage.Memory
                 this.blockUnmintedTxesModified ? this.blockUnmintedTxes : null,
                 this.chainVersion, this.unspentTxCountVersion, this.unspentOutputCountVersion, this.totalTxCountVersion, this.totalInputCountVersion, this.totalOutputCountVersion, this.unspentTxesVersion, this.blockSpentTxesVersion, this.blockUnmintedTxesVersion);
 
-            this.chain = null;
+            this.chainTip = null;
             this.unspentTxCount = null;
             this.unspentOutputCount = null;
             this.totalTxCount = null;
@@ -137,7 +137,7 @@ namespace BitSharp.Core.Storage.Memory
             if (!this.inTransaction)
                 throw new InvalidOperationException();
 
-            this.chain = null;
+            this.chainTip = null;
             this.unspentTxCount = null;
             this.unspentOutputCount = null;
             this.totalTxCount = null;
@@ -153,45 +153,26 @@ namespace BitSharp.Core.Storage.Memory
                 chainStateStorage.WriteTxLock.Release();
         }
 
-        public IEnumerable<ChainedHeader> ReadChain()
+        public ChainedHeader ChainTip
         {
-            if (this.inTransaction)
-                return this.chain.Blocks;
-            else
-                return this.chainStateStorage.ReadChain();
-        }
-
-        public ChainedHeader GetChainTip()
-        {
-            if (this.inTransaction)
-                return this.chain.LastBlock;
-            else
-                return this.chainStateStorage.GetChainTip();
-        }
-
-        public void AddChainedHeader(ChainedHeader chainedHeader)
-        {
-            if (this.inTransaction)
+            get
             {
-                this.chain.AddBlock(chainedHeader);
-                this.chainModified = true;
+                if (this.inTransaction)
+                    return this.chainTip;
+                else
+                    return this.chainStateStorage.ChainTip;
             }
-            else
+            set
             {
-                this.chainStateStorage.AddChainedHeader(chainedHeader);
-            }
-        }
-
-        public void RemoveChainedHeader(ChainedHeader chainedHeader)
-        {
-            if (this.inTransaction)
-            {
-                this.chain.RemoveBlock(chainedHeader);
-                this.chainModified = true;
-            }
-            else
-            {
-                this.chainStateStorage.RemoveChainedHeader(chainedHeader);
+                if (this.inTransaction)
+                {
+                    this.chainTip = value;
+                    this.chainTipModified = true;
+                }
+                else
+                {
+                    this.chainStateStorage.ChainTip = value;
+                }
             }
         }
 

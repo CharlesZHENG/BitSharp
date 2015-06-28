@@ -14,7 +14,7 @@ namespace BitSharp.Core.Storage.Memory
         private readonly object lockObject = new object();
         private readonly SemaphoreSlim writeTxLock = new SemaphoreSlim(1);
 
-        private ChainBuilder chain;
+        private ChainedHeader chainTip;
         private int unspentTxCount;
         private int unspentOutputCount;
         private int totalTxCount;
@@ -24,7 +24,7 @@ namespace BitSharp.Core.Storage.Memory
         private ImmutableDictionary<int, IImmutableList<UInt256>>.Builder blockSpentTxes;
         private ImmutableDictionary<UInt256, IImmutableList<UnmintedTx>>.Builder blockUnmintedTxes;
 
-        private long chainVersion;
+        private long chainTipVersion;
         private long unspentTxCountVersion;
         private long unspentOutputCountVersion;
         private long totalTxCountVersion;
@@ -34,9 +34,9 @@ namespace BitSharp.Core.Storage.Memory
         private long blockSpentTxesVersion;
         private long blockUnmintedTxesVersion;
 
-        public MemoryChainStateStorage(Chain chain = null, int? unspentTxCount = null, int? totalTxCount = null, int? totalInputCount = null, int? totalOutputCount = null, int? unspentOutputCount = null, ImmutableSortedDictionary<UInt256, UnspentTx> unspentTransactions = null, ImmutableDictionary<int, IImmutableList<UInt256>> blockSpentTxes = null, ImmutableDictionary<UInt256, IImmutableList<UnmintedTx>> blockUnmintedTxes = null)
+        public MemoryChainStateStorage(ChainedHeader chainTip = null, int? unspentTxCount = null, int? totalTxCount = null, int? totalInputCount = null, int? totalOutputCount = null, int? unspentOutputCount = null, ImmutableSortedDictionary<UInt256, UnspentTx> unspentTransactions = null, ImmutableDictionary<int, IImmutableList<UInt256>> blockSpentTxes = null, ImmutableDictionary<UInt256, IImmutableList<UnmintedTx>> blockUnmintedTxes = null)
         {
-            this.chain = chain != null ? chain.ToBuilder() : new ChainBuilder();
+            this.chainTip = chainTip;
             this.unspentTxCount = unspentTxCount ?? 0;
             this.unspentOutputCount = unspentOutputCount ?? 0;
             this.totalTxCount = totalTxCount ?? 0;
@@ -54,11 +54,11 @@ namespace BitSharp.Core.Storage.Memory
 
         internal SemaphoreSlim WriteTxLock { get { return this.writeTxLock; } }
 
-        public void BeginTransaction(out ChainBuilder chain, out int? unspentTxCount, out int? unspentOutputCount, out int? totalTxCount, out int? totalInputCount, out int? totalOutputCount, out ImmutableSortedDictionary<UInt256, UnspentTx>.Builder unspentTransactions, out ImmutableDictionary<int, IImmutableList<UInt256>>.Builder blockSpentTxes, out ImmutableDictionary<UInt256, IImmutableList<UnmintedTx>>.Builder blockUnmintedTxes, out long chainVersion, out long unspentTxCountVersion, out long unspentOutputCountVersion, out long totalTxCountVersion, out long totalInputCountVersion, out long totalOutputCountVersion, out long unspentTxesVersion, out long blockSpentTxesVersion, out long blockUnmintedTxesVersion)
+        public void BeginTransaction(out ChainedHeader chainTip, out int? unspentTxCount, out int? unspentOutputCount, out int? totalTxCount, out int? totalInputCount, out int? totalOutputCount, out ImmutableSortedDictionary<UInt256, UnspentTx>.Builder unspentTransactions, out ImmutableDictionary<int, IImmutableList<UInt256>>.Builder blockSpentTxes, out ImmutableDictionary<UInt256, IImmutableList<UnmintedTx>>.Builder blockUnmintedTxes, out long chainTipVersion, out long unspentTxCountVersion, out long unspentOutputCountVersion, out long totalTxCountVersion, out long totalInputCountVersion, out long totalOutputCountVersion, out long unspentTxesVersion, out long blockSpentTxesVersion, out long blockUnmintedTxesVersion)
         {
             lock (this.lockObject)
             {
-                chain = this.chain.ToImmutable().ToBuilder();
+                chainTip = this.chainTip;
                 unspentTxCount = this.unspentTxCount;
                 unspentOutputCount = this.unspentOutputCount;
                 totalTxCount = this.totalTxCount;
@@ -68,7 +68,7 @@ namespace BitSharp.Core.Storage.Memory
                 blockSpentTxes = this.blockSpentTxes.ToImmutable().ToBuilder();
                 blockUnmintedTxes = this.blockUnmintedTxes.ToImmutable().ToBuilder();
 
-                chainVersion = this.chainVersion;
+                chainTipVersion = this.chainTipVersion;
                 unspentTxCountVersion = this.unspentTxCountVersion;
                 unspentOutputCountVersion = this.unspentOutputCountVersion;
                 totalTxCountVersion = this.totalTxCountVersion;
@@ -80,11 +80,11 @@ namespace BitSharp.Core.Storage.Memory
             }
         }
 
-        public void CommitTransaction(ChainBuilder chain, int? unspentTxCount, int? unspentOutputCount, int? totalTxCount, int? totalInputCount, int? totalOutputCount, ImmutableSortedDictionary<UInt256, UnspentTx>.Builder unspentTransactions, ImmutableDictionary<int, IImmutableList<UInt256>>.Builder blockSpentTxes, ImmutableDictionary<UInt256, IImmutableList<UnmintedTx>>.Builder blockUnmintedTxes, long chainVersion, long unspentTxCountVersion, long unspentOutputCountVersion, long totalTxCountVersion, long totalInputCountVersion, long totalOutputCountVersion, long unspentTxesVersion, long blockSpentTxesVersion, long blockUnmintedTxesVersion)
+        public void CommitTransaction(ChainedHeader chainTip, int? unspentTxCount, int? unspentOutputCount, int? totalTxCount, int? totalInputCount, int? totalOutputCount, ImmutableSortedDictionary<UInt256, UnspentTx>.Builder unspentTransactions, ImmutableDictionary<int, IImmutableList<UInt256>>.Builder blockSpentTxes, ImmutableDictionary<UInt256, IImmutableList<UnmintedTx>>.Builder blockUnmintedTxes, long chainVersion, long unspentTxCountVersion, long unspentOutputCountVersion, long totalTxCountVersion, long totalInputCountVersion, long totalOutputCountVersion, long unspentTxesVersion, long blockSpentTxesVersion, long blockUnmintedTxesVersion)
         {
             lock (this.lockObject)
             {
-                if (chain != null && this.chainVersion != chainVersion
+                if (chainTip != null && this.chainTipVersion != chainVersion
                     || unspentTxCount != null && unspentTxCountVersion != this.unspentTxCountVersion
                     || unspentOutputCount != null && unspentOutputCountVersion != this.unspentOutputCountVersion
                     || totalTxCount != null && totalTxCountVersion != this.totalTxCountVersion
@@ -95,10 +95,10 @@ namespace BitSharp.Core.Storage.Memory
                     || blockUnmintedTxes != null && blockUnmintedTxesVersion != this.blockUnmintedTxesVersion)
                     throw new InvalidOperationException();
 
-                if (chain != null)
+                if (chainTip != null)
                 {
-                    this.chain = chain.ToImmutable().ToBuilder();
-                    this.chainVersion++;
+                    this.chainTip = chainTip;
+                    this.chainTipVersion++;
                 }
 
                 if (unspentTxCount != null)
@@ -151,33 +151,20 @@ namespace BitSharp.Core.Storage.Memory
             }
         }
 
-        public IEnumerable<ChainedHeader> ReadChain()
+        public ChainedHeader ChainTip
         {
-            lock (this.lockObject)
-                return this.chain.ToImmutable().Blocks;
-        }
-
-        public ChainedHeader GetChainTip()
-        {
-            lock (this.lockObject)
-                return this.chain.LastBlock;
-        }
-
-        public void AddChainedHeader(ChainedHeader chainedHeader)
-        {
-            lock (this.lockObject)
+            get
             {
-                this.chain.AddBlock(chainedHeader);
-                this.chainVersion++;
+                lock (this.lockObject)
+                    return this.chainTip;
             }
-        }
-
-        public void RemoveChainedHeader(ChainedHeader chainedHeader)
-        {
-            lock (this.lockObject)
+            set
             {
-                this.chain.RemoveBlock(chainedHeader);
-                this.chainVersion++;
+                lock (this.lockObject)
+                {
+                    this.chainTip = value;
+                    this.chainTipVersion++;
+                }
             }
         }
 

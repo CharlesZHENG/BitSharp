@@ -31,6 +31,7 @@ namespace BitSharp.Esent
         public readonly JET_DBID chainStateDbId;
 
         public readonly JET_TABLEID globalsTableId;
+        public readonly JET_COLUMNID chainTipColumnId;
         public readonly JET_COLUMNID unspentTxCountColumnId;
         public readonly JET_COLUMNID unspentOutputCountColumnId;
         public readonly JET_COLUMNID totalTxCountColumnId;
@@ -39,10 +40,6 @@ namespace BitSharp.Esent
 
         public readonly JET_TABLEID flushTableId;
         public readonly JET_COLUMNID flushColumnId;
-
-        public readonly JET_TABLEID chainTableId;
-        public readonly JET_COLUMNID blockHeightColumnId;
-        public readonly JET_COLUMNID chainedHeaderBytesColumnId;
 
         public readonly JET_TABLEID unspentTxTableId;
         public readonly JET_COLUMNID txHashColumnId;
@@ -72,6 +69,7 @@ namespace BitSharp.Esent
                 out this.jetSession,
                 out this.chainStateDbId,
                 out this.globalsTableId,
+                    out this.chainTipColumnId,
                     out this.unspentTxCountColumnId,
                     out this.unspentOutputCountColumnId,
                     out this.totalTxCountColumnId,
@@ -79,9 +77,6 @@ namespace BitSharp.Esent
                     out this.totalOutputCountColumnId,
                 out this.flushTableId,
                     out this.flushColumnId,
-                out this.chainTableId,
-                    out this.blockHeightColumnId,
-                    out this.chainedHeaderBytesColumnId,
                 out this.unspentTxTableId,
                     out this.txHashColumnId,
                     out this.blockIndexColumnId,
@@ -113,71 +108,28 @@ namespace BitSharp.Esent
             get { return this.inTransaction; }
         }
 
-        public IEnumerable<ChainedHeader> ReadChain()
+        public ChainedHeader ChainTip
         {
-            Api.JetSetCurrentIndex(this.jetSession, this.chainTableId, "IX_BlockHeight");
-
-            if (Api.TryMoveFirst(this.jetSession, this.chainTableId))
+            get
             {
-                do
+                var chainTipBytes = Api.RetrieveColumn(this.jetSession, this.globalsTableId, this.chainTipColumnId);
+                if (chainTipBytes != null)
+                    return DataEncoder.DecodeChainedHeader(chainTipBytes);
+                else
+                    return null;
+            }
+            set
+            {
+                if (!this.inTransaction)
+                    throw new InvalidOperationException();
+
+                using (var jetUpdate = this.jetSession.BeginUpdate(this.globalsTableId, JET_prep.Replace))
                 {
-                    var chainedHeader = DataEncoder.DecodeChainedHeader(Api.RetrieveColumn(this.jetSession, this.chainTableId, this.chainedHeaderBytesColumnId));
-                    yield return chainedHeader;
-                }
-                while (Api.TryMoveNext(this.jetSession, this.chainTableId));
-            }
-        }
-
-        public ChainedHeader GetChainTip()
-        {
-            Api.JetSetCurrentIndex(this.jetSession, this.chainTableId, "IX_BlockHeight");
-
-            if (Api.TryMoveLast(this.jetSession, this.chainTableId))
-            {
-                var chainedHeader = DataEncoder.DecodeChainedHeader(Api.RetrieveColumn(this.jetSession, this.chainTableId, this.chainedHeaderBytesColumnId));
-                return chainedHeader;
-            }
-            else
-            {
-                return null;
-            }
-        }
-
-        public void AddChainedHeader(ChainedHeader chainedHeader)
-        {
-            if (!this.inTransaction)
-                throw new InvalidOperationException();
-
-            try
-            {
-                using (var jetUpdate = this.jetSession.BeginUpdate(this.chainTableId, JET_prep.Insert))
-                {
-                    Api.SetColumns(this.jetSession, this.chainTableId,
-                        new Int32ColumnValue { Columnid = this.blockHeightColumnId, Value = chainedHeader.Height },
-                        new BytesColumnValue { Columnid = this.chainedHeaderBytesColumnId, Value = DataEncoder.EncodeChainedHeader(chainedHeader) });
-
+                    var chainTipBytes = value != null ? DataEncoder.EncodeChainedHeader(value) : null;
+                    Api.SetColumn(this.jetSession, this.globalsTableId, this.chainTipColumnId, chainTipBytes);
                     jetUpdate.Save();
                 }
             }
-            catch (Exception e)
-            {
-                throw new InvalidOperationException("Failed to add chained header.", e);
-            }
-        }
-
-        public void RemoveChainedHeader(ChainedHeader chainedHeader)
-        {
-            if (!this.inTransaction)
-                throw new InvalidOperationException();
-
-            Api.JetSetCurrentIndex(this.jetSession, this.chainTableId, "IX_BlockHeight");
-
-            Api.MakeKey(this.jetSession, this.chainTableId, chainedHeader.Height, MakeKeyGrbit.NewKey);
-
-            if (!Api.TrySeek(this.jetSession, this.chainTableId, SeekGrbit.SeekEQ))
-                throw new InvalidOperationException();
-
-            Api.JetDelete(this.jetSession, this.chainTableId);
         }
 
         public int UnspentTxCount
@@ -623,6 +575,7 @@ namespace BitSharp.Esent
             out Session jetSession,
             out JET_DBID chainStateDbId,
             out JET_TABLEID globalsTableId,
+            out JET_COLUMNID chainTipColumnId,
             out JET_COLUMNID unspentTxCountColumnId,
             out JET_COLUMNID unspentOutputCountColumnId,
             out JET_COLUMNID totalTxCountColumnId,
@@ -630,9 +583,6 @@ namespace BitSharp.Esent
             out JET_COLUMNID totalOutputCountColumnId,
             out JET_TABLEID flushTableId,
             out JET_COLUMNID flushColumnId,
-            out JET_TABLEID chainTableId,
-            out JET_COLUMNID blockHeightColumnId,
-            out JET_COLUMNID chainedHeaderBytesColumnId,
             out JET_TABLEID unspentTxTableId,
             out JET_COLUMNID txHashColumnId,
             out JET_COLUMNID blockIndexColumnId,
@@ -652,6 +602,7 @@ namespace BitSharp.Esent
                 Api.JetOpenDatabase(jetSession, jetDatabase, "", out chainStateDbId, readOnly ? OpenDatabaseGrbit.ReadOnly : OpenDatabaseGrbit.None);
 
                 Api.JetOpenTable(jetSession, chainStateDbId, "Globals", null, 0, readOnly ? OpenTableGrbit.ReadOnly : OpenTableGrbit.None, out globalsTableId);
+                chainTipColumnId = Api.GetTableColumnid(jetSession, globalsTableId, "ChainTip");
                 unspentTxCountColumnId = Api.GetTableColumnid(jetSession, globalsTableId, "UnspentTxCount");
                 unspentOutputCountColumnId = Api.GetTableColumnid(jetSession, globalsTableId, "UnspentOutputCount");
                 totalTxCountColumnId = Api.GetTableColumnid(jetSession, globalsTableId, "TotalTxCount");
@@ -666,10 +617,6 @@ namespace BitSharp.Esent
 
                 if (!Api.TryMoveFirst(jetSession, flushTableId))
                     throw new InvalidOperationException();
-
-                Api.JetOpenTable(jetSession, chainStateDbId, "Chain", null, 0, readOnly ? OpenTableGrbit.ReadOnly : OpenTableGrbit.None, out chainTableId);
-                blockHeightColumnId = Api.GetTableColumnid(jetSession, chainTableId, "BlockHeight");
-                chainedHeaderBytesColumnId = Api.GetTableColumnid(jetSession, chainTableId, "ChainedHeaderBytes");
 
                 Api.JetOpenTable(jetSession, chainStateDbId, "UnspentTx", null, 0, readOnly ? OpenTableGrbit.ReadOnly : OpenTableGrbit.None, out unspentTxTableId);
                 txHashColumnId = Api.GetTableColumnid(jetSession, unspentTxTableId, "TxHash");

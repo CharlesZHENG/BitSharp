@@ -36,7 +36,7 @@ namespace BitSharp.Core.Domain
                     cursor.BeginTransaction(readOnly: true);
 
                     // verify the chain state matches the expected chain
-                    var chainTip = cursor.GetChainTip();
+                    var chainTip = cursor.ChainTip;
                     if (chainTip != chain.LastBlock)
                         throw new InvalidOperationException();
                 }

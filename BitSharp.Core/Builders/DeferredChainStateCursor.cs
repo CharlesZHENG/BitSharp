@@ -20,6 +20,8 @@ namespace BitSharp.Core.Builders
         //TODO
         private static readonly DurationMeasure readUtxoDurationMeasure = new DurationMeasure(TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(5));
         private static readonly RateMeasure readUtxoRateMeasure = new RateMeasure(TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(5));
+        private static readonly DurationMeasure missedReadUtxoDurationMeasure = new DurationMeasure(TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(5));
+        private static readonly RateMeasure missedReadUtxoRateMeasure = new RateMeasure(TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(5));
 
         private readonly IChainState chainState;
         private readonly ChainedHeader originalChainTip;
@@ -44,26 +46,8 @@ namespace BitSharp.Core.Builders
             unspentTxes = new DeferredDictionary<UInt256, UnspentTx>(
                 txHash =>
                 {
-                    var stopwatch = Stopwatch.StartNew();
                     UnspentTx unspentTx;
-                    var tuple = Tuple.Create(chainState.TryGetUnspentTx(txHash, out unspentTx), unspentTx);
-                    stopwatch.Stop();
-
-                    if (tuple.Item1)
-                    {
-                        readUtxoDurationMeasure.Tick(stopwatch.Elapsed);
-                        readUtxoRateMeasure.Tick();
-
-                        Throttler.IfElapsed(TimeSpan.FromSeconds(5), () =>
-                        {
-                            logger.Info("---------------------------------------------");
-                            logger.Info("Read UTXO Duration: {0,12:N3}ms".Format2(readUtxoDurationMeasure.GetAverage().TotalMilliseconds));
-                            logger.Info("Read UTXO Rate:     {0,8:N0}/s".Format2(readUtxoRateMeasure.GetAverage()));
-                            logger.Info("---------------------------------------------");
-                        });
-                    }
-
-                    return tuple;
+                    return Tuple.Create(TryLoadUnspenTx(txHash, out unspentTx), unspentTx);
                 });
 
             blockSpentTxes = new DeferredDictionary<int, IImmutableList<UInt256>>(
@@ -113,20 +97,7 @@ namespace BitSharp.Core.Builders
             throw new NotSupportedException();
         }
 
-        public ChainedHeader GetChainTip()
-        {
-            throw new NotSupportedException();
-        }
-
-        public void AddChainedHeader(ChainedHeader chainedHeader)
-        {
-            throw new NotSupportedException();
-        }
-
-        public void RemoveChainedHeader(ChainedHeader chainedHeader)
-        {
-            throw new NotSupportedException();
-        }
+        public ChainedHeader ChainTip { get; set; }
 
         public int UnspentTxCount { get; set; }
 
@@ -223,7 +194,7 @@ namespace BitSharp.Core.Builders
             if (unspentTxes.ShouldWarmupValue(txHash))
             {
                 UnspentTx unspentTx;
-                if (chainState.TryGetUnspentTx(txHash, out unspentTx))
+                if (TryLoadUnspenTx(txHash, out unspentTx))
                     unspentTxes.WarmupValue(txHash, unspentTx);
                 else
                     unspentTxes.WarmupValue(txHash, null);
@@ -235,10 +206,11 @@ namespace BitSharp.Core.Builders
             if (changesApplied)
                 throw new InvalidOperationException();
 
-            var currentChainTip = parent.GetChainTip();
+            var currentChainTip = parent.ChainTip;
             if (!(currentChainTip == null && originalChainTip == null) && currentChainTip.Hash != originalChainTip.Hash)
                 throw new InvalidOperationException();
 
+            parent.ChainTip = ChainTip;
             parent.UnspentOutputCount = UnspentOutputCount;
             parent.UnspentTxCount = UnspentTxCount;
             parent.TotalTxCount = TotalTxCount;
@@ -274,6 +246,36 @@ namespace BitSharp.Core.Builders
                     throw new InvalidOperationException();
 
             changesApplied = true;
+        }
+
+        private bool TryLoadUnspenTx(UInt256 txHash, out UnspentTx unspentTx)
+        {
+            var stopwatch = Stopwatch.StartNew();
+            var result = chainState.TryGetUnspentTx(txHash, out unspentTx);
+            stopwatch.Stop();
+
+            if (result)
+            {
+                readUtxoDurationMeasure.Tick(stopwatch.Elapsed);
+                readUtxoRateMeasure.Tick();
+            }
+            else
+            {
+                missedReadUtxoDurationMeasure.Tick(stopwatch.Elapsed);
+                missedReadUtxoRateMeasure.Tick();
+            }
+
+            Throttler.IfElapsed(TimeSpan.FromSeconds(5), () =>
+            {
+                logger.Info("---------------------------------------------");
+                logger.Info("Read UTXO Duration:        {0,12:N3}ms", readUtxoDurationMeasure.GetAverage().TotalMilliseconds);
+                logger.Info("Read UTXO Rate:            {0,8:N0}/s", readUtxoRateMeasure.GetAverage());
+                logger.Info("Missed Read UTXO Duration: {0,12:N3}ms", missedReadUtxoDurationMeasure.GetAverage().TotalMilliseconds);
+                logger.Info("Missed Read UTXO Rate:     {0,8:N0}/s", missedReadUtxoRateMeasure.GetAverage());
+                logger.Info("---------------------------------------------");
+            });
+
+            return result;
         }
     }
 }

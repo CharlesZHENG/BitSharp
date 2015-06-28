@@ -25,7 +25,7 @@ namespace BitSharp.Core.Test.Domain
             // prepare utxo
             var memoryStorage = new MemoryStorageManager(unspentTransactions: unspentTransactions.ToImmutable());
             var chainStateStorage = memoryStorage.OpenChainStateCursor().Item;
-            chainStateStorage.AddChainedHeader(chain.GenesisBlock);
+            chainStateStorage.ChainTip = chain.GenesisBlock;
             var utxo = new ChainState(chain, memoryStorage);
 
             // prepare output reference
@@ -52,7 +52,7 @@ namespace BitSharp.Core.Test.Domain
             // prepare utxo
             var memoryStorage = new MemoryStorageManager(unspentTransactions: unspentTransactions.ToImmutable());
             var chainStateStorage = memoryStorage.OpenChainStateCursor().Item;
-            chainStateStorage.AddChainedHeader(chain.GenesisBlock);
+            chainStateStorage.ChainTip = chain.GenesisBlock;
             var utxo = new ChainState(chain, memoryStorage);
 
             // prepare output reference
@@ -72,7 +72,7 @@ namespace BitSharp.Core.Test.Domain
             var chain = Chain.CreateForGenesisBlock(new FakeHeaders().GenesisChained());
             var memoryStorage = new MemoryStorageManager();
             var chainStateStorage = memoryStorage.OpenChainStateCursor().Item;
-            chainStateStorage.AddChainedHeader(chain.GenesisBlock);
+            chainStateStorage.ChainTip = chain.GenesisBlock;
             var utxo = new ChainState(chain, memoryStorage);
 
             // prepare output reference
@@ -99,7 +99,7 @@ namespace BitSharp.Core.Test.Domain
             // prepare utxo
             var memoryStorage = new MemoryStorageManager(unspentTransactions: unspentTransactions.ToImmutable());
             var chainStateStorage = memoryStorage.OpenChainStateCursor().Item;
-            chainStateStorage.AddChainedHeader(chain.GenesisBlock);
+            chainStateStorage.ChainTip = chain.GenesisBlock;
             var utxo = new ChainState(chain, memoryStorage);
 
             // prepare output reference
@@ -126,7 +126,7 @@ namespace BitSharp.Core.Test.Domain
             // prepare utxo
             var memoryStorage = new MemoryStorageManager(unspentTransactions: unspentTransactions.ToImmutable());
             var chainStateStorage = memoryStorage.OpenChainStateCursor().Item;
-            chainStateStorage.AddChainedHeader(chain.GenesisBlock);
+            chainStateStorage.ChainTip = chain.GenesisBlock;
             var utxo = new ChainState(chain, memoryStorage);
 
             // prepare output reference

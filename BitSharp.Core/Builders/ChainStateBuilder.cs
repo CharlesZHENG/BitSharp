@@ -52,7 +52,17 @@ namespace BitSharp.Core.Builders
             this.chainStateCursor.BeginTransaction(readOnly: true);
             try
             {
-                this.chain = new ChainBuilder(chainStateCursor.ReadChain());
+                var chainTip = chainStateCursor.ChainTip;
+                if (chainTip != null)
+                {
+                    Chain chainTipChain;
+                    if (!coreStorage.TryReadChain(chainTip.Hash, out chainTipChain))
+                        throw new InvalidOperationException();
+
+                    this.chain = chainTipChain.ToBuilder();
+                }
+                else
+                    this.chain = new ChainBuilder();
             }
             finally
             {
@@ -149,7 +159,7 @@ namespace BitSharp.Core.Builders
 
                             // apply the changes, do not yet commit
                             deferredChainStateCursor.ApplyChangesToParent(this.chainStateCursor);
-                            this.chainStateCursor.AddChainedHeader(chainedHeader);
+                            this.chainStateCursor.ChainTip = chainedHeader;
                         });
 
                         // wait for block validation to complete, any exceptions that ocurred will be thrown
@@ -256,7 +266,7 @@ namespace BitSharp.Core.Builders
 
                     // remove the block from the chain
                     this.chain.RemoveBlock(chainedHeader);
-                    this.chainStateCursor.RemoveChainedHeader(chainedHeader);
+                    this.chainStateCursor.ChainTip = this.chain.LastBlock;
 
                     // remove the rollback information
                     this.chainStateCursor.TryRemoveBlockSpentTxes(chainedHeader.Height);

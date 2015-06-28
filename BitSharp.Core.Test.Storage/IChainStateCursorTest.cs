@@ -43,27 +43,9 @@ namespace BitSharp.Core.Test.Storage
         }
 
         [TestMethod]
-        public void TestReadChain()
+        public void TestChainTip()
         {
-            RunTest(TestReadChain);
-        }
-
-        [TestMethod]
-        public void TestGetChainTip()
-        {
-            RunTest(TestGetChainTip);
-        }
-
-        [TestMethod]
-        public void TestAddChainedHeader()
-        {
-            RunTest(TestAddChainedHeader);
-        }
-
-        [TestMethod]
-        public void TestRemoveChainedHeader()
-        {
-            RunTest(TestRemoveChainedHeader);
+            RunTest(TestChainTip);
         }
 
         [TestMethod]
@@ -154,7 +136,7 @@ namespace BitSharp.Core.Test.Storage
                         chainStateCursor1.BeginTransaction();
 
                         // add a header on cursor 1
-                        chainStateCursor1.AddChainedHeader(chainedHeader0);
+                        chainStateCursor1.ChainTip = chainedHeader0;
 
                         // alert header has been added
                         headerAddedEvent.Set();
@@ -181,19 +163,19 @@ namespace BitSharp.Core.Test.Storage
                     chainStateCursor2.BeginTransaction(readOnly: true);
 
                     // verify empty chain
-                    Assert.AreEqual(0, chainStateCursor2.ReadChain().Count());
+                    Assert.IsNull(chainStateCursor2.ChainTip);
 
                     doCommitEvent.Set();
                     committedEvent.Wait();
 
                     // verify empty chain
-                    Assert.AreEqual(0, chainStateCursor2.ReadChain().Count());
+                    Assert.IsNull(chainStateCursor2.ChainTip);
 
                     chainStateCursor2.CommitTransaction();
                     chainStateCursor2.BeginTransaction();
 
                     // verify cursor 2 now sees the new header
-                    CollectionAssert.AreEqual(new[] { chainedHeader0 }, chainStateCursor2.ReadChain().ToList());
+                    Assert.AreEqual(chainedHeader0, chainStateCursor2.ChainTip);
 
                     chainStateCursor2.RollbackTransaction();
                 }
@@ -251,13 +233,13 @@ namespace BitSharp.Core.Test.Storage
                 chainStateCursor.BeginTransaction();
 
                 // add data
-                chainStateCursor.AddChainedHeader(chainedHeader0);
+                chainStateCursor.ChainTip = chainedHeader0;
                 chainStateCursor.TryAddUnspentTx(unspentTx);
                 chainStateCursor.UnspentTxCount++;
                 chainStateCursor.TryAddBlockSpentTxes(0, spentTxes);
 
                 // verify data
-                Assert.AreEqual(chainedHeader0, chainStateCursor.GetChainTip());
+                Assert.AreEqual(chainedHeader0, chainStateCursor.ChainTip);
                 Assert.AreEqual(1, chainStateCursor.UnspentTxCount);
 
                 UnspentTx actualUnspentTx;
@@ -274,7 +256,7 @@ namespace BitSharp.Core.Test.Storage
                 chainStateCursor.BeginTransaction();
 
                 // verify data
-                Assert.AreEqual(chainedHeader0, chainStateCursor.GetChainTip());
+                Assert.AreEqual(chainedHeader0, chainStateCursor.ChainTip);
                 Assert.AreEqual(1, chainStateCursor.UnspentTxCount);
 
                 Assert.IsTrue(chainStateCursor.TryGetUnspentTx(unspentTx.TxHash, out actualUnspentTx));
@@ -307,10 +289,10 @@ namespace BitSharp.Core.Test.Storage
                 chainStateCursor.BeginTransaction();
 
                 // add header 0
-                chainStateCursor.AddChainedHeader(chainedHeader0);
+                chainStateCursor.ChainTip = chainedHeader0;
 
                 // verify chain
-                CollectionAssert.AreEqual(new[] { chainedHeader0 }, chainStateCursor.ReadChain().ToList());
+                Assert.AreEqual(chainedHeader0, chainStateCursor.ChainTip);
 
                 // add unspent tx
                 chainStateCursor.TryAddUnspentTx(unspentTx);
@@ -334,7 +316,7 @@ namespace BitSharp.Core.Test.Storage
                 chainStateCursor.BeginTransaction();
 
                 // verify chain
-                Assert.AreEqual(0, chainStateCursor.ReadChain().Count());
+                Assert.IsNull(chainStateCursor.ChainTip);
 
                 // verify unspent tx
                 Assert.IsFalse(chainStateCursor.ContainsUnspentTx(unspentTx.TxHash));
@@ -347,119 +329,7 @@ namespace BitSharp.Core.Test.Storage
             }
         }
 
-        private void TestReadChain(ITestStorageProvider provider)
-        {
-            var fakeHeaders = new FakeHeaders();
-            var chainedHeader0 = fakeHeaders.GenesisChained();
-            var chainedHeader1 = fakeHeaders.NextChained();
-            var chainedHeader2 = fakeHeaders.NextChained();
-
-            using (var storageManager = provider.OpenStorageManager())
-            using (var handle = storageManager.OpenChainStateCursor())
-            {
-                var chainStateCursor = handle.Item;
-
-                // begin transaction
-                chainStateCursor.BeginTransaction();
-
-                // verify initial empty chain
-                Assert.AreEqual(0, chainStateCursor.ReadChain().Count());
-
-                // add header 0
-                chainStateCursor.AddChainedHeader(chainedHeader0);
-
-                // verify chain
-                CollectionAssert.AreEqual(new[] { chainedHeader0 }, chainStateCursor.ReadChain().ToList());
-
-                // add header 1
-                chainStateCursor.AddChainedHeader(chainedHeader1);
-
-                // verify chain
-                CollectionAssert.AreEqual(new[] { chainedHeader0, chainedHeader1 }, chainStateCursor.ReadChain().ToList());
-
-                // add header 2
-                chainStateCursor.AddChainedHeader(chainedHeader2);
-
-                // verify chain
-                CollectionAssert.AreEqual(new[] { chainedHeader0, chainedHeader1, chainedHeader2 }, chainStateCursor.ReadChain().ToList());
-
-                // remove header 2
-                chainStateCursor.RemoveChainedHeader(chainedHeader2);
-
-                // verify chain
-                CollectionAssert.AreEqual(new[] { chainedHeader0, chainedHeader1 }, chainStateCursor.ReadChain().ToList());
-
-                // remove header 1
-                chainStateCursor.RemoveChainedHeader(chainedHeader1);
-
-                // verify chain
-                CollectionAssert.AreEqual(new[] { chainedHeader0 }, chainStateCursor.ReadChain().ToList());
-
-                // remove header 0
-                chainStateCursor.RemoveChainedHeader(chainedHeader0);
-
-                // verify chain
-                Assert.AreEqual(0, chainStateCursor.ReadChain().Count());
-            }
-        }
-
-        private void TestGetChainTip(ITestStorageProvider provider)
-        {
-            var fakeHeaders = new FakeHeaders();
-            var chainedHeader0 = fakeHeaders.GenesisChained();
-            var chainedHeader1 = fakeHeaders.NextChained();
-            var chainedHeader2 = fakeHeaders.NextChained();
-
-            using (var storageManager = provider.OpenStorageManager())
-            using (var handle = storageManager.OpenChainStateCursor())
-            {
-                var chainStateCursor = handle.Item;
-
-                // begin transaction
-                chainStateCursor.BeginTransaction();
-
-                // verify initial empty chain
-                Assert.IsNull(chainStateCursor.GetChainTip());
-
-                // add header 0
-                chainStateCursor.AddChainedHeader(chainedHeader0);
-
-                // verify chain tip
-                Assert.AreEqual(chainedHeader0, chainStateCursor.GetChainTip());
-
-                // add header 1
-                chainStateCursor.AddChainedHeader(chainedHeader1);
-
-                // verify chain tip
-                Assert.AreEqual(chainedHeader1, chainStateCursor.GetChainTip());
-
-                // add header 2
-                chainStateCursor.AddChainedHeader(chainedHeader2);
-
-                // verify chain tip
-                Assert.AreEqual(chainedHeader2, chainStateCursor.GetChainTip());
-
-                // remove header 2
-                chainStateCursor.RemoveChainedHeader(chainedHeader2);
-
-                // verify chain tip
-                Assert.AreEqual(chainedHeader1, chainStateCursor.GetChainTip());
-
-                // remove header 1
-                chainStateCursor.RemoveChainedHeader(chainedHeader1);
-
-                // verify chain tip
-                Assert.AreEqual(chainedHeader0, chainStateCursor.GetChainTip());
-
-                // remove header 0
-                chainStateCursor.RemoveChainedHeader(chainedHeader0);
-
-                // verify chain tip
-                Assert.IsNull(chainStateCursor.GetChainTip());
-            }
-        }
-
-        private void TestAddChainedHeader(ITestStorageProvider provider)
+        private void TestChainTip(ITestStorageProvider provider)
         {
             var fakeHeaders = new FakeHeaders();
             var chainedHeader0 = fakeHeaders.GenesisChained();
@@ -473,67 +343,20 @@ namespace BitSharp.Core.Test.Storage
                 // begin transaction
                 chainStateCursor.BeginTransaction();
 
-                // verify initial empty chain
-                Assert.AreEqual(0, chainStateCursor.ReadChain().Count());
+                // verify initial tip
+                Assert.IsNull(chainStateCursor.ChainTip);
 
-                // add header 0
-                chainStateCursor.AddChainedHeader(chainedHeader0);
+                // set tip
+                chainStateCursor.ChainTip = chainedHeader0;
 
-                // verify chain
-                CollectionAssert.AreEqual(new[] { chainedHeader0 }, chainStateCursor.ReadChain().ToList());
+                // verify tip
+                Assert.AreEqual(chainedHeader0, chainStateCursor.ChainTip);
 
-                // try to add header 0 again
-                AssertMethods.AssertThrows<InvalidOperationException>(() => chainStateCursor.AddChainedHeader(chainedHeader0));
+                // set tip
+                chainStateCursor.ChainTip = chainedHeader1;
 
-                // verify chain
-                CollectionAssert.AreEqual(new[] { chainedHeader0 }, chainStateCursor.ReadChain().ToList());
-
-                // add header 1
-                chainStateCursor.AddChainedHeader(chainedHeader1);
-
-                // verify chain
-                CollectionAssert.AreEqual(new[] { chainedHeader0, chainedHeader1 }, chainStateCursor.ReadChain().ToList());
-            }
-        }
-
-        private void TestRemoveChainedHeader(ITestStorageProvider provider)
-        {
-            var fakeHeaders = new FakeHeaders();
-            var chainedHeader0 = fakeHeaders.GenesisChained();
-            var chainedHeader1 = fakeHeaders.NextChained();
-
-            using (var storageManager = provider.OpenStorageManager())
-            using (var handle = storageManager.OpenChainStateCursor())
-            {
-                var chainStateCursor = handle.Item;
-
-                // begin transaction
-                chainStateCursor.BeginTransaction();
-
-                // add headers
-                chainStateCursor.AddChainedHeader(chainedHeader0);
-                chainStateCursor.AddChainedHeader(chainedHeader1);
-
-                // verify chain
-                CollectionAssert.AreEqual(new[] { chainedHeader0, chainedHeader1 }, chainStateCursor.ReadChain().ToList());
-
-                // remove header 1
-                chainStateCursor.RemoveChainedHeader(chainedHeader1);
-
-                // verify chain
-                CollectionAssert.AreEqual(new[] { chainedHeader0 }, chainStateCursor.ReadChain().ToList());
-
-                // try to remove header 1 again
-                AssertMethods.AssertThrows<InvalidOperationException>(() => chainStateCursor.RemoveChainedHeader(chainedHeader1));
-
-                // verify chain
-                CollectionAssert.AreEqual(new[] { chainedHeader0 }, chainStateCursor.ReadChain().ToList());
-
-                // remove header 0
-                chainStateCursor.RemoveChainedHeader(chainedHeader0);
-
-                // verify chain
-                Assert.AreEqual(0, chainStateCursor.ReadChain().Count());
+                // verify tip
+                Assert.AreEqual(chainedHeader1, chainStateCursor.ChainTip);
             }
         }
 

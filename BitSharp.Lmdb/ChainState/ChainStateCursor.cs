@@ -25,11 +25,11 @@ namespace BitSharp.Lmdb
         private readonly string jetDatabase;
         private readonly LightningEnvironment jetInstance;
         private readonly LightningDatabase globalsTableId;
-        private readonly LightningDatabase chainTableId;
         private readonly LightningDatabase unspentTxTableId;
         private readonly LightningDatabase blockSpentTxesTableId;
         private readonly LightningDatabase blockUnmintedTxesTableId;
 
+        private readonly byte[] chainTipKey = UTF8Encoding.ASCII.GetBytes("ChainTip");
         private readonly byte[] unspentTxCountKey = UTF8Encoding.ASCII.GetBytes("UnspentTxCount");
         private readonly byte[] unspentOutputCountKey = UTF8Encoding.ASCII.GetBytes("UnspentOutputCount");
         private readonly byte[] totalTxCountKey = UTF8Encoding.ASCII.GetBytes("TotalTxount");
@@ -38,13 +38,12 @@ namespace BitSharp.Lmdb
 
         private LightningTransaction txn;
 
-        public ChainStateCursor(bool readOnly, string jetDatabase, LightningEnvironment jetInstance, LightningDatabase globalsTableId, LightningDatabase chainTableId, LightningDatabase unspentTxTableId, LightningDatabase blockSpentTxesTableId, LightningDatabase blockUnmintedTxesTableId)
+        public ChainStateCursor(bool readOnly, string jetDatabase, LightningEnvironment jetInstance, LightningDatabase globalsTableId, LightningDatabase unspentTxTableId, LightningDatabase blockSpentTxesTableId, LightningDatabase blockUnmintedTxesTableId)
         {
             this.readOnly = readOnly;
             this.jetDatabase = jetDatabase;
             this.jetInstance = jetInstance;
             this.globalsTableId = globalsTableId;
-            this.chainTableId = chainTableId;
             this.unspentTxTableId = unspentTxTableId;
             this.blockSpentTxesTableId = blockSpentTxesTableId;
             this.blockUnmintedTxesTableId = blockUnmintedTxesTableId;
@@ -64,63 +63,30 @@ namespace BitSharp.Lmdb
             get { return this.txn != null; }
         }
 
-        public IEnumerable<ChainedHeader> ReadChain()
+        public ChainedHeader ChainTip
         {
-            CheckTransaction();
-
-            using (var cursor = this.txn.CreateCursor(chainTableId))
+            get
             {
-                var kvPair = cursor.MoveToFirst();
-                while (kvPair != null)
-                {
-                    var chainedHeader = DataEncoder.DecodeChainedHeader(kvPair.Value.Value);
-                    yield return chainedHeader;
+                CheckTransaction();
 
-                    kvPair = cursor.MoveNext();
-                }
+                byte[] value;
+                if (this.txn.TryGet(globalsTableId, chainTipKey, out value))
+                    return value != null ? DataEncoder.DecodeChainedHeader(value) : null;
+                else
+                    return null;
             }
-        }
-
-        public ChainedHeader GetChainTip()
-        {
-            CheckTransaction();
-
-            using (var cursor = this.txn.CreateCursor(chainTableId))
+            set
             {
-                var kvPair = cursor.MoveToLast();
-                if (kvPair != null)
-                {
-                    var chainedHeader = DataEncoder.DecodeChainedHeader(kvPair.Value.Value);
-                    return chainedHeader;
-                }
+                CheckTransaction();
+
+                if (value != null)
+                    this.txn.Put(globalsTableId, chainTipKey, DataEncoder.EncodeChainedHeader(value));
                 else
                 {
-                    return null;
+                    if (this.txn.ContainsKey(globalsTableId, chainTipKey))
+                        this.txn.Delete(globalsTableId, chainTipKey);
                 }
             }
-        }
-
-        public void AddChainedHeader(ChainedHeader chainedHeader)
-        {
-            CheckTransaction();
-
-            var key = DbEncoder.EncodeInt32(chainedHeader.Height);
-            if (!this.txn.ContainsKey(chainTableId, key))
-                this.txn.Put(chainTableId, key, DataEncoder.EncodeChainedHeader(chainedHeader));
-            else
-                throw new InvalidOperationException();
-        }
-
-        public void RemoveChainedHeader(ChainedHeader chainedHeader)
-        {
-            CheckTransaction();
-
-            var key = DbEncoder.EncodeInt32(chainedHeader.Height);
-
-            if (this.txn.ContainsKey(chainTableId, key))
-                this.txn.Delete(chainTableId, key);
-            else
-                throw new InvalidOperationException();
         }
 
         public int UnspentTxCount
