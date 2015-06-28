@@ -61,13 +61,14 @@ namespace BitSharp.Core.Builders
 
         private static TransformManyBlock<Tuple<LoadingTx, int>, LoadedTx> InitLoadTxInputAndReturnLoadedTx(ICoreStorage coreStorage, CancellationToken cancelToken)
         {
+            var txCache = new ConcurrentDictionary<TxLookupKey, Transaction>();
             return new TransformManyBlock<Tuple<LoadingTx, int>, LoadedTx>(
                 tuple =>
                 {
                     var loadingTx = tuple.Item1;
                     var inputIndex = tuple.Item2;
 
-                    var loadedTx = LoadTxInput(coreStorage, loadingTx, inputIndex);
+                    var loadedTx = LoadTxInput(coreStorage, txCache, loadingTx, inputIndex);
                     if (loadedTx != null)
                         return new[] { loadedTx };
                     else
@@ -76,7 +77,7 @@ namespace BitSharp.Core.Builders
                 new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, MaxDegreeOfParallelism = 16 });
         }
 
-        private static LoadedTx LoadTxInput(ICoreStorage coreStorage, LoadingTx loadingTx, int inputIndex)
+        private static LoadedTx LoadTxInput(ICoreStorage coreStorage, ConcurrentDictionary<TxLookupKey, Transaction> txCache, LoadingTx loadingTx, int inputIndex)
         {
             var txIndex = loadingTx.TxIndex;
             var transaction = loadingTx.Transaction;
@@ -91,10 +92,17 @@ namespace BitSharp.Core.Builders
                 var inputPrevTxHash = input.PreviousTxOutputKey.TxHash;
 
                 Transaction inputPrevTx;
-                if (coreStorage.TryGetTransaction(prevOutputTxKey.BlockHash, prevOutputTxKey.TxIndex, out inputPrevTx))
+                if (txCache.TryGetValue(prevOutputTxKey, out inputPrevTx))
                 {
                     if (input.PreviousTxOutputKey.TxHash != inputPrevTx.Hash)
                         throw new Exception("TODO");
+                }
+                else if (coreStorage.TryGetTransaction(prevOutputTxKey.BlockHash, prevOutputTxKey.TxIndex, out inputPrevTx))
+                {
+                    if (input.PreviousTxOutputKey.TxHash != inputPrevTx.Hash)
+                        throw new Exception("TODO");
+
+                    txCache[prevOutputTxKey] = inputPrevTx;
                 }
                 else
                     throw new Exception("TODO");

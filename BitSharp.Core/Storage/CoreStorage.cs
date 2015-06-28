@@ -26,7 +26,6 @@ namespace BitSharp.Core.Storage
         private readonly ConcurrentDictionary<UInt256, bool> presentBlockTxes = new ConcurrentDictionary<UInt256, bool>();
         private readonly object[] presentBlockTxesLocks = new object[64];
 
-        private readonly MemoryCache txCache = new MemoryCache("CoreStorage.TxCache");
         private readonly DurationMeasure txLoadDurationMeasure = new DurationMeasure(TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(5));
         private readonly RateMeasure txLoadRateMeasure = new RateMeasure(TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(5));
 
@@ -56,7 +55,6 @@ namespace BitSharp.Core.Storage
         {
             if (!isDisposed && disposing)
             {
-                this.txCache.Dispose();
                 this.txLoadDurationMeasure.Dispose();
                 this.txLoadRateMeasure.Dispose();
 
@@ -311,38 +309,16 @@ namespace BitSharp.Core.Storage
 
         public bool TryGetTransaction(UInt256 blockHash, int txIndex, out Transaction transaction)
         {
-            var key = blockHash.ToString() + txIndex;
-
-            // create the lazy that will be used to load the transaction if it is not yet cached
-            var lazyLoadTx = new Lazy<Transaction>(
-                () =>
-                {
-                    Transaction tx;
-                    var stopwatch = Stopwatch.StartNew();
-                    if (this.blockTxesStorage.TryGetTransaction(blockHash, txIndex, out tx))
-                    {
-                        stopwatch.Stop();
-                        this.txLoadDurationMeasure.Tick(stopwatch.Elapsed);
-                        this.txLoadRateMeasure.Tick();
-                        return tx;
-                    }
-                    else
-                        return null;
-                }, LazyThreadSafetyMode.ExecutionAndPublication);
-
-            var cachedLazyTx = (Lazy<Transaction>)txCache.AddOrGetExisting(key, lazyLoadTx,
-                new CacheItemPolicy { AbsoluteExpiration = DateTimeOffset.UtcNow.AddMinutes(1) });
-
-            // get the cached transaction, or load if added to the cache
-            //      note: if cachedLazyTx is null, lazyLoadTx must have been added to the cache
-            transaction = (cachedLazyTx ?? lazyLoadTx).Value;
-
-            //TODO hacky, isn't synchronized with other threads
-            // ensures null isn't cached
-            if (transaction == null)
-                txCache.Remove(key);
-
-            return transaction != null;
+            var stopwatch = Stopwatch.StartNew();
+            if (this.blockTxesStorage.TryGetTransaction(blockHash, txIndex, out transaction))
+            {
+                stopwatch.Stop();
+                this.txLoadDurationMeasure.Tick(stopwatch.Elapsed);
+                this.txLoadRateMeasure.Tick();
+                return true;
+            }
+            else
+                return false;
         }
 
         public float GetTxLoadRate()
