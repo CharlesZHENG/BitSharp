@@ -108,11 +108,9 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
-    <Compile Include="ConcurrentBlockingQueueTest.cs" />
     <Compile Include="DisposableCacheTest.cs" />
     <Compile Include="AverageMeasureTest.cs" />
     <Compile Include="ExtensionMethodTests.cs" />
-    <Compile Include="LookAheadTest.cs" />
     <Compile Include="MockWorker.cs" />
     <Compile Include="DurationMeasureTest.cs" />
     <Compile Include="RateMeasureTest.cs" />
