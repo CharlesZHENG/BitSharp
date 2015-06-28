@@ -6,35 +6,13 @@ using System.IO;
 
 namespace BitSharp.Lmdb.Test
 {
-    public class LmdbTestStorageProvider : ITestStorageProvider
+    public class LmdbTestStorageProvider : BaseTestStorageProvider, ITestStorageProvider
     {
-        private string baseDirectory;
+        public override string Name { get { return "Lmdb Storage"; } }
 
-        public string Name { get { return "Lmdb Storage"; } }
-
-        public void TestInitialize()
+        public override IStorageManager OpenStorageManager()
         {
-            this.baseDirectory = Path.Combine(Path.GetTempPath(), "BitSharp", "Tests");
-
-            if (Directory.Exists(this.baseDirectory))
-                Directory.Delete(this.baseDirectory, recursive: true);
-
-            this.baseDirectory = Path.Combine(this.baseDirectory, Path.GetRandomFileName());
-            Directory.CreateDirectory(this.baseDirectory);
-        }
-
-        public void TestCleanup()
-        {
-            if (Directory.Exists(this.baseDirectory))
-            {
-                try { Directory.Delete(this.baseDirectory, recursive: true); }
-                catch (Exception) { }
-            }
-        }
-
-        public IStorageManager OpenStorageManager()
-        {
-            return new LmdbStorageManager(this.baseDirectory, blocksSize: 50.MILLION(), blockTxesSize: 50.MILLION(), chainStateSize: 50.MILLION());
+            return new LmdbStorageManager(TestDirectory, blocksSize: 50.MILLION(), blockTxesSize: 50.MILLION(), chainStateSize: 50.MILLION());
         }
     }
 }

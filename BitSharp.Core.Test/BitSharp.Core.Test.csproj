@@ -124,6 +124,7 @@
     <Compile Include="Builders\TxLoaderTest.cs" />
     <Compile Include="Builders\UtxoLookAheadTest.cs" />
     <Compile Include="Domain\ChainTest.cs" />
+    <Compile Include="Storage\BaseTestStorageProvider.cs" />
     <Compile Include="TestBlockProvider.cs" />
     <Compile Include="MerkleTreeTest.cs" />
     <Compile Include="FakeHeaders.cs" />
