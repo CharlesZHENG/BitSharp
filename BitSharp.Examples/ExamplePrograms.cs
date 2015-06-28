@@ -1,4 +1,5 @@
 ﻿using BitSharp.Common;
+using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core;
 using BitSharp.Core.Builders;
 using BitSharp.Core.Domain;
@@ -16,6 +17,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace BitSharp.Examples
@@ -145,7 +147,7 @@ namespace BitSharp.Examples
                 // look up genesis coinbase output (will be missing)
                 UnspentTx unspentTx;
                 chainState.TryGetUnspentTx(embeddedBlocks.GetBlock(0).Transactions[0].Hash, out unspentTx);
-                logger.Info(string.Format("Gensis coinbase UnspentTx present? {0,9}", unspentTx != null));
+                logger.Info(string.Format("Genesis coinbase UnspentTx present? {0,9}", unspentTx != null));
 
                 // look up block 1 coinbase output
                 chainState.TryGetUnspentTx(embeddedBlocks.GetBlock(1).Transactions[0].Hash, out unspentTx);
@@ -176,9 +178,6 @@ namespace BitSharp.Examples
 
                 // retrieve a chainstate to replay blocks with
                 using (var chainState = coreDaemon.GetChainState())
-                // open a BlockReplayer for the chainstate
-                //TODO BlockReplayer will be changed to behave like TxLoader etc., which use TPL DataFlow constructs
-                using (var blockReplayer = new BlockReplayer(coreDaemon.CoreStorage))
                 {
                     // enumerate the steps needed to take the currently processed chain towards the current chainstate
                     foreach (var pathElement in processedChain.NavigateTowards(chainState.Chain))
@@ -189,7 +188,9 @@ namespace BitSharp.Examples
 
                         // begin replaying the transactions in the replay block
                         // if this is a re-org, the transactions will be replayed in reverse block order
-                        foreach (var loadedTx in blockReplayer.ReplayBlock(chainState, replayBlock.Hash, replayForward))
+                        var loadedReplayTxes = BlockReplayer.ReplayBlock(coreDaemon.CoreStorage, chainState, replayBlock.Hash, replayForward, CancellationToken.None)
+                            .LinkToQueue(CancellationToken.None).GetConsumingEnumerable();
+                        foreach (var loadedTx in loadedReplayTxes)
                         {
                             // the transaction being replayed
                             var tx = loadedTx.Transaction;

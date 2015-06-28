@@ -9,68 +9,45 @@ using System.Collections.Immutable;
 using BitSharp.Core.Storage;
 using System.Reactive;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
+using System.Threading;
 
 namespace BitSharp.Core.Builders
 {
-    internal class UtxoReplayer : IDisposable
+    internal static class UtxoReplayer
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        private readonly CoreStorage coreStorage;
-
-        private readonly ParallelReader<BlockTx> blockTxesSource;
-        private readonly ParallelObserver<BlockTx> loadingTxLookuper;
-
-        public UtxoReplayer(string name, CoreStorage coreStorage, int threadCount)
+        public static ISourceBlock<LoadingTx> ReplayCalculateUtxo(ICoreStorage coreStorage, IChainState chainState, ChainedHeader replayBlock, CancellationToken cancelToken = default(CancellationToken))
         {
-            this.coreStorage = coreStorage;
-
-            this.blockTxesSource = new ParallelReader<BlockTx>(name + ".BlockTxesSource");
-            this.loadingTxLookuper = new ParallelObserver<BlockTx>(name + ".PendingTxLoader", threadCount);
+            return ReplayFromTxIndex(coreStorage, chainState, replayBlock, replayForward: true, cancelToken: cancelToken);
         }
 
-        public void Dispose()
+        public static ISourceBlock<LoadingTx> ReplayRollbackUtxo(ICoreStorage coreStorage, IChainState chainState, ChainedHeader replayBlock, CancellationToken cancelToken = default(CancellationToken))
         {
-            this.blockTxesSource.Dispose();
-            this.loadingTxLookuper.Dispose();
-        }
-
-        public void ReplayCalculateUtxo(IChainState chainState, ChainedHeader replayBlock, bool replayForward, Action<ConcurrentBlockingQueue<LoadingTx>> workAction)
-        {
-            using (var loadingTxes = new ConcurrentBlockingQueue<LoadingTx>())
+            // replaying rollback of an on-chain block, use the chainstate tx index for replay, same as replaying forward
+            if (chainState.Chain.BlocksByHash.ContainsKey(replayBlock.Hash))
             {
-                IEnumerable<BlockTx> blockTxes;
-                if (!this.coreStorage.TryReadBlockTransactions(replayBlock.Hash, replayBlock.MerkleRoot, /*requireTransaction:*/true, out blockTxes))
+                return ReplayFromTxIndex(coreStorage, chainState, replayBlock, replayForward: false, cancelToken: cancelToken);
+            }
+            // replaying rollback of an off-chain (re-org) block, use the unminted information for replay
+            else
+            {
+                IImmutableList<UnmintedTx> unmintedTxesList;
+                if (!chainState.TryGetBlockUnmintedTxes(replayBlock.Hash, out unmintedTxesList))
                 {
+                    //TODO if a wallet/monitor were to see a chainstate block that wasn't flushed to disk yet,
+                    //TODO and if bitsharp crashed, and if the block was orphaned: then the orphaned block would
+                    //TODO not be present in the chainstate, and it would not get rolled back to generate unminted information.
+                    //TODO DeferredChainStateCursor should be used in order to re-org the chainstate in memory and calculate the unminted information
                     throw new MissingDataException(replayBlock.Hash);
                 }
 
-                if (replayForward)
-                {
-                    using (var blockTxesTask = this.blockTxesSource.ReadAsync(blockTxes).WaitOnDispose())
-                    //TODO replay backwards should also use this code path if this is not a re-org block, there won't be unminted txes
-                    //TODO should be a ReplayRollbackUtxo method
-                    using (var loadingTxLookupTask = StartLoadingTxLookup(chainState, replayBlock, blockTxesSource, loadingTxes).WaitOnDispose())
-                    {
-                        workAction(loadingTxes);
-                    }
-                }
-                else
-                {
-                    IImmutableList<UnmintedTx> unmintedTxesList;
-                    if (!chainState.TryGetBlockUnmintedTxes(replayBlock.Hash, out unmintedTxesList))
-                    {
-                        //TODO if a wallet/monitor were to see a chainstate block that wasn't flushed to disk yet,
-                        //TODO and if bitsharp crashed, and if the block was orphaned: then the orphaned block would
-                        //TODO not be present in the chainstate, and it would not get rolled back to generate unminted information.
-                        //TODO DeferredChainStateCursor should be used in order to re-org the chainstate in memory and calculate the unminted information
-                        throw new MissingDataException(replayBlock.Hash);
-                    }
+                var unmintedTxes = ImmutableDictionary.CreateRange(
+                    unmintedTxesList.Select(x => new KeyValuePair<UInt256, UnmintedTx>(x.TxHash, x)));
 
-                    var unmintedTxes = ImmutableDictionary.CreateRange(
-                        unmintedTxesList.Select(x => new KeyValuePair<UInt256, UnmintedTx>(x.TxHash, x)));
-
-                    foreach (var blockTx in blockTxes)
+                var lookupLoadingTx = new TransformBlock<BlockTx, LoadingTx>(
+                    blockTx =>
                     {
                         var tx = blockTx.Transaction;
                         var txIndex = blockTx.Index;
@@ -85,54 +62,78 @@ namespace BitSharp.Core.Builders
                             prevOutputTxKeys.AddRange(unmintedTx.PrevOutputTxKeys);
                         }
 
-                        loadingTxes.Add(new LoadingTx(txIndex, tx, replayBlock, prevOutputTxKeys.MoveToImmutable()));
-                    }
-                    loadingTxes.CompleteAdding();
+                        return new LoadingTx(txIndex, tx, replayBlock, prevOutputTxKeys.MoveToImmutable());
+                    });
 
-                    workAction(loadingTxes);
-                }
-            }
-        }
-
-        private Task StartLoadingTxLookup(IChainState chainState, ChainedHeader replayBlock, ParallelReader<BlockTx> blockTxes, ConcurrentBlockingQueue<LoadingTx> loadingTxes)
-        {
-            return this.loadingTxLookuper.SubscribeObservers(blockTxes,
-                Observer.Create<BlockTx>(
-                    blockTx =>
-                    {
-                        var loadingTx = LookupLoadingTx(chainState, replayBlock, blockTx);
-                        if (loadingTx != null)
-                            loadingTxes.Add(loadingTx);
-                    },
-                    ex => loadingTxes.CompleteAdding(),
-                    () => loadingTxes.CompleteAdding()));
-        }
-
-        private LoadingTx LookupLoadingTx(IChainState chainState, ChainedHeader replayBlock, BlockTx blockTx)
-        {
-            var tx = blockTx.Transaction;
-            var txIndex = blockTx.Index;
-
-            var prevOutputTxKeys = ImmutableArray.CreateBuilder<TxLookupKey>(!blockTx.IsCoinbase ? tx.Inputs.Length : 0);
-
-            if (!blockTx.IsCoinbase)
-            {
-                for (var inputIndex = 0; inputIndex < tx.Inputs.Length; inputIndex++)
+                IEnumerable<BlockTx> blockTxes;
+                if (!coreStorage.TryReadBlockTransactions(replayBlock.Hash, replayBlock.MerkleRoot, /*requireTransaction:*/true, out blockTxes))
                 {
-                    var input = tx.Inputs[inputIndex];
-
-                    UnspentTx unspentTx;
-                    if (!chainState.TryGetUnspentTx(input.PreviousTxOutputKey.TxHash, out unspentTx))
-                        throw new MissingDataException(replayBlock.Hash);
-
-                    var prevOutputBlockHash = chainState.Chain.Blocks[unspentTx.BlockIndex].Hash;
-                    var prevOutputTxIndex = unspentTx.TxIndex;
-
-                    prevOutputTxKeys.Add(new TxLookupKey(prevOutputBlockHash, prevOutputTxIndex));
+                    throw new MissingDataException(replayBlock.Hash);
                 }
+
+                var blockTxesBuffer = new BufferBlock<BlockTx>();
+                blockTxesBuffer.LinkTo(lookupLoadingTx, new DataflowLinkOptions { PropagateCompletion = true });
+
+                blockTxesBuffer.SendAndCompleteAsync(blockTxes.Reverse(), cancelToken);
+
+                return lookupLoadingTx;
+            }
+        }
+
+        private static ISourceBlock<LoadingTx> ReplayFromTxIndex(ICoreStorage coreStorage, IChainState chainState, ChainedHeader replayBlock, bool replayForward, CancellationToken cancelToken = default(CancellationToken))
+        {
+            //TODO use replayForward to retrieve blocks in reverse order
+            //TODO also check that the block hasn't been pruned (that information isn't stored yet)
+
+            IEnumerable<BlockTx> blockTxes;
+            if (!coreStorage.TryReadBlockTransactions(replayBlock.Hash, replayBlock.MerkleRoot, /*requireTransaction:*/true, out blockTxes))
+            {
+                throw new MissingDataException(replayBlock.Hash);
             }
 
-            return new LoadingTx(txIndex, tx, replayBlock, prevOutputTxKeys.MoveToImmutable());
+            var lookupLoadingTx = InitLookupLoadingTx(chainState, replayBlock, cancelToken);
+
+            var blockTxesBuffer = new BufferBlock<BlockTx>();
+            blockTxesBuffer.LinkTo(lookupLoadingTx, new DataflowLinkOptions { PropagateCompletion = true });
+
+            if (replayForward)
+                blockTxesBuffer.SendAndCompleteAsync(blockTxes, cancelToken);
+            else
+                blockTxesBuffer.SendAndCompleteAsync(blockTxes.Reverse(), cancelToken);
+
+            return lookupLoadingTx;
+        }
+
+        private static TransformBlock<BlockTx, LoadingTx> InitLookupLoadingTx(IChainState chainState, ChainedHeader replayBlock, CancellationToken cancelToken)
+        {
+            return new TransformBlock<BlockTx, LoadingTx>(
+                blockTx =>
+                {
+                    var tx = blockTx.Transaction;
+                    var txIndex = blockTx.Index;
+
+                    var prevOutputTxKeys = ImmutableArray.CreateBuilder<TxLookupKey>(!blockTx.IsCoinbase ? tx.Inputs.Length : 0);
+
+                    if (!blockTx.IsCoinbase)
+                    {
+                        for (var inputIndex = 0; inputIndex < tx.Inputs.Length; inputIndex++)
+                        {
+                            var input = tx.Inputs[inputIndex];
+
+                            UnspentTx unspentTx;
+                            if (!chainState.TryGetUnspentTx(input.PreviousTxOutputKey.TxHash, out unspentTx))
+                                throw new MissingDataException(replayBlock.Hash);
+
+                            var prevOutputBlockHash = chainState.Chain.Blocks[unspentTx.BlockIndex].Hash;
+                            var prevOutputTxIndex = unspentTx.TxIndex;
+
+                            prevOutputTxKeys.Add(new TxLookupKey(prevOutputBlockHash, prevOutputTxIndex));
+                        }
+                    }
+
+                    return new LoadingTx(txIndex, tx, replayBlock, prevOutputTxKeys.MoveToImmutable());
+                },
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken });
         }
     }
 }

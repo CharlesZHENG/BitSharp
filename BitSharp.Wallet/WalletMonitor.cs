@@ -4,6 +4,7 @@ using BitSharp.Core;
 using BitSharp.Core.Builders;
 using BitSharp.Core.Domain;
 using BitSharp.Core.Monitor;
+using BitSharp.Core.Storage;
 using NLog;
 using System;
 using System.Collections.Generic;
@@ -19,7 +20,6 @@ namespace BitSharp.Wallet
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly CoreDaemon coreDaemon;
-        private readonly BlockReplayer blockReplayer;
 
         private ChainBuilder chainBuilder;
         private int walletHeight;
@@ -44,7 +44,6 @@ namespace BitSharp.Wallet
             : base("WalletMonitor", initialNotify: true, minIdleTime: TimeSpan.FromMilliseconds(100), maxIdleTime: TimeSpan.MaxValue)
         {
             this.coreDaemon = coreDaemon;
-            this.blockReplayer = new BlockReplayer(coreDaemon.CoreStorage);
 
             //this.chainBuilder = Chain.CreateForGenesisBlock(coreDaemon.Rules.GenesisChainedHeader).ToBuilder();
             //TODO start from the currently processed chain tip since wallet state isn't persisted
@@ -62,8 +61,6 @@ namespace BitSharp.Wallet
         protected override void SubDispose()
         {
             this.coreDaemon.OnChainStateChanged -= HandleChainStateChanged;
-
-            this.blockReplayer.Dispose();
         }
 
         public event Action OnScanned;
@@ -155,7 +152,7 @@ namespace BitSharp.Wallet
 
                     try
                     {
-                        ScanBlock(chainState, chainedHeader, forward);
+                        ScanBlock(coreDaemon.CoreStorage, chainState, chainedHeader, forward);
                     }
                     catch (MissingDataException) {/*TODO no wallet state is saved, so missing data will be thrown when started up again due to pruning*/}
                     catch (AggregateException) {/*TODO no wallet state is saved, so missing data will be thrown when started up again due to pruning*/}
@@ -190,43 +187,44 @@ namespace BitSharp.Wallet
             }
         }
 
-        private void ScanBlock(IChainState chainState, ChainedHeader scanBlock, bool forward)
+        private void ScanBlock(ICoreStorage coreStorage, IChainState chainState, ChainedHeader scanBlock, bool forward, CancellationToken cancelToken = default(CancellationToken))
         {
-            this.blockReplayer.ReplayBlock(chainState, scanBlock.Hash, forward,
-                loadedTx =>
+            var replayTxes = BlockReplayer.ReplayBlock(coreStorage, chainState, scanBlock.Hash, forward, cancelToken);
+
+            foreach (var loadedTx in replayTxes.LinkToQueue(cancelToken).GetConsumingEnumerable())
+            {
+                var tx = loadedTx.Transaction;
+                var txIndex = loadedTx.TxIndex;
+
+                if (!loadedTx.IsCoinbase)
                 {
-                    var tx = loadedTx.Transaction;
-                    var txIndex = loadedTx.TxIndex;
-
-                    if (!loadedTx.IsCoinbase)
+                    for (var inputIndex = 0; inputIndex < tx.Inputs.Length; inputIndex++)
                     {
-                        for (var inputIndex = 0; inputIndex < tx.Inputs.Length; inputIndex++)
-                        {
-                            var input = tx.Inputs[inputIndex];
-                            var prevOutput = loadedTx.GetInputPrevTxOutput(inputIndex);
-                            var prevOutputScriptHash = new UInt256(SHA256Static.ComputeHash(prevOutput.ScriptPublicKey.ToArray()));
-
-                            var chainPosition = ChainPosition.Fake();
-                            var entryType = forward ? EnumWalletEntryType.Spend : EnumWalletEntryType.UnSpend;
-
-                            ScanForEntry(chainPosition, entryType, prevOutput, prevOutputScriptHash);
-                        }
-                    }
-
-                    for (var outputIndex = 0; outputIndex < tx.Outputs.Length; outputIndex++)
-                    {
-                        var output = tx.Outputs[outputIndex];
-                        var outputScriptHash = new UInt256(SHA256Static.ComputeHash(output.ScriptPublicKey.ToArray()));
+                        var input = tx.Inputs[inputIndex];
+                        var prevOutput = loadedTx.GetInputPrevTxOutput(inputIndex);
+                        var prevOutputScriptHash = new UInt256(SHA256Static.ComputeHash(prevOutput.ScriptPublicKey.ToArray()));
 
                         var chainPosition = ChainPosition.Fake();
-                        var entryType =
-                            loadedTx.IsCoinbase ?
-                                (forward ? EnumWalletEntryType.Mine : EnumWalletEntryType.UnMine)
-                                : (forward ? EnumWalletEntryType.Receive : EnumWalletEntryType.UnReceieve);
+                        var entryType = forward ? EnumWalletEntryType.Spend : EnumWalletEntryType.UnSpend;
 
-                        ScanForEntry(chainPosition, entryType, output, outputScriptHash);
+                        ScanForEntry(chainPosition, entryType, prevOutput, prevOutputScriptHash);
                     }
-                });
+                }
+
+                for (var outputIndex = 0; outputIndex < tx.Outputs.Length; outputIndex++)
+                {
+                    var output = tx.Outputs[outputIndex];
+                    var outputScriptHash = new UInt256(SHA256Static.ComputeHash(output.ScriptPublicKey.ToArray()));
+
+                    var chainPosition = ChainPosition.Fake();
+                    var entryType =
+                        loadedTx.IsCoinbase ?
+                            (forward ? EnumWalletEntryType.Mine : EnumWalletEntryType.UnMine)
+                            : (forward ? EnumWalletEntryType.Receive : EnumWalletEntryType.UnReceieve);
+
+                    ScanForEntry(chainPosition, entryType, output, outputScriptHash);
+                }
+            }
         }
 
         private void ScanForEntry(ChainPosition chainPosition, EnumWalletEntryType walletEntryType, TxOutput txOutput, UInt256 outputScriptHash)

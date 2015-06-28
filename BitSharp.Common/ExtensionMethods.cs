@@ -9,6 +9,7 @@ using System.Linq;
 using System.Numerics;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 
 namespace BitSharp.Common.ExtensionMethods
 {
@@ -483,6 +484,52 @@ namespace BitSharp.Common.ExtensionMethods
         public static IDisposable WaitOnDispose(this Task task)
         {
             return new DisposeAction(() => { task.Wait(); task.Dispose(); });
+        }
+
+        public static Task SendAndCompleteAsync<T>(this ITargetBlock<T> target, IEnumerable<T> items, CancellationToken cancelToken = default(CancellationToken))
+        {
+            return Task.Run(() =>
+            {
+                try
+                {
+                    foreach (var item in items)
+                    {
+                        target.Post(item);
+                        cancelToken.ThrowIfCancellationRequested();
+                    }
+
+                    target.Complete();
+                }
+                catch (Exception ex)
+                {
+                    target.Fault(ex);
+                }
+            });
+        }
+
+        public static async Task<IList<T>> ReceiveAllAsync<T>(this ISourceBlock<T> target)
+        {
+            var items = new List<T>();
+            while (await target.OutputAvailableAsync())
+                items.Add(await target.ReceiveAsync());
+
+            await target.Completion;
+            return items;
+        }
+
+        public static BlockingCollection<T> LinkToQueue<T>(this ISourceBlock<T> source, CancellationToken cancelToken = default(CancellationToken))
+        {
+            var queue = new BlockingCollection<T>();
+
+            var queueItems = new ActionBlock<T>(
+                item => queue.Add(item),
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken });
+
+            queueItems.Completion.ContinueWith(_ => queue.CompleteAdding());
+
+            source.LinkTo(queueItems, new DataflowLinkOptions { PropagateCompletion = true });
+
+            return queue;
         }
     }
 }

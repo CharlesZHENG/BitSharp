@@ -9,121 +9,87 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Reactive;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
+using BitSharp.Core;
+using System.Collections.Concurrent;
 
 namespace BitSharp.Core.Builders
 {
-    public class BlockReplayer : IDisposable
+    public static class BlockReplayer
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        private readonly CoreStorage coreStorage;
-
-        private readonly UtxoReplayer pendingTxLoader;
-        private readonly ParallelReader<LoadingTx> loadingTxesSource;
-
-        private bool isDisposed;
-
-        public BlockReplayer(CoreStorage coreStorage)
+        public static ISourceBlock<LoadedTx> ReplayBlock(ICoreStorage coreStorage, IChainState chainState, UInt256 blockHash, bool replayForward, CancellationToken cancelToken = default(CancellationToken))
         {
-            this.coreStorage = coreStorage;
-
-            // thread count for i/o task (TxLoader)
-            var ioThreadCount = 4;
-
-            this.pendingTxLoader = new UtxoReplayer("BlockReplayer", coreStorage, ioThreadCount);
-            this.loadingTxesSource = new ParallelReader<LoadingTx>("BlockReplayer.LoadingTxesSource");
-        }
-
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!isDisposed && disposing)
-            {
-                this.pendingTxLoader.Dispose();
-                this.loadingTxesSource.Dispose();
-
-                isDisposed = true;
-            }
-        }
-
-        public IEnumerable<LoadedTx> ReplayBlock(IChainState chainState, UInt256 blockHash, bool replayForward)
-        {
-            var replayTxes = new List<LoadedTx>();
-            ReplayBlock(chainState, blockHash, replayForward, loadedTx => replayTxes.Add(loadedTx));
-            return replayTxes;
-        }
-
-        public void ReplayBlock(IChainState chainState, UInt256 blockHash, bool replayForward, Action<LoadedTx> replayAction)
-        {
-            var replayBlock = this.coreStorage.GetChainedHeader(blockHash);
-            if (replayBlock == null)
+            ChainedHeader replayBlock;
+            if (!coreStorage.TryGetChainedHeader(blockHash, out replayBlock))
                 throw new MissingDataException(blockHash);
 
-            this.pendingTxLoader.ReplayCalculateUtxo(chainState, replayBlock, replayForward,
-                loadingTxes =>
+            // replay the loading txes for this block, in reverse order for a rollback
+            ISourceBlock<LoadingTx> loadingTxes;
+            if (replayForward)
+                loadingTxes = UtxoReplayer.ReplayCalculateUtxo(coreStorage, chainState, replayBlock, cancelToken);
+            else
+                loadingTxes = UtxoReplayer.ReplayRollbackUtxo(coreStorage, chainState, replayBlock, cancelToken);
+
+            // capture the original order of the loading txes
+            var originalLoadingTxes = new ConcurrentQueue<UInt256>();
+            var originalOrderCapturer = new TransformBlock<LoadingTx, LoadingTx>(
+                loadingTx =>
                 {
-                    var loadingTxesBuffer = new BufferBlock<LoadingTx>();
-                    var txLoader = TxLoader.LoadTxes("BlockReplayer", coreStorage, 4, loadingTxesBuffer);
+                    originalLoadingTxes.Enqueue(loadingTx.Transaction.Hash);
+                    return loadingTx;
+                },
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken });
+            loadingTxes.LinkTo(originalOrderCapturer, new DataflowLinkOptions { PropagateCompletion = true });
 
-                    using (var loadingTxesTask = this.loadingTxesSource.ReadAsync(loadingTxes.GetConsumingEnumerable()).WaitOnDispose())
-                    using (var sortedTxes = new ConcurrentBlockingQueue<LoadedTx>())
-                    using (var txSorterTask = StartTxSorter(replayBlock, txLoader, sortedTxes).WaitOnDispose())
-                    {
-                        foreach (var loadingTx in loadingTxesSource.GetConsumingEnumerable())
-                            loadingTxesBuffer.Post(loadingTx);
-                        loadingTxesBuffer.Complete();
+            // begin loading txes
+            var loadedTxes = TxLoader.LoadTxes("", coreStorage, 16, originalOrderCapturer, cancelToken);
 
-                        var replayTxes = sortedTxes.GetConsumingEnumerable();
-                        //TODO Reverse() here means everything must be loaded first, the tx sorter should handle this instead
-                        if (!replayForward)
-                            replayTxes = replayTxes.Reverse();
-
-                        foreach (var tx in replayTxes)
-                            replayAction(tx);
-                    }
-                });
-        }
-
-        private async Task StartTxSorter(ChainedHeader replayBlock, ISourceBlock<LoadedTx> loadedTxes, ConcurrentBlockingQueue<LoadedTx> sortedTxes)
-        {
-            // txSorter will only have a single consumer thread, so SortedList is safe to use
-            var pendingSortedTxes = new SortedList<int, LoadedTx>();
-
-            // keep track of which tx is the next one in order
-            var nextTxIndex = 0;
-
-            var txSorter = new ActionBlock<LoadedTx>(
+            // sort loaded txes
+            var pendingLoadedTxes = new Dictionary<UInt256, LoadedTx>();
+            var txSorter = new TransformManyBlock<LoadedTx, LoadedTx>(
                 loadedTx =>
                 {
-                    // store loaded tx
-                    pendingSortedTxes.Add(loadedTx.TxIndex, loadedTx);
+                    pendingLoadedTxes.Add(loadedTx.Transaction.Hash, loadedTx);
 
-                    // dequeue any available loaded txes that are in order
-                    while (pendingSortedTxes.Count > 0 && pendingSortedTxes.Keys[0] == nextTxIndex)
+                    // look to see if the next tx in original order has been loaded
+                    // if so, dequeue the original tx and then continue looking for the next in order
+                    var sortedLoadedTxes = new List<LoadedTx>();
+                    bool foundSortedTx;
+                    do
                     {
-                        sortedTxes.Add(pendingSortedTxes.Values[0]);
-                        pendingSortedTxes.RemoveAt(0);
-                        nextTxIndex++;
-                    }
-                });
+                        foundSortedTx = false;
 
+                        UInt256 nextTxHash;
+                        if (originalLoadingTxes.TryPeek(out nextTxHash))
+                        {
+                            foreach (var pendingLoadedTx in pendingLoadedTxes.Values)
+                            {
+                                // found a loaded tx for the next tx thas is in original order
+                                if (pendingLoadedTx.Transaction.Hash == nextTxHash)
+                                {
+                                    sortedLoadedTxes.Add(pendingLoadedTx);
+                                    pendingLoadedTxes.Remove(nextTxHash);
+                                    originalLoadingTxes.TryDequeue(out nextTxHash);
+
+                                    foundSortedTx = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    while (foundSortedTx);
+
+                    return sortedLoadedTxes;
+                },
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken });
             loadedTxes.LinkTo(txSorter, new DataflowLinkOptions { PropagateCompletion = true });
 
-            try
-            {
-                await txSorter.Completion;
-            }
-            finally
-            {
-                sortedTxes.CompleteAdding();
-            }
+            // return replay txes
+            return txSorter;
         }
     }
 }

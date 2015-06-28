@@ -24,7 +24,6 @@ namespace BitSharp.Core.Test
             var logger = LogManager.CreateNullLogger();
 
             using (var simulator = new MainnetSimulator())
-            using (var blockReplayer = new BlockReplayer(simulator.CoreDaemon.CoreStorage))
             {
                 simulator.AddBlockRange(0, 9999);
                 simulator.WaitForUpdate();
@@ -38,7 +37,7 @@ namespace BitSharp.Core.Test
                         var blockHash = chainState.Chain.Blocks[blockHeight].Hash;
 
                         var expectedTransactions = simulator.BlockProvider.GetBlock(blockHeight).Transactions;
-                        var actualTransactions = blockReplayer.ReplayBlock(chainState, blockHash, replayForward: true).ToList();
+                        var actualTransactions = BlockReplayer.ReplayBlock(simulator.CoreDaemon.CoreStorage, chainState, blockHash, replayForward: true).LinkToQueue().GetConsumingEnumerable().ToList();
 
                         CollectionAssert.AreEqual(expectedTransactions, actualTransactions, new TxHashComparer(), "Transactions differ at block {0:#,##0}".Format2(blockHeight));
                     }
@@ -57,7 +56,6 @@ namespace BitSharp.Core.Test
             var logger = LogManager.CreateNullLogger();
 
             using (var daemon = new TestDaemon())
-            using (var blockReplayer = new BlockReplayer(daemon.CoreDaemon.CoreStorage))
             {
                 // create a new keypair to spend to
                 var toKeyPair = daemon.TxManager.CreateKeyPair();
@@ -90,7 +88,7 @@ namespace BitSharp.Core.Test
                     foreach (var blockHash in chainState.Chain.Blocks.Select(x => x.Hash))
                     {
                         replayTransactions.AddRange(
-                            blockReplayer.ReplayBlock(chainState, blockHash, replayForward: true));
+                            BlockReplayer.ReplayBlock(daemon.CoreStorage, chainState, blockHash, replayForward: true).LinkToQueue().GetConsumingEnumerable());
                     }
 
                     // verify all transactions were replayed
@@ -114,7 +112,7 @@ namespace BitSharp.Core.Test
                     Assert.AreEqual(1, chainState.Chain.Height);
 
                     var replayTransactions = new List<LoadedTx>(
-                        blockReplayer.ReplayBlock(chainState, block3.Hash, replayForward: false));
+                        BlockReplayer.ReplayBlock(daemon.CoreStorage, chainState, block3.Hash, replayForward: false).LinkToQueue().GetConsumingEnumerable());
 
                     // verify transactions were replayed
                     Assert.AreEqual(2, replayTransactions.Count);
@@ -135,7 +133,7 @@ namespace BitSharp.Core.Test
                     Assert.AreEqual(1, chainState.Chain.Height);
 
                     var replayTransactions = new List<LoadedTx>(
-                        blockReplayer.ReplayBlock(chainState, block2.Hash, replayForward: false));
+                        BlockReplayer.ReplayBlock(daemon.CoreStorage,  chainState, block2.Hash, replayForward: false).LinkToQueue().GetConsumingEnumerable());
 
                     // verify transactions were replayed
                     Assert.AreEqual(2, replayTransactions.Count);
