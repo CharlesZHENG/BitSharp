@@ -173,39 +173,47 @@ namespace BitSharp.Esent
                 using (var jetTx = cursor.jetSession.BeginTransaction())
                 {
                     Api.JetSetCurrentIndex(cursor.jetSession, cursor.blocksTableId, "IX_BlockHashTxIndex");
-                    Api.MakeKey(cursor.jetSession, cursor.blocksTableId, DbEncoder.EncodeBlockHashTxIndex(blockHash, 0), MakeKeyGrbit.NewKey);
-
-                    if (!Api.TrySeek(cursor.jetSession, cursor.blocksTableId, SeekGrbit.SeekGE))
-                        yield break;
-
-                    do
+                    Api.JetSetTableSequential(cursor.jetSession, cursor.blocksTableId, SetTableSequentialGrbit.None);
+                    try
                     {
-                        var blockHashTxIndexColumn = new BytesColumnValue { Columnid = cursor.blockHashTxIndexColumnId };
-                        var blockDepthColumn = new Int32ColumnValue { Columnid = cursor.blockDepthColumnId };
-                        var blockTxHashColumn = new BytesColumnValue { Columnid = cursor.blockTxHashColumnId };
-                        var blockTxBytesColumn = new BytesColumnValue { Columnid = cursor.blockTxBytesColumnId };
-                        Api.RetrieveColumns(cursor.jetSession, cursor.blocksTableId, blockHashTxIndexColumn, blockDepthColumn, blockTxHashColumn, blockTxBytesColumn);
+                        Api.MakeKey(cursor.jetSession, cursor.blocksTableId, DbEncoder.EncodeBlockHashTxIndex(blockHash, 0), MakeKeyGrbit.NewKey);
+                        if (!Api.TrySeek(cursor.jetSession, cursor.blocksTableId, SeekGrbit.SeekGE))
+                            throw new MissingDataException(blockHash);
 
-                        UInt256 recordBlockHash; int txIndex;
-                        DbEncoder.DecodeBlockHashTxIndex(blockHashTxIndexColumn.Value, out recordBlockHash, out txIndex);
-                        if (blockHash != recordBlockHash)
-                            yield break;
+                        Api.MakeKey(cursor.jetSession, cursor.blocksTableId, DbEncoder.EncodeBlockHashTxIndex(blockHash, int.MaxValue), MakeKeyGrbit.NewKey);
+                        if (!Api.TrySetIndexRange(cursor.jetSession, cursor.blocksTableId, SetIndexRangeGrbit.RangeUpperLimit))
+                            throw new MissingDataException(blockHash);
 
-                        var depth = blockDepthColumn.Value.Value;
-                        var txHash = DbEncoder.DecodeUInt256(blockTxHashColumn.Value);
-                        var txBytes = blockTxBytesColumn.Value;
+                        do
+                        {
+                            var blockHashTxIndexColumn = new BytesColumnValue { Columnid = cursor.blockHashTxIndexColumnId };
+                            var blockDepthColumn = new Int32ColumnValue { Columnid = cursor.blockDepthColumnId };
+                            var blockTxHashColumn = new BytesColumnValue { Columnid = cursor.blockTxHashColumnId };
+                            var blockTxBytesColumn = new BytesColumnValue { Columnid = cursor.blockTxBytesColumnId };
+                            Api.RetrieveColumns(cursor.jetSession, cursor.blocksTableId, blockHashTxIndexColumn, blockDepthColumn, blockTxHashColumn, blockTxBytesColumn);
 
-                        // determine if transaction is pruned by its depth
-                        var pruned = depth >= 0;
-                        depth = Math.Max(0, depth);
+                            UInt256 recordBlockHash; int txIndex;
+                            DbEncoder.DecodeBlockHashTxIndex(blockHashTxIndexColumn.Value, out recordBlockHash, out txIndex);
+                            var depth = blockDepthColumn.Value.Value;
+                            var txHash = DbEncoder.DecodeUInt256(blockTxHashColumn.Value);
+                            var txBytes = blockTxBytesColumn.Value;
 
-                        var tx = !pruned ? DataEncoder.DecodeTransaction(txBytes, txHash) : null;
+                            // determine if transaction is pruned by its depth
+                            var pruned = depth >= 0;
+                            depth = Math.Max(0, depth);
 
-                        var blockTx = new BlockTx(txIndex, depth, txHash, pruned, tx);
+                            var tx = !pruned ? DataEncoder.DecodeTransaction(txBytes, txHash) : null;
 
-                        yield return blockTx;
+                            var blockTx = new BlockTx(txIndex, depth, txHash, pruned, tx);
+
+                            yield return blockTx;
+                        }
+                        while (Api.TryMoveNext(cursor.jetSession, cursor.blocksTableId));
                     }
-                    while (Api.TryMoveNext(cursor.jetSession, cursor.blocksTableId));
+                    finally
+                    {
+                        Api.JetResetTableSequential(cursor.jetSession, cursor.blocksTableId, ResetTableSequentialGrbit.None);
+                    }
                 }
             }
         }
