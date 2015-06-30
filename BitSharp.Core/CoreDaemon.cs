@@ -43,7 +43,7 @@ namespace BitSharp.Core
         public CoreDaemon(IBlockchainRules rules, IStorageManager storageManager)
         {
             //TODO
-            ThreadPool.SetMinThreads(128, 48);
+            ThreadPool.SetMinThreads(48, 16);
 
             this.rules = rules;
             this.storageManager = storageManager;
