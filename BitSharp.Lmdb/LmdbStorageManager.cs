@@ -88,6 +88,7 @@ namespace BitSharp.Lmdb
         {
             get
             {
+                const int splitCount = 32;
                 if (this.blockTxesStorage == null)
                     lock (this.blockTxesStorageLock)
                         if (this.blockTxesStorage == null)
@@ -95,13 +96,13 @@ namespace BitSharp.Lmdb
                             if (blockTxesStorageLocations == null)
                             {
                                 // split LMDB storage since only one writer is allowed at a time
-                                const int splitCount = 32;
                                 this.blockTxesStorage = new SplitBlockTxesStorage(splitCount, x => new BlockTxesStorage(this.baseDirectory, this.blockTxesSize / splitCount, x));
                             }
                             else
                             {
                                 // LMDB storage should still be further split up within each split location, since only one writer is allowed at a time
-                                this.blockTxesStorage = new SplitBlockTxesStorage(blockTxesStorageLocations, path => new BlockTxesStorage(path, this.blockTxesSize / blockTxesStorageLocations.Length));
+                                this.blockTxesStorage = new SplitBlockTxesStorage(blockTxesStorageLocations, path =>
+                                    new SplitBlockTxesStorage(splitCount, index => new BlockTxesStorage(path, this.blockTxesSize / blockTxesStorageLocations.Length / splitCount, index)));
                             }
                         }
 
