@@ -243,6 +243,14 @@ namespace BitSharp.Node.Workers
                             HandleBlock(null, block);
                     }
                 }
+                
+                // all blocks retrieved from secondary source
+                // return now so that the target chain queue can be updated
+                if (this.targetChainQueueIndex >= this.targetChainQueue.Count)
+                {
+                    this.NotifyWork();
+                    return;
+                }
             }
 
             // reset target queue index
@@ -482,11 +490,16 @@ namespace BitSharp.Node.Workers
 
         private string GetBlockPath(UInt256 blockHash)
         {
+            var height = coreStorage.GetChainedHeader(blockHash).Height;
+
             var blockHashString = blockHash.ToString().Substring(64 - 8, 8);
             var chunkSize = 2;
             var blockFolder = string.Join(Path.DirectorySeparatorChar.ToString(), Enumerable.Range(0, blockHashString.Length / chunkSize).Select(i => blockHashString.Substring(i * chunkSize, chunkSize)).ToArray());
 
-            return Path.Combine(SecondaryBlockFolder, blockFolder, "{0}.blk".Format2(blockHash));
+            if (height >= 150.THOUSAND())
+                return Path.Combine(SecondaryBlockFolder, blockFolder, "{0}.blk".Format2(blockHash));
+            else
+                return Path.Combine(@"Y:\BitSharp.Blocks", blockFolder, "{0}.blk".Format2(blockHash));
         }
 
         private sealed class HeightComparer : IComparer<ChainedHeader>
