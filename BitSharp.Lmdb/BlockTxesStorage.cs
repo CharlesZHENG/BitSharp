@@ -87,10 +87,11 @@ namespace BitSharp.Lmdb
                 using (var cursor = txn.CreateCursor(blocksTableId))
                 {
                     var pruningCursor = new MerkleTreePruningCursor(blockHash, txn, blocksTableId, cursor);
+                    var cachedCursor = new CachedMerkleTreePruningCursor(pruningCursor);
 
                     // prune the transactions
                     foreach (var index in txIndices)
-                        MerkleTree.PruneNode(pruningCursor, index);
+                        MerkleTree.PruneNode(cachedCursor, index);
 
                     cursor.Dispose();
                     txn.Commit();
