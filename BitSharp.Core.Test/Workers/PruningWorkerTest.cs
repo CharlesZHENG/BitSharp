@@ -76,12 +76,14 @@ namespace BitSharp.Core.Test.Workers
                 }
 
                 // add an unspent tx for each transaction to storage
+                chainStateCursor.BeginTransaction();
                 for (var txIndex = 0; txIndex < block.Transactions.Length; txIndex++)
                 {
                     var tx = block.Transactions[txIndex];
                     var unspentTx = new UnspentTx(tx.Hash, blockIndex: 0, txIndex: txIndex, outputStates: new OutputStates(1, OutputState.Unspent));
                     chainStateCursor.TryAddUnspentTx(unspentTx);
                 }
+                chainStateCursor.CommitTransaction();
 
                 // create a memory pruning cursor to verify expected pruning results
                 var pruneCursor = new MemoryMerkleTreePruningCursor(block.Transactions);
@@ -96,21 +98,25 @@ namespace BitSharp.Core.Test.Workers
 
                     // store the spent txes for the current pruning block
                     pruneHeight++;
+                    chainStateCursor.BeginTransaction();
                     Assert.IsTrue(chainStateCursor.TryAddBlockSpentTxes(pruneHeight, spentTxes));
                     pruningWorker.PrunableHeight = pruneHeight;
 
                     // verify unspent tx is present before pruning
                     Assert.IsTrue(chainStateCursor.ContainsUnspentTx(pruneTx.Hash));
+                    chainStateCursor.CommitTransaction();
 
                     // notify the pruning worker and wait
                     pruningWorker.NotifyWork();
                     workFinishedEvent.WaitOne();
 
                     // verify unspent tx is removed after pruning
+                    chainStateCursor.BeginTransaction();
                     Assert.IsFalse(chainStateCursor.ContainsUnspentTx(pruneTx.Hash));
 
                     // verify the spent txes were removed
                     Assert.IsFalse(chainStateCursor.ContainsBlockSpentTxes(pruneHeight));
+                    chainStateCursor.RollbackTransaction();
 
                     // prune to determine expected results
                     MerkleTree.PruneNode(pruneCursor, pruneTxIndex);
@@ -125,7 +131,9 @@ namespace BitSharp.Core.Test.Workers
                 }
 
                 // verify all unspent txes were removed
+                chainStateCursor.BeginTransaction();
                 Assert.AreEqual(0, chainStateCursor.ReadUnspentTransactions().Count());
+                chainStateCursor.CommitTransaction();
 
                 // verify final block with all transactions pruned
                 IEnumerator<BlockTx> finalPrunedTxes;

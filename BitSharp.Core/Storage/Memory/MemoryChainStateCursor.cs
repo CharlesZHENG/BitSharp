@@ -156,22 +156,15 @@ namespace BitSharp.Core.Storage.Memory
         {
             get
             {
-                if (this.inTransaction)
-                    return this.chainTip;
-                else
-                    return this.chainStateStorage.ChainTip;
+                CheckTransaction();
+                return this.chainTip;
             }
             set
             {
-                if (this.inTransaction)
-                {
-                    this.chainTip = value;
-                    this.chainTipModified = true;
-                }
-                else
-                {
-                    this.chainStateStorage.ChainTip = value;
-                }
+                CheckWriteTransaction();
+
+                this.chainTip = value;
+                this.chainTipModified = true;
             }
         }
 
@@ -179,20 +172,15 @@ namespace BitSharp.Core.Storage.Memory
         {
             get
             {
-                if (this.inTransaction)
-                    return this.unspentTxCount.Value;
-                else
-                    return this.chainStateStorage.UnspentTxCount;
+                CheckTransaction();
+                return this.unspentTxCount.Value;
             }
             set
             {
-                if (this.inTransaction)
-                {
-                    this.unspentTxCount = value;
-                    this.unspentTxCountModified = true;
-                }
-                else
-                    this.chainStateStorage.UnspentTxCount = value;
+                CheckWriteTransaction();
+
+                this.unspentTxCount = value;
+                this.unspentTxCountModified = true;
             }
         }
 
@@ -200,20 +188,15 @@ namespace BitSharp.Core.Storage.Memory
         {
             get
             {
-                if (this.inTransaction)
-                    return this.unspentOutputCount.Value;
-                else
-                    return this.chainStateStorage.UnspentOutputCount;
+                CheckTransaction();
+                return this.unspentOutputCount.Value;
             }
             set
             {
-                if (this.inTransaction)
-                {
-                    this.unspentOutputCount = value;
-                    this.unspentOutputCountModified = true;
-                }
-                else
-                    this.chainStateStorage.UnspentOutputCount = value;
+                CheckWriteTransaction();
+
+                this.unspentOutputCount = value;
+                this.unspentOutputCountModified = true;
             }
         }
 
@@ -221,20 +204,15 @@ namespace BitSharp.Core.Storage.Memory
         {
             get
             {
-                if (this.inTransaction)
-                    return this.totalTxCount.Value;
-                else
-                    return this.chainStateStorage.TotalTxCount;
+                CheckTransaction();
+                return this.totalTxCount.Value;
             }
             set
             {
-                if (this.inTransaction)
-                {
-                    this.totalTxCount = value;
-                    this.totalTxCountModified = true;
-                }
-                else
-                    this.chainStateStorage.TotalTxCount = value;
+                CheckWriteTransaction();
+
+                this.totalTxCount = value;
+                this.totalTxCountModified = true;
             }
         }
 
@@ -242,20 +220,15 @@ namespace BitSharp.Core.Storage.Memory
         {
             get
             {
-                if (this.inTransaction)
-                    return this.totalInputCount.Value;
-                else
-                    return this.chainStateStorage.TotalInputCount;
+                CheckTransaction();
+                return this.totalInputCount.Value;
             }
             set
             {
-                if (this.inTransaction)
-                {
-                    this.totalInputCount = value;
-                    this.totalInputCountModified = true;
-                }
-                else
-                    this.chainStateStorage.TotalInputCount = value;
+                CheckWriteTransaction();
+
+                this.totalInputCount = value;
+                this.totalInputCountModified = true;
             }
         }
 
@@ -263,217 +236,155 @@ namespace BitSharp.Core.Storage.Memory
         {
             get
             {
-                if (this.inTransaction)
-                    return this.totalOutputCount.Value;
-                else
-                    return this.chainStateStorage.TotalOutputCount;
+                CheckTransaction();
+                return this.totalOutputCount.Value;
             }
             set
             {
-                if (this.inTransaction)
-                {
-                    this.totalOutputCount = value;
-                    this.totalOutputCountModified = true;
-                }
-                else
-                    this.chainStateStorage.TotalOutputCount = value;
+                CheckWriteTransaction();
+
+                this.totalOutputCount = value;
+                this.totalOutputCountModified = true;
             }
         }
 
         public bool ContainsUnspentTx(UInt256 txHash)
         {
-            if (this.inTransaction)
-                return this.unspentTransactions.ContainsKey(txHash);
-            else
-                return this.chainStateStorage.ContainsUnspentTx(txHash);
+            CheckTransaction();
+            return this.unspentTransactions.ContainsKey(txHash);
         }
 
         public bool TryGetUnspentTx(UInt256 txHash, out UnspentTx unspentTx)
         {
-            if (this.inTransaction)
-                return this.unspentTransactions.TryGetValue(txHash, out unspentTx);
-            else
-                return this.chainStateStorage.TryGetUnspentTx(txHash, out unspentTx);
+            CheckTransaction();
+            return this.unspentTransactions.TryGetValue(txHash, out unspentTx);
         }
 
         public bool TryAddUnspentTx(UnspentTx unspentTx)
         {
-            if (this.inTransaction)
+            CheckWriteTransaction();
+
+            try
             {
-                try
-                {
-                    this.unspentTransactions.Add(unspentTx.TxHash, unspentTx);
-                    this.unspentTxesModified = true;
-                    return true;
-                }
-                catch (ArgumentException)
-                {
-                    return false;
-                }
+                this.unspentTransactions.Add(unspentTx.TxHash, unspentTx);
+                this.unspentTxesModified = true;
+                return true;
             }
-            else
+            catch (ArgumentException)
             {
-                return this.chainStateStorage.TryAddUnspentTx(unspentTx);
+                return false;
             }
         }
 
         public bool TryRemoveUnspentTx(UInt256 txHash)
         {
-            if (this.inTransaction)
-            {
-                var wasRemoved = this.unspentTransactions.Remove(txHash);
-                if (wasRemoved)
-                    this.unspentTxesModified = true;
+            CheckWriteTransaction();
 
-                return wasRemoved;
-            }
-            else
-            {
-                return this.chainStateStorage.TryRemoveUnspentTx(txHash);
-            }
+            var wasRemoved = this.unspentTransactions.Remove(txHash);
+            if (wasRemoved)
+                this.unspentTxesModified = true;
+
+            return wasRemoved;
         }
 
         public bool TryUpdateUnspentTx(UnspentTx unspentTx)
         {
-            if (this.inTransaction)
+            CheckWriteTransaction();
+
+            if (this.unspentTransactions.ContainsKey(unspentTx.TxHash))
             {
-                if (this.unspentTransactions.ContainsKey(unspentTx.TxHash))
-                {
-                    this.unspentTransactions[unspentTx.TxHash] = unspentTx;
-                    this.unspentTxesModified = true;
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
+                this.unspentTransactions[unspentTx.TxHash] = unspentTx;
+                this.unspentTxesModified = true;
+                return true;
             }
             else
             {
-                return this.chainStateStorage.TryUpdateUnspentTx(unspentTx);
+                return false;
             }
         }
 
         public IEnumerable<UnspentTx> ReadUnspentTransactions()
         {
-            if (this.inTransaction)
-                return this.unspentTransactions.Values;
-            else
-                return this.chainStateStorage.ReadUnspentTransactions();
+            CheckTransaction();
+            return this.unspentTransactions.Values;
         }
 
         public bool ContainsBlockSpentTxes(int blockIndex)
         {
-            if (this.inTransaction)
-                return this.blockSpentTxes.ContainsKey(blockIndex);
-            else
-                return this.chainStateStorage.ContainsBlockSpentTxes(blockIndex);
+            CheckTransaction();
+            return this.blockSpentTxes.ContainsKey(blockIndex);
         }
 
         public bool TryGetBlockSpentTxes(int blockIndex, out IImmutableList<UInt256> spentTxes)
         {
-            if (this.inTransaction)
-            {
-                return this.blockSpentTxes.TryGetValue(blockIndex, out spentTxes);
-            }
-            else
-            {
-                return this.chainStateStorage.TryGetBlockSpentTxes(blockIndex, out spentTxes);
-            }
+            CheckTransaction();
+            return this.blockSpentTxes.TryGetValue(blockIndex, out spentTxes);
         }
 
         public bool TryAddBlockSpentTxes(int blockIndex, IImmutableList<UInt256> spentTxes)
         {
-            if (this.inTransaction)
+            CheckWriteTransaction();
+
+            try
             {
-                try
-                {
-                    this.blockSpentTxes.Add(blockIndex, spentTxes);
-                    this.blockSpentTxesModified = true;
-                    return true;
-                }
-                catch (ArgumentException)
-                {
-                    return false;
-                }
+                this.blockSpentTxes.Add(blockIndex, spentTxes);
+                this.blockSpentTxesModified = true;
+                return true;
             }
-            else
+            catch (ArgumentException)
             {
-                return this.chainStateStorage.TryAddBlockSpentTxes(blockIndex, spentTxes);
+                return false;
             }
         }
 
         public bool TryRemoveBlockSpentTxes(int blockIndex)
         {
-            if (this.inTransaction)
-            {
-                var wasRemoved = this.blockSpentTxes.Remove(blockIndex);
-                if (wasRemoved)
-                    this.blockSpentTxesModified = true;
+            CheckWriteTransaction();
 
-                return wasRemoved;
-            }
-            else
-            {
-                return this.chainStateStorage.TryRemoveBlockSpentTxes(blockIndex);
-            }
+            var wasRemoved = this.blockSpentTxes.Remove(blockIndex);
+            if (wasRemoved)
+                this.blockSpentTxesModified = true;
+
+            return wasRemoved;
         }
 
         public bool ContainsBlockUnmintedTxes(UInt256 blockHash)
         {
-            if (this.inTransaction)
-                return this.blockUnmintedTxes.ContainsKey(blockHash);
-            else
-                return this.chainStateStorage.ContainsBlockUnmintedTxes(blockHash);
+            CheckTransaction();
+            return this.blockUnmintedTxes.ContainsKey(blockHash);
         }
 
         public bool TryGetBlockUnmintedTxes(UInt256 blockHash, out IImmutableList<UnmintedTx> unmintedTxes)
         {
-            if (this.inTransaction)
-            {
-                return this.blockUnmintedTxes.TryGetValue(blockHash, out unmintedTxes);
-            }
-            else
-            {
-                return this.chainStateStorage.TryGetBlockUnmintedTxes(blockHash, out unmintedTxes);
-            }
+            CheckTransaction();
+            return this.blockUnmintedTxes.TryGetValue(blockHash, out unmintedTxes);
         }
 
         public bool TryAddBlockUnmintedTxes(UInt256 blockHash, IImmutableList<UnmintedTx> unmintedTxes)
         {
-            if (this.inTransaction)
+            CheckWriteTransaction();
+
+            try
             {
-                try
-                {
-                    this.blockUnmintedTxes.Add(blockHash, unmintedTxes);
-                    this.blockUnmintedTxesModified = true;
-                    return true;
-                }
-                catch (ArgumentException)
-                {
-                    return false;
-                }
+                this.blockUnmintedTxes.Add(blockHash, unmintedTxes);
+                this.blockUnmintedTxesModified = true;
+                return true;
             }
-            else
+            catch (ArgumentException)
             {
-                return this.chainStateStorage.TryAddBlockUnmintedTxes(blockHash, unmintedTxes);
+                return false;
             }
         }
 
         public bool TryRemoveBlockUnmintedTxes(UInt256 blockHash)
         {
-            if (this.inTransaction)
-            {
-                var wasRemoved = this.blockUnmintedTxes.Remove(blockHash);
-                if (wasRemoved)
-                    this.blockUnmintedTxesModified = true;
+            CheckWriteTransaction();
 
-                return wasRemoved;
-            }
-            else
-            {
-                return this.chainStateStorage.TryRemoveBlockUnmintedTxes(blockHash);
-            }
+            var wasRemoved = this.blockUnmintedTxes.Remove(blockHash);
+            if (wasRemoved)
+                this.blockUnmintedTxesModified = true;
+
+            return wasRemoved;
         }
 
         public void Flush()
@@ -482,6 +393,18 @@ namespace BitSharp.Core.Storage.Memory
 
         public void Defragment()
         {
+        }
+
+        private void CheckTransaction()
+        {
+            if (!this.inTransaction)
+                throw new InvalidOperationException();
+        }
+
+        private void CheckWriteTransaction()
+        {
+            if (!this.inTransaction || this.readOnly)
+                throw new InvalidOperationException();
         }
     }
 }
