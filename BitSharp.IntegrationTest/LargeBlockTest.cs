@@ -20,7 +20,7 @@ namespace BitSharp.IntegrationTest
         [TestMethod]
         public void TestLargeBlocks()
         {
-            using (var daemon = new IntegrationTestDaemon(useLmdb: false))
+            using (var daemon = IntegrationTestDaemon.Create(useLmdb: false))
             {
                 //daemon.CoreDaemon.PruningMode = PruningMode.TxIndex | PruningMode.BlockSpentIndex | PruningMode.BlockTxesPreserveMerkle;
 
@@ -28,19 +28,17 @@ namespace BitSharp.IntegrationTest
                 var count = 1.THOUSAND();
                 var txCount = 1.MILLION();
 
-                var block = daemon.GenesisBlock;
-
                 var mineNextLock = new object();
                 Action mineNextBlock = () =>
                 {
                     lock (mineNextLock)
                     {
-                        var height = daemon.CoreStorage.GetChainedHeader(block.Hash).Height;
+                        var height = daemon.TestBlocks.Chain.Height;
                         if (height + 1 >= count)
                             return;
 
                         logger.Info("Mining block: {0:N0}, daemon height: {1:N0}".Format2(height + 1, daemon.CoreDaemon.CurrentChain.Height));
-                        block = daemon.MineAndAddLargeBlock(block, txCount);
+                        daemon.MineAndAddBlock(txCount);
                         logger.Info("Added block:  {0:N0}, daemon height: {1:N0}".Format2(height + 1, daemon.CoreDaemon.CurrentChain.Height));
                     }
                 };

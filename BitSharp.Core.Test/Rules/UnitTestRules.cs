@@ -1,6 +1,7 @@
 ﻿using BitSharp.Common;
 using BitSharp.Core.Domain;
 using BitSharp.Core.Rules;
+using System;
 
 namespace BitSharp.Core.Test.Rules
 {
@@ -26,6 +27,26 @@ namespace BitSharp.Core.Test.Rules
         public override Block GenesisBlock { get { return this._genesisBlock; } }
 
         public override ChainedHeader GenesisChainedHeader { get { return this._genesisChainedHeader; } }
+
+        public Action<ChainedHeader, LoadedTx> ValidateTransactionAction { get; set; }
+
+        public override void ValidateTransaction(ChainedHeader chainedHeader, LoadedTx loadedTx)
+        {
+            if (ValidateTransactionAction == null)
+                base.ValidateTransaction(chainedHeader, loadedTx);
+            else
+                ValidateTransaction(chainedHeader, loadedTx);
+        }
+
+        public Action<ChainedHeader, Transaction, int, TxInput, int, TxOutput> ValidationTransactionScriptAction { get; set; }
+
+        public override void ValidationTransactionScript(ChainedHeader chainedHeader, Transaction tx, int txIndex, TxInput txInput, int txInputIndex, TxOutput prevTxOutput)
+        {
+            if (ValidationTransactionScriptAction == null)
+                base.ValidationTransactionScript(chainedHeader, tx, txIndex, txInput, txInputIndex, prevTxOutput);
+            else
+                ValidationTransactionScriptAction(chainedHeader, tx, txIndex, txInput, txInputIndex, prevTxOutput);
+        }
 
         public void SetGenesisBlock(Block genesisBlock)
         {

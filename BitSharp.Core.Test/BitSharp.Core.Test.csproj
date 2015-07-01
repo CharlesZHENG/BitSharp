@@ -148,6 +148,7 @@
     <Compile Include="Simulator.cs" />
     <Compile Include="Storage\MemoryTestStorageProvider.cs" />
     <Compile Include="Storage\ITestStorageProvider.cs" />
+    <Compile Include="TestBlocks.cs" />
     <Compile Include="TestDaemon.cs" />
     <Compile Include="Rules\UnitTestRules.cs" />
     <Compile Include="Builders\UtxoBuilderTest.cs" />

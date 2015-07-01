@@ -74,5 +74,16 @@ namespace BitSharp.Core.Domain
                 totalWork: genesisBlockHeader.CalculateWork()
             );
         }
+
+        public static ChainedHeader CreateFromPrev(ChainedHeader prevChainedHeader, BlockHeader blockHeader)
+        {
+            var headerWork = blockHeader.CalculateWork();
+            if (headerWork < 0)
+                return null;
+
+            return new ChainedHeader(blockHeader,
+                prevChainedHeader.Height + 1,
+                prevChainedHeader.TotalWork + headerWork);
+        }
     }
 }
