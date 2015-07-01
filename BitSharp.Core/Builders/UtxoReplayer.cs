@@ -63,7 +63,7 @@ namespace BitSharp.Core.Builders
                     });
 
                 IEnumerable<BlockTx> blockTxes;
-                if (!coreStorage.TryReadBlockTransactions(replayBlock.Hash, replayBlock.MerkleRoot, /*requireTransaction:*/true, out blockTxes))
+                if (!coreStorage.TryReadBlockTransactions(replayBlock.Hash, /*requireTransaction:*/true, out blockTxes))
                 {
                     throw new MissingDataException(replayBlock.Hash);
                 }
@@ -83,7 +83,7 @@ namespace BitSharp.Core.Builders
             //TODO also check that the block hasn't been pruned (that information isn't stored yet)
 
             IEnumerable<BlockTx> blockTxes;
-            if (!coreStorage.TryReadBlockTransactions(replayBlock.Hash, replayBlock.MerkleRoot, /*requireTransaction:*/true, out blockTxes))
+            if (!coreStorage.TryReadBlockTransactions(replayBlock.Hash, /*requireTransaction:*/true, out blockTxes))
             {
                 throw new MissingDataException(replayBlock.Hash);
             }
