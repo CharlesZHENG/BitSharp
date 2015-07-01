@@ -94,6 +94,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Bits.cs" />
+    <Compile Include="BlockingFaultableCollection.cs" />
+    <Compile Include="DataflowExtensionMethods.cs" />
     <Compile Include="DisposeAction.cs" />
     <Compile Include="DisposeHandle.cs" />
     <Compile Include="ConcurrentSet.cs" />

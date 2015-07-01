@@ -108,6 +108,8 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
+    <Compile Include="BlockingFaultableCollectionTest.cs" />
+    <Compile Include="DataflowExtensionMethodsTest.cs" />
     <Compile Include="DisposableCacheTest.cs" />
     <Compile Include="AverageMeasureTest.cs" />
     <Compile Include="ExtensionMethodTests.cs" />
