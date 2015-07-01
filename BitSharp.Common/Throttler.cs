@@ -7,27 +7,27 @@ namespace BitSharp.Common
 {
     public static class Throttler
     {
-        private static readonly ConcurrentDictionary<Tuple<string, string, int>, DateTime> lastTimes = new ConcurrentDictionary<Tuple<string, string, int>, DateTime>();
+        private static readonly ConcurrentDictionary<Tuple<string, string, int>, DateTime[]> lastTimes = new ConcurrentDictionary<Tuple<string, string, int>, DateTime[]>();
 
         [DebuggerStepThrough]
         public static bool IfElapsed(TimeSpan interval, Action action, [CallerMemberName] string memberName = "", [CallerFilePath] string filePath = "", [CallerLineNumber] int lineNumber = 0)
         {
             var key = Tuple.Create(memberName, filePath, lineNumber);
 
-            DateTime lastTime;
-            if (!lastTimes.TryGetValue(key, out lastTime))
-                lastTime = DateTime.MinValue;
-
             var now = DateTime.Now;
+            var lastTime = lastTimes.GetOrAdd(key, new[] { DateTime.MinValue });
 
-            if (now - lastTime >= interval)
+            lock (lastTime)
             {
-                lastTimes[key] = now;
-                action();
-                return true;
+                if (now - lastTime[0] >= interval)
+                {
+                    lastTime[0] = now;
+                    action();
+                    return true;
+                }
+                else
+                    return false;
             }
-            else
-                return false;
         }
     }
 }
