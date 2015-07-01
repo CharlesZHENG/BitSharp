@@ -37,9 +37,12 @@ namespace BitSharp.Core.Test
                         var blockHash = chainState.Chain.Blocks[blockHeight].Hash;
 
                         var expectedTransactions = simulator.BlockProvider.GetBlock(blockHeight).Transactions;
-                        var actualTransactions = BlockReplayer.ReplayBlock(simulator.CoreDaemon.CoreStorage, chainState, blockHash, replayForward: true).LinkToQueue().GetConsumingEnumerable().ToList();
+                        using (var actualTransactionsQueue = BlockReplayer.ReplayBlock(simulator.CoreDaemon.CoreStorage, chainState, blockHash, replayForward: true).LinkToQueue())
+                        {
+                            var actualTransactions = actualTransactionsQueue.GetConsumingEnumerable().ToList();
 
-                        CollectionAssert.AreEqual(expectedTransactions, actualTransactions, new TxHashComparer(), "Transactions differ at block {0:#,##0}".Format2(blockHeight));
+                            CollectionAssert.AreEqual(expectedTransactions, actualTransactions, new TxHashComparer(), "Transactions differ at block {0:#,##0}".Format2(blockHeight));
+                        }
                     }
                 }
             }
@@ -87,8 +90,8 @@ namespace BitSharp.Core.Test
                     var replayTransactions = new List<LoadedTx>();
                     foreach (var blockHash in chainState.Chain.Blocks.Select(x => x.Hash))
                     {
-                        replayTransactions.AddRange(
-                            BlockReplayer.ReplayBlock(daemon.CoreStorage, chainState, blockHash, replayForward: true).LinkToQueue().GetConsumingEnumerable());
+                        using (var replayTransactionsQueue = BlockReplayer.ReplayBlock(daemon.CoreStorage, chainState, blockHash, replayForward: true).LinkToQueue())
+                            replayTransactions.AddRange(replayTransactionsQueue.GetConsumingEnumerable());
                     }
 
                     // verify all transactions were replayed
@@ -111,20 +114,22 @@ namespace BitSharp.Core.Test
                 {
                     Assert.AreEqual(1, chainState.Chain.Height);
 
-                    var replayTransactions = new List<LoadedTx>(
-                        BlockReplayer.ReplayBlock(daemon.CoreStorage, chainState, block3.Hash, replayForward: false).LinkToQueue().GetConsumingEnumerable());
+                    using (var replayTransactionsQueue = BlockReplayer.ReplayBlock(daemon.CoreStorage, chainState, block3.Hash, replayForward: false).LinkToQueue())
+                    {
+                        var replayTransactions = new List<LoadedTx>(replayTransactionsQueue.GetConsumingEnumerable());
 
-                    // verify transactions were replayed
-                    Assert.AreEqual(2, replayTransactions.Count);
-                    Assert.AreEqual(block3.Transactions[1].Hash, replayTransactions[0].Transaction.Hash);
-                    Assert.AreEqual(block3.Transactions[0].Hash, replayTransactions[1].Transaction.Hash);
+                        // verify transactions were replayed
+                        Assert.AreEqual(2, replayTransactions.Count);
+                        Assert.AreEqual(block3.Transactions[1].Hash, replayTransactions[0].Transaction.Hash);
+                        Assert.AreEqual(block3.Transactions[0].Hash, replayTransactions[1].Transaction.Hash);
 
-                    // verify correct previous output was replayed (block 3 tx 1 spent block 2 tx 1)
-                    Assert.AreEqual(1, replayTransactions[0].InputTxes.Length);
-                    CollectionAssert.AreEqual(block2.Transactions[1].Outputs[0].ScriptPublicKey, replayTransactions[0].GetInputPrevTxOutput(0).ScriptPublicKey);
+                        // verify correct previous output was replayed (block 3 tx 1 spent block 2 tx 1)
+                        Assert.AreEqual(1, replayTransactions[0].InputTxes.Length);
+                        CollectionAssert.AreEqual(block2.Transactions[1].Outputs[0].ScriptPublicKey, replayTransactions[0].GetInputPrevTxOutput(0).ScriptPublicKey);
 
-                    // verify correct previous output was replayed (block 3 tx 0 spends nothing, coinbase)
-                    Assert.AreEqual(0, replayTransactions[1].InputTxes.Length);
+                        // verify correct previous output was replayed (block 3 tx 0 spends nothing, coinbase)
+                        Assert.AreEqual(0, replayTransactions[1].InputTxes.Length);
+                    }
                 }
 
                 // replay rollback of block 2
@@ -132,20 +137,22 @@ namespace BitSharp.Core.Test
                 {
                     Assert.AreEqual(1, chainState.Chain.Height);
 
-                    var replayTransactions = new List<LoadedTx>(
-                        BlockReplayer.ReplayBlock(daemon.CoreStorage,  chainState, block2.Hash, replayForward: false).LinkToQueue().GetConsumingEnumerable());
+                    using (var replayTransactionsQueue = BlockReplayer.ReplayBlock(daemon.CoreStorage, chainState, block2.Hash, replayForward: false).LinkToQueue())
+                    {
+                        var replayTransactions = new List<LoadedTx>(replayTransactionsQueue.GetConsumingEnumerable());
 
-                    // verify transactions were replayed
-                    Assert.AreEqual(2, replayTransactions.Count);
-                    Assert.AreEqual(block2.Transactions[1].Hash, replayTransactions[0].Transaction.Hash);
-                    Assert.AreEqual(block2.Transactions[0].Hash, replayTransactions[1].Transaction.Hash);
+                        // verify transactions were replayed
+                        Assert.AreEqual(2, replayTransactions.Count);
+                        Assert.AreEqual(block2.Transactions[1].Hash, replayTransactions[0].Transaction.Hash);
+                        Assert.AreEqual(block2.Transactions[0].Hash, replayTransactions[1].Transaction.Hash);
 
-                    // verify correct previous output was replayed (block 2 tx 1 spent block 1 tx 0)
-                    Assert.AreEqual(1, replayTransactions[0].InputTxes.Length);
-                    CollectionAssert.AreEqual(block1.Transactions[0].Outputs[0].ScriptPublicKey, replayTransactions[0].GetInputPrevTxOutput(0).ScriptPublicKey);
+                        // verify correct previous output was replayed (block 2 tx 1 spent block 1 tx 0)
+                        Assert.AreEqual(1, replayTransactions[0].InputTxes.Length);
+                        CollectionAssert.AreEqual(block1.Transactions[0].Outputs[0].ScriptPublicKey, replayTransactions[0].GetInputPrevTxOutput(0).ScriptPublicKey);
 
-                    // verify correct previous output was replayed (block 2 tx 0 spends nothing, coinbase)
-                    Assert.AreEqual(0, replayTransactions[1].InputTxes.Length);
+                        // verify correct previous output was replayed (block 2 tx 0 spends nothing, coinbase)
+                        Assert.AreEqual(0, replayTransactions[1].InputTxes.Length);
+                    }
                 }
             }
         }

@@ -188,53 +188,52 @@ namespace BitSharp.Examples
 
                         // begin replaying the transactions in the replay block
                         // if this is a re-org, the transactions will be replayed in reverse block order
-                        var loadedReplayTxes = BlockReplayer.ReplayBlock(coreDaemon.CoreStorage, chainState, replayBlock.Hash, replayForward, CancellationToken.None)
-                            .LinkToQueue(CancellationToken.None).GetConsumingEnumerable();
-                        foreach (var loadedTx in loadedReplayTxes)
-                        {
-                            // the transaction being replayed
-                            var tx = loadedTx.Transaction;
-
-                            // the previous transactions for each of the replay transaction's inputs
-                            var inputTxes = loadedTx.InputTxes;
-
-                            // scan the replay transaction's inputs
-                            if (!loadedTx.IsCoinbase)
+                        using (var replayTxesQueue = BlockReplayer.ReplayBlock(coreDaemon.CoreStorage, chainState, replayBlock.Hash, replayForward).LinkToQueue())
+                            foreach (var loadedTx in replayTxesQueue.GetConsumingEnumerable())
                             {
-                                for (var inputIndex = 0; inputIndex < tx.Inputs.Length; inputIndex++)
-                                {
-                                    var input = tx.Inputs[inputIndex];
-                                    var inputPrevTx = inputTxes[inputIndex];
-                                    var inputPrevTxOutput = inputPrevTx.Outputs[(int)input.PreviousTxOutputKey.TxOutputIndex];
+                                // the transaction being replayed
+                                var tx = loadedTx.Transaction;
 
-                                    // check if the input's previous transaction output is of interest
-                                    var inputPrevTxOutputPublicScriptHash = new UInt256(SHA256Static.ComputeHash(inputPrevTxOutput.ScriptPublicKey));
-                                    if (scriptHashesOfInterest.Contains(inputPrevTxOutputPublicScriptHash))
+                                // the previous transactions for each of the replay transaction's inputs
+                                var inputTxes = loadedTx.InputTxes;
+
+                                // scan the replay transaction's inputs
+                                if (!loadedTx.IsCoinbase)
+                                {
+                                    for (var inputIndex = 0; inputIndex < tx.Inputs.Length; inputIndex++)
+                                    {
+                                        var input = tx.Inputs[inputIndex];
+                                        var inputPrevTx = inputTxes[inputIndex];
+                                        var inputPrevTxOutput = inputPrevTx.Outputs[(int)input.PreviousTxOutputKey.TxOutputIndex];
+
+                                        // check if the input's previous transaction output is of interest
+                                        var inputPrevTxOutputPublicScriptHash = new UInt256(SHA256Static.ComputeHash(inputPrevTxOutput.ScriptPublicKey));
+                                        if (scriptHashesOfInterest.Contains(inputPrevTxOutputPublicScriptHash))
+                                        {
+                                            if (replayForward)
+                                            { /* An output for an address of interest is being spent. */ }
+                                            else
+                                            { /* An output for an address of interest is being "unspent", on re-org. */}
+                                        }
+                                    }
+                                }
+
+                                // scan the replay transaction's outputs
+                                for (var outputIndex = 0; outputIndex < tx.Outputs.Length; outputIndex++)
+                                {
+                                    var output = tx.Outputs[outputIndex];
+
+                                    // check if the output is of interest
+                                    var outputPublicScriptHash = new UInt256(SHA256Static.ComputeHash(output.ScriptPublicKey));
+                                    if (scriptHashesOfInterest.Contains(outputPublicScriptHash))
                                     {
                                         if (replayForward)
-                                        { /* An output for an address of interest is being spent. */ }
+                                        { /* An output for an address of interest is being minted. */ }
                                         else
-                                        { /* An output for an address of interest is being "unspent", on re-org. */}
+                                        { /* An output for an address of interest is being "unminted", on re-org. */}
                                     }
                                 }
                             }
-
-                            // scan the replay transaction's outputs
-                            for (var outputIndex = 0; outputIndex < tx.Outputs.Length; outputIndex++)
-                            {
-                                var output = tx.Outputs[outputIndex];
-
-                                // check if the output is of interest
-                                var outputPublicScriptHash = new UInt256(SHA256Static.ComputeHash(output.ScriptPublicKey));
-                                if (scriptHashesOfInterest.Contains(outputPublicScriptHash))
-                                {
-                                    if (replayForward)
-                                    { /* An output for an address of interest is being minted. */ }
-                                    else
-                                    { /* An output for an address of interest is being "unminted", on re-org. */}
-                                }
-                            }
-                        }
 
                         // a wallet would now commit its progress
                         /*
