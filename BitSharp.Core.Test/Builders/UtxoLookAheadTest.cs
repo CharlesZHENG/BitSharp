@@ -21,7 +21,7 @@ namespace BitSharp.Core.Test.Builders
 
             var lookAhead = UtxoLookAhead.LookAhead(blockTxes, Mock.Of<IDeferredChainStateCursor>());
             Assert.AreEqual(0, lookAhead.ReceiveAllAsync().Result.Count);
-            
+
             Assert.IsTrue(lookAhead.Completion.Wait(2000));
         }
 
@@ -168,16 +168,10 @@ namespace BitSharp.Core.Test.Builders
             blockTxes.Post(blockTx1);
             blockTxes.Complete();
 
-            try
-            {
-                lookAhead.Completion.Wait(2000);
-                Assert.Fail();
-            }
-            catch (AggregateException ex)
-            {
-                Assert.AreEqual(1, ex.Flatten().InnerExceptions.Count);
-                Assert.AreSame(expectedException, ex.Flatten().InnerExceptions[0]);
-            }
+            Exception actualEx;
+            AssertMethods.AssertAggregateThrows<Exception>(() =>
+                lookAhead.Completion.Wait(2000), out actualEx);
+            Assert.AreSame(expectedException, actualEx);
         }
     }
 }

@@ -87,18 +87,10 @@ namespace BitSharp.Core.Test.Builders
 
             using (var loadedTxesQueue = loadedTxes.LinkToQueue())
             {
-                try
-                {
-                    loadedTxesQueue.GetConsumingEnumerable().ToList();
-                    Assert.Fail();
-                }
-                catch (Exception ex)
-                {
-                    Assert.IsInstanceOfType(ex, typeof(AggregateException));
-                    var aggEx = (AggregateException)ex;
-                    Assert.AreEqual(1, aggEx.Flatten().InnerExceptions.Count);
-                    Assert.AreSame(expectedException, aggEx.Flatten().InnerExceptions[0]);
-                }
+                Exception actualEx;
+                AssertMethods.AssertAggregateThrows<Exception>(() =>
+                    loadedTxesQueue.GetConsumingEnumerable().ToList(), out actualEx);
+                Assert.AreSame(expectedException, actualEx);
             }
         }
 
@@ -129,18 +121,10 @@ namespace BitSharp.Core.Test.Builders
 
             using (var loadedTxesQueue = loadedTxes.LinkToQueue())
             {
-                try
-                {
-                    loadedTxesQueue.GetConsumingEnumerable().ToList();
-                    Assert.Fail();
-                }
-                catch (Exception ex)
-                {
-                    Assert.IsInstanceOfType(ex, typeof(AggregateException));
-                    var aggEx = (AggregateException)ex;
-                    Assert.AreEqual(1, aggEx.Flatten().InnerExceptions.Count);
-                    Assert.AreSame(expectedException, aggEx.Flatten().InnerExceptions[0]);
-                }
+                Exception actualEx;
+                AssertMethods.AssertAggregateThrows<Exception>(() =>
+                    loadedTxesQueue.GetConsumingEnumerable().ToList(), out actualEx);
+                Assert.AreSame(expectedException, actualEx);
             }
         }
     }

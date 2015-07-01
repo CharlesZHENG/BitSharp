@@ -50,20 +50,10 @@ namespace BitSharp.Core.Test.Builders
             loadedTxes.Complete();
 
             // validate block
-            try
-            {
-                BlockValidator.ValidateBlock(coreStorage, rules, invalidChainedHeader, loadedTxes).Wait();
-                Assert.Fail();
-            }
-            catch (Exception ex)
-            {
-                Assert.IsInstanceOfType(ex, typeof(AggregateException));
-                var aggEx = (AggregateException)ex;
-                var innerExceptions = aggEx.Flatten().InnerExceptions;
-                Assert.AreEqual(1, innerExceptions.Count);
-                Assert.IsInstanceOfType(innerExceptions[0], typeof(ValidationException));
-                Assert.IsTrue(innerExceptions[0].Message.Contains("Merkle root is invalid"));
-            }
+            ValidationException ex;
+            AssertMethods.AssertAggregateThrows<ValidationException>(() =>
+                BlockValidator.ValidateBlock(coreStorage, rules, invalidChainedHeader, loadedTxes).Wait(), out ex);
+            Assert.IsTrue(ex.Message.Contains("Merkle root is invalid"));
         }
     }
 }
