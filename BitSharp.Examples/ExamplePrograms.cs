@@ -189,6 +189,7 @@ namespace BitSharp.Examples
                         // begin replaying the transactions in the replay block
                         // if this is a re-org, the transactions will be replayed in reverse block order
                         using (var replayTxesQueue = BlockReplayer.ReplayBlock(coreDaemon.CoreStorage, chainState, replayBlock.Hash, replayForward).LinkToQueue())
+                        {
                             foreach (var loadedTx in replayTxesQueue.GetConsumingEnumerable())
                             {
                                 // the transaction being replayed
@@ -234,6 +235,7 @@ namespace BitSharp.Examples
                                     }
                                 }
                             }
+                        }
 
                         // a wallet would now commit its progress
                         /*
