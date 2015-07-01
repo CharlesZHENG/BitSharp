@@ -37,6 +37,7 @@ namespace BitSharp.Core.Test
         private readonly CoreDaemon coreDaemon;
         private readonly CoreStorage coreStorage;
 
+        private IDisposable baseDirectoryCleanup;
         private string baseDirectory;
 
         private bool isDisposed;
@@ -44,21 +45,7 @@ namespace BitSharp.Core.Test
         public IntegrationTestDaemon(Block genesisBlock = null, bool useLmdb = false)
         {
             // initialize storage folder
-            this.baseDirectory = Path.Combine(Path.GetTempPath(), "BitSharp", "Tests");
-            try
-            {
-                if (Directory.Exists(this.baseDirectory))
-                    Directory.Delete(this.baseDirectory, recursive: true);
-            }
-            catch (Exception) { }
-
-            this.baseDirectory = Path.Combine(this.baseDirectory, Path.GetRandomFileName());
-            try
-            {
-                if (!Directory.Exists(this.baseDirectory))
-                    Directory.CreateDirectory(this.baseDirectory);
-            }
-            catch (Exception) { }
+            this.baseDirectoryCleanup = TempDirectory.CreateTempDirectory(out this.baseDirectory);
 
             // initialize kernel
             this.kernel = new StandardKernel();
@@ -135,6 +122,7 @@ namespace BitSharp.Core.Test
             {
                 this.coreDaemon.Dispose();
                 this.kernel.Dispose();
+                this.baseDirectoryCleanup.Dispose();
 
                 isDisposed = true;
             }

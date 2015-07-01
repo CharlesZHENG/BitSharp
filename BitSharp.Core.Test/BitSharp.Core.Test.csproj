@@ -152,6 +152,7 @@
     <Compile Include="Rules\UnitTestRules.cs" />
     <Compile Include="Builders\UtxoBuilderTest.cs" />
     <Compile Include="Domain\UtxoTest.cs" />
+    <Compile Include="TempDirectory.cs" />
     <Compile Include="Workers\PruningWorkerTest.cs" />
     <Compile Include="Workers\TargetChainWorkerTest.cs" />
   </ItemGroup>

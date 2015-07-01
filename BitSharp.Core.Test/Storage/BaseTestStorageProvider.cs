@@ -11,46 +11,17 @@ namespace BitSharp.Core.Test.Storage
 {
     public abstract class BaseTestStorageProvider : ITestStorageProvider
     {
-        // cleanup the entire base directory on first initialization
-        static BaseTestStorageProvider()
-        {
-            BaseDirectory = Path.Combine(Path.GetTempPath(), "BitSharp", "Tests");
-            
-            if (Directory.Exists(BaseDirectory))
-            {
-                // delete any subfolders, unless they are named with an active process id, which is another test currently in progress
-                foreach (var subFolder in Directory.EnumerateDirectories(BaseDirectory))
-                {
-                    int processId;
-                    var isOtherTestFolder = int.TryParse(subFolder, out processId) && IsProcessRunning(processId);
-
-                    if (!isOtherTestFolder)
-                        DeleteDirectory(subFolder);
-                }
-            }
-            else
-                CreateDirectory(BaseDirectory);
-        }
-
         // create a random temp directory for this test instance
         public void TestInitialize()
         {
-            ProcessDirectory = Path.Combine(BaseDirectory, Process.GetCurrentProcess().Id.ToString());
-            CleanCreateDirectory(ProcessDirectory);
-
-            TestDirectory = Path.Combine(ProcessDirectory, Path.GetRandomFileName());
-            CleanCreateDirectory(ProcessDirectory);
+            TestDirectory = TempDirectory.CreateTempDirectory();
         }
 
         // cleanup this processes random temp directory
         public void TestCleanup()
         {
-            DeleteDirectory(ProcessDirectory);
+            TempDirectory.DeleteDirectory(TestDirectory);
         }
-
-        public static string BaseDirectory { get; private set; }
-
-        public string ProcessDirectory { get; private set; }
 
         public string TestDirectory { get; private set; }
 
