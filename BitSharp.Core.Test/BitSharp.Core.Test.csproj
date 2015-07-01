@@ -124,6 +124,7 @@
     <Compile Include="Builders\ChainBuilderTest.cs" />
     <Compile Include="Builders\TxLoaderTest.cs" />
     <Compile Include="Builders\UtxoLookAheadTest.cs" />
+    <Compile Include="Builders\UtxoReplayerTest.cs" />
     <Compile Include="Domain\ChainTest.cs" />
     <Compile Include="Storage\BaseTestStorageProvider.cs" />
     <Compile Include="TestBlockProvider.cs" />
