@@ -1,4 +1,5 @@
 ﻿using BitSharp.Common;
+using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Builders;
 using BitSharp.Core.Domain;
 using BitSharp.Core.Storage;
@@ -117,21 +118,22 @@ namespace BitSharp.Core.Test.Workers
                     var expectedPrunedTxes = pruneCursor.ReadNodes().ToList();
 
                     // retrieve the actual transaction after pruning
-                    IEnumerable<BlockTx> actualPrunedTxes;
+                    IEnumerator<BlockTx> actualPrunedTxes;
                     Assert.IsTrue(storageManager.BlockTxesStorage.TryReadBlockTransactions(block.Hash, out actualPrunedTxes));
 
                     // verify the actual pruned transactions match the expected results
-                    CollectionAssert.AreEqual(expectedPrunedTxes, actualPrunedTxes.ToList());
+                    CollectionAssert.AreEqual(expectedPrunedTxes, actualPrunedTxes.UsingAsEnumerable().ToList());
                 }
 
                 // verify all unspent txes were removed
                 Assert.AreEqual(0, chainStateCursor.ReadUnspentTransactions().Count());
 
                 // verify final block with all transactions pruned
-                IEnumerable<BlockTx> finalPrunedTxes;
+                IEnumerator<BlockTx> finalPrunedTxes;
                 Assert.IsTrue(storageManager.BlockTxesStorage.TryReadBlockTransactions(block.Hash, out finalPrunedTxes));
-                Assert.AreEqual(1, finalPrunedTxes.Count());
-                Assert.AreEqual(block.Header.MerkleRoot, finalPrunedTxes.Single().Hash);
+                var finalPrunedTxesList = finalPrunedTxes.UsingAsEnumerable().ToList();
+                Assert.AreEqual(1, finalPrunedTxesList.Count);
+                Assert.AreEqual(block.Header.MerkleRoot, finalPrunedTxesList.Single().Hash);
 
                 // verify no work exceptions occurred
                 Assert.IsNull(workException);

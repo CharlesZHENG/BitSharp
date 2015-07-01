@@ -83,7 +83,7 @@ namespace BitSharp.Core.Storage
             return GetStorage(blockHash).TryRemoveBlockTransactions(blockHash);
         }
 
-        public bool TryReadBlockTransactions(UInt256 blockHash, out IEnumerable<BlockTx> blockTxes)
+        public bool TryReadBlockTransactions(UInt256 blockHash, out IEnumerator<BlockTx> blockTxes)
         {
             return GetStorage(blockHash).TryReadBlockTransactions(blockHash, out blockTxes);
         }

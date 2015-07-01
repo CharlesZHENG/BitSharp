@@ -1,4 +1,5 @@
 ﻿using BitSharp.Common;
+using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Builders;
 using BitSharp.Core.Domain;
 using NLog;
@@ -333,7 +334,7 @@ namespace BitSharp.Core.Storage
 
         public bool TryReadBlockTransactions(UInt256 blockHash, UInt256 merkleRoot, bool requireTransactions, out IEnumerable<BlockTx> blockTxes)
         {
-            IEnumerable<BlockTx> rawBlockTxes;
+            IEnumerator<BlockTx> rawBlockTxes;
             if (this.blockTxesStorage.TryReadBlockTransactions(blockHash, out rawBlockTxes))
             {
                 blockTxes = ReadBlockTransactions(blockHash, merkleRoot, requireTransactions, rawBlockTxes);
@@ -346,10 +347,10 @@ namespace BitSharp.Core.Storage
             }
         }
 
-        private IEnumerable<BlockTx> ReadBlockTransactions(UInt256 blockHash, UInt256 merkleRoot, bool requireTransactions, IEnumerable<BlockTx> blockTxes)
+        private IEnumerable<BlockTx> ReadBlockTransactions(UInt256 blockHash, UInt256 merkleRoot, bool requireTransactions, IEnumerator<BlockTx> blockTxes)
         {
             //TODO merkle validation should happen in BlockValidator
-            using (var blockTxesEnumerator = MerkleTree.ReadMerkleTreeNodes(merkleRoot, blockTxes).GetEnumerator())
+            using (var blockTxesEnumerator = MerkleTree.ReadMerkleTreeNodes(merkleRoot, blockTxes.UsingAsEnumerable()).GetEnumerator())
             {
                 while (true)
                 {

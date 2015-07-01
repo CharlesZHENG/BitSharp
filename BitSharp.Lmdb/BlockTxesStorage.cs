@@ -121,7 +121,7 @@ namespace BitSharp.Lmdb
             }
         }
 
-        public bool TryReadBlockTransactions(UInt256 blockHash, out IEnumerable<BlockTx> blockTxes)
+        public bool TryReadBlockTransactions(UInt256 blockHash, out IEnumerator<BlockTx> blockTxes)
         {
             if (this.ContainsBlock(blockHash))
             {
@@ -135,7 +135,7 @@ namespace BitSharp.Lmdb
             }
         }
 
-        private IEnumerable<BlockTx> ReadBlockTransactions(UInt256 blockHash)
+        private IEnumerator<BlockTx> ReadBlockTransactions(UInt256 blockHash)
         {
             using (var txn = this.jetInstance.BeginTransaction(TransactionBeginFlags.ReadOnly))
             using (var cursor = txn.CreateCursor(blocksTableId))

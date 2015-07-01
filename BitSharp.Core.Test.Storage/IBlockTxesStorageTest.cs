@@ -1,4 +1,5 @@
 ﻿using BitSharp.Common;
+using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Domain;
 using BitSharp.Core.Storage;
 using BitSharp.Core.Test.Rules;
@@ -216,9 +217,9 @@ namespace BitSharp.Core.Test.Storage
                 blockTxesStorage.TryAddBlockTransactions(expectedBlock.Hash, expectedBlock.Transactions);
 
                 // retrieve block transactions
-                IEnumerable<BlockTx> rawActualBlockTxes;
+                IEnumerator<BlockTx> rawActualBlockTxes;
                 Assert.IsTrue(blockTxesStorage.TryReadBlockTransactions(expectedBlock.Hash, out rawActualBlockTxes));
-                var actualBlockTxes = rawActualBlockTxes.ToList();
+                var actualBlockTxes = rawActualBlockTxes.UsingAsEnumerable().ToList();
                 var actualBlockTxHashes = actualBlockTxes.Select(x => x.Transaction.Hash).ToList();
 
                 // verify all retrieved transactions match their hashes
@@ -286,17 +287,17 @@ namespace BitSharp.Core.Test.Storage
                         blockTxesStorage.PruneElements(new[] { new KeyValuePair<UInt256, IEnumerable<int>>(block.Hash, new[] { pruneIndex }) });
 
                         // read block transactions
-                        IEnumerable<BlockTx> blockTxes;
+                        IEnumerator<BlockTx> blockTxes;
                         Assert.IsTrue(blockTxesStorage.TryReadBlockTransactions(block.Hash, out blockTxes));
 
                         // verify block transactions, exception will be fired if invalid
-                        MerkleTree.ReadMerkleTreeNodes(block.Header.MerkleRoot, blockTxes).Count();
+                        MerkleTree.ReadMerkleTreeNodes(block.Header.MerkleRoot, blockTxes.UsingAsEnumerable()).Count();
                     }
 
                     // read fully pruned block and verify
-                    IEnumerable<BlockTx> finalBlockTxes;
+                    IEnumerator<BlockTx> finalBlockTxes;
                     Assert.IsTrue(blockTxesStorage.TryReadBlockTransactions(block.Hash, out finalBlockTxes));
-                    var finalNodes = MerkleTree.ReadMerkleTreeNodes(block.Header.MerkleRoot, finalBlockTxes).ToList();
+                    var finalNodes = MerkleTree.ReadMerkleTreeNodes(block.Header.MerkleRoot, finalBlockTxes.UsingAsEnumerable()).ToList();
                     Assert.AreEqual(1, finalNodes.Count);
                     Assert.AreEqual(expectedFinalElement, finalNodes[0]);
 
@@ -304,20 +305,18 @@ namespace BitSharp.Core.Test.Storage
                     if (iteration == 1 || iteration == 3)
                     {
                         Assert.IsTrue(blockTxesStorage.TryReadBlockTransactions(new UInt256(block.Hash.ToBigInteger() - 1), out finalBlockTxes));
-                        Assert.AreEqual(block.Transactions.Length, finalBlockTxes.Count());
 
                         // verify block transactions, exception will be fired if invalid
-                        MerkleTree.ReadMerkleTreeNodes(block.Header.MerkleRoot, finalBlockTxes).Count();
+                        Assert.AreEqual(block.Transactions.Length, MerkleTree.ReadMerkleTreeNodes(block.Header.MerkleRoot, finalBlockTxes.UsingAsEnumerable()).Count());
                     }
 
                     // verify proceeding block was not affected
                     if (iteration == 2 || iteration == 3)
                     {
                         Assert.IsTrue(blockTxesStorage.TryReadBlockTransactions(new UInt256(block.Hash.ToBigInteger() + 1), out finalBlockTxes));
-                        Assert.AreEqual(block.Transactions.Length, finalBlockTxes.Count());
 
                         // verify block transactions, exception will be fired if invalid
-                        MerkleTree.ReadMerkleTreeNodes(block.Header.MerkleRoot, finalBlockTxes).Count();
+                        Assert.AreEqual(block.Transactions.Length, MerkleTree.ReadMerkleTreeNodes(block.Header.MerkleRoot, finalBlockTxes.UsingAsEnumerable()).Count());
                     }
                 }
             }

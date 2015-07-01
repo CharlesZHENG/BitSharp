@@ -531,5 +531,14 @@ namespace BitSharp.Common.ExtensionMethods
 
             return queue;
         }
+
+        public static IEnumerable<T> UsingAsEnumerable<T>(this IEnumerator<T> enumerator)
+        {
+            using (enumerator)
+            {
+                while (enumerator.MoveNext())
+                    yield return enumerator.Current;
+            }
+        }
     }
 }

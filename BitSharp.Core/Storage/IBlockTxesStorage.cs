@@ -44,12 +44,12 @@ namespace BitSharp.Core.Storage
         bool TryRemoveBlockTransactions(UInt256 blockHash);
 
         /// <summary>
-        /// Read the transaction data for a block, including pruning information.
+        /// Read the transaction data for a block, including the merkle tree information.
         /// </summary>
         /// <param name="blockHash">The block's hash.</param>
         /// <param name="transaction">Contains the retrieved block's transactions when successful; otherwise, null.</param>
         /// <returns>true if the block's transactions were retrieved; otherwise, false</returns>
-        bool TryReadBlockTransactions(UInt256 blockHash, out IEnumerable<BlockTx> blockTxes);
+        bool TryReadBlockTransactions(UInt256 blockHash, out IEnumerator<BlockTx> blockTxes);
 
         void PruneElements(IEnumerable<KeyValuePair<UInt256, IEnumerable<int>>> blockTxIndices);
 

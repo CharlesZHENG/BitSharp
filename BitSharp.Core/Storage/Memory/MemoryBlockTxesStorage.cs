@@ -69,12 +69,12 @@ namespace BitSharp.Core.Storage.Memory
             return this.allBlockTxes.TryRemove(blockHash, out blockTxes);
         }
 
-        public bool TryReadBlockTransactions(UInt256 blockHash, out IEnumerable<BlockTx> blockTxes)
+        public bool TryReadBlockTransactions(UInt256 blockHash, out IEnumerator<BlockTx> blockTxes)
         {
             ImmutableSortedDictionary<int, BlockTx> rawBlockTxes;
             if (this.allBlockTxes.TryGetValue(blockHash, out rawBlockTxes))
             {
-                blockTxes = rawBlockTxes.Values;
+                blockTxes = rawBlockTxes.Values.GetEnumerator();
                 return true;
             }
             else
