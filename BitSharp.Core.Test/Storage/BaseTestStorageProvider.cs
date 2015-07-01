@@ -24,44 +24,5 @@ namespace BitSharp.Core.Test.Storage
         public abstract string Name { get; }
 
         public abstract IStorageManager OpenStorageManager();
-
-        private static void CreateDirectory(string path)
-        {
-            try
-            {
-                if (!Directory.Exists(path))
-                    Directory.CreateDirectory(path);
-            }
-            catch (Exception) { }
-        }
-
-        private static void DeleteDirectory(string path)
-        {
-            try
-            {
-                if (Directory.Exists(path))
-                    Directory.Delete(path, recursive: true);
-            }
-            catch (Exception) { }
-        }
-
-        private static void CleanCreateDirectory(string path)
-        {
-            DeleteDirectory(path);
-            CreateDirectory(path);
-        }
-
-        private static bool IsProcessRunning(int processId)
-        {
-            try
-            {
-                using (Process.GetProcessById(processId))
-                    return true;
-            }
-            catch (Exception)
-            {
-                return false;
-            }
-        }
     }
 }
