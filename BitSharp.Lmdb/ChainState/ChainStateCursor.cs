@@ -77,7 +77,7 @@ namespace BitSharp.Lmdb
             }
             set
             {
-                CheckTransaction();
+                CheckWriteTransaction();
 
                 if (value != null)
                     this.txn.Put(globalsTableId, chainTipKey, DataEncoder.EncodeChainedHeader(value));
@@ -103,7 +103,7 @@ namespace BitSharp.Lmdb
             }
             set
             {
-                CheckTransaction();
+                CheckWriteTransaction();
 
                 this.txn.Put(globalsTableId, unspentTxCountKey, Bits.GetBytes(value));
             }
@@ -123,7 +123,7 @@ namespace BitSharp.Lmdb
             }
             set
             {
-                CheckTransaction();
+                CheckWriteTransaction();
 
                 this.txn.Put(globalsTableId, unspentOutputCountKey, Bits.GetBytes(value));
             }
@@ -143,7 +143,7 @@ namespace BitSharp.Lmdb
             }
             set
             {
-                CheckTransaction();
+                CheckWriteTransaction();
 
                 this.txn.Put(globalsTableId, totalTxCountKey, Bits.GetBytes(value));
             }
@@ -163,7 +163,7 @@ namespace BitSharp.Lmdb
             }
             set
             {
-                CheckTransaction();
+                CheckWriteTransaction();
 
                 this.txn.Put(globalsTableId, totalInputCountKey, Bits.GetBytes(value));
             }
@@ -183,7 +183,7 @@ namespace BitSharp.Lmdb
             }
             set
             {
-                CheckTransaction();
+                CheckWriteTransaction();
 
                 this.txn.Put(globalsTableId, totalOutputCountKey, Bits.GetBytes(value));
             }
@@ -215,7 +215,7 @@ namespace BitSharp.Lmdb
 
         public bool TryAddUnspentTx(UnspentTx unspentTx)
         {
-            CheckTransaction();
+            CheckWriteTransaction();
 
             var key = DbEncoder.EncodeUInt256(unspentTx.TxHash);
             var value = DataEncoder.EncodeUnspentTx(unspentTx);
@@ -234,7 +234,7 @@ namespace BitSharp.Lmdb
 
         public bool TryRemoveUnspentTx(UInt256 txHash)
         {
-            CheckTransaction();
+            CheckWriteTransaction();
 
             var key = DbEncoder.EncodeUInt256(txHash);
 
@@ -251,7 +251,7 @@ namespace BitSharp.Lmdb
 
         public bool TryUpdateUnspentTx(UnspentTx unspentTx)
         {
-            CheckTransaction();
+            CheckWriteTransaction();
 
             var key = DbEncoder.EncodeUInt256(unspentTx.TxHash);
 
@@ -271,7 +271,11 @@ namespace BitSharp.Lmdb
         public IEnumerable<UnspentTx> ReadUnspentTransactions()
         {
             CheckTransaction();
+            return ReadUnspentTransactionsInner();
+        }
 
+        private IEnumerable<UnspentTx> ReadUnspentTransactionsInner()
+        {
             using (var cursor = this.txn.CreateCursor(unspentTxTableId))
             {
                 var kvPair = cursor.MoveToFirst();
@@ -316,7 +320,7 @@ namespace BitSharp.Lmdb
 
         public bool TryAddBlockSpentTxes(int blockIndex, IImmutableList<UInt256> spentTxes)
         {
-            CheckTransaction();
+            CheckWriteTransaction();
 
             var key = DbEncoder.EncodeInt32(blockIndex);
             if (!this.txn.ContainsKey(blockSpentTxesTableId, key))
@@ -341,7 +345,7 @@ namespace BitSharp.Lmdb
 
         public bool TryRemoveBlockSpentTxes(int blockIndex)
         {
-            CheckTransaction();
+            CheckWriteTransaction();
 
             var key = DbEncoder.EncodeInt32(blockIndex);
 
@@ -387,7 +391,7 @@ namespace BitSharp.Lmdb
 
         public bool TryAddBlockUnmintedTxes(UInt256 blockHash, IImmutableList<UnmintedTx> unmintedTxes)
         {
-            CheckTransaction();
+            CheckWriteTransaction();
 
             var key = DbEncoder.EncodeUInt256(blockHash);
             if (!this.txn.ContainsKey(blockUnmintedTxesTableId, key))
@@ -412,7 +416,7 @@ namespace BitSharp.Lmdb
 
         public bool TryRemoveBlockUnmintedTxes(UInt256 blockHash)
         {
-            CheckTransaction();
+            CheckWriteTransaction();
 
             var key = DbEncoder.EncodeUInt256(blockHash);
 
@@ -466,6 +470,12 @@ namespace BitSharp.Lmdb
         private void CheckTransaction()
         {
             if (this.txn == null)
+                throw new InvalidOperationException();
+        }
+
+        private void CheckWriteTransaction()
+        {
+            if (this.txn == null || this.txn.IsReadOnly)
                 throw new InvalidOperationException();
         }
     }

@@ -1,6 +1,7 @@
 ﻿using BitSharp.Common;
 using BitSharp.Core.Domain;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
 using System.Collections;
 using System.Collections.Immutable;
 using System.Linq;
@@ -111,6 +112,18 @@ namespace BitSharp.Core.Test.Storage
         public void TestDefragment()
         {
             RunTest(TestDefragment);
+        }
+
+        [TestMethod]
+        public void TestOperationOutsideTransaction()
+        {
+            RunTest(TestOperationOutsideTransaction);
+        }
+
+        [TestMethod]
+        public void TestWriteOperationInReadonlyTransaction()
+        {
+            RunTest(TestWriteOperationInReadonlyTransaction);
         }
 
         private void TestTransactionIsolation(ITestStorageProvider provider)
@@ -828,6 +841,95 @@ namespace BitSharp.Core.Test.Storage
         public void TestDefragment(ITestStorageProvider provider)
         {
             Assert.Inconclusive("TODO");
+        }
+
+        /// <summary>
+        /// Verify that chain state cursor does not allow use outside of a transaction.
+        /// </summary>
+        /// <param name="provider"></param>
+        public void TestOperationOutsideTransaction(ITestStorageProvider provider)
+        {
+            var unspentTx = new UnspentTx(txHash: UInt256.Zero, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent));
+
+            using (var storageManager = provider.OpenStorageManager())
+            using (var handle = storageManager.OpenChainStateCursor())
+            {
+                var chainStateCursor = handle.Item;
+
+                Assert.IsFalse(chainStateCursor.InTransaction);
+
+                var actions = new Action[]
+                {
+                    () => { var x = chainStateCursor.ChainTip; },
+                    () => { chainStateCursor.ChainTip = RandomData.RandomChainedHeader(); },
+                    () => { var x = chainStateCursor.UnspentTxCount; },
+                    () => { chainStateCursor.UnspentTxCount = 0; },
+                    () => { var x = chainStateCursor.UnspentOutputCount; },
+                    () => { chainStateCursor.UnspentOutputCount = 0; },
+                    () => { var x = chainStateCursor.TotalTxCount; },
+                    () => { chainStateCursor.TotalTxCount = 0; },
+                    () => { var x = chainStateCursor.TotalInputCount; },
+                    () => { chainStateCursor.TotalInputCount = 0; },
+                    () => { var x = chainStateCursor. TotalOutputCount; },
+                    () => { chainStateCursor. TotalOutputCount = 0; },
+                    () => { var x = chainStateCursor.ContainsUnspentTx(UInt256.Zero); },
+                    () => { UnspentTx _; chainStateCursor.TryGetUnspentTx(UInt256.Zero, out _); },
+                    () => { chainStateCursor.TryAddUnspentTx(unspentTx); },
+                    () => { chainStateCursor.TryRemoveUnspentTx(UInt256.Zero); },
+                    () => { chainStateCursor.TryUpdateUnspentTx(unspentTx); },
+                    () => { chainStateCursor.ReadUnspentTransactions(); },
+                    () => { chainStateCursor.ContainsBlockSpentTxes(0); },
+                    () => { IImmutableList<UInt256> _; chainStateCursor.TryGetBlockSpentTxes(0, out _); },
+                    () => { chainStateCursor.TryAddBlockSpentTxes(0, ImmutableList<UInt256>.Empty); },
+                    () => { chainStateCursor.TryRemoveBlockSpentTxes(0); },
+                    () => { chainStateCursor.ContainsBlockUnmintedTxes(UInt256.Zero); },
+                    () => { IImmutableList<UnmintedTx> _; chainStateCursor.TryGetBlockUnmintedTxes(UInt256.Zero, out _); },
+                    () => { chainStateCursor.TryAddBlockUnmintedTxes(UInt256.Zero  , ImmutableList<UnmintedTx>.Empty); },
+                    () => { chainStateCursor.TryRemoveBlockUnmintedTxes(UInt256.Zero); },
+                };
+
+                foreach (var action in actions)
+                    AssertMethods.AssertThrows<InvalidOperationException>(action);
+            }
+        }
+
+        /// <summary>
+        /// Verify that chain state cursor does not allow write operations in read-only transaction.
+        /// </summary>
+        /// <param name="provider"></param>
+        public void TestWriteOperationInReadonlyTransaction(ITestStorageProvider provider)
+        {
+            var unspentTx = new UnspentTx(txHash: UInt256.Zero, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent));
+
+            using (var storageManager = provider.OpenStorageManager())
+            using (var handle = storageManager.OpenChainStateCursor())
+            {
+                var chainStateCursor = handle.Item;
+
+                chainStateCursor.BeginTransaction(readOnly: true);
+
+                var actions = new Action[]
+                {
+                    () => { chainStateCursor.ChainTip = RandomData.RandomChainedHeader(); },
+                    () => { chainStateCursor.UnspentTxCount = 0; },
+                    () => { chainStateCursor.UnspentOutputCount = 0; },
+                    () => { chainStateCursor.TotalTxCount = 0; },
+                    () => { chainStateCursor.TotalInputCount = 0; },
+                    () => { chainStateCursor. TotalOutputCount = 0; },
+                    () => { chainStateCursor.TryAddUnspentTx(unspentTx); },
+                    () => { chainStateCursor.TryRemoveUnspentTx(UInt256.Zero); },
+                    () => { chainStateCursor.TryUpdateUnspentTx(unspentTx); },
+                    () => { chainStateCursor.TryAddBlockSpentTxes(0, ImmutableList<UInt256>.Empty); },
+                    () => { chainStateCursor.TryRemoveBlockSpentTxes(0); },
+                    () => { chainStateCursor.TryAddBlockUnmintedTxes(UInt256.Zero  , ImmutableList<UnmintedTx>.Empty); },
+                    () => { chainStateCursor.TryRemoveBlockUnmintedTxes(UInt256.Zero); },
+                };
+
+                foreach (var action in actions)
+                    AssertMethods.AssertThrows<InvalidOperationException>(action);
+
+                chainStateCursor.RollbackTransaction();
+            }
         }
     }
 }
