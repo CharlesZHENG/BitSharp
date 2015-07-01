@@ -34,6 +34,8 @@ namespace BitSharp.Core.Workers
         private readonly ChainStateBuilder chainStateBuilder;
         private Chain currentChain;
 
+        private int? maxHeight;
+
         public ChainStateWorker(WorkerConfig workerConfig, TargetChainWorker targetChainWorker, ChainStateBuilder chainStateBuilder, IBlockchainRules rules, CoreStorage coreStorage)
             : base("ChainStateWorker", workerConfig.initialNotify, workerConfig.minIdleTime, workerConfig.maxIdleTime)
         {
@@ -56,7 +58,11 @@ namespace BitSharp.Core.Workers
 
         public event Action<UInt256> BlockMissed;
 
-        public int? MaxHeight { get; set; }
+        public int? MaxHeight
+        {
+            get { return maxHeight; }
+            set { maxHeight = value; NotifyWork(); }
+        }
 
         public TimeSpan AverageBlockProcessingTime()
         {
