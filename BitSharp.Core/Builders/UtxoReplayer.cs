@@ -62,7 +62,7 @@ namespace BitSharp.Core.Builders
                         return new LoadingTx(txIndex, tx, replayBlock, prevOutputTxKeys.MoveToImmutable());
                     });
 
-                IEnumerable<BlockTx> blockTxes;
+                IEnumerator<BlockTx> blockTxes;
                 if (!coreStorage.TryReadBlockTransactions(replayBlock.Hash, /*requireTransaction:*/true, out blockTxes))
                 {
                     throw new MissingDataException(replayBlock.Hash);
@@ -71,7 +71,7 @@ namespace BitSharp.Core.Builders
                 var blockTxesBuffer = new BufferBlock<BlockTx>();
                 blockTxesBuffer.LinkTo(lookupLoadingTx, new DataflowLinkOptions { PropagateCompletion = true });
 
-                blockTxesBuffer.SendAndCompleteAsync(blockTxes.Reverse(), cancelToken);
+                blockTxesBuffer.SendAndCompleteAsync(blockTxes.UsingAsEnumerable().Reverse(), cancelToken);
 
                 return lookupLoadingTx;
             }
@@ -82,7 +82,7 @@ namespace BitSharp.Core.Builders
             //TODO use replayForward to retrieve blocks in reverse order
             //TODO also check that the block hasn't been pruned (that information isn't stored yet)
 
-            IEnumerable<BlockTx> blockTxes;
+            IEnumerator<BlockTx> blockTxes;
             if (!coreStorage.TryReadBlockTransactions(replayBlock.Hash, /*requireTransaction:*/true, out blockTxes))
             {
                 throw new MissingDataException(replayBlock.Hash);
@@ -94,9 +94,9 @@ namespace BitSharp.Core.Builders
             blockTxesBuffer.LinkTo(lookupLoadingTx, new DataflowLinkOptions { PropagateCompletion = true });
 
             if (replayForward)
-                blockTxesBuffer.SendAndCompleteAsync(blockTxes, cancelToken);
+                blockTxesBuffer.SendAndCompleteAsync(blockTxes.UsingAsEnumerable(), cancelToken);
             else
-                blockTxesBuffer.SendAndCompleteAsync(blockTxes.Reverse(), cancelToken);
+                blockTxesBuffer.SendAndCompleteAsync(blockTxes.UsingAsEnumerable().Reverse(), cancelToken);
 
             return lookupLoadingTx;
         }

@@ -120,7 +120,7 @@ namespace BitSharp.Core.Workers
                     // get block and metadata for next link in blockchain
                     var direction = pathElement.Item1;
                     var chainedHeader = pathElement.Item2;
-                    IEnumerable<BlockTx> blockTxes;
+                    IEnumerator<BlockTx> blockTxes;
                     if (!this.coreStorage.TryReadBlockTransactions(chainedHeader.Hash, /*requireTransaction:*/true, out blockTxes))
                     {
                         RaiseBlockMissed(chainedHeader.Hash);
@@ -132,12 +132,12 @@ namespace BitSharp.Core.Workers
                     var blockStopwatch = Stopwatch.StartNew();
                     if (direction > 0)
                     {
-                        this.chainStateBuilder.AddBlock(chainedHeader, blockTxes);
+                        this.chainStateBuilder.AddBlock(chainedHeader, blockTxes.UsingAsEnumerable());
                     }
                     else if (direction < 0)
                     {
                         logger.Info("Rolling back block {0:#,##0}: {1}".Format2(chainedHeader.Height, chainedHeader.Hash));
-                        this.chainStateBuilder.RollbackBlock(chainedHeader, blockTxes);
+                        this.chainStateBuilder.RollbackBlock(chainedHeader, blockTxes.UsingAsEnumerable());
                     }
                     else
                     {

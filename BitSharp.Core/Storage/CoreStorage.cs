@@ -1,4 +1,5 @@
 ﻿using BitSharp.Common;
+using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Builders;
 using BitSharp.Core.Domain;
 using NLog;
@@ -287,10 +288,10 @@ namespace BitSharp.Core.Storage
                 return false;
             }
 
-            IEnumerable<BlockTx> blockTxes;
+            IEnumerator<BlockTx> blockTxes;
             if (TryReadBlockTransactions(chainedHeader.Hash, /*requireTransactions:*/true, out blockTxes))
             {
-                var transactions = ImmutableArray.CreateRange(blockTxes.Select(x => x.Transaction));
+                var transactions = ImmutableArray.CreateRange(blockTxes.UsingAsEnumerable().Select(x => x.Transaction));
                 block = new Block(chainedHeader.BlockHeader, transactions);
                 return true;
             }
@@ -325,7 +326,7 @@ namespace BitSharp.Core.Storage
             return this.txLoadDurationMeasure.GetAverage();
         }
 
-        public bool TryReadBlockTransactions(UInt256 blockHash, bool requireTransactions, out IEnumerable<BlockTx> blockTxes)
+        public bool TryReadBlockTransactions(UInt256 blockHash, bool requireTransactions, out IEnumerator<BlockTx> blockTxes)
         {
             IEnumerator<BlockTx> rawBlockTxes;
             if (this.blockTxesStorage.TryReadBlockTransactions(blockHash, out rawBlockTxes))
@@ -340,7 +341,7 @@ namespace BitSharp.Core.Storage
             }
         }
 
-        private IEnumerable<BlockTx> ReadBlockTransactions(UInt256 blockHash, bool requireTransactions, IEnumerator<BlockTx> blockTxes)
+        private IEnumerator<BlockTx> ReadBlockTransactions(UInt256 blockHash, bool requireTransactions, IEnumerator<BlockTx> blockTxes)
         {
             using (blockTxes)
             {
