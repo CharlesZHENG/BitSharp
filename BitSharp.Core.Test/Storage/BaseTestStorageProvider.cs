@@ -10,7 +10,8 @@ namespace BitSharp.Core.Test.Storage
 {
     public abstract class BaseTestStorageProvider : ITestStorageProvider
     {
-        public void TestInitialize()
+        // cleanup the entire base directory on first initialization
+        static BaseTestStorageProvider()
         {
             BaseDirectory = Path.Combine(Path.GetTempPath(), "BitSharp", "Tests");
             try
@@ -19,7 +20,11 @@ namespace BitSharp.Core.Test.Storage
                     Directory.Delete(BaseDirectory, recursive: true);
             }
             catch (IOException) { }
+        }
 
+        // create a random temp directory for this test instance
+        public void TestInitialize()
+        {
             TestDirectory = Path.Combine(BaseDirectory, Path.GetRandomFileName());
             try
             {
@@ -29,17 +34,18 @@ namespace BitSharp.Core.Test.Storage
             catch (IOException) { }
         }
 
+        // cleanup the random temp directory for this test instance
         public void TestCleanup()
         {
             try
             {
-                if (Directory.Exists(BaseDirectory))
-                    Directory.Delete(BaseDirectory, recursive: true);
+                if (Directory.Exists(TestDirectory))
+                    Directory.Delete(TestDirectory, recursive: true);
             }
             catch (IOException) { }
         }
 
-        public string BaseDirectory { get; private set; }
+        public static string BaseDirectory { get; private set; }
 
         public string TestDirectory { get; private set; }
 
