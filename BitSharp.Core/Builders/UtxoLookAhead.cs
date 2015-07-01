@@ -48,12 +48,7 @@ namespace BitSharp.Core.Builders
             warmupUtxo.LinkTo(forwardWarmedTxes, new DataflowLinkOptions { PropagateCompletion = true });
 
             // track when reading block txes completes
-            blockTxes.Completion.ContinueWith(_ =>
-            {
-                txesReadDurationMeasure.Tick(stopwatch.Elapsed);
-                Throttler.IfElapsed(TimeSpan.FromSeconds(5), () =>
-                    logger.Info("Block Txes Read: {0,12:N3}ms".Format2(txesReadDurationMeasure.GetAverage().TotalMilliseconds)));
-            });
+            blockTxes.Completion.ContinueWith(_ => txesReadDurationMeasure.Tick(stopwatch.Elapsed));
 
             // track when the overall look ahead completes
             forwardWarmedTxes.Completion.ContinueWith(_ =>
@@ -63,7 +58,10 @@ namespace BitSharp.Core.Builders
 
                 lookAheadDurationMeasure.Tick(stopwatch.Elapsed);
                 Throttler.IfElapsed(TimeSpan.FromSeconds(5), () =>
-                    logger.Info("UTXO Look-ahead: {0,12:N3}ms".Format2(lookAheadDurationMeasure.GetAverage().TotalMilliseconds)));
+                {
+                    logger.Info("Block Txes Read: {0,12:N3}ms".Format2(txesReadDurationMeasure.GetAverage().TotalMilliseconds));
+                    logger.Info("UTXO Look-ahead: {0,12:N3}ms".Format2(lookAheadDurationMeasure.GetAverage().TotalMilliseconds));
+                });
             });
 
             return forwardWarmedTxes;
