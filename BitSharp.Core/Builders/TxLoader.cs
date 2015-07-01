@@ -27,14 +27,14 @@ namespace BitSharp.Core.Builders
             // split incoming LoadingTx by its number of inputs
             var createTxInputList = InitCreateTxInputList(cancelToken);
 
+            // link the loading txes to the input splitter
+            loadingTxes.LinkTo(createTxInputList, new DataflowLinkOptions { PropagateCompletion = true });
+
             // load each input, and return and fully loaded txes
             var loadTxInputAndReturnLoadedTx = InitLoadTxInputAndReturnLoadedTx(coreStorage, cancelToken);
 
             // link the input splitter to the input loader
             createTxInputList.LinkTo(loadTxInputAndReturnLoadedTx, new DataflowLinkOptions { PropagateCompletion = true });
-
-            // link the loading txes to the input splitter
-            loadingTxes.LinkTo(createTxInputList, new DataflowLinkOptions { PropagateCompletion = true });
 
             return loadTxInputAndReturnLoadedTx;
         }
@@ -56,7 +56,7 @@ namespace BitSharp.Core.Builders
                         return new[] { Tuple.Create(loadingTx, -1) };
                     }
                 },
-                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken });
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, SingleProducerConstrained = true });
         }
 
         private static TransformManyBlock<Tuple<LoadingTx, int>, LoadedTx> InitLoadTxInputAndReturnLoadedTx(ICoreStorage coreStorage, CancellationToken cancelToken)
@@ -74,7 +74,7 @@ namespace BitSharp.Core.Builders
                     else
                         return new LoadedTx[0];
                 },
-                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, MaxDegreeOfParallelism = 16 });
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, MaxDegreeOfParallelism = 16, SingleProducerConstrained = true });
         }
 
         private static LoadedTx LoadTxInput(ICoreStorage coreStorage, ConcurrentDictionary<TxLookupKey, Transaction> txCache, LoadingTx loadingTx, int inputIndex)

@@ -523,7 +523,7 @@ namespace BitSharp.Common.ExtensionMethods
 
             var queueItems = new ActionBlock<T>(
                 item => queue.Add(item),
-                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken });
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, SingleProducerConstrained = true });
 
             queueItems.Completion.ContinueWith(_ => queue.CompleteAdding());
 

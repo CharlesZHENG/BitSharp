@@ -42,7 +42,7 @@ namespace BitSharp.Core.Builders
                     originalLoadingTxes.Enqueue(loadingTx.Transaction.Hash);
                     return loadingTx;
                 },
-                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken });
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, SingleProducerConstrained = true });
             loadingTxes.LinkTo(originalOrderCapturer, new DataflowLinkOptions { PropagateCompletion = true });
 
             // begin loading txes
@@ -85,7 +85,7 @@ namespace BitSharp.Core.Builders
 
                     return sortedLoadedTxes;
                 },
-                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken });
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, SingleProducerConstrained = true });
             loadedTxes.LinkTo(txSorter, new DataflowLinkOptions { PropagateCompletion = true });
 
             // return replay txes

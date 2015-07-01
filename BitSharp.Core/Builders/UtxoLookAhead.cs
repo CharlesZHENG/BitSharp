@@ -32,20 +32,20 @@ namespace BitSharp.Core.Builders
             // queue each utxo entry to be warmed up: each input's previous transaction, and each new transaction
             var queueUnspentTxLookup = InitQueueUnspentTxLookup(pendingWarmedTxes, cancelToken);
 
+            // link the block txes to the unspent tx queuer
+            blockTxes.LinkTo(queueUnspentTxLookup, new DataflowLinkOptions { PropagateCompletion = true });
+
             // warm up a uxto entry
             var warmupUtxo = InitWarmupUtxo(deferredChainStateCursor, cancelToken);
+
+            // link the utxo entry queuer to the warmer
+            queueUnspentTxLookup.LinkTo(warmupUtxo, new DataflowLinkOptions { PropagateCompletion = true });
 
             // forward any warmed txes, in order
             var forwardWarmedTxes = InitForwardWarmedTxes(pendingWarmedTxes, cancelToken);
 
             // link notification of a warmed tx to the in-order forwarder
             warmupUtxo.LinkTo(forwardWarmedTxes, new DataflowLinkOptions { PropagateCompletion = true });
-
-            // link the utxo entry queuer to the warmer
-            queueUnspentTxLookup.LinkTo(warmupUtxo, new DataflowLinkOptions { PropagateCompletion = true });
-
-            // link the block txes to the unspent tx queuer
-            blockTxes.LinkTo(queueUnspentTxLookup, new DataflowLinkOptions { PropagateCompletion = true });
 
             // track when reading block txes completes
             blockTxes.Completion.ContinueWith(_ =>
@@ -93,7 +93,7 @@ namespace BitSharp.Core.Builders
 
                     return txHashes;
                 },
-                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken });
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, SingleProducerConstrained = true });
         }
 
         private static TransformManyBlock<Tuple<UInt256, CompletionCount>, object> InitWarmupUtxo(IDeferredChainStateCursor deferredChainStateCursor, CancellationToken cancelToken)
@@ -112,7 +112,7 @@ namespace BitSharp.Core.Builders
                     else
                         return new object[0];
                 },
-                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, MaxDegreeOfParallelism = 16 });
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, MaxDegreeOfParallelism = 16, SingleProducerConstrained = true });
         }
 
         private static TransformManyBlock<object, BlockTx> InitForwardWarmedTxes(ConcurrentQueue<Tuple<BlockTx, CompletionCount>> pendingWarmedTxes, CancellationToken cancelToken)
@@ -132,7 +132,7 @@ namespace BitSharp.Core.Builders
 
                     return warmedTxes;
                 },
-                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken });
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, SingleProducerConstrained = true });
         }
     }
 }
