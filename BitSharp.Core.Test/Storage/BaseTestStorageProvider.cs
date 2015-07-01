@@ -1,6 +1,7 @@
 ﻿using BitSharp.Core.Storage;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -14,43 +15,86 @@ namespace BitSharp.Core.Test.Storage
         static BaseTestStorageProvider()
         {
             BaseDirectory = Path.Combine(Path.GetTempPath(), "BitSharp", "Tests");
-            try
+            
+            if (Directory.Exists(BaseDirectory))
             {
-                if (Directory.Exists(BaseDirectory))
-                    Directory.Delete(BaseDirectory, recursive: true);
+                // delete any subfolders, unless they are named with an active process id, which is another test currently in progress
+                foreach (var subFolder in Directory.EnumerateDirectories(BaseDirectory))
+                {
+                    int processId;
+                    var isOtherTestFolder = int.TryParse(subFolder, out processId) && IsProcessRunning(processId);
+
+                    if (!isOtherTestFolder)
+                        DeleteDirectory(subFolder);
+                }
             }
-            catch (IOException) { }
+            else
+                CreateDirectory(BaseDirectory);
         }
 
         // create a random temp directory for this test instance
         public void TestInitialize()
         {
-            TestDirectory = Path.Combine(BaseDirectory, Path.GetRandomFileName());
-            try
-            {
-                if (!Directory.Exists(TestDirectory))
-                    Directory.CreateDirectory(TestDirectory);
-            }
-            catch (IOException) { }
+            ProcessDirectory = Path.Combine(BaseDirectory, Process.GetCurrentProcess().Id.ToString());
+            CleanCreateDirectory(ProcessDirectory);
+
+            TestDirectory = Path.Combine(ProcessDirectory, Path.GetRandomFileName());
+            CleanCreateDirectory(ProcessDirectory);
         }
 
-        // cleanup the random temp directory for this test instance
+        // cleanup this processes random temp directory
         public void TestCleanup()
         {
-            try
-            {
-                if (Directory.Exists(TestDirectory))
-                    Directory.Delete(TestDirectory, recursive: true);
-            }
-            catch (IOException) { }
+            DeleteDirectory(ProcessDirectory);
         }
 
         public static string BaseDirectory { get; private set; }
+
+        public string ProcessDirectory { get; private set; }
 
         public string TestDirectory { get; private set; }
 
         public abstract string Name { get; }
 
         public abstract IStorageManager OpenStorageManager();
+
+        private static void CreateDirectory(string path)
+        {
+            try
+            {
+                if (!Directory.Exists(path))
+                    Directory.CreateDirectory(path);
+            }
+            catch (IOException) { }
+        }
+
+        private static void DeleteDirectory(string path)
+        {
+            try
+            {
+                if (Directory.Exists(path))
+                    Directory.Delete(path, recursive: true);
+            }
+            catch (IOException) { }
+        }
+
+        private static void CleanCreateDirectory(string path)
+        {
+            DeleteDirectory(path);
+            CreateDirectory(path);
+        }
+
+        private static bool IsProcessRunning(int processId)
+        {
+            try
+            {
+                using (Process.GetProcessById(processId))
+                    return true;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
     }
 }
