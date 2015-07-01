@@ -67,9 +67,6 @@ namespace BitSharp.Core.Builders
 
         public void Dispose()
         {
-            unspentTxes.Dispose();
-            blockSpentTxes.Dispose();
-            blockUnmintedTxes.Dispose();
         }
 
         public bool InTransaction
@@ -191,14 +188,12 @@ namespace BitSharp.Core.Builders
 
         public void WarmUnspentTx(UInt256 txHash)
         {
-            if (unspentTxes.ShouldWarmupValue(txHash))
+            unspentTxes.WarmupValue(txHash, () =>
             {
                 UnspentTx unspentTx;
-                if (TryLoadUnspenTx(txHash, out unspentTx))
-                    unspentTxes.WarmupValue(txHash, unspentTx);
-                else
-                    unspentTxes.WarmupValue(txHash, null);
-            }
+                TryLoadUnspenTx(txHash, out unspentTx);
+                return unspentTx;
+            });
         }
 
         public void ApplyChangesToParent(IChainStateCursor parent)
