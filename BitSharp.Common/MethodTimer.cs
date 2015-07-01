@@ -22,46 +22,55 @@ namespace BitSharp.Common
 
         public bool IsEnabled { get; set; }
 
+        [DebuggerStepThrough]
         public void Time(Action action, [CallerMemberName] string memberName = "", [CallerLineNumber] int lineNumber = 0)
         {
             Time(action, null, -1, memberName, lineNumber);
         }
 
+        [DebuggerStepThrough]
         public void Time(string timerName, Action action, [CallerMemberName] string memberName = "", [CallerLineNumber] int lineNumber = 0)
         {
             Time(action, timerName, -1, memberName, lineNumber);
         }
 
+        [DebuggerStepThrough]
         public void Time(long filterTime, Action action, [CallerMemberName] string memberName = "", [CallerLineNumber] int lineNumber = 0)
         {
             Time(action, null, filterTime, memberName, lineNumber);
         }
 
+        [DebuggerStepThrough]
         public void Time(string timerName, long filterTime, Action action, [CallerMemberName] string memberName = "", [CallerLineNumber] int lineNumber = 0)
         {
             Time(action, timerName, filterTime, memberName, lineNumber);
         }
 
+        [DebuggerStepThrough]
         public T Time<T>(Func<T> func, [CallerMemberName] string memberName = "", [CallerLineNumber] int lineNumber = 0)
         {
             return Time(func, null, -1, memberName, lineNumber);
         }
 
+        [DebuggerStepThrough]
         public T Time<T>(string timerName, Func<T> func, [CallerMemberName] string memberName = "", [CallerLineNumber] int lineNumber = 0)
         {
             return Time(func, timerName, -1, memberName, lineNumber);
         }
 
+        [DebuggerStepThrough]
         public T Time<T>(long filterTime, Func<T> func, [CallerMemberName] string memberName = "", [CallerLineNumber] int lineNumber = 0)
         {
             return Time(func, null, filterTime, memberName, lineNumber);
         }
 
+        [DebuggerStepThrough]
         public T Time<T>(string timerName, long filterTime, Func<T> func, [CallerMemberName] string memberName = "", [CallerLineNumber] int lineNumber = 0)
         {
             return Time(func, timerName, filterTime, memberName, lineNumber);
         }
 
+        [DebuggerStepThrough]
         private void Time(Action action, string timerName, long filterTime, string memberName, int lineNumber)
         {
             if (IsEnabled)
@@ -79,6 +88,7 @@ namespace BitSharp.Common
             }
         }
 
+        [DebuggerStepThrough]
         private T Time<T>(Func<T> func, string timerName, long filterTime, string memberName, int lineNumber)
         {
             if (IsEnabled)
@@ -98,6 +108,7 @@ namespace BitSharp.Common
             }
         }
 
+        [DebuggerStepThrough]
         private void WriteLine(Stopwatch stopwatch, string timerName, long filterTime, string memberName, int lineNumber)
         {
             if (IsEnabled)
@@ -113,11 +124,13 @@ namespace BitSharp.Common
             }
         }
 
+        [DebuggerStepThrough]
         private void Log(string line)
         {
             logger.Info(line);
         }
 
+        [DebuggerStepThrough]
         private void LogIf(bool condition, string line)
         {
             if (condition)
