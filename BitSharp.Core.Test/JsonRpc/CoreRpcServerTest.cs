@@ -1,10 +1,12 @@
-﻿using BitSharp.Core.JsonRpc;
+﻿using BitSharp.Common.ExtensionMethods;
+using BitSharp.Core.JsonRpc;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
 using NLog;
 using System;
 using System.IO;
 using System.Net;
+using System.Net.Sockets;
 using System.Text;
 
 namespace BitSharp.Core.Test.JsonRpc
@@ -18,7 +20,8 @@ namespace BitSharp.Core.Test.JsonRpc
             using (var simulator = new MainnetSimulator())
             {
                 var logger = LogManager.GetCurrentClassLogger();
-                using (var rpcServer = new CoreRpcServer(simulator.CoreDaemon))
+                int port = FindFreePort();
+                using (var rpcServer = new CoreRpcServer(simulator.CoreDaemon, port))
                 {
                     rpcServer.StartListening();
 
@@ -38,7 +41,7 @@ namespace BitSharp.Core.Test.JsonRpc
                         });
                     var jsonRequestBytes = Encoding.UTF8.GetBytes(jsonRequest);
 
-                    var request = (HttpWebRequest)WebRequest.Create("http://localhost:8332");
+                    var request = (HttpWebRequest)WebRequest.Create("http://localhost:{0}".Format2(port));
                     request.Method = WebRequestMethods.Http.Post;
                     using (var requestStream = request.GetRequestStream())
                     {
@@ -57,6 +60,20 @@ namespace BitSharp.Core.Test.JsonRpc
                         Assert.AreEqual(jsonRequestId, jsonResponse.id);
                     }
                 }
+            }
+        }
+
+        private int FindFreePort()
+        {
+            var listener = new TcpListener(IPAddress.Loopback, 0);
+            try
+            {
+                listener.Start();
+                return ((IPEndPoint)listener.LocalEndpoint).Port;
+            }
+            finally
+            {
+                listener.Stop();
             }
         }
 

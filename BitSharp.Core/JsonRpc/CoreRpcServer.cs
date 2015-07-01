@@ -22,10 +22,10 @@ namespace BitSharp.Core.JsonRpc
 
         private bool isDisposed;
 
-        public CoreRpcServer(CoreDaemon coreDaemon)
+        public CoreRpcServer(CoreDaemon coreDaemon, int port)
         {
             this.coreDaemon = coreDaemon;
-            this.listener = new ListenerWorker(this);
+            this.listener = new ListenerWorker(this, port);
         }
 
         public void Dispose()
@@ -75,12 +75,14 @@ namespace BitSharp.Core.JsonRpc
             private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
             private readonly CoreRpcServer rpcServer;
+            private readonly int port;
             private HttpListener httpListener;
 
-            public ListenerWorker(CoreRpcServer rpcServer)
+            public ListenerWorker(CoreRpcServer rpcServer, int port)
                 : base("CoreRpcServer.ListenerWorker", initialNotify: true, minIdleTime: TimeSpan.Zero, maxIdleTime: TimeSpan.Zero)
             {
                 this.rpcServer = rpcServer;
+                this.port = port;
             }
 
             protected override void SubStart()
@@ -88,7 +90,7 @@ namespace BitSharp.Core.JsonRpc
                 if (this.httpListener == null)
                 {
                     this.httpListener = new HttpListener();
-                    this.httpListener.Prefixes.Add("http://localhost:8332/");
+                    this.httpListener.Prefixes.Add("http://localhost:{0}/".Format2(port));
                 }
 
                 this.httpListener.Start();

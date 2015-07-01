@@ -7,8 +7,8 @@ namespace BitSharp.Node
     {
         private readonly CoreDaemon coreDaemon;
 
-        public NodeRpcServer(CoreDaemon coreDaemon)
-            : base(coreDaemon)
+        public NodeRpcServer(CoreDaemon coreDaemon, int port)
+            : base(coreDaemon, port)
         {
             this.coreDaemon = coreDaemon;
         }
