@@ -22,7 +22,7 @@ namespace BitSharp.Core.Builders
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        public static ISourceBlock<LoadedTx> LoadTxes(ICoreStorage coreStorage, int threadCount, ISourceBlock<LoadingTx> loadingTxes, CancellationToken cancelToken = default(CancellationToken))
+        public static ISourceBlock<LoadedTx> LoadTxes(ICoreStorage coreStorage, ISourceBlock<LoadingTx> loadingTxes, CancellationToken cancelToken = default(CancellationToken))
         {
             // split incoming LoadingTx by its number of inputs
             var createTxInputList = InitCreateTxInputList(cancelToken);

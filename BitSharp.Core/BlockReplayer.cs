@@ -46,7 +46,7 @@ namespace BitSharp.Core.Builders
             loadingTxes.LinkTo(originalOrderCapturer, new DataflowLinkOptions { PropagateCompletion = true });
 
             // begin loading txes
-            var loadedTxes = TxLoader.LoadTxes(coreStorage, 16, originalOrderCapturer, cancelToken);
+            var loadedTxes = TxLoader.LoadTxes(coreStorage, originalOrderCapturer, cancelToken);
 
             // sort loaded txes
             var pendingLoadedTxes = new Dictionary<UInt256, LoadedTx>();

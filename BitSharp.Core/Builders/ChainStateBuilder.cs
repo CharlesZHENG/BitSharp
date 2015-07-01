@@ -116,7 +116,7 @@ namespace BitSharp.Core.Builders
                         var warmedBlockTxes = UtxoLookAhead.LookAhead(blockTxesBuffer, deferredChainStateCursor);
 
                         var loadingTxes = new BufferBlock<LoadingTx>();
-                        var loadedTxes = TxLoader.LoadTxes(coreStorage, Environment.ProcessorCount * 2, loadingTxes);
+                        var loadedTxes = TxLoader.LoadTxes(coreStorage, loadingTxes);
 
                         // inject a transform block to count input previous transactions that have been loaded
                         var loadedTxInputCount = 0;

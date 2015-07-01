@@ -52,7 +52,7 @@ namespace BitSharp.Core.Test.Builders
             loadingTxes.Complete();
 
             // begin transaction loading
-            var txLoader = TxLoader.LoadTxes(coreStorageMock.Object, 1, loadingTxes);
+            var txLoader = TxLoader.LoadTxes(coreStorageMock.Object, loadingTxes);
 
             // verify the loaded transaction
             var loadedTxesBuffer = new BufferBlock<LoadedTx>();
