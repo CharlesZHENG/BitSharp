@@ -42,7 +42,7 @@ namespace BitSharp.Core.Test.Builders
                     var unspentTx = new UnspentTx(input.PreviousTxOutputKey.TxHash, blockIndex: 1, txIndex: txIndex * inputIndex,
                         outputStates: new OutputStates(input.PreviousTxOutputKey.TxOutputIndex.ToIntChecked() + 1, OutputState.Unspent));
 
-                    chainState.Setup(x => x.TryGetUnspentTx(It.Is<UInt256>(txHash => txHash == unspentTx.TxHash), out unspentTx)).Returns(true);
+                    chainState.Setup(x => x.TryGetUnspentTx(unspentTx.TxHash, out unspentTx)).Returns(true);
                 }
             }
 
