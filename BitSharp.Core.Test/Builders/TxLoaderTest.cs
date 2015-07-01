@@ -5,6 +5,7 @@ using BitSharp.Core.Domain;
 using BitSharp.Core.Storage;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
+using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -67,6 +68,80 @@ namespace BitSharp.Core.Test.Builders
             Assert.AreEqual(loadingTx.TxIndex, actualLoadedTx.TxIndex);
             Assert.AreEqual(loadingTx.Transaction, actualLoadedTx.Transaction);
             CollectionAssert.AreEqual(prevTxes, actualLoadedTx.InputTxes);
+        }
+
+        /// <summary>
+        /// Verify that an exception in the loading txes source is properly propagated.
+        /// </summary>
+        [TestMethod]
+        public void TestExceptionInLoadingTxes()
+        {
+            var expectedException = new Exception();
+
+            var coreStorage = Mock.Of<ICoreStorage>();
+
+            var loadingTxes = new BufferBlock<LoadingTx>();
+            ((IDataflowBlock)loadingTxes).Fault(expectedException);
+
+            var loadedTxes = TxLoader.LoadTxes(coreStorage, loadingTxes);
+
+            using (var loadedTxesQueue = loadedTxes.LinkToQueue())
+            {
+                try
+                {
+                    loadedTxesQueue.GetConsumingEnumerable().ToList();
+                    Assert.Fail();
+                }
+                catch (Exception ex)
+                {
+                    Assert.IsInstanceOfType(ex, typeof(AggregateException));
+                    var aggEx = (AggregateException)ex;
+                    Assert.AreEqual(1, aggEx.Flatten().InnerExceptions.Count);
+                    Assert.AreSame(expectedException, aggEx.Flatten().InnerExceptions[0]);
+                }
+            }
+        }
+
+        /// <summary>
+        /// Verify that an exception thrown while loading a tx input is properly propagated.
+        /// </summary>
+        [TestMethod]
+        public void TestExceptionInLoadTxInput()
+        {
+            var expectedException = new Exception();
+
+            var coreStorage = new Mock<ICoreStorage>();
+
+            var chainedHeader = RandomData.RandomChainedHeader();
+            var tx = RandomData.RandomTransaction(new RandomDataOptions { TxInputCount = 1 });
+            var txLookupKey = new TxLookupKey(UInt256.Zero, 0);
+            var loadingTx = new LoadingTx(1, tx, chainedHeader, ImmutableArray.Create(txLookupKey));
+
+            var loadingTxes = new BufferBlock<LoadingTx>();
+            loadingTxes.Post(loadingTx);
+            loadingTxes.Complete();
+
+            // throw expected exception when the input transaction is looked up
+            Transaction outputTx = null;
+            coreStorage.Setup(x => x.TryGetTransaction(txLookupKey.BlockHash, txLookupKey.TxIndex, out outputTx)).Throws(expectedException);
+
+            var loadedTxes = TxLoader.LoadTxes(coreStorage.Object, loadingTxes);
+
+            using (var loadedTxesQueue = loadedTxes.LinkToQueue())
+            {
+                try
+                {
+                    loadedTxesQueue.GetConsumingEnumerable().ToList();
+                    Assert.Fail();
+                }
+                catch (Exception ex)
+                {
+                    Assert.IsInstanceOfType(ex, typeof(AggregateException));
+                    var aggEx = (AggregateException)ex;
+                    Assert.AreEqual(1, aggEx.Flatten().InnerExceptions.Count);
+                    Assert.AreSame(expectedException, aggEx.Flatten().InnerExceptions[0]);
+                }
+            }
         }
     }
 }
