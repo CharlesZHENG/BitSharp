@@ -12,7 +12,7 @@ namespace BitSharp.Lmdb.Test
 
         public override IStorageManager OpenStorageManager()
         {
-            return new LmdbStorageManager(TestDirectory, blocksSize: 50.MILLION(), blockTxesSize: 50.MILLION(), chainStateSize: 50.MILLION());
+            return new LmdbStorageManager(TestDirectory);
         }
     }
 }

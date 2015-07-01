@@ -31,17 +31,22 @@ namespace BitSharp.Lmdb
         private bool isDisposed;
 
         public LmdbStorageManager(string baseDirectory, string[] blockTxesStorageLocations = null)
-            : this(baseDirectory, blocksSize: 4.BILLION(), blockTxesSize: 128.BILLION(), chainStateSize: 32.BILLION(), blockTxesStorageLocations: blockTxesStorageLocations)
-        {
-        }
-
-        public LmdbStorageManager(string baseDirectory, long blocksSize, long blockTxesSize, long chainStateSize, string[] blockTxesStorageLocations = null)
         {
             this.baseDirectory = baseDirectory;
             this.blockTxesStorageLocations = blockTxesStorageLocations;
-            this.blocksSize = blocksSize;
-            this.blockTxesSize = blockTxesSize;
-            this.chainStateSize = chainStateSize;
+
+            if (Environment.Is64BitProcess)
+            {
+                this.blocksSize = 4.BILLION();
+                this.blockTxesSize = 128.BILLION();
+                this.chainStateSize = 32.BILLION();
+            }
+            else
+            {
+                this.blocksSize = 100.MILLION();
+                this.blockTxesSize = 100.MILLION();
+                this.chainStateSize = 100.MILLION();
+            }
 
             this.blockStorageLock = new object();
             this.blockTxesStorageLock = new object();
