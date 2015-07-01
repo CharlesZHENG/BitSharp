@@ -15,6 +15,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using Ninject.Modules;
+using BitSharp.Core.Builders;
 
 namespace BitSharp.Core.Test
 {

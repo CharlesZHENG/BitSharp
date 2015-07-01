@@ -24,40 +24,40 @@ namespace BitSharp.Core.Builders
             var chainedHeader = chain.LastBlock;
             var blockSpentTxes = ImmutableList.CreateBuilder<UInt256>();
 
-            // ignore transactions on genesis block
-            if (chainedHeader.Height > 0)
+            foreach (var blockTx in blockTxes)
             {
-                foreach (var blockTx in blockTxes)
+                var tx = blockTx.Transaction;
+                var txIndex = blockTx.Index;
+
+                // there exist two duplicate coinbases in the blockchain, which the design assumes to be impossible
+                // ignore the first occurrences of these duplicates so that they do not need to later be deleted from the utxo, an unsupported operation
+                // no other duplicates will occur again, it is now disallowed
+                if ((chainedHeader.Height == DUPE_COINBASE_1_HEIGHT && tx.Hash == DUPE_COINBASE_1_HASH)
+                    || (chainedHeader.Height == DUPE_COINBASE_2_HEIGHT && tx.Hash == DUPE_COINBASE_2_HASH))
                 {
-                    var tx = blockTx.Transaction;
-                    var txIndex = blockTx.Index;
+                    continue;
+                }
 
-                    // there exist two duplicate coinbases in the blockchain, which the design assumes to be impossible
-                    // ignore the first occurrences of these duplicates so that they do not need to later be deleted from the utxo, an unsupported operation
-                    // no other duplicates will occur again, it is now disallowed
-                    if ((chainedHeader.Height == DUPE_COINBASE_1_HEIGHT && tx.Hash == DUPE_COINBASE_1_HASH)
-                        || (chainedHeader.Height == DUPE_COINBASE_2_HEIGHT && tx.Hash == DUPE_COINBASE_2_HASH))
+                var prevOutputTxKeys = ImmutableArray.CreateBuilder<TxLookupKey>(!blockTx.IsCoinbase ? tx.Inputs.Length : 0);
+
+                //TODO apply real coinbase rule
+                // https://github.com/bitcoin/bitcoin/blob/481d89979457d69da07edd99fba451fd42a47f5c/src/core.h#L219
+                if (!blockTx.IsCoinbase)
+                {
+                    // spend each of the transaction's inputs in the utxo
+                    for (var inputIndex = 0; inputIndex < tx.Inputs.Length; inputIndex++)
                     {
-                        continue;
+                        var input = tx.Inputs[inputIndex];
+                        var unspentTx = this.Spend(chainStateCursor, txIndex, tx, inputIndex, input, chainedHeader, blockSpentTxes);
+
+                        var unspentTxBlockHash = chain.Blocks[unspentTx.BlockIndex].Hash;
+                        prevOutputTxKeys.Add(new TxLookupKey(unspentTxBlockHash, unspentTx.TxIndex));
                     }
+                }
 
-                    var prevOutputTxKeys = ImmutableArray.CreateBuilder<TxLookupKey>(!blockTx.IsCoinbase ? tx.Inputs.Length : 0);
-
-                    //TODO apply real coinbase rule
-                    // https://github.com/bitcoin/bitcoin/blob/481d89979457d69da07edd99fba451fd42a47f5c/src/core.h#L219
-                    if (!blockTx.IsCoinbase)
-                    {
-                        // spend each of the transaction's inputs in the utxo
-                        for (var inputIndex = 0; inputIndex < tx.Inputs.Length; inputIndex++)
-                        {
-                            var input = tx.Inputs[inputIndex];
-                            var unspentTx = this.Spend(chainStateCursor, txIndex, tx, inputIndex, input, chainedHeader, blockSpentTxes);
-
-                            var unspentTxBlockHash = chain.Blocks[unspentTx.BlockIndex].Hash;
-                            prevOutputTxKeys.Add(new TxLookupKey(unspentTxBlockHash, unspentTx.TxIndex));
-                        }
-                    }
-
+                // add transaction's outputs to utxo, except for the genesis block
+                if (chainedHeader.Height > 0)
+                {
                     // mint the transaction's outputs in the utxo
                     this.Mint(chainStateCursor, tx, txIndex, chainedHeader);
 
@@ -70,14 +70,9 @@ namespace BitSharp.Core.Builders
                     chainStateCursor.TotalTxCount++;
                     chainStateCursor.TotalInputCount += tx.Inputs.Length;
                     chainStateCursor.TotalOutputCount += tx.Outputs.Length;
-
-                    yield return new LoadingTx(txIndex, tx, chainedHeader, prevOutputTxKeys.MoveToImmutable());
                 }
-            }
-            // only consume the block txes enumerator for the genesis block
-            else
-            {
-                blockTxes.Count();
+
+                yield return new LoadingTx(txIndex, tx, chainedHeader, prevOutputTxKeys.MoveToImmutable());
             }
 
             if (!chainStateCursor.TryAddBlockSpentTxes(chainedHeader.Height, blockSpentTxes.ToImmutable()))

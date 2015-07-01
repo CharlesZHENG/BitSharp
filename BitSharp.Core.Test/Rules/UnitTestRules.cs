@@ -35,7 +35,7 @@ namespace BitSharp.Core.Test.Rules
             if (ValidateTransactionAction == null)
                 base.ValidateTransaction(chainedHeader, loadedTx);
             else
-                ValidateTransaction(chainedHeader, loadedTx);
+                ValidateTransactionAction(chainedHeader, loadedTx);
         }
 
         public Action<ChainedHeader, Transaction, int, TxInput, int, TxOutput> ValidationTransactionScriptAction { get; set; }

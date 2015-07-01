@@ -20,22 +20,45 @@ namespace BitSharp.Core.Builders
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        public static async Task ValidateBlock(CoreStorage coreStorage, IBlockchainRules rules, ChainedHeader chainedHeader, ISourceBlock<LoadedTx> loadedTxes, CancellationToken cancelToken = default(CancellationToken))
+        public static async Task ValidateBlock(ICoreStorage coreStorage, IBlockchainRules rules, ChainedHeader chainedHeader, ISourceBlock<LoadedTx> loadedTxes, CancellationToken cancelToken = default(CancellationToken))
         {
+            // validate merkle root
+            var merkleStream = new MerkleStream();
+            var merkleValidator = InitMerkleValidator(merkleStream, cancelToken);
+
+            // begin feeding the merkle validator
+            loadedTxes.LinkTo(merkleValidator, new DataflowLinkOptions { PropagateCompletion = true });
+
             // validate transactions
             var txValidator = InitTxValidator(rules, chainedHeader, cancelToken);
+
+            // begin feeding the tx validator
+            merkleValidator.LinkTo(txValidator, new DataflowLinkOptions { PropagateCompletion = true });
 
             // validate scripts
             var scriptValidator = InitScriptValidator(rules, chainedHeader, cancelToken);
 
-            // begin feeding the tx validator
-            loadedTxes.LinkTo(txValidator, new DataflowLinkOptions { PropagateCompletion = true });
-
             // begin feeding the script validator
             txValidator.LinkTo(scriptValidator, new DataflowLinkOptions { PropagateCompletion = true });
 
+            await merkleValidator.Completion;
             await txValidator.Completion;
             await scriptValidator.Completion;
+
+            merkleStream.FinishPairing();
+            if (merkleStream.RootNode.Hash != chainedHeader.MerkleRoot)
+                throw new ValidationException(chainedHeader.Hash, "Failing block {0} at height {1}: Merkle root is invalid".Format2(chainedHeader.Hash.ToHexNumberString(), chainedHeader.Height));
+        }
+
+        private static TransformBlock<LoadedTx, LoadedTx> InitMerkleValidator(MerkleStream merkleStream, CancellationToken cancelToken)
+        {
+            return new TransformBlock<LoadedTx, LoadedTx>(
+                loadedTx =>
+                {
+                    merkleStream.AddNode(new MerkleTreeNode(loadedTx.TxIndex, 0, loadedTx.Transaction.Hash, false));
+                    return loadedTx;
+                },
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, SingleProducerConstrained = true });
         }
 
         private static TransformManyBlock<LoadedTx, Tuple<LoadedTx, int>> InitTxValidator(IBlockchainRules rules, ChainedHeader chainedHeader, CancellationToken cancelToken)

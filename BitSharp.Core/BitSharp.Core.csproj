@@ -134,6 +134,7 @@
     <Compile Include="Domain\LoadedTx.cs" />
     <Compile Include="Builders\LoadingTx.cs" />
     <Compile Include="Domain\IChainState.cs" />
+    <Compile Include="MerkleStream.cs" />
     <Compile Include="PruningMode.cs" />
     <Compile Include="Storage\SplitBlockTxesStorage.cs" />
     <Compile Include="Storage\CoreStorage.cs" />

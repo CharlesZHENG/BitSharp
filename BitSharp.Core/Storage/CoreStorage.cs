@@ -345,15 +345,14 @@ namespace BitSharp.Core.Storage
 
         private IEnumerable<BlockTx> ReadBlockTransactions(UInt256 blockHash, UInt256 merkleRoot, bool requireTransactions, IEnumerator<BlockTx> blockTxes)
         {
-            //TODO merkle validation should happen in BlockValidator
-            using (var blockTxesEnumerator = MerkleTree.ReadMerkleTreeNodes(merkleRoot, blockTxes.UsingAsEnumerable()).GetEnumerator())
+            using (blockTxes)
             {
                 while (true)
                 {
                     bool read;
                     try
                     {
-                        read = blockTxesEnumerator.MoveNext();
+                        read = blockTxes.MoveNext();
                     }
                     catch (MissingDataException e)
                     {
@@ -367,7 +366,7 @@ namespace BitSharp.Core.Storage
 
                     if (read)
                     {
-                        var blockTx = blockTxesEnumerator.Current;
+                        var blockTx = blockTxes.Current;
                         if (requireTransactions && blockTx.Pruned)
                         {
                             //TODO distinguish different kinds of missing: pruned and missing entirely
