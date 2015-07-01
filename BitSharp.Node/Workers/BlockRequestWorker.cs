@@ -38,8 +38,6 @@ namespace BitSharp.Node.Workers
         private int targetChainLookAhead;
         private List<ChainedHeader> targetChainQueue;
         private int targetChainQueueIndex;
-        private DateTime targetChainQueueTime;
-        private bool targetChainChanged;
 
         private readonly DurationMeasure blockRequestDurationMeasure;
         private readonly RateMeasure blockDownloadRateMeasure;
@@ -160,15 +158,6 @@ namespace BitSharp.Node.Workers
 
         private void UpdateTargetChainQueue()
         {
-            // force update if the target chain changed
-            if (this.targetChainChanged)
-                this.targetChainChanged = false;
-            // update the target chain queue at most once per second
-            else if (this.targetChainQueueTime != null && DateTime.UtcNow - targetChainQueueTime < TimeSpan.FromSeconds(1))
-                return;
-
-            this.targetChainQueueTime = DateTime.UtcNow;
-
             var currentChainLocal = this.coreDaemon.CurrentChain;
             var targetChainLocal = this.coreDaemon.TargetChain;
 
@@ -395,7 +384,6 @@ namespace BitSharp.Node.Workers
             logger.Info("blockRequestsByPeer.InnerCount: {0:#,##0}".Format2(this.blockRequestsByPeer.Sum(x => x.Value.Count)));
             logger.Info("targetChainQueue.Count: {0:#,##0}".Format2(this.targetChainQueue.Count));
             logger.Info("targetChainQueueIndex: {0:#,##0}".Format2(this.targetChainQueueIndex));
-            logger.Info("targetChainQueueTime: {0}".Format2(this.targetChainQueueTime));
             logger.Info("blockRequestDurationMeasure: {0}".Format2(this.blockRequestDurationMeasure.GetAverage()));
             logger.Info("blockDownloadRateMeasure: {0}/s".Format2(this.blockDownloadRateMeasure.GetAverage(TimeSpan.FromSeconds(1))));
             logger.Info("duplicateBlockDownloadCountMeasure: {0}/s".Format2(this.duplicateBlockDownloadCountMeasure.GetCount()));
@@ -422,7 +410,6 @@ namespace BitSharp.Node.Workers
 
         private void HandleTargetChainChanged(object sender, EventArgs e)
         {
-            this.targetChainChanged = true;
             this.NotifyWork();
         }
 
