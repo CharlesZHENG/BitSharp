@@ -5,7 +5,6 @@ using BitSharp.Core.Domain;
 using BitSharp.Core.Rules;
 using BitSharp.Core.Storage;
 using BitSharp.Core.Workers;
-using Ninject;
 using NLog;
 using System;
 using System.Diagnostics;

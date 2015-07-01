@@ -13,7 +13,6 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
-using BitSharp.Esent.ChainState;
 
 namespace BitSharp.Esent
 {

@@ -1,5 +1,4 @@
 ﻿using BitSharp.Core.Domain;
-using BitSharp.Core.Storage.Memory;
 using NLog;
 using System;
 using System.Collections.Generic;

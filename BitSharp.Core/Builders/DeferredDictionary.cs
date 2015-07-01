@@ -1,14 +1,8 @@
-﻿using BitSharp.Common;
-using BitSharp.Common.ExtensionMethods;
-using NLog;
+﻿using NLog;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace BitSharp.Core.Builders
 {

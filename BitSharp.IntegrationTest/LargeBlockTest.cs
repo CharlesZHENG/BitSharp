@@ -1,15 +1,8 @@
 ﻿using BitSharp.Common.ExtensionMethods;
-using BitSharp.Core;
-using BitSharp.Core.Domain;
 using BitSharp.Core.Test;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using NLog;
 using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BitSharp.IntegrationTest
 {

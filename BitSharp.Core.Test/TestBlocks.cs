@@ -2,13 +2,9 @@
 using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Builders;
 using BitSharp.Core.Domain;
-using BitSharp.Core.Rules;
 using BitSharp.Core.Script;
-using BitSharp.Core.Storage;
-using BitSharp.Core.Storage.Memory;
 using BitSharp.Core.Test.Rules;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Ninject;
 using NLog;
 using Org.BouncyCastle.Crypto.Parameters;
 using System;

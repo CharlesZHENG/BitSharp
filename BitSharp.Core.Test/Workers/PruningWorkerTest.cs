@@ -2,7 +2,6 @@
 using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Builders;
 using BitSharp.Core.Domain;
-using BitSharp.Core.Storage;
 using BitSharp.Core.Storage.Memory;
 using BitSharp.Core.Test.Rules;
 using BitSharp.Core.Workers;

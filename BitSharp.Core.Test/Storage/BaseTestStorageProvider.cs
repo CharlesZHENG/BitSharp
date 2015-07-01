@@ -1,11 +1,7 @@
 ﻿using BitSharp.Core.Storage;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BitSharp.Core.Test.Storage
 {

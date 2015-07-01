@@ -5,16 +5,11 @@ using BitSharp.Core.Rules;
 using BitSharp.Core.Storage;
 using NLog;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
-using System.Reactive.Linq;
-using System.Reactive;
-using System.Reactive.Disposables;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace BitSharp.Core.Builders

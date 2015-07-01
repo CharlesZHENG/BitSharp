@@ -1,8 +1,5 @@
-﻿using BitSharp.Common.ExtensionMethods;
-using BitSharp.Core.Storage;
+﻿using BitSharp.Core.Storage;
 using BitSharp.Core.Test.Storage;
-using System;
-using System.IO;
 
 namespace BitSharp.Lmdb.Test
 {

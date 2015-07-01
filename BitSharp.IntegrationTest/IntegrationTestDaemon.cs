@@ -1,24 +1,11 @@
-﻿using BitSharp.Common;
-using BitSharp.Common.ExtensionMethods;
+﻿using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Domain;
 using BitSharp.Core.Rules;
-using BitSharp.Core.Script;
-using BitSharp.Core.Storage;
-using BitSharp.Core.Storage.Memory;
-using BitSharp.Core.Test.Rules;
 using BitSharp.Esent;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Ninject;
-using NLog;
-using Org.BouncyCastle.Crypto.Parameters;
-using System;
-using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.IO;
-using BitSharp.IntegrationTest;
-using BitSharp.Node;
 using BitSharp.Lmdb;
+using BitSharp.Node;
 using Ninject.Modules;
+using NLog;
 
 namespace BitSharp.Core.Test
 {

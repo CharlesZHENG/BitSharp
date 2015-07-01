@@ -1,7 +1,6 @@
 ﻿using BitSharp.Common;
 using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Domain;
-using BitSharp.Core.Storage;
 using NLog;
 using System;
 using System.Collections.Generic;

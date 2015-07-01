@@ -1,6 +1,5 @@
 ﻿using BitSharp.Common;
 using BitSharp.Core.Domain;
-using BitSharp.Core.Rules;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;

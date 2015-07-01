@@ -4,7 +4,6 @@ using BitSharp.Core;
 using BitSharp.Core.Rules;
 using BitSharp.Core.Storage.Memory;
 using BitSharp.Core.Test;
-using BitSharp.Core.Test.Storage;
 using BitSharp.Node;
 using BitSharp.Node.Network;
 using BitSharp.Node.Storage.Memory;
