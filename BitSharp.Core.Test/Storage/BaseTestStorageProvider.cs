@@ -65,7 +65,7 @@ namespace BitSharp.Core.Test.Storage
                 if (!Directory.Exists(path))
                     Directory.CreateDirectory(path);
             }
-            catch (IOException) { }
+            catch (Exception) { }
         }
 
         private static void DeleteDirectory(string path)
@@ -75,7 +75,7 @@ namespace BitSharp.Core.Test.Storage
                 if (Directory.Exists(path))
                     Directory.Delete(path, recursive: true);
             }
-            catch (IOException) { }
+            catch (Exception) { }
         }
 
         private static void CleanCreateDirectory(string path)
