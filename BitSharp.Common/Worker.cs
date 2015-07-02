@@ -442,6 +442,9 @@ namespace BitSharp.Common
                             var errorHandler = this.OnWorkError;
                             if (errorHandler != null)
                                 errorHandler(ex);
+
+                            // throttle on leaked exception
+                            Thread.Sleep(TimeSpan.FromSeconds(1));
                         }
                     }
                     finally
