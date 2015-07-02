@@ -18,7 +18,7 @@ namespace BitSharp.Core.Builders
         {
             // validate merkle root
             var merkleStream = new MerkleStream();
-            var merkleValidator = InitMerkleValidator(merkleStream, cancelToken);
+            var merkleValidator = InitMerkleValidator(chainedHeader, merkleStream, cancelToken);
 
             // begin feeding the merkle validator
             loadedTxes.LinkTo(merkleValidator, new DataflowLinkOptions { PropagateCompletion = true });
@@ -39,17 +39,33 @@ namespace BitSharp.Core.Builders
             await txValidator.Completion;
             await scriptValidator.Completion;
 
-            merkleStream.FinishPairing();
+            try
+            {
+                merkleStream.FinishPairing();
+            }
+            //TODO
+            catch (InvalidOperationException)
+            {
+                throw CreateMerkleRootException(chainedHeader);
+            }
             if (merkleStream.RootNode.Hash != chainedHeader.MerkleRoot)
-                throw new ValidationException(chainedHeader.Hash, "Failing block {0} at height {1}: Merkle root is invalid".Format2(chainedHeader.Hash.ToHexNumberString(), chainedHeader.Height));
+                throw CreateMerkleRootException(chainedHeader);
         }
 
-        private static TransformBlock<LoadedTx, LoadedTx> InitMerkleValidator(MerkleStream merkleStream, CancellationToken cancelToken)
+        private static TransformBlock<LoadedTx, LoadedTx> InitMerkleValidator(ChainedHeader chainedHeader, MerkleStream merkleStream, CancellationToken cancelToken)
         {
             return new TransformBlock<LoadedTx, LoadedTx>(
                 loadedTx =>
                 {
-                    merkleStream.AddNode(new MerkleTreeNode(loadedTx.TxIndex, 0, loadedTx.Transaction.Hash, false));
+                    try
+                    {
+                        merkleStream.AddNode(new MerkleTreeNode(loadedTx.TxIndex, 0, loadedTx.Transaction.Hash, false));
+                    }
+                    //TODO
+                    catch (InvalidOperationException)
+                    {
+                        throw CreateMerkleRootException(chainedHeader);
+                    }
                     return loadedTx;
                 },
                 new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, SingleProducerConstrained = true });
@@ -104,6 +120,11 @@ namespace BitSharp.Core.Builders
                     }
                 },
                 new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, MaxDegreeOfParallelism = 16, SingleProducerConstrained = true });
+        }
+
+        private static ValidationException CreateMerkleRootException(ChainedHeader chainedHeader)
+        {
+            return new ValidationException(chainedHeader.Hash, "Failing block {0} at height {1}: Merkle root is invalid".Format2(chainedHeader.Hash.ToHexNumberString(), chainedHeader.Height));
         }
     }
 }
