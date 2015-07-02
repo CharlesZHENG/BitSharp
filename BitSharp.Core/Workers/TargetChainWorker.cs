@@ -19,9 +19,7 @@ namespace BitSharp.Core.Workers
         private readonly IBlockchainRules rules;
         private readonly CoreStorage coreStorage;
 
-        private readonly ManualResetEventSlim updatedEvent = new ManualResetEventSlim();
-        private readonly object changedLock = new object();
-        private long changed;
+        private readonly UpdatedTracker updatedTracker = new UpdatedTracker();
 
         private ChainedHeader targetBlock;
         private Chain targetChain;
@@ -47,12 +45,12 @@ namespace BitSharp.Core.Workers
 
         public void WaitForUpdate()
         {
-            this.updatedEvent.Wait();
+            this.updatedTracker.WaitForUpdate();
         }
 
         public bool WaitForUpdate(TimeSpan timeout)
         {
-            return this.updatedEvent.Wait(timeout);
+            return this.updatedTracker.WaitForUpdate(timeout);
         }
 
         protected override void WorkAction()
@@ -79,61 +77,48 @@ namespace BitSharp.Core.Workers
 
         private void UpdateTargetChain()
         {
-            try
+            using (updatedTracker.TryUpdate(staleAction: NotifyWork))
             {
-                long origChanged;
-                lock (this.changedLock)
-                    origChanged = this.changed;
-
-                var targetBlockLocal = this.targetBlock;
-                var targetChainLocal = this.targetChain;
-
-                if (targetBlockLocal != null &&
-                    (targetChainLocal == null || targetBlockLocal.Hash != targetChainLocal.LastBlock.Hash))
+                try
                 {
-                    var newTargetChain =
-                        targetChainLocal != null
-                            ? targetChainLocal.ToBuilder()
-                            : new ChainBuilder(Chain.CreateForGenesisBlock(this.rules.GenesisChainedHeader));
+                    var targetBlockLocal = this.targetBlock;
+                    var targetChainLocal = this.targetChain;
 
-                    var deltaBlockPath = new BlockchainWalker().GetBlockchainPath(newTargetChain.LastBlock, targetBlockLocal, blockHash => this.coreStorage.GetChainedHeader(blockHash));
-
-                    foreach (var rewindBlock in deltaBlockPath.RewindBlocks)
+                    if (targetBlockLocal != null &&
+                        (targetChainLocal == null || targetBlockLocal.Hash != targetChainLocal.LastBlock.Hash))
                     {
-                        newTargetChain.RemoveBlock(rewindBlock);
+                        var newTargetChain =
+                            targetChainLocal != null
+                                ? targetChainLocal.ToBuilder()
+                                : new ChainBuilder(Chain.CreateForGenesisBlock(this.rules.GenesisChainedHeader));
+
+                        var deltaBlockPath = new BlockchainWalker().GetBlockchainPath(newTargetChain.LastBlock, targetBlockLocal, blockHash => this.coreStorage.GetChainedHeader(blockHash));
+
+                        foreach (var rewindBlock in deltaBlockPath.RewindBlocks)
+                        {
+                            newTargetChain.RemoveBlock(rewindBlock);
+                        }
+
+                        foreach (var advanceBlock in deltaBlockPath.AdvanceBlocks)
+                        {
+                            newTargetChain.AddBlock(advanceBlock);
+                        }
+
+                        logger.Debug("Winning chained block {0} at height {1}, total work: {2}".Format2(newTargetChain.LastBlock.Hash.ToHexNumberString(), newTargetChain.Height, newTargetChain.LastBlock.TotalWork.ToString("X")));
+                        this.targetChain = newTargetChain.ToImmutable();
+
+                        var handler = this.OnTargetChainChanged;
+                        if (handler != null)
+                            handler();
                     }
-
-                    foreach (var advanceBlock in deltaBlockPath.AdvanceBlocks)
-                    {
-                        newTargetChain.AddBlock(advanceBlock);
-                    }
-
-                    logger.Debug("Winning chained block {0} at height {1}, total work: {2}".Format2(newTargetChain.LastBlock.Hash.ToHexNumberString(), newTargetChain.Height, newTargetChain.LastBlock.TotalWork.ToString("X")));
-                    this.targetChain = newTargetChain.ToImmutable();
-
-                    var handler = this.OnTargetChainChanged;
-                    if (handler != null)
-                        handler();
                 }
-
-                lock (this.changedLock)
-                {
-                    if (this.changed == origChanged)
-                        this.updatedEvent.Set();
-                    else
-                        this.NotifyWork();
-                }
+                catch (MissingDataException) { }
             }
-            catch (MissingDataException) { }
         }
 
         private void HandleChanged()
         {
-            lock (this.changedLock)
-            {
-                this.changed++;
-                this.updatedEvent.Reset();
-            }
+            updatedTracker.MarkStale();
             this.NotifyWork();
         }
 

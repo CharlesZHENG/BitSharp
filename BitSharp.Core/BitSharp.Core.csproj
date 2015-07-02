@@ -197,6 +197,7 @@
     <Compile Include="Storage\Memory\MemoryStorageModule.cs" />
     <Compile Include="Storage\Memory\MemoryChainStateCursor.cs" />
     <Compile Include="MissingDataException.cs" />
+    <Compile Include="UpdatedTracker.cs" />
     <Compile Include="ValidationException.cs" />
     <Compile Include="Workers\ChainStateWorker.cs" />
     <Compile Include="Workers\DefragWorker.cs" />

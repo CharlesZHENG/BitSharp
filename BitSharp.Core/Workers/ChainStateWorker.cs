@@ -22,9 +22,7 @@ namespace BitSharp.Core.Workers
         private readonly IBlockchainRules rules;
         private readonly CoreStorage coreStorage;
 
-        private readonly ManualResetEventSlim updatedEvent = new ManualResetEventSlim();
-        private readonly object changedLock = new object();
-        private long changed;
+        private readonly UpdatedTracker updatedTracker = new UpdatedTracker();
 
         private readonly DurationMeasure blockProcessingDurationMeasure;
         private readonly CountMeasure blockMissCountMeasure;
@@ -81,12 +79,12 @@ namespace BitSharp.Core.Workers
 
         public void WaitForUpdate()
         {
-            this.updatedEvent.Wait();
+            this.updatedTracker.WaitForUpdate();
         }
 
         public bool WaitForUpdate(TimeSpan timeout)
         {
-            return this.updatedEvent.Wait(timeout);
+            return this.updatedTracker.WaitForUpdate(timeout);
         }
 
         protected override void SubDispose()
@@ -103,76 +101,67 @@ namespace BitSharp.Core.Workers
 
         protected override void WorkAction()
         {
-            try
+            using (updatedTracker.TryUpdate(staleAction: NotifyWork))
             {
-                long origChanged;
-                lock (this.changedLock)
-                    origChanged = this.changed;
-
-                // calculate the new blockchain along the target path
-                var didWork = false;
-                foreach (var pathElement in this.chainStateBuilder.Chain.NavigateTowards(() => this.targetChainWorker.TargetChain)
-                    .Where(pathElement => pathElement.Item2.Height <= (MaxHeight ?? int.MaxValue)))
+                try
                 {
-                    // cooperative loop
-                    this.ThrowIfCancelled();
-
-                    // get block and metadata for next link in blockchain
-                    var direction = pathElement.Item1;
-                    var chainedHeader = pathElement.Item2;
-                    IEnumerator<BlockTx> blockTxes;
-                    if (!this.coreStorage.TryReadBlockTransactions(chainedHeader.Hash, /*requireTransaction:*/true, out blockTxes))
+                    // calculate the new blockchain along the target path
+                    var didWork = false;
+                    foreach (var pathElement in this.chainStateBuilder.Chain.NavigateTowards(() => this.targetChainWorker.TargetChain)
+                        .Where(pathElement => pathElement.Item2.Height <= (MaxHeight ?? int.MaxValue)))
                     {
-                        RaiseBlockMissed(chainedHeader.Hash);
-                        break;
+                        // cooperative loop
+                        this.ThrowIfCancelled();
+
+                        // get block and metadata for next link in blockchain
+                        var direction = pathElement.Item1;
+                        var chainedHeader = pathElement.Item2;
+                        IEnumerator<BlockTx> blockTxes;
+                        if (!this.coreStorage.TryReadBlockTransactions(chainedHeader.Hash, /*requireTransaction:*/true, out blockTxes))
+                        {
+                            RaiseBlockMissed(chainedHeader.Hash);
+                            break;
+                        }
+
+                        didWork = true;
+
+                        var blockStopwatch = Stopwatch.StartNew();
+                        if (direction > 0)
+                        {
+                            this.chainStateBuilder.AddBlock(chainedHeader, blockTxes.UsingAsEnumerable());
+                        }
+                        else if (direction < 0)
+                        {
+                            logger.Info("Rolling back block {0:#,##0}: {1}".Format2(chainedHeader.Height, chainedHeader.Hash));
+                            this.chainStateBuilder.RollbackBlock(chainedHeader, blockTxes.UsingAsEnumerable());
+                        }
+                        else
+                        {
+                            throw new InvalidOperationException();
+                        }
+                        blockStopwatch.Stop();
+                        this.blockProcessingDurationMeasure.Tick(blockStopwatch.Elapsed);
+
+                        this.currentChain = this.chainStateBuilder.Chain;
+
+                        var handler = this.OnChainStateChanged;
+                        if (handler != null)
+                            handler();
                     }
 
-                    didWork = true;
-
-                    var blockStopwatch = Stopwatch.StartNew();
-                    if (direction > 0)
-                    {
-                        this.chainStateBuilder.AddBlock(chainedHeader, blockTxes.UsingAsEnumerable());
-                    }
-                    else if (direction < 0)
-                    {
-                        logger.Info("Rolling back block {0:#,##0}: {1}".Format2(chainedHeader.Height, chainedHeader.Hash));
-                        this.chainStateBuilder.RollbackBlock(chainedHeader, blockTxes.UsingAsEnumerable());
-                    }
-                    else
-                    {
-                        throw new InvalidOperationException();
-                    }
-                    blockStopwatch.Stop();
-                    this.blockProcessingDurationMeasure.Tick(blockStopwatch.Elapsed);
-
-                    this.currentChain = this.chainStateBuilder.Chain;
-
-                    var handler = this.OnChainStateChanged;
-                    if (handler != null)
-                        handler();
+                    if (didWork)
+                        this.chainStateBuilder.LogBlockchainProgress();
                 }
-
-                if (didWork)
-                    this.chainStateBuilder.LogBlockchainProgress();
-
-                lock (this.changedLock)
+                catch (OperationCanceledException) { }
+                catch (AggregateException ex)
                 {
-                    if (this.changed == origChanged)
-                        this.updatedEvent.Set();
-                    else
-                        this.NotifyWork();
+                    foreach (var innerException in ex.Flatten().InnerExceptions)
+                        HandleException(innerException);
                 }
-            }
-            catch (OperationCanceledException) { }
-            catch (AggregateException ex)
-            {
-                foreach (var innerException in ex.Flatten().InnerExceptions)
-                    HandleException(innerException);
-            }
-            catch (Exception ex)
-            {
-                HandleException(ex);
+                catch (Exception ex)
+                {
+                    HandleException(ex);
+                }
             }
         }
 
@@ -193,6 +182,7 @@ namespace BitSharp.Core.Workers
                 {
                     // mark block as invalid
                     this.coreStorage.MarkBlockInvalid(validationException.BlockHash);
+                    updatedTracker.MarkStale();
                 }
             }
 
@@ -201,11 +191,7 @@ namespace BitSharp.Core.Workers
 
         private void HandleChanged()
         {
-            lock (this.changedLock)
-            {
-                this.changed++;
-                this.updatedEvent.Reset();
-            }
+            updatedTracker.MarkStale();
             this.NotifyWork();
         }
 

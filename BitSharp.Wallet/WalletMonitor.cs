@@ -24,9 +24,7 @@ namespace BitSharp.Wallet
         private ChainBuilder chainBuilder;
         private int walletHeight;
 
-        private readonly ManualResetEventSlim updatedEvent = new ManualResetEventSlim();
-        private readonly object changedLock = new object();
-        private long changed;
+        private readonly UpdatedTracker updatedTracker = new UpdatedTracker();
 
         // addresses
         private readonly Dictionary<UInt256, List<MonitoredWalletAddress>> addressesByOutputScriptHash;
@@ -123,20 +121,17 @@ namespace BitSharp.Wallet
 
         public void WaitForUpdate()
         {
-            this.updatedEvent.Wait();
+            this.updatedTracker.WaitForUpdate();
         }
 
         public bool WaitForUpdate(TimeSpan timeout)
         {
-            return this.updatedEvent.Wait(timeout);
+            return this.updatedTracker.WaitForUpdate(timeout);
         }
 
         protected override void WorkAction()
         {
-            long origChanged;
-            lock (this.changedLock)
-                origChanged = this.changed;
-
+            using (updatedTracker.TryUpdate(staleAction: NotifyWork))
             using (var chainState = this.coreDaemon.GetChainState())
             {
                 var stopwatch = Stopwatch.StartNew();
@@ -176,14 +171,6 @@ namespace BitSharp.Wallet
                         break;
                     }
                 }
-            }
-
-            lock (this.changedLock)
-            {
-                if (this.changed == origChanged)
-                    this.updatedEvent.Set();
-                else
-                    this.NotifyWork();
             }
         }
 
@@ -271,11 +258,7 @@ namespace BitSharp.Wallet
 
         private void HandleChainStateChanged(object sender, EventArgs e)
         {
-            lock (this.changedLock)
-            {
-                this.changed++;
-                this.updatedEvent.Reset();
-            }
+            updatedTracker.MarkStale();
             this.NotifyWork();
         }
     }
