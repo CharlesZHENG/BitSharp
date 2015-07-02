@@ -130,7 +130,7 @@ namespace BitSharp.Core.Builders
 
                     return new LoadingTx(txIndex, tx, replayBlock, prevOutputTxKeys.MoveToImmutable());
                 },
-                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, SingleProducerConstrained = true });
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken });
         }
     }
 }

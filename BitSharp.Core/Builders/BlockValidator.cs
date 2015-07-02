@@ -68,7 +68,7 @@ namespace BitSharp.Core.Builders
                     }
                     return loadedTx;
                 },
-                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, SingleProducerConstrained = true });
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken });
         }
 
         private static TransformManyBlock<LoadedTx, Tuple<LoadedTx, int>> InitTxValidator(IBlockchainRules rules, ChainedHeader chainedHeader, CancellationToken cancelToken)
@@ -89,7 +89,7 @@ namespace BitSharp.Core.Builders
                     else
                         return new Tuple<LoadedTx, int>[0];
                 },
-                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, MaxDegreeOfParallelism = 16, SingleProducerConstrained = true });
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, MaxDegreeOfParallelism = 16 });
         }
 
         private static ActionBlock<Tuple<LoadedTx, int>> InitScriptValidator(IBlockchainRules rules, ChainedHeader chainedHeader, CancellationToken cancelToken)
@@ -119,7 +119,7 @@ namespace BitSharp.Core.Builders
                         }
                     }
                 },
-                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, MaxDegreeOfParallelism = 16, SingleProducerConstrained = true });
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, MaxDegreeOfParallelism = 16 });
         }
 
         private static ValidationException CreateMerkleRootException(ChainedHeader chainedHeader)

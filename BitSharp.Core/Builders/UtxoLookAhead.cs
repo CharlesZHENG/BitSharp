@@ -87,7 +87,7 @@ namespace BitSharp.Core.Builders
 
                     return txHashes;
                 },
-                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, SingleProducerConstrained = true });
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken });
         }
 
         private static TransformManyBlock<Tuple<UInt256, CompletionCount>, object> InitWarmupUtxo(IDeferredChainStateCursor deferredChainStateCursor, CancellationToken cancelToken)
@@ -106,7 +106,7 @@ namespace BitSharp.Core.Builders
                     else
                         return new object[0];
                 },
-                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, MaxDegreeOfParallelism = 16, SingleProducerConstrained = true });
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, MaxDegreeOfParallelism = 16 });
         }
 
         private static TransformManyBlock<object, BlockTx> InitForwardWarmedTxes(ConcurrentQueue<Tuple<BlockTx, CompletionCount>> pendingWarmedTxes, CancellationToken cancelToken)
@@ -126,7 +126,7 @@ namespace BitSharp.Core.Builders
 
                     return warmedTxes;
                 },
-                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, SingleProducerConstrained = true });
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken });
         }
     }
 }
