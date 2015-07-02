@@ -29,15 +29,6 @@ namespace BitSharp.Core.Builders
                 var tx = blockTx.Transaction;
                 var txIndex = blockTx.Index;
 
-                // there exist two duplicate coinbases in the blockchain, which the design assumes to be impossible
-                // ignore the first occurrences of these duplicates so that they do not need to later be deleted from the utxo, an unsupported operation
-                // no other duplicates will occur again, it is now disallowed
-                if ((chainedHeader.Height == DUPE_COINBASE_1_HEIGHT && tx.Hash == DUPE_COINBASE_1_HASH)
-                    || (chainedHeader.Height == DUPE_COINBASE_2_HEIGHT && tx.Hash == DUPE_COINBASE_2_HASH))
-                {
-                    continue;
-                }
-
                 var prevOutputTxKeys = ImmutableArray.CreateBuilder<TxLookupKey>(!blockTx.IsCoinbase ? tx.Inputs.Length : 0);
 
                 //TODO apply real coinbase rule
@@ -55,8 +46,14 @@ namespace BitSharp.Core.Builders
                     }
                 }
 
-                // add transaction's outputs to utxo, except for the genesis block
-                if (chainedHeader.Height > 0)
+                // there exist two duplicate coinbases in the blockchain, which the design assumes to be impossible
+                // ignore the first occurrences of these duplicates so that they do not need to later be deleted from the utxo, an unsupported operation
+                // no other duplicates will occur again, it is now disallowed
+                var isDupeCoinbase = ((chainedHeader.Height == DUPE_COINBASE_1_HEIGHT && tx.Hash == DUPE_COINBASE_1_HASH)
+                    || (chainedHeader.Height == DUPE_COINBASE_2_HEIGHT && tx.Hash == DUPE_COINBASE_2_HASH));
+
+                // add transaction's outputs to utxo, except for the genesis block and the duplicate coinbases
+                if (chainedHeader.Height > 0 && !isDupeCoinbase)
                 {
                     // mint the transaction's outputs in the utxo
                     this.Mint(chainStateCursor, tx, txIndex, chainedHeader);
