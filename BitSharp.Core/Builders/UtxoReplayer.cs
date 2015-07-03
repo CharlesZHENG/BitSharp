@@ -88,19 +88,33 @@ namespace BitSharp.Core.Builders
                 throw new MissingDataException(replayBlock.Hash);
             }
 
-            var lookupLoadingTx = InitLookupLoadingTx(chainState, replayBlock, cancelToken);
-
             var blockTxesBuffer = new BufferBlock<BlockTx>();
-            blockTxesBuffer.LinkTo(lookupLoadingTx, new DataflowLinkOptions { PropagateCompletion = true });
-
             if (replayForward)
                 blockTxesBuffer.SendAndCompleteAsync(blockTxes.UsingAsEnumerable(), cancelToken);
             else
                 blockTxesBuffer.SendAndCompleteAsync(blockTxes.UsingAsEnumerable().Reverse(), cancelToken);
 
-            return lookupLoadingTx;
+            // prepare a split/combine to lookup txes in parallel and return them in order
+            TransformBlock<BlockTx, BlockTx> blockTxSplitter; TransformManyBlock<LoadingTx, LoadingTx> loadingTxCombiner;
+            SplitCombineBlock.Create<BlockTx, LoadingTx, UInt256>(
+                blockTx => blockTx.Transaction.Hash,
+                loadingTx => loadingTx.Transaction.Hash,
+                out blockTxSplitter, out loadingTxCombiner);
+
+            // capture the original order of block txes
+            blockTxesBuffer.LinkTo(blockTxSplitter, new DataflowLinkOptions { PropagateCompletion = true });
+
+            // begin looking up txes
+            var lookupLoadingTx = InitLookupLoadingTx(chainState, replayBlock, cancelToken);
+            blockTxSplitter.LinkTo(lookupLoadingTx, new DataflowLinkOptions { PropagateCompletion = true });
+
+            // sort looked up txes
+            lookupLoadingTx.LinkTo(loadingTxCombiner, new DataflowLinkOptions { PropagateCompletion = true });
+
+            return loadingTxCombiner;
         }
 
+        //TODO this should lookup in parallel and then get sorted, like TxLoader, etc.
         private static TransformBlock<BlockTx, LoadingTx> InitLookupLoadingTx(IChainState chainState, ChainedHeader replayBlock, CancellationToken cancelToken)
         {
             return new TransformBlock<BlockTx, LoadingTx>(
@@ -130,7 +144,7 @@ namespace BitSharp.Core.Builders
 
                     return new LoadingTx(txIndex, tx, replayBlock, prevOutputTxKeys.MoveToImmutable());
                 },
-                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken });
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, MaxDegreeOfParallelism = 16 });
         }
     }
 }

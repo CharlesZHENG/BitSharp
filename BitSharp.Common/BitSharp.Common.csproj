@@ -112,6 +112,7 @@
     <Compile Include="RIPEMD160Static.cs" />
     <Compile Include="SHA256Static.cs" />
     <Compile Include="SortedValueDictionary.cs" />
+    <Compile Include="SplitCombineBlock.cs" />
     <Compile Include="Throttler.cs" />
     <Compile Include="UInt256.cs" />
     <Compile Include="Worker.cs" />
