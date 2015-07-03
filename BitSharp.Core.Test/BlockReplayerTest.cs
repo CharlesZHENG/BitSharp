@@ -14,9 +14,6 @@ namespace BitSharp.Core.Test
     [TestClass]
     public class BlockReplayerTest
     {
-        //TODO this is copied in source multiple times
-        private const UInt64 SATOSHI_PER_BTC = 100 * 1000 * 1000;
-
         [TestMethod]
         [Timeout(300000/*ms*/)]
         public void TestReplayBlock()
@@ -41,7 +38,10 @@ namespace BitSharp.Core.Test
                         {
                             var actualTransactions = actualTransactionsQueue.GetConsumingEnumerable().ToList();
 
-                            CollectionAssert.AreEqual(expectedTransactions, actualTransactions, new TxHashComparer(), "Transactions differ at block {0:#,##0}".Format2(blockHeight));
+                            CollectionAssert.AreEqual(
+                                expectedTransactions.Select(x => x.Hash).ToList(),
+                                actualTransactions.Select(x => x.Transaction.Hash).ToList(),
+                                "Transactions differ at block {0:#,##0}".Format2(blockHeight));
                         }
                     }
                 }
@@ -154,16 +154,6 @@ namespace BitSharp.Core.Test
                         Assert.AreEqual(0, replayTransactions[1].InputTxes.Length);
                     }
                 }
-            }
-        }
-
-        private sealed class TxHashComparer : IComparer
-        {
-            public int Compare(object x, object y)
-            {
-                var txX = (Transaction)x;
-                var txY = (LoadedTx)y;
-                return txX.Hash.CompareTo(txY.Transaction.Hash);
             }
         }
     }
