@@ -30,6 +30,10 @@ namespace BitSharp.Core.Domain
 
         int TotalOutputCount { get; }
 
+        bool ContainsHeader(UInt256 blockHash);
+
+        bool TryGetHeader(UInt256 blockHash, out ChainedHeader header);
+
         /// <summary>
         /// Determine whether an unspent transaction is present.
         /// </summary>

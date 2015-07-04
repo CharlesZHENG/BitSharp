@@ -19,7 +19,7 @@ namespace BitSharp.Core.Builders
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly IBlockchainRules rules;
-        private readonly CoreStorage coreStorage;
+        private readonly ICoreStorage coreStorage;
         private readonly IStorageManager storageManager;
 
         private bool inTransaction;
@@ -33,11 +33,11 @@ namespace BitSharp.Core.Builders
 
         private readonly BuilderStats stats;
 
-        public ChainStateBuilder(IBlockchainRules rules, CoreStorage coreStorage)
+        public ChainStateBuilder(IBlockchainRules rules, ICoreStorage coreStorage, IStorageManager storageManager)
         {
             this.rules = rules;
             this.coreStorage = coreStorage;
-            this.storageManager = coreStorage.StorageManager;
+            this.storageManager = storageManager;
 
             this.stats = new BuilderStats();
 
@@ -48,16 +48,12 @@ namespace BitSharp.Core.Builders
             try
             {
                 var chainTip = chainStateCursor.ChainTip;
-                if (chainTip != null)
-                {
-                    Chain chainTipChain;
-                    if (!coreStorage.TryReadChain(chainTip.Hash, out chainTipChain))
-                        throw new InvalidOperationException();
 
-                    this.chain = chainTipChain.ToBuilder();
-                }
-                else
-                    this.chain = new ChainBuilder();
+                Chain chainTipChain;
+                if (!TryReadChain(chainTip != null ? chainTip.Hash : null, out chainTipChain))
+                    throw new InvalidOperationException();
+
+                this.chain = chainTipChain.ToBuilder();
             }
             finally
             {
@@ -119,7 +115,7 @@ namespace BitSharp.Core.Builders
                         {
                             if (!loadingTx.IsCoinbase)
                                 loadedTxInputCount += loadingTx.InputTxes.Length;
-                            
+
                             return loadingTx;
                         });
                         loadedTxes.LinkTo(loadedTxInputsCounter, new DataflowLinkOptions { PropagateCompletion = true });
@@ -155,6 +151,7 @@ namespace BitSharp.Core.Builders
                             // apply the changes, do not yet commit
                             deferredChainStateCursor.ApplyChangesToParent(this.chainStateCursor);
                             this.chainStateCursor.ChainTip = chainedHeader;
+                            this.chainStateCursor.TryAddHeader(chainedHeader);
                         });
 
                         // wait for block validation to complete, any exceptions that ocurred will be thrown
@@ -313,9 +310,10 @@ namespace BitSharp.Core.Builders
                     new string('-', 80),
                     "Height: {0,10} | Duration: {1} /*| Validation: {2} */| Blocks/s: {3,7} | Tx/s: {4,7} | Inputs/s: {5,7} | Processed Tx: {6,7} | Processed Inputs: {7,7} | Utx Size: {8,7} | Utxo Size: {9,7}",
                     new string('-', 80),
-                    "Avg. Prev Tx Load Time: {10,12:#,##0.000}ms",
-                    "Prev Tx Load Rate:  {11,12:#,##0}/s",
-                    new string('-', 80),
+                //TODO stats come from CoreStorage, not exposed on ICoreStorage, stats need to be moved
+                //"Avg. Prev Tx Load Time: {10,12:#,##0.000}ms",
+                //"Prev Tx Load Rate:  {11,12:#,##0}/s",
+                //new string('-', 80),
                     "Avg. Prev Txes per Block:                  {12,12:#,##0}",
                     "Avg. Pending Prev Txes at UTXO Completion: {13,12:#,##0}",
                     new string('-', 80),
@@ -338,8 +336,9 @@ namespace BitSharp.Core.Builders
                 /*7*/ this.chainStateCursor.TotalInputCount.ToString("#,##0"),
                 /*8*/ this.chainStateCursor.UnspentTxCount.ToString("#,##0"),
                 /*9*/ this.chainStateCursor.UnspentOutputCount.ToString("#,##0"),
-                /*10*/ this.coreStorage.GetTxLoadDuration().TotalMilliseconds,
-                /*11*/ this.coreStorage.GetTxLoadRate(),
+                //TODO stats come from CoreStorage, not exposed on ICoreStorage, stats need to be moved
+                /*10*/ 0, //this.coreStorage.GetTxLoadDuration().TotalMilliseconds,
+                /*11*/ 0, //this.coreStorage.GetTxLoadRate(),
                 /*12*/ this.Stats.pendingTxesTotalAverageMeasure.GetAverage(),
                 /*13*/ this.Stats.pendingTxesAtCompleteAverageMeasure.GetAverage(),
                 /*14*/ this.Stats.calculateUtxoDurationMeasure.GetAverage().TotalMilliseconds,
@@ -389,6 +388,17 @@ namespace BitSharp.Core.Builders
             this.chain = this.rollbackChain.ToBuilder();
             this.rollbackChain = null;
             this.inTransaction = false;
+        }
+
+        private bool TryReadChain(UInt256 blockHash, out Chain chain)
+        {
+            return Chain.TryReadChain(blockHash, out chain,
+                headerHash =>
+                {
+                    ChainedHeader chainedHeader;
+                    this.chainStateCursor.TryGetHeader(headerHash, out chainedHeader);
+                    return chainedHeader;
+                });
         }
 
         public sealed class BuilderStats : IDisposable

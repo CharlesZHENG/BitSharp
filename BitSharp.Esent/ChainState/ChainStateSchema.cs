@@ -20,7 +20,7 @@ namespace BitSharp.Esent.ChainState
 
                 CreateGlobalsTable(utxoDbId, jetSession);
                 CreateFlushTable(utxoDbId, jetSession);
-                CreateChainTable(utxoDbId, jetSession);
+                CreateHeadersTable(utxoDbId, jetSession);
                 CreateUnspentTxTable(utxoDbId, jetSession);
                 CreateSpentTxTable(utxoDbId, jetSession);
                 CreateUnmintedTxTable(utxoDbId, jetSession);
@@ -81,30 +81,30 @@ namespace BitSharp.Esent.ChainState
             Api.JetCloseTable(jetSession, flushTableId);
         }
 
-        private static void CreateChainTable(JET_DBID utxoDbId, Session jetSession)
+        private static void CreateHeadersTable(JET_DBID utxoDbId, Session jetSession)
         {
-            JET_TABLEID chainTableId;
-            JET_COLUMNID blockHeightColumnId;
-            JET_COLUMNID chainedHeaderBytesColumnId;
+            JET_TABLEID headersTableId;
+            JET_COLUMNID blockHashColumnId;
+            JET_COLUMNID headerBytesColumnId;
 
-            Api.JetCreateTable(jetSession, utxoDbId, "Chain", 0, 0, out chainTableId);
-            Api.JetAddColumn(jetSession, chainTableId, "BlockHeight", new JET_COLUMNDEF { coltyp = JET_coltyp.Long, grbit = ColumndefGrbit.ColumnNotNULL }, null, 0, out blockHeightColumnId);
-            Api.JetAddColumn(jetSession, chainTableId, "ChainedHeaderBytes", new JET_COLUMNDEF { coltyp = JET_coltyp.Binary, grbit = ColumndefGrbit.ColumnNotNULL }, null, 0, out chainedHeaderBytesColumnId);
+            Api.JetCreateTable(jetSession, utxoDbId, "Headers", 0, 0, out headersTableId);
+            Api.JetAddColumn(jetSession, headersTableId, "BlockHash", new JET_COLUMNDEF { coltyp = JET_coltyp.Binary, cbMax = 32, grbit = ColumndefGrbit.ColumnNotNULL }, null, 0, out blockHashColumnId);
+            Api.JetAddColumn(jetSession, headersTableId, "HeaderBytes", new JET_COLUMNDEF { coltyp = JET_coltyp.Binary, grbit = ColumndefGrbit.ColumnNotNULL }, null, 0, out headerBytesColumnId);
 
-            Api.JetCreateIndex2(jetSession, chainTableId,
+            Api.JetCreateIndex2(jetSession, headersTableId,
                 new JET_INDEXCREATE[]
                     {
                         new JET_INDEXCREATE
                         {
                             cbKeyMost = 255,
                             grbit = CreateIndexGrbit.IndexUnique | CreateIndexGrbit.IndexDisallowNull,
-                            szIndexName = "IX_BlockHeight",
-                            szKey = "+BlockHeight\0\0",
-                            cbKey = "+BlockHeight\0\0".Length
+                            szIndexName = "IX_BlockHash",
+                            szKey = "+BlockHash\0\0",
+                            cbKey = "+BlockHash\0\0".Length
                         }
                     }, 1);
 
-            Api.JetCloseTable(jetSession, chainTableId);
+            Api.JetCloseTable(jetSession, headersTableId);
         }
 
         private static void CreateUnspentTxTable(JET_DBID utxoDbId, Session jetSession)

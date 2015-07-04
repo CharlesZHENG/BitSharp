@@ -128,6 +128,26 @@ namespace BitSharp.Core.Domain
             }
         }
 
+        public bool ContainsHeader(UInt256 blockHash)
+        {
+            using (var handle = this.cursorCache.TakeItem())
+            {
+                var cursor = handle.Item.Item;
+
+                ChainedHeader header;
+                return cursor.TryGetHeader(blockHash, out header);
+            }
+        }
+
+        public bool TryGetHeader(UInt256 blockHash, out ChainedHeader header)
+        {
+            using (var handle = this.cursorCache.TakeItem())
+            {
+                var cursor = handle.Item.Item;
+                return cursor.TryGetHeader(blockHash, out header);
+            }
+        }
+
         public bool ContainsUnspentTx(UInt256 txHash)
         {
             using (var handle = this.cursorCache.TakeItem())

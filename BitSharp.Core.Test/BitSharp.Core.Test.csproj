@@ -122,6 +122,7 @@
     <Compile Include="BlockReplayerTest.cs" />
     <Compile Include="Builders\BlockValidatorTest.cs" />
     <Compile Include="Builders\ChainBuilderTest.cs" />
+    <Compile Include="Builders\ChainStateBuilderTest.cs" />
     <Compile Include="Builders\TxLoaderTest.cs" />
     <Compile Include="Builders\UtxoLookAheadTest.cs" />
     <Compile Include="Builders\UtxoReplayerTest.cs" />

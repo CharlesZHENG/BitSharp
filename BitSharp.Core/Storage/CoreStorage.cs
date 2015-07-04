@@ -180,52 +180,13 @@ namespace BitSharp.Core.Storage
 
         public bool TryReadChain(UInt256 blockHash, out Chain chain)
         {
-            // return an empty chain for null blockHash
-            // when retrieving a chain by its tip, a null tip represents an empty chain
-            if (blockHash == null)
-            {
-                chain = new ChainBuilder().ToImmutable();
-                return true;
-            }
-
-            var retrievedHeaders = new List<ChainedHeader>();
-
-            ChainedHeader chainedHeader;
-            if (TryGetChainedHeader(blockHash, out chainedHeader))
-            {
-                var expectedHeight = chainedHeader.Height;
-                do
+            return Chain.TryReadChain(blockHash, out chain,
+                headerHash =>
                 {
-                    if (chainedHeader.Height != expectedHeight)
-                    {
-                        chain = default(Chain);
-                        return false;
-                    }
-
-                    retrievedHeaders.Add(chainedHeader);
-                    expectedHeight--;
-                }
-                while (expectedHeight >= 0 && chainedHeader.PreviousBlockHash != chainedHeader.Hash
-                    && TryGetChainedHeader(chainedHeader.PreviousBlockHash, out chainedHeader));
-
-                if (retrievedHeaders.Last().Height != 0)
-                {
-                    chain = default(Chain);
-                    return false;
-                }
-
-                var chainBuilder = new ChainBuilder();
-                for (var i = retrievedHeaders.Count - 1; i >= 0; i--)
-                    chainBuilder.AddBlock(retrievedHeaders[i]);
-
-                chain = chainBuilder.ToImmutable();
-                return true;
-            }
-            else
-            {
-                chain = default(Chain);
-                return false;
-            }
+                    ChainedHeader chainedHeader;
+                    TryGetChainedHeader(headerHash, out chainedHeader);
+                    return chainedHeader;
+                });
         }
 
         public ChainedHeader FindMaxTotalWork()

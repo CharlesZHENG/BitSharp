@@ -55,6 +55,18 @@ namespace BitSharp.Core.Test.Storage
         }
 
         [TestMethod]
+        public void TestContainsHeader()
+        {
+            RunTest(TestContainsHeader);
+        }
+
+        [TestMethod]
+        public void TestTryAddGetRemoveHeader()
+        {
+            RunTest(TestTryAddGetRemoveHeader);
+        }
+
+        [TestMethod]
         public void TestContainsUnspentTx()
         {
             RunTest(TestContainsUnspentTx);
@@ -400,6 +412,107 @@ namespace BitSharp.Core.Test.Storage
 
                 // verify count
                 Assert.AreEqual(10, chainStateCursor.UnspentTxCount);
+            }
+        }
+
+        private void TestContainsHeader(ITestStorageProvider provider)
+        {
+            var fakeHeaders = new FakeHeaders();
+            var header0 = fakeHeaders.GenesisChained();
+            var header1 = fakeHeaders.NextChained();
+
+            using (var storageManager = provider.OpenStorageManager())
+            using (var handle = storageManager.OpenChainStateCursor())
+            {
+                var chainStateCursor = handle.Item;
+
+                // begin transaction
+                chainStateCursor.BeginTransaction();
+
+                // verify presence
+                Assert.IsFalse(chainStateCursor.ContainsHeader(header0.Hash));
+                Assert.IsFalse(chainStateCursor.ContainsHeader(header1.Hash));
+
+                // add header 0
+                chainStateCursor.TryAddHeader(header0);
+
+                // verify presence
+                Assert.IsTrue(chainStateCursor.ContainsHeader(header0.Hash));
+                Assert.IsFalse(chainStateCursor.ContainsHeader(header1.Hash));
+
+                // add header 1
+                chainStateCursor.TryAddHeader(header1);
+
+                // verify presence
+                Assert.IsTrue(chainStateCursor.ContainsHeader(header0.Hash));
+                Assert.IsTrue(chainStateCursor.ContainsHeader(header1.Hash));
+
+                // remove header 1
+                chainStateCursor.TryRemoveHeader(header1.Hash);
+
+                // verify presence
+                Assert.IsTrue(chainStateCursor.ContainsHeader(header0.Hash));
+                Assert.IsFalse(chainStateCursor.ContainsHeader(header1.Hash));
+
+                // remove header 0
+                chainStateCursor.TryRemoveHeader(header0.Hash);
+
+                // verify presence
+                Assert.IsFalse(chainStateCursor.ContainsHeader(header0.Hash));
+                Assert.IsFalse(chainStateCursor.ContainsHeader(header1.Hash));
+            }
+        }
+
+        private void TestTryAddGetRemoveHeader(ITestStorageProvider provider)
+        {
+            var fakeHeaders = new FakeHeaders();
+            var header0 = fakeHeaders.GenesisChained();
+            var header1 = fakeHeaders.NextChained();
+
+            using (var storageManager = provider.OpenStorageManager())
+            using (var handle = storageManager.OpenChainStateCursor())
+            {
+                var chainStateCursor = handle.Item;
+
+                // begin transaction
+                chainStateCursor.BeginTransaction();
+
+                // verify initial empty state
+                ChainedHeader actualHeader0, actualHeader1;
+                Assert.IsFalse(chainStateCursor.TryGetHeader(header0.Hash, out actualHeader0));
+                Assert.IsFalse(chainStateCursor.TryGetHeader(header0.Hash, out actualHeader1));
+
+                // add header 0
+                Assert.IsTrue(chainStateCursor.TryAddHeader(header0));
+
+                // verify unspent txes
+                Assert.IsTrue(chainStateCursor.TryGetHeader(header0.Hash, out actualHeader0));
+                Assert.AreEqual(header0, actualHeader0);
+                Assert.IsFalse(chainStateCursor.TryGetHeader(header1.Hash, out actualHeader1));
+
+                // add header 1
+                Assert.IsTrue(chainStateCursor.TryAddHeader(header1));
+
+                // verify unspent txes
+                Assert.IsTrue(chainStateCursor.TryGetHeader(header0.Hash, out actualHeader0));
+                Assert.AreEqual(header0, actualHeader0);
+                Assert.IsTrue(chainStateCursor.TryGetHeader(header1.Hash, out actualHeader1));
+                Assert.AreEqual(header1, actualHeader1);
+
+                // remove header 1
+                Assert.IsTrue(chainStateCursor.TryRemoveHeader(header1.Hash));
+
+                // verify unspent txes
+                Assert.IsTrue(chainStateCursor.TryGetHeader(header0.Hash, out actualHeader0));
+                Assert.AreEqual(header0, actualHeader0);
+                Assert.IsFalse(chainStateCursor.TryGetHeader(header1.Hash, out actualHeader1));
+
+                // remove header 0
+                Assert.IsTrue(chainStateCursor.TryRemoveHeader(header0.Hash));
+
+                // verify unspent txes
+                Assert.IsFalse(chainStateCursor.TryGetHeader(header0.Hash, out actualHeader0));
+                Assert.IsFalse(chainStateCursor.TryGetHeader(header1.Hash, out actualHeader1));
             }
         }
 

@@ -22,6 +22,7 @@ namespace BitSharp.Core.Builders
         private readonly IChainState chainState;
         private readonly ChainedHeader originalChainTip;
 
+        private DeferredDictionary<UInt256, ChainedHeader> headers;
         private DeferredDictionary<UInt256, UnspentTx> unspentTxes;
         private DeferredDictionary<int, IImmutableList<UInt256>> blockSpentTxes;
         private DeferredDictionary<UInt256, IImmutableList<UnmintedTx>> blockUnmintedTxes;
@@ -38,6 +39,13 @@ namespace BitSharp.Core.Builders
             TotalTxCount = chainState.TotalTxCount;
             TotalInputCount = chainState.TotalInputCount;
             TotalOutputCount = chainState.TotalOutputCount;
+
+            headers = new DeferredDictionary<UInt256, ChainedHeader>(
+                blockHash =>
+                {
+                    ChainedHeader header;
+                    return Tuple.Create(chainState.TryGetHeader(blockHash, out header), header);
+                });
 
             unspentTxes = new DeferredDictionary<UInt256, UnspentTx>(
                 txHash =>
@@ -101,6 +109,26 @@ namespace BitSharp.Core.Builders
         public int TotalInputCount { get; set; }
 
         public int TotalOutputCount { get; set; }
+
+        public bool ContainsHeader(UInt256 blockHash)
+        {
+            return headers.ContainsKey(blockHash);
+        }
+
+        public bool TryGetHeader(UInt256 blockHash, out ChainedHeader header)
+        {
+            return headers.TryGetValue(blockHash, out header);
+        }
+
+        public bool TryAddHeader(ChainedHeader header)
+        {
+            return headers.TryAdd(header.Hash, header);
+        }
+
+        public bool TryRemoveHeader(UInt256 blockHash)
+        {
+            return headers.TryRemove(blockHash);
+        }
 
         public bool ContainsUnspentTx(UInt256 txHash)
         {

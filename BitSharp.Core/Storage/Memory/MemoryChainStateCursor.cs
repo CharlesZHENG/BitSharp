@@ -19,16 +19,18 @@ namespace BitSharp.Core.Storage.Memory
         private int? totalTxCount;
         private int? totalInputCount;
         private int? totalOutputCount;
+        private ImmutableSortedDictionary<UInt256, ChainedHeader>.Builder headers;
         private ImmutableSortedDictionary<UInt256, UnspentTx>.Builder unspentTransactions;
         private ImmutableDictionary<int, IImmutableList<UInt256>>.Builder blockSpentTxes;
         private ImmutableDictionary<UInt256, IImmutableList<UnmintedTx>>.Builder blockUnmintedTxes;
 
-        private long chainVersion;
+        private long chainTipVersion;
         private long unspentTxCountVersion;
         private long unspentOutputCountVersion;
         private long totalTxCountVersion;
         private long totalInputCountVersion;
         private long totalOutputCountVersion;
+        private long headersVersion;
         private long unspentTxesVersion;
         private long blockSpentTxesVersion;
         private long blockUnmintedTxesVersion;
@@ -39,6 +41,7 @@ namespace BitSharp.Core.Storage.Memory
         private bool totalTxCountModified;
         private bool totalInputCountModified;
         private bool totalOutputCountModified;
+        private bool headersModified;
         private bool unspentTxesModified;
         private bool blockSpentTxesModified;
         private bool blockUnmintedTxesModified;
@@ -83,7 +86,7 @@ namespace BitSharp.Core.Storage.Memory
             if (!readOnly)
                 chainStateStorage.WriteTxLock.Wait();
 
-            this.chainStateStorage.BeginTransaction(out this.chainTip, out this.unspentTxCount, out this.unspentOutputCount, out this.totalTxCount, out this.totalInputCount, out this.totalOutputCount, out this.unspentTransactions, out this.blockSpentTxes, out this.blockUnmintedTxes, out this.chainVersion, out this.unspentTxCountVersion, out this.unspentOutputCountVersion, out this.totalTxCountVersion, out this.totalInputCountVersion, out this.totalOutputCountVersion, out this.unspentTxesVersion, out this.blockSpentTxesVersion, out this.blockUnmintedTxesVersion);
+            this.chainStateStorage.BeginTransaction(out this.chainTip, out this.unspentTxCount, out this.unspentOutputCount, out this.totalTxCount, out this.totalInputCount, out this.totalOutputCount, out this.headers, out this.unspentTransactions, out this.blockSpentTxes, out this.blockUnmintedTxes, out this.chainTipVersion, out this.unspentTxCountVersion, out this.unspentOutputCountVersion, out this.totalTxCountVersion, out this.totalInputCountVersion, out this.totalOutputCountVersion, out this.headersVersion, out this.unspentTxesVersion, out this.blockSpentTxesVersion, out this.blockUnmintedTxesVersion);
 
             this.chainTipModified = false;
             this.unspentTxCountModified = false;
@@ -110,10 +113,11 @@ namespace BitSharp.Core.Storage.Memory
                 this.totalTxCountModified ? this.totalTxCount : null,
                 this.totalInputCountModified ? this.totalInputCount : null,
                 this.totalOutputCountModified ? this.totalOutputCount : null,
+                this.headersModified ? this.headers : null,
                 this.unspentTxesModified ? this.unspentTransactions : null,
                 this.blockSpentTxesModified ? this.blockSpentTxes : null,
                 this.blockUnmintedTxesModified ? this.blockUnmintedTxes : null,
-                this.chainVersion, this.unspentTxCountVersion, this.unspentOutputCountVersion, this.totalTxCountVersion, this.totalInputCountVersion, this.totalOutputCountVersion, this.unspentTxesVersion, this.blockSpentTxesVersion, this.blockUnmintedTxesVersion);
+                this.chainTipVersion, this.unspentTxCountVersion, this.unspentOutputCountVersion, this.totalTxCountVersion, this.totalInputCountVersion, this.totalOutputCountVersion, this.headersVersion, this.unspentTxesVersion, this.blockSpentTxesVersion, this.blockUnmintedTxesVersion);
 
             this.chainTip = null;
             this.unspentTxCount = null;
@@ -121,6 +125,7 @@ namespace BitSharp.Core.Storage.Memory
             this.totalTxCount = null;
             this.totalInputCount = null;
             this.totalOutputCount = null;
+            this.headers = null;
             this.unspentTransactions = null;
             this.blockSpentTxes = null;
             this.blockUnmintedTxes = null;
@@ -142,6 +147,7 @@ namespace BitSharp.Core.Storage.Memory
             this.totalTxCount = null;
             this.totalInputCount = null;
             this.totalOutputCount = null;
+            this.headers = null;
             this.unspentTransactions = null;
             this.blockSpentTxes = null;
             this.blockUnmintedTxes = null;
@@ -246,6 +252,45 @@ namespace BitSharp.Core.Storage.Memory
                 this.totalOutputCount = value;
                 this.totalOutputCountModified = true;
             }
+        }
+
+        public bool ContainsHeader(UInt256 blockHash)
+        {
+            CheckTransaction();
+            return this.headers.ContainsKey(blockHash);
+        }
+
+        public bool TryGetHeader(UInt256 blockHash, out ChainedHeader header)
+        {
+            CheckTransaction();
+            return this.headers.TryGetValue(blockHash, out header);
+        }
+
+        public bool TryAddHeader(ChainedHeader header)
+        {
+            CheckWriteTransaction();
+
+            try
+            {
+                this.headers.Add(header.Hash, header);
+                this.headersModified = true;
+                return true;
+            }
+            catch (ArgumentException)
+            {
+                return false;
+            }
+        }
+
+        public bool TryRemoveHeader(UInt256 blockHash)
+        {
+            CheckWriteTransaction();
+
+            var wasRemoved = this.headers.Remove(blockHash);
+            if (wasRemoved)
+                this.headersModified = true;
+
+            return wasRemoved;
         }
 
         public bool ContainsUnspentTx(UInt256 txHash)

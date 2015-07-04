@@ -173,5 +173,55 @@ namespace BitSharp.Core.Domain
             chainBuilder.AddBlock(genesisBlock);
             return chainBuilder.ToImmutable();
         }
+
+        public static bool TryReadChain(UInt256 blockHash, out Chain chain, Func<UInt256, ChainedHeader> getChainedHeader)
+        {
+            // return an empty chain for null blockHash
+            // when retrieving a chain by its tip, a null tip represents an empty chain
+            if (blockHash == null)
+            {
+                chain = new ChainBuilder().ToImmutable();
+                return true;
+            }
+
+            var retrievedHeaders = new List<ChainedHeader>();
+
+            var chainedHeader = getChainedHeader(blockHash);
+            if (chainedHeader != null)
+            {
+                var expectedHeight = chainedHeader.Height;
+                do
+                {
+                    if (chainedHeader.Height != expectedHeight)
+                    {
+                        chain = default(Chain);
+                        return false;
+                    }
+
+                    retrievedHeaders.Add(chainedHeader);
+                    expectedHeight--;
+                }
+                while (expectedHeight >= 0 && chainedHeader.PreviousBlockHash != chainedHeader.Hash
+                    && (chainedHeader = getChainedHeader(chainedHeader.PreviousBlockHash)) != null);
+
+                if (retrievedHeaders.Last().Height != 0)
+                {
+                    chain = default(Chain);
+                    return false;
+                }
+
+                var chainBuilder = new ChainBuilder();
+                for (var i = retrievedHeaders.Count - 1; i >= 0; i--)
+                    chainBuilder.AddBlock(retrievedHeaders[i]);
+
+                chain = chainBuilder.ToImmutable();
+                return true;
+            }
+            else
+            {
+                chain = default(Chain);
+                return false;
+            }
+        }
     }
 }

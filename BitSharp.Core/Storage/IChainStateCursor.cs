@@ -52,6 +52,15 @@ namespace BitSharp.Core.Storage
 
         int TotalOutputCount { get; set; }
 
+        bool ContainsHeader(UInt256 blockHash);
+
+        bool TryGetHeader(UInt256 blockHash, out ChainedHeader header);
+
+        bool TryAddHeader(ChainedHeader header);
+
+        bool TryRemoveHeader(UInt256 txHash);
+
+
         /// <summary>
         /// Determine whether an unspent transaction is present.
         /// </summary>

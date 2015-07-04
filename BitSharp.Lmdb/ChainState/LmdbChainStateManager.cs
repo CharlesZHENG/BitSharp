@@ -16,6 +16,7 @@ namespace BitSharp.Lmdb
         private readonly string jetDatabase;
         private readonly LightningEnvironment jetInstance;
         private readonly LightningDatabase globalsTableId;
+        private readonly LightningDatabase headersTableId;
         private readonly LightningDatabase unspentTxTableId;
         private readonly LightningDatabase blockSpentTxesTableId;
         private readonly LightningDatabase blockUnmintedTxesTableId;
@@ -37,6 +38,7 @@ namespace BitSharp.Lmdb
             using (var txn = this.jetInstance.BeginTransaction())
             {
                 globalsTableId = txn.OpenDatabase("Globals", new DatabaseOptions { Flags = DatabaseOpenFlags.Create });
+                headersTableId = txn.OpenDatabase("Headers", new DatabaseOptions { Flags = DatabaseOpenFlags.Create });
                 unspentTxTableId = txn.OpenDatabase("UnspentTx", new DatabaseOptions { Flags = DatabaseOpenFlags.Create });
                 blockSpentTxesTableId = txn.OpenDatabase("BlockSpentTxes", new DatabaseOptions { Flags = DatabaseOpenFlags.Create });
                 blockUnmintedTxesTableId = txn.OpenDatabase("BlockUnmintedTxes", new DatabaseOptions { Flags = DatabaseOpenFlags.Create });
@@ -52,7 +54,7 @@ namespace BitSharp.Lmdb
 
         public DisposeHandle<IChainStateCursor> OpenChainStateCursor()
         {
-            var cursor = new ChainStateCursor(false, this.jetDatabase, this.jetInstance, globalsTableId, unspentTxTableId, blockSpentTxesTableId, blockUnmintedTxesTableId);
+            var cursor = new ChainStateCursor(false, this.jetDatabase, this.jetInstance, globalsTableId, headersTableId, unspentTxTableId, blockSpentTxesTableId, blockUnmintedTxesTableId);
             return new DisposeHandle<IChainStateCursor>(() => cursor.Dispose(), cursor);
         }
     }

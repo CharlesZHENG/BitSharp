@@ -25,6 +25,7 @@ namespace BitSharp.Lmdb
         private readonly string jetDatabase;
         private readonly LightningEnvironment jetInstance;
         private readonly LightningDatabase globalsTableId;
+        private readonly LightningDatabase headersTableId;
         private readonly LightningDatabase unspentTxTableId;
         private readonly LightningDatabase blockSpentTxesTableId;
         private readonly LightningDatabase blockUnmintedTxesTableId;
@@ -38,12 +39,13 @@ namespace BitSharp.Lmdb
 
         private LightningTransaction txn;
 
-        public ChainStateCursor(bool readOnly, string jetDatabase, LightningEnvironment jetInstance, LightningDatabase globalsTableId, LightningDatabase unspentTxTableId, LightningDatabase blockSpentTxesTableId, LightningDatabase blockUnmintedTxesTableId)
+        public ChainStateCursor(bool readOnly, string jetDatabase, LightningEnvironment jetInstance, LightningDatabase globalsTableId, LightningDatabase headersTableId, LightningDatabase unspentTxTableId, LightningDatabase blockSpentTxesTableId, LightningDatabase blockUnmintedTxesTableId)
         {
             this.readOnly = readOnly;
             this.jetDatabase = jetDatabase;
             this.jetInstance = jetInstance;
             this.globalsTableId = globalsTableId;
+            this.headersTableId = headersTableId;
             this.unspentTxTableId = unspentTxTableId;
             this.blockSpentTxesTableId = blockSpentTxesTableId;
             this.blockUnmintedTxesTableId = blockUnmintedTxesTableId;
@@ -186,6 +188,66 @@ namespace BitSharp.Lmdb
                 CheckWriteTransaction();
 
                 this.txn.Put(globalsTableId, totalOutputCountKey, Bits.GetBytes(value));
+            }
+        }
+
+        public bool ContainsHeader(UInt256 blockHash)
+        {
+            CheckTransaction();
+
+            return this.txn.ContainsKey(headersTableId, DbEncoder.EncodeUInt256(blockHash));
+        }
+
+        public bool TryGetHeader(UInt256 blockHash, out ChainedHeader header)
+        {
+            CheckTransaction();
+
+            byte[] headerBytes;
+            if (this.txn.TryGet(headersTableId, DbEncoder.EncodeUInt256(blockHash), out headerBytes))
+            {
+                header = DataEncoder.DecodeChainedHeader(headerBytes);
+                return true;
+            }
+            else
+            {
+                header = default(ChainedHeader);
+                return false;
+            }
+        }
+
+        public bool TryAddHeader(ChainedHeader header)
+        {
+            CheckWriteTransaction();
+
+            var key = DbEncoder.EncodeUInt256(header.Hash);
+            var value = DataEncoder.EncodeChainedHeader(header);
+
+            if (!this.txn.ContainsKey(headersTableId, key))
+            {
+                this.txn.Put(headersTableId, key, value);
+
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+
+        public bool TryRemoveHeader(UInt256 blockHashh)
+        {
+            CheckWriteTransaction();
+
+            var key = DbEncoder.EncodeUInt256(blockHashh);
+
+            if (this.txn.ContainsKey(headersTableId, key))
+            {
+                this.txn.Delete(headersTableId, key);
+                return true;
+            }
+            else
+            {
+                return false;
             }
         }
 

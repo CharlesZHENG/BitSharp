@@ -30,7 +30,7 @@ namespace BitSharp.Core.Test.Workers
             var chainedHeader = new ChainedHeader(block.Header, height: 0, totalWork: block.Header.CalculateWork());
 
             // create a long chain based off the block, to account for pruning buffer
-            var fakeHeaders = new FakeHeaders(new[] { chainedHeader.BlockHeader });
+            var fakeHeaders = new FakeHeaders(new[] { chainedHeader });
             var chain = new ChainBuilder(Enumerable.Concat(new[] { chainedHeader }, Enumerable.Range(0, 2000).Select(x => fakeHeaders.NextChained()))).ToImmutable();
 
             // mock core daemon to return the chain

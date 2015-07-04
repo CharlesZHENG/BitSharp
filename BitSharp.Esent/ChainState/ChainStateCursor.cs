@@ -40,6 +40,10 @@ namespace BitSharp.Esent
         public readonly JET_TABLEID flushTableId;
         public readonly JET_COLUMNID flushColumnId;
 
+        public readonly JET_TABLEID headersTableId;
+        public readonly JET_COLUMNID headerBlockHashColumnId;
+        public readonly JET_COLUMNID headerBytesColumnId;
+
         public readonly JET_TABLEID unspentTxTableId;
         public readonly JET_COLUMNID txHashColumnId;
         public readonly JET_COLUMNID blockIndexColumnId;
@@ -74,6 +78,9 @@ namespace BitSharp.Esent
                     out this.totalOutputCountColumnId,
                 out this.flushTableId,
                     out this.flushColumnId,
+                out this.headersTableId,
+                    out this.headerBlockHashColumnId,
+                    out headerBytesColumnId,
                 out this.unspentTxTableId,
                     out this.txHashColumnId,
                     out this.blockIndexColumnId,
@@ -222,6 +229,74 @@ namespace BitSharp.Esent
                     Api.SetColumn(this.jetSession, this.globalsTableId, this.totalOutputCountColumnId, value);
                     jetUpdate.Save();
                 }
+            }
+        }
+
+        public bool ContainsHeader(UInt256 blockHash)
+        {
+            CheckTransaction();
+
+            Api.JetSetCurrentIndex(this.jetSession, this.headersTableId, "IX_BlockHash");
+            Api.MakeKey(this.jetSession, this.headersTableId, DbEncoder.EncodeUInt256(blockHash), MakeKeyGrbit.NewKey);
+            return Api.TrySeek(this.jetSession, this.headersTableId, SeekGrbit.SeekEQ);
+        }
+
+        public bool TryGetHeader(UInt256 blockHash, out ChainedHeader header)
+        {
+            CheckTransaction();
+
+            Api.JetSetCurrentIndex(this.jetSession, this.headersTableId, "IX_BlockHash");
+            Api.MakeKey(this.jetSession, this.headersTableId, DbEncoder.EncodeUInt256(blockHash), MakeKeyGrbit.NewKey);
+            if (Api.TrySeek(this.jetSession, this.headersTableId, SeekGrbit.SeekEQ))
+            {
+                var headerBytes = Api.RetrieveColumn(this.jetSession, this.headersTableId, this.headerBytesColumnId);
+
+                header = DataEncoder.DecodeChainedHeader(headerBytes);
+                return true;
+            }
+
+            header = default(ChainedHeader);
+            return false;
+        }
+
+        public bool TryAddHeader(ChainedHeader header)
+        {
+            CheckWriteTransaction();
+
+            try
+            {
+                using (var jetUpdate = this.jetSession.BeginUpdate(this.headersTableId, JET_prep.Insert))
+                {
+                    Api.SetColumns(this.jetSession, this.headersTableId,
+                        new BytesColumnValue { Columnid = this.headerBlockHashColumnId, Value = DbEncoder.EncodeUInt256(header.Hash) },
+                        new BytesColumnValue { Columnid = this.headerBytesColumnId, Value = DataEncoder.EncodeChainedHeader(header) });
+
+                    jetUpdate.Save();
+                }
+
+                return true;
+            }
+            catch (EsentKeyDuplicateException)
+            {
+                return false;
+            }
+        }
+
+        public bool TryRemoveHeader(UInt256 blockHash)
+        {
+            CheckWriteTransaction();
+
+            Api.JetSetCurrentIndex(this.jetSession, this.headersTableId, "IX_BlockHash");
+            Api.MakeKey(this.jetSession, this.headersTableId, DbEncoder.EncodeUInt256(blockHash), MakeKeyGrbit.NewKey);
+            if (Api.TrySeek(this.jetSession, this.headersTableId, SeekGrbit.SeekEQ))
+            {
+                Api.JetDelete(this.jetSession, this.headersTableId);
+
+                return true;
+            }
+            else
+            {
+                return false;
             }
         }
 
@@ -608,6 +683,9 @@ namespace BitSharp.Esent
             out JET_COLUMNID totalOutputCountColumnId,
             out JET_TABLEID flushTableId,
             out JET_COLUMNID flushColumnId,
+            out JET_TABLEID headersTableId,
+            out JET_COLUMNID headerBlockHashColumnId,
+            out JET_COLUMNID headerBytesColumnId,
             out JET_TABLEID unspentTxTableId,
             out JET_COLUMNID txHashColumnId,
             out JET_COLUMNID blockIndexColumnId,
@@ -642,6 +720,10 @@ namespace BitSharp.Esent
 
                 if (!Api.TryMoveFirst(jetSession, flushTableId))
                     throw new InvalidOperationException();
+
+                Api.JetOpenTable(jetSession, chainStateDbId, "Headers", null, 0, OpenTableGrbit.None, out headersTableId);
+                headerBlockHashColumnId = Api.GetTableColumnid(jetSession, headersTableId, "BlockHash");
+                headerBytesColumnId = Api.GetTableColumnid(jetSession, headersTableId, "HeaderBytes");
 
                 Api.JetOpenTable(jetSession, chainStateDbId, "UnspentTx", null, 0, OpenTableGrbit.None, out unspentTxTableId);
                 txHashColumnId = Api.GetTableColumnid(jetSession, unspentTxTableId, "TxHash");

@@ -2,6 +2,7 @@
 using BitSharp.Core.Builders;
 using BitSharp.Core.Domain;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Moq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -320,6 +321,53 @@ namespace BitSharp.Core.Test.Domain
             var chain = Chain.CreateForGenesisBlock(header0);
 
             CollectionAssert.AreEqual(new[] { header0 }, chain.Blocks);
+        }
+
+        [TestMethod]
+        public void TestReadChain()
+        {
+            var fakeHeaders = new FakeHeaders();
+            var header0 = fakeHeaders.GenesisChained();
+            var header1 = fakeHeaders.NextChained();
+            var header2 = fakeHeaders.NextChained();
+
+            var chainedHeaders = new Dictionary<UInt256, ChainedHeader>();
+            chainedHeaders.Add(header0.Hash, header0);
+            chainedHeaders.Add(header1.Hash, header1);
+            chainedHeaders.Add(header2.Hash, header2);
+
+            Chain chain;
+            Assert.IsTrue(Chain.TryReadChain(header2.Hash, out chain,
+                headerHash =>
+                {
+                    ChainedHeader chainedHeader;
+                    chainedHeaders.TryGetValue(headerHash, out chainedHeader);
+                    return chainedHeader;
+                }));
+
+            CollectionAssert.AreEqual(fakeHeaders.ChainedHeaders, chain.Blocks);
+        }
+
+        [TestMethod]
+        public void TestReadChainWithGap()
+        {
+            var fakeHeaders = new FakeHeaders();
+            var header0 = fakeHeaders.GenesisChained();
+            var header1 = fakeHeaders.NextChained();
+            var header2 = fakeHeaders.NextChained();
+
+            var chainedHeaders = new Dictionary<UInt256, ChainedHeader>();
+            chainedHeaders.Add(header0.Hash, header0);
+            chainedHeaders.Add(header2.Hash, header2);
+
+            Chain chain;
+            Assert.IsFalse(Chain.TryReadChain(header2.Hash, out chain,
+                headerHash =>
+                {
+                    ChainedHeader chainedHeader;
+                    chainedHeaders.TryGetValue(headerHash, out chainedHeader);
+                    return chainedHeader;
+                }));
         }
     }
 }
