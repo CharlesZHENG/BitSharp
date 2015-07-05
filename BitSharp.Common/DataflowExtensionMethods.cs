@@ -10,23 +10,25 @@ namespace BitSharp.Common.ExtensionMethods
     {
         public static Task SendAndCompleteAsync<T>(this ITargetBlock<T> target, IEnumerable<T> items, CancellationToken cancelToken = default(CancellationToken))
         {
-            return Task.Run(() =>
-            {
-                try
-                {
-                    foreach (var item in items)
-                    {
-                        target.Post(item);
-                        cancelToken.ThrowIfCancellationRequested();
-                    }
+            return Task.Run(() => PostAndComplete(target, items, cancelToken));
+        }
 
-                    target.Complete();
-                }
-                catch (Exception ex)
+        public static void PostAndComplete<T>(this ITargetBlock<T> target, IEnumerable<T> items, CancellationToken cancelToken = default(CancellationToken))
+        {
+            try
+            {
+                foreach (var item in items)
                 {
-                    target.Fault(ex);
+                    target.Post(item);
+                    cancelToken.ThrowIfCancellationRequested();
                 }
-            });
+
+                target.Complete();
+            }
+            catch (Exception ex)
+            {
+                target.Fault(ex);
+            }
         }
 
         public static async Task<IList<T>> ReceiveAllAsync<T>(this ISourceBlock<T> target)
@@ -45,7 +47,7 @@ namespace BitSharp.Common.ExtensionMethods
 
             var queueItems = new ActionBlock<T>(
                 item => queue.Add(item),
-                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, SingleProducerConstrained = true });
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken });
 
             queueItems.Completion.ContinueWith(task =>
             {
