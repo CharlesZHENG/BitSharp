@@ -217,6 +217,7 @@ namespace BitSharp.Node.Workers
             // get blocks from secondary source, if specified
             if (SecondaryBlockFolder != null && SecondaryBlockFolder != "")
             {
+                var allRetrieved = true;
                 for (; this.targetChainQueueIndex < this.targetChainQueue.Count; this.targetChainQueueIndex++)
                 {
                     if (!this.IsStarted)
@@ -230,12 +231,16 @@ namespace BitSharp.Node.Workers
                         var block = GetBlock(requestBlock.Hash);
                         if (block != null)
                             HandleBlock(null, block);
+                        else
+                            allRetrieved = false;
                     }
+                    else
+                        allRetrieved = false;
                 }
-                
+
                 // all blocks retrieved from secondary source
                 // return now so that the target chain queue can be updated
-                if (this.targetChainQueueIndex >= this.targetChainQueue.Count)
+                if (allRetrieved && this.targetChainQueueIndex >= this.targetChainQueue.Count)
                 {
                     this.NotifyWork();
                     return;
