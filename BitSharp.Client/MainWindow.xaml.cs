@@ -84,14 +84,11 @@ namespace BitSharp.Client
                     // location to store a copy of raw blocks to avoid redownload
                     BlockRequestWorker.SecondaryBlockFolder = @"D:\BitSharp.Blocks\RawBlocks";
 
-                    // split block txes storage across 3 SSDs
-                    var defaultBlockTxesPath = Path.Combine(baseDirectory, "Data", rulesType.ToString());
+                    // split block txes storage across 2 dedicated SSDs, keep chain state on main SSD
                     blockTxesStorageLocations = new[]
                     {
-                        defaultBlockTxesPath,
-                        // weight locations to do more block txes work on the non-chainstate drive
-                        @"Y:\BitSharp\1", @"Y:\BitSharp\2",
-                        @"Z:\BitSharp\1", @"Z:\BitSharp\2"
+                        @"Y:\BitSharp",
+                        @"Z:\BitSharp",
                     };
                 }
 
