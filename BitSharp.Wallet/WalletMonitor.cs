@@ -178,38 +178,41 @@ namespace BitSharp.Wallet
         {
             var replayTxes = BlockReplayer.ReplayBlock(coreStorage, chainState, scanBlock.Hash, forward, cancelToken);
 
-            foreach (var loadedTx in replayTxes.LinkToQueue(cancelToken).GetConsumingEnumerable())
+            using (var replayTxesQueue = replayTxes.LinkToQueue(cancelToken))
             {
-                var tx = loadedTx.Transaction;
-                var txIndex = loadedTx.TxIndex;
-
-                if (!loadedTx.IsCoinbase)
+                foreach (var loadedTx in replayTxesQueue.GetConsumingEnumerable())
                 {
-                    for (var inputIndex = 0; inputIndex < tx.Inputs.Length; inputIndex++)
+                    var tx = loadedTx.Transaction;
+                    var txIndex = loadedTx.TxIndex;
+
+                    if (!loadedTx.IsCoinbase)
                     {
-                        var input = tx.Inputs[inputIndex];
-                        var prevOutput = loadedTx.GetInputPrevTxOutput(inputIndex);
-                        var prevOutputScriptHash = new UInt256(SHA256Static.ComputeHash(prevOutput.ScriptPublicKey.ToArray()));
+                        for (var inputIndex = 0; inputIndex < tx.Inputs.Length; inputIndex++)
+                        {
+                            var input = tx.Inputs[inputIndex];
+                            var prevOutput = loadedTx.GetInputPrevTxOutput(inputIndex);
+                            var prevOutputScriptHash = new UInt256(SHA256Static.ComputeHash(prevOutput.ScriptPublicKey.ToArray()));
+
+                            var chainPosition = ChainPosition.Fake();
+                            var entryType = forward ? EnumWalletEntryType.Spend : EnumWalletEntryType.UnSpend;
+
+                            ScanForEntry(chainPosition, entryType, prevOutput, prevOutputScriptHash);
+                        }
+                    }
+
+                    for (var outputIndex = 0; outputIndex < tx.Outputs.Length; outputIndex++)
+                    {
+                        var output = tx.Outputs[outputIndex];
+                        var outputScriptHash = new UInt256(SHA256Static.ComputeHash(output.ScriptPublicKey.ToArray()));
 
                         var chainPosition = ChainPosition.Fake();
-                        var entryType = forward ? EnumWalletEntryType.Spend : EnumWalletEntryType.UnSpend;
+                        var entryType =
+                            loadedTx.IsCoinbase ?
+                                (forward ? EnumWalletEntryType.Mine : EnumWalletEntryType.UnMine)
+                                : (forward ? EnumWalletEntryType.Receive : EnumWalletEntryType.UnReceieve);
 
-                        ScanForEntry(chainPosition, entryType, prevOutput, prevOutputScriptHash);
+                        ScanForEntry(chainPosition, entryType, output, outputScriptHash);
                     }
-                }
-
-                for (var outputIndex = 0; outputIndex < tx.Outputs.Length; outputIndex++)
-                {
-                    var output = tx.Outputs[outputIndex];
-                    var outputScriptHash = new UInt256(SHA256Static.ComputeHash(output.ScriptPublicKey.ToArray()));
-
-                    var chainPosition = ChainPosition.Fake();
-                    var entryType =
-                        loadedTx.IsCoinbase ?
-                            (forward ? EnumWalletEntryType.Mine : EnumWalletEntryType.UnMine)
-                            : (forward ? EnumWalletEntryType.Receive : EnumWalletEntryType.UnReceieve);
-
-                    ScanForEntry(chainPosition, entryType, output, outputScriptHash);
                 }
             }
         }
