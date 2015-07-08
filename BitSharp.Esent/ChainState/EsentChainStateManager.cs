@@ -90,12 +90,6 @@ namespace BitSharp.Esent
             instance.Parameters.WaypointLatency = 1;
             instance.Parameters.MaxSessions = 256;
             instance.Parameters.MaxOpenTables = 256;
-            if (EsentVersion.SupportsWindows8Features)
-            {
-                // give chain state highest cache priority
-                // chain state is accessed in a single loop to update utxo, while other storage access is parallelized
-                instance.Parameters.CachePriority = 1000;
-            }
             if (EsentVersion.SupportsWindows81Features)
             {
                 instance.Parameters.EnableShrinkDatabase = ShrinkDatabaseGrbit.On | ShrinkDatabaseGrbit.Realtime;
