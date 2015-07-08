@@ -12,6 +12,7 @@ namespace BitSharp.Core.Domain
             this.transaction = transaction;
         }
 
+        //TODO only used by tests
         public BlockTx(int txIndex, Transaction tx)
             : this(txIndex, 0, tx.Hash, false, tx)
         { }
