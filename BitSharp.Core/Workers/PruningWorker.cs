@@ -93,6 +93,8 @@ namespace BitSharp.Core.Workers
 
                 // determine maximum safe pruning height, based on a buffer distance from the processed chain height
                 var blocksPerDay = 144;
+                //TODO there should also be a buffer between when blocks are pruned, and when the pruning information
+                //TODO to perform that operation is removed (tx index, spent txes)
                 var pruneBuffer = blocksPerDay * 7;
                 var maxHeight = processedChain.Height - pruneBuffer;
                 //TODO
@@ -261,37 +263,65 @@ namespace BitSharp.Core.Workers
                     }
                 }
 
-                if (mode.HasFlag(PruningMode.TxIndex) || mode.HasFlag(PruningMode.BlockSpentIndex))
+                if (mode.HasFlag(PruningMode.TxIndex))
                 {
                     pruneIndexStopwatch.Time(() =>
                     {
-                        chainStateCursor.BeginTransaction();
-                        var wasCommitted = false;
-                        try
+                        using (var spentTxesQueue = new BlockingCollection<UInt256>())
                         {
-                            // TODO don't immediately remove list of spent txes per block from chain state,
-                            //      use an additional safety buffer in case there was an issue pruning block
-                            //      txes (e.g. didn't flush and crashed), keeping the information  will allow
-                            //      the block txes pruning to be performed again
-                            if (mode.HasFlag(PruningMode.BlockSpentIndex))
-                                chainStateCursor.TryRemoveBlockSpentTxes(pruneBlock.Height);
-
-                            if (mode.HasFlag(PruningMode.TxIndex))
-                                foreach (var txHash in spentTxes)
-                                    chainStateCursor.TryRemoveUnspentTx(txHash);
-
-                            commitStopwatch.Time(() =>
+                            var pruneTxIndexTask = TaskPool.Run(16, () =>
                             {
-                                chainStateCursor.CommitTransaction();
-                                wasCommitted = true;
+                                using (var handle = this.storageManager.OpenChainStateCursor())
+                                {
+                                    var innerChainStateCursor = handle.Item;
+                                    innerChainStateCursor.BeginTransaction();
+                                    var wasCommitted = false;
+                                    try
+                                    {
+                                        foreach (var txHash in spentTxesQueue.GetConsumingEnumerable())
+                                            innerChainStateCursor.TryRemoveUnspentTx(txHash);
+
+                                        //TODO commit time not measured
+                                        innerChainStateCursor.CommitTransaction();
+                                        wasCommitted = true;
+                                    }
+                                    finally
+                                    {
+                                        if (!wasCommitted)
+                                            innerChainStateCursor.RollbackTransaction();
+                                    }
+                                }
                             });
-                        }
-                        finally
-                        {
-                            if (!wasCommitted)
-                                chainStateCursor.RollbackTransaction();
+
+                            spentTxesQueue.AddFromEnumerable(spentTxes, completeAddingWhenDone: true);
+                            pruneTxIndexTask.Wait();
                         }
                     });
+                }
+
+                if (mode.HasFlag(PruningMode.BlockSpentIndex))
+                {
+                    chainStateCursor.BeginTransaction();
+                    var wasCommitted = false;
+                    try
+                    {
+                        // TODO don't immediately remove list of spent txes per block from chain state,
+                        //      use an additional safety buffer in case there was an issue pruning block
+                        //      txes (e.g. didn't flush and crashed), keeping the information  will allow
+                        //      the block txes pruning to be performed again
+                        chainStateCursor.TryRemoveBlockSpentTxes(pruneBlock.Height);
+
+                        commitStopwatch.Time(() =>
+                        {
+                            chainStateCursor.CommitTransaction();
+                            wasCommitted = true;
+                        });
+                    }
+                    finally
+                    {
+                        if (!wasCommitted)
+                            chainStateCursor.RollbackTransaction();
+                    }
                 }
             }
             else //if (pruneBlock.Height > 0)
