@@ -39,17 +39,20 @@ namespace BitSharp.Core.Builders
             await txValidator.Completion;
             await scriptValidator.Completion;
 
-            try
+            if (!rules.BypassPrevTxLoading)
             {
-                merkleStream.FinishPairing();
+                try
+                {
+                    merkleStream.FinishPairing();
+                }
+                //TODO
+                catch (InvalidOperationException)
+                {
+                    throw CreateMerkleRootException(chainedHeader);
+                }
+                if (merkleStream.RootNode.Hash != chainedHeader.MerkleRoot)
+                    throw CreateMerkleRootException(chainedHeader);
             }
-            //TODO
-            catch (InvalidOperationException)
-            {
-                throw CreateMerkleRootException(chainedHeader);
-            }
-            if (merkleStream.RootNode.Hash != chainedHeader.MerkleRoot)
-                throw CreateMerkleRootException(chainedHeader);
         }
 
         private static TransformBlock<LoadedTx, LoadedTx> InitMerkleValidator(ChainedHeader chainedHeader, MerkleStream merkleStream, CancellationToken cancelToken)
