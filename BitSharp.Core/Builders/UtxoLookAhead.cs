@@ -16,9 +16,6 @@ namespace BitSharp.Core.Builders
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        private static readonly DurationMeasure txesReadDurationMeasure = new DurationMeasure(TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(5));
-        private static readonly DurationMeasure lookAheadDurationMeasure = new DurationMeasure(TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(5));
-
         public static ISourceBlock<BlockTx> LookAhead(ISourceBlock<BlockTx> blockTxes, IDeferredChainStateCursor deferredChainStateCursor, CancellationToken cancelToken = default(CancellationToken))
         {
             var stopwatch = Stopwatch.StartNew();
@@ -42,23 +39,6 @@ namespace BitSharp.Core.Builders
 
             // link notification of a warmed tx to the in-order forwarder
             warmupUtxo.LinkTo(forwardWarmedTxes, new DataflowLinkOptions { PropagateCompletion = true });
-
-            // track when reading block txes completes
-            blockTxes.Completion.ContinueWith(_ => txesReadDurationMeasure.Tick(stopwatch.Elapsed));
-
-            // track when the overall look ahead completes
-            forwardWarmedTxes.Completion.ContinueWith(_ =>
-            {
-                if (forwardWarmedTxes.Completion.Status == TaskStatus.RanToCompletion)
-                    Debug.Assert(pendingWarmedTxes.IsEmpty);
-
-                lookAheadDurationMeasure.Tick(stopwatch.Elapsed);
-                Throttler.IfElapsed(TimeSpan.FromSeconds(5), () =>
-                {
-                    logger.Info("Block Txes Read: {0,12:N3}ms".Format2(txesReadDurationMeasure.GetAverage().TotalMilliseconds));
-                    logger.Info("UTXO Look-ahead: {0,12:N3}ms".Format2(lookAheadDurationMeasure.GetAverage().TotalMilliseconds));
-                });
-            });
 
             return forwardWarmedTxes;
         }

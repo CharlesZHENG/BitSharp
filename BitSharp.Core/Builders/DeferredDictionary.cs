@@ -1,4 +1,5 @@
-﻿using NLog;
+﻿using BitSharp.Common;
+using NLog;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -6,25 +7,50 @@ using System.Diagnostics;
 
 namespace BitSharp.Core.Builders
 {
-    public class DeferredDictionary<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
+    public class DeferredDictionary<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>, IDisposable
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        private Dictionary<TKey, TValue> read = new Dictionary<TKey, TValue>();
-        private HashSet<TKey> missing = new HashSet<TKey>();
-        private Dictionary<TKey, TValue> updated = new Dictionary<TKey, TValue>();
-        private Dictionary<TKey, TValue> added = new Dictionary<TKey, TValue>();
-        private HashSet<TKey> deleted = new HashSet<TKey>();
+        private readonly Dictionary<TKey, TValue> read = new Dictionary<TKey, TValue>();
+        private readonly HashSet<TKey> missing = new HashSet<TKey>();
+        private readonly Dictionary<TKey, TValue> updated = new Dictionary<TKey, TValue>();
+        private readonly Dictionary<TKey, TValue> added = new Dictionary<TKey, TValue>();
+        private readonly HashSet<TKey> deleted = new HashSet<TKey>();
+
+        private readonly BlockingCollection<Tuple<int, TKey, TValue>> workQueue;
 
         private readonly Func<TKey, Tuple<bool, TValue>> parentTryGetValue;
+        private readonly bool useWorkQueue;
         private readonly Func<IEnumerable<KeyValuePair<TKey, TValue>>> parentEnumerator;
 
         private ConcurrentDictionary<TKey, TValue> parentValues = new ConcurrentDictionary<TKey, TValue>();
 
-        public DeferredDictionary(Func<TKey, Tuple<bool, TValue>> parentTryGetValue, Func<IEnumerable<KeyValuePair<TKey, TValue>>> parentEnumerator = null)
+        private bool disposed;
+
+        public DeferredDictionary(Func<TKey, Tuple<bool, TValue>> parentTryGetValue, bool useWorkQueue = false, Func<IEnumerable<KeyValuePair<TKey, TValue>>> parentEnumerator = null)
         {
             this.parentTryGetValue = parentTryGetValue;
+            this.useWorkQueue = useWorkQueue;
             this.parentEnumerator = parentEnumerator;
+            if (useWorkQueue)
+                this.workQueue = new BlockingCollection<Tuple<int, TKey, TValue>>();
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing && !disposed)
+            {
+                if (useWorkQueue)
+                    workQueue.Dispose();
+
+                disposed = true;
+            }
         }
 
         public IDictionary<TKey, TValue> Updated { get { return updated; } }
@@ -85,12 +111,14 @@ namespace BitSharp.Core.Builders
             {
                 missing.Remove(key);
                 added.Add(key, value);
+                QueueAdd(key, value);
                 return true;
             }
             else if (deleted.Contains(key))
             {
                 deleted.Remove(key);
                 updated.Add(key, value);
+                QueueAdd(key, value);
                 return true;
             }
             else if (read.ContainsKey(key))
@@ -103,6 +131,7 @@ namespace BitSharp.Core.Builders
                 if (!TryGetParentValue(key, out existingValue))
                 {
                     added.Add(key, value);
+                    QueueAdd(key, value);
                     return true;
                 }
                 else
@@ -129,6 +158,7 @@ namespace BitSharp.Core.Builders
                 read.Remove(key);
                 updated.Remove(key);
                 added.Remove(key);
+                QueueRemove(key);
                 return true;
             }
             else
@@ -150,6 +180,7 @@ namespace BitSharp.Core.Builders
 
                 updated.Add(key, value);
                 read.Remove(key);
+                QueueUpdate(key, value);
                 return true;
             }
             else if (updated.ContainsKey(key))
@@ -158,6 +189,7 @@ namespace BitSharp.Core.Builders
                 Debug.Assert(!added.ContainsKey(key));
 
                 updated[key] = value;
+                QueueUpdate(key, value);
                 return true;
             }
             else if (added.ContainsKey(key))
@@ -166,11 +198,13 @@ namespace BitSharp.Core.Builders
                 Debug.Assert(!updated.ContainsKey(key));
 
                 added[key] = value;
+                QueueUpdate(key, value);
                 return true;
             }
             else if (TryGetParentValue(key, out ignore))
             {
                 updated[key] = value;
+                QueueUpdate(key, value);
                 return true;
             }
             else
@@ -218,6 +252,52 @@ namespace BitSharp.Core.Builders
 
             foreach (var kvPair in added)
                 yield return kvPair;
+        }
+
+        public void CompleteWorkQueue()
+        {
+            if (!useWorkQueue)
+                throw new InvalidOperationException();
+
+            workQueue.CompleteAdding();
+        }
+
+        public int WorkQueueCount
+        {
+            get
+            {
+                if (!useWorkQueue)
+                    throw new InvalidOperationException();
+
+                return workQueue.Count;
+            }
+        }
+
+        public IEnumerable<Tuple<int, TKey, TValue>> ConsumeWork()
+        {
+            if (!useWorkQueue)
+                throw new InvalidOperationException();
+
+            foreach (var workItem in workQueue.GetConsumingEnumerable())
+                yield return workItem;
+        }
+
+        private void QueueAdd(TKey key, TValue value)
+        {
+            if (useWorkQueue)
+                workQueue.Add(Tuple.Create(+1, key, value));
+        }
+
+        private void QueueUpdate(TKey key, TValue value)
+        {
+            if (useWorkQueue)
+                workQueue.Add(Tuple.Create(0, key, value));
+        }
+
+        private void QueueRemove(TKey key)
+        {
+            if (useWorkQueue)
+                workQueue.Add(Tuple.Create(-1, key, default(TValue)));
         }
 
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
