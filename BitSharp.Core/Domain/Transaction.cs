@@ -40,7 +40,7 @@ namespace BitSharp.Core.Domain
                 Inputs ?? this.Inputs,
                 Outputs ?? this.Outputs,
                 LockTime ?? this.LockTime,
-                Hash ?? this.Hash
+                Hash
             );
         }
     }
