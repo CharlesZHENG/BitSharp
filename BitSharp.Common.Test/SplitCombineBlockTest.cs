@@ -39,10 +39,7 @@ namespace BitSharp.Common.Test
             longCombiner.Complete();
 
             // combine the longs and verify the original order was preserved
-            using (var longQueue = longCombiner.LinkToQueue())
-            {
-                CollectionAssert.AreEqual(new long[] { 1, 2, 99, 98 }, longQueue.GetConsumingEnumerable().ToList());
-            }
+            CollectionAssert.AreEqual(new long[] { 1, 2, 99, 98 }, longCombiner.ToEnumerable().ToList());
         }
     }
 }

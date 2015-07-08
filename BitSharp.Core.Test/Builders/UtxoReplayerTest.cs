@@ -46,14 +46,13 @@ namespace BitSharp.Core.Test.Builders
                 }
             }
 
-            var loadingTxes = UtxoReplayer.ReplayCalculateUtxo(coreStorage.Object, chainState.Object, chainedHeader);
-            using (var loadingTxesQueue = loadingTxes.LinkToQueue())
             {
+                var loadingTxes = UtxoReplayer.ReplayCalculateUtxo(coreStorage.Object, chainState.Object, chainedHeader);
                 var txIndex = -1;
-                foreach (var loadingTx in loadingTxesQueue.GetConsumingEnumerable())
+                foreach (var loadingTx in loadingTxes.ToEnumerable())
                 {
                     txIndex++;
-                    
+
                     // verify loading tx matches original block tx
                     Assert.AreEqual(block.Transactions[txIndex].Hash, loadingTx.Transaction.Hash);
 

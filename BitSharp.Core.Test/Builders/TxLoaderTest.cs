@@ -86,13 +86,10 @@ namespace BitSharp.Core.Test.Builders
 
             var loadedTxes = TxLoader.LoadTxes(coreStorage, loadingTxes);
 
-            using (var loadedTxesQueue = loadedTxes.LinkToQueue())
-            {
-                Exception actualEx;
-                AssertMethods.AssertAggregateThrows<Exception>(() =>
-                    loadedTxesQueue.GetConsumingEnumerable().ToList(), out actualEx);
-                Assert.AreSame(expectedException, actualEx);
-            }
+            Exception actualEx;
+            AssertMethods.AssertAggregateThrows<Exception>(() =>
+                loadedTxes.ToEnumerable().ToList(), out actualEx);
+            Assert.AreSame(expectedException, actualEx);
         }
 
         /// <summary>
@@ -120,13 +117,10 @@ namespace BitSharp.Core.Test.Builders
 
             var loadedTxes = TxLoader.LoadTxes(coreStorage.Object, loadingTxes);
 
-            using (var loadedTxesQueue = loadedTxes.LinkToQueue())
-            {
-                Exception actualEx;
-                AssertMethods.AssertAggregateThrows<Exception>(() =>
-                    loadedTxesQueue.GetConsumingEnumerable().ToList(), out actualEx);
-                Assert.AreSame(expectedException, actualEx);
-            }
+            Exception actualEx;
+            AssertMethods.AssertAggregateThrows<Exception>(() =>
+                loadedTxes.ToEnumerable().ToList(), out actualEx);
+            Assert.AreSame(expectedException, actualEx);
         }
     }
 }

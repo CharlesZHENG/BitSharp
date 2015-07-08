@@ -41,25 +41,14 @@ namespace BitSharp.Common.ExtensionMethods
             return items;
         }
 
-        public static BlockingFaultableCollection<T> LinkToQueue<T>(this ISourceBlock<T> source, CancellationToken cancelToken = default(CancellationToken))
+        public static IEnumerable<T> ToEnumerable<T>(this ISourceBlock<T> source, CancellationToken cancelToken = default(CancellationToken))
         {
-            var queue = new BlockingFaultableCollection<T>();
-
-            var queueItems = new ActionBlock<T>(
-                item => queue.Add(item),
-                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken });
-
-            queueItems.Completion.ContinueWith(task =>
+            while (source.OutputAvailableAsync(cancelToken).Result)
             {
-                if (!task.IsFaulted)
-                    queue.CompleteAdding();
-                else
-                    queue.Fault(task.Exception);
-            });
+                yield return source.Receive(cancelToken);
+            }
 
-            source.LinkTo(queueItems, new DataflowLinkOptions { PropagateCompletion = true });
-
-            return queue;
+            source.Completion.Wait();
         }
     }
 }

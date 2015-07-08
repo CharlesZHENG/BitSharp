@@ -124,15 +124,12 @@ namespace BitSharp.Core.Builders
                         {
                             try
                             {
-                                using (var warmedBlockTxesQueue = warmedBlockTxes.LinkToQueue())
+                                foreach (var loadingTx in CalculateUtxo(chainedHeader, warmedBlockTxes.ToEnumerable(), deferredChainStateCursor))
                                 {
-                                    foreach (var loadingTx in CalculateUtxo(chainedHeader, warmedBlockTxesQueue.GetConsumingEnumerable(), deferredChainStateCursor))
-                                    {
-                                        loadingTxes.Post(loadingTx);
+                                    loadingTxes.Post(loadingTx);
 
-                                        if (!loadingTx.IsCoinbase)
-                                            totalTxInputCount += loadingTx.Transaction.Inputs.Length;
-                                    }
+                                    if (!loadingTx.IsCoinbase)
+                                        totalTxInputCount += loadingTx.Transaction.Inputs.Length;
                                 }
                             }
                             finally
@@ -324,10 +321,10 @@ namespace BitSharp.Core.Builders
                     new string('-', 80),
                     "Height: {0,10} | Duration: {1} /*| Validation: {2} */| Blocks/s: {3,7} | Tx/s: {4,7} | Inputs/s: {5,7} | Processed Tx: {6,7} | Processed Inputs: {7,7} | Utx Size: {8,7} | Utxo Size: {9,7}",
                     new string('-', 80),
-                    //TODO stats come from CoreStorage, not exposed on ICoreStorage, stats need to be moved
-                    //"Avg. Prev Tx Load Time: {10,12:#,##0.000}ms",
-                    //"Prev Tx Load Rate:  {11,12:#,##0}/s",
-                    //new string('-', 80),
+                //TODO stats come from CoreStorage, not exposed on ICoreStorage, stats need to be moved
+                //"Avg. Prev Tx Load Time: {10,12:#,##0.000}ms",
+                //"Prev Tx Load Rate:  {11,12:#,##0}/s",
+                //new string('-', 80),
                     "Block Txes Read:            {12,12:N3}ms",
                     "UTXO Look-ahead:            {13,12:N3}ms",
                     "Avg. UTXO Calculation Time: {14,12:#,##0.000}ms",

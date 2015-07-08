@@ -10,7 +10,7 @@ namespace BitSharp.Common.Test
     public class DataflowExtensionMethodsTest
     {
         [TestMethod]
-        public void TestLinkToQueue()
+        public void TestToEnumerable()
         {
             var expectedException = new Exception();
 
@@ -19,35 +19,29 @@ namespace BitSharp.Common.Test
             source.Post(2);
             source.Complete();
 
-            using (var queue = source.LinkToQueue())
-            {
-                var actual = queue.GetConsumingEnumerable().ToList();
-                CollectionAssert.AreEqual(new[] { 1, 2 }, actual);
-            }
+            var actual = source.ToEnumerable().ToList();
+            CollectionAssert.AreEqual(new[] { 1, 2 }, actual);
         }
 
         [TestMethod]
-        public void TestLinkToQueueFault()
+        public void TestToEnumerableFault()
         {
             var expectedException = new Exception();
 
             var source = new BufferBlock<object>();
             ((IDataflowBlock)source).Fault(expectedException);
 
-            using (var queue = source.LinkToQueue())
+            try
             {
-                try
-                {
-                    queue.GetConsumingEnumerable().ToList();
-                    Assert.Fail();
-                }
-                catch (Exception ex)
-                {
-                    Assert.IsInstanceOfType(ex, typeof(AggregateException));
-                    var aggEx = (AggregateException)ex;
-                    Assert.AreEqual(1, aggEx.Flatten().InnerExceptions.Count);
-                    Assert.AreSame(expectedException, aggEx.Flatten().InnerExceptions[0]);
-                }
+                source.ToEnumerable().ToList();
+                Assert.Fail();
+            }
+            catch (Exception ex)
+            {
+                Assert.IsInstanceOfType(ex, typeof(AggregateException));
+                var aggEx = (AggregateException)ex;
+                Assert.AreEqual(1, aggEx.Flatten().InnerExceptions.Count);
+                Assert.AreSame(expectedException, aggEx.Flatten().InnerExceptions[0]);
             }
         }
     }
