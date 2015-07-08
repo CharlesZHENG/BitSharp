@@ -162,5 +162,13 @@ namespace BitSharp.Core.Test
         {
             this.coreDaemon.WaitForUpdate();
         }
+
+        public void AssertAtBlock(int expectedHeight, UInt256 expectedBlockHash)
+        {
+            Assert.AreEqual(expectedHeight, coreDaemon.TargetChain.Height);
+            Assert.AreEqual(expectedBlockHash, coreDaemon.TargetChain.LastBlock.Hash);
+            Assert.AreEqual(expectedHeight, coreDaemon.CurrentChain.Height);
+            Assert.AreEqual(expectedBlockHash, coreDaemon.CurrentChain.LastBlock.Hash);
+        }
     }
 }

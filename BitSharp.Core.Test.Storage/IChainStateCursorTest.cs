@@ -1,4 +1,5 @@
 ﻿using BitSharp.Common;
+using BitSharp.Common.Test;
 using BitSharp.Core.Domain;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;

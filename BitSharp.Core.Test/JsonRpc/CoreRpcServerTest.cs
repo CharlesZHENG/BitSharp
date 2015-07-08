@@ -29,7 +29,7 @@ namespace BitSharp.Core.Test.JsonRpc
 
                     simulator.AddBlockRange(0, 9);
                     simulator.WaitForUpdate();
-                    AssertMethods.AssertDaemonAtBlock(9, block9.Hash, simulator.CoreDaemon);
+                    simulator.AssertAtBlock(9, block9.Hash);
 
                     var jsonRequestId = Guid.NewGuid().ToString();
                     var jsonRequest = JsonConvert.SerializeObject(

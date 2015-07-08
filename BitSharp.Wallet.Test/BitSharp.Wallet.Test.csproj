@@ -114,6 +114,10 @@
     <None Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\BitSharp.Common.Test\BitSharp.Common.Test.csproj">
+      <Project>{299d32ed-61a5-4c8d-8ae1-8f502cfa6b99}</Project>
+      <Name>BitSharp.Common.Test</Name>
+    </ProjectReference>
     <ProjectReference Include="..\BitSharp.Common\BitSharp.Common.csproj">
       <Project>{b8d21dec-5370-4194-9e6d-2f620804a892}</Project>
       <Name>BitSharp.Common</Name>

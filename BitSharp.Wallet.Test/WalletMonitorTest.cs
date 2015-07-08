@@ -28,7 +28,7 @@ namespace BitSharp.Wallet.Test
 
                 simulator.AddBlockRange(0, 9999);
                 simulator.WaitForUpdate();
-                AssertMethods.AssertDaemonAtBlock(9999, block9999.Hash, simulator.CoreDaemon);
+                simulator.AssertAtBlock(9999, block9999.Hash);
 
                 walletMonitor.WaitForUpdate();
                 Assert.AreEqual(9999, walletMonitor.WalletHeight);
@@ -69,7 +69,7 @@ namespace BitSharp.Wallet.Test
 
                 simulator.AddBlockRange(0, 9999);
                 simulator.WaitForUpdate();
-                AssertMethods.AssertDaemonAtBlock(9999, block9999.Hash, simulator.CoreDaemon);
+                simulator.AssertAtBlock(9999, block9999.Hash);
 
                 // verify initial wallet state
                 walletMonitor.WaitForUpdate();
@@ -96,7 +96,7 @@ namespace BitSharp.Wallet.Test
 
                 // verify chain state reset to genesis
                 simulator.WaitForUpdate();
-                AssertMethods.AssertDaemonAtBlock(0, block0.Hash, simulator.CoreDaemon);
+                simulator.AssertAtBlock(0, block0.Hash);
 
                 // verify wallet state rolled back to genesis
                 walletMonitor.WaitForUpdate();
