@@ -33,13 +33,10 @@ namespace BitSharp.Core.Test
         // create a random temp directory for this process
         public static string CreateTempDirectory()
         {
-            var processDirectory = Path.Combine(BaseDirectory, Process.GetCurrentProcess().Id.ToString());
-            CleanCreateDirectory(processDirectory);
+            var tempDirectory = Path.Combine(BaseDirectory, Process.GetCurrentProcess().Id.ToString(), Path.GetRandomFileName());
+            CleanCreateDirectory(tempDirectory);
 
-            var testDirectory = Path.Combine(processDirectory, Path.GetRandomFileName());
-            CleanCreateDirectory(testDirectory);
-
-            return testDirectory;
+            return tempDirectory;
         }
 
         public static IDisposable CreateTempDirectory(out string path)
@@ -79,8 +76,8 @@ namespace BitSharp.Core.Test
         {
             try
             {
-                using (Process.GetProcessById(processId))
-                    return true;
+                using (var process = Process.GetProcessById(processId))
+                    return !process.HasExited;
             }
             catch (Exception)
             {
