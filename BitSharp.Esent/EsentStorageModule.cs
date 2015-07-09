@@ -1,9 +1,6 @@
-﻿using BitSharp.Common.ExtensionMethods;
-using BitSharp.Core.Rules;
+﻿using BitSharp.Core.Rules;
 using BitSharp.Core.Storage;
 using BitSharp.Node.Storage;
-using Microsoft.Isam.Esent.Collections.Generic;
-using Microsoft.Isam.Esent.Interop;
 using Ninject;
 using Ninject.Modules;
 using System.IO;
@@ -35,15 +32,7 @@ namespace BitSharp.Esent
 
         public override void Load()
         {
-            //TODO remove reflection once PersistentDictionary is phased out
-            var esentAssembly = typeof(PersistentDictionary<string, string>).Assembly;
-            var type = esentAssembly.GetType("Microsoft.Isam.Esent.Collections.Generic.CollectionsSystemParameters");
-            var method = type.GetMethod("Init");
-            method.Invoke(null, null);
-            if (this.cacheSizeMinBytes != null)
-                SystemParameters.CacheSizeMin = (this.cacheSizeMinBytes.Value / SystemParameters.DatabasePageSize).ToIntChecked();
-            if (this.cacheSizeMaxBytes != null)
-                SystemParameters.CacheSizeMax = (this.cacheSizeMaxBytes.Value / SystemParameters.DatabasePageSize).ToIntChecked();
+            EsentStorageManager.InitSystemParameters(cacheSizeMinBytes, cacheSizeMaxBytes);
 
             // bind concrete storage providers
             if (blockStorage)

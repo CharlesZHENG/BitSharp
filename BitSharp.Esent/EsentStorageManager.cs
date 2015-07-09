@@ -1,5 +1,8 @@
 ﻿using BitSharp.Common;
+using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Storage;
+using Microsoft.Isam.Esent.Collections.Generic;
+using Microsoft.Isam.Esent.Interop;
 using NLog;
 using System;
 
@@ -94,6 +97,19 @@ namespace BitSharp.Esent
                         this.chainStateManager = new EsentChainStateManager(this.baseDirectory);
 
             return this.chainStateManager.OpenChainStateCursor();
+        }
+
+        public static void InitSystemParameters(long? cacheSizeMinBytes = null, long? cacheSizeMaxBytes = null)
+        {
+            //TODO remove reflection once PersistentDictionary is phased out
+            var esentAssembly = typeof(PersistentDictionary<string, string>).Assembly;
+            var type = esentAssembly.GetType("Microsoft.Isam.Esent.Collections.Generic.CollectionsSystemParameters");
+            var method = type.GetMethod("Init");
+            method.Invoke(null, null);
+            if (cacheSizeMinBytes != null)
+                SystemParameters.CacheSizeMin = (cacheSizeMinBytes.Value / SystemParameters.DatabasePageSize).ToIntChecked();
+            if (cacheSizeMaxBytes != null)
+                SystemParameters.CacheSizeMax = (cacheSizeMaxBytes.Value / SystemParameters.DatabasePageSize).ToIntChecked();
         }
     }
 }
