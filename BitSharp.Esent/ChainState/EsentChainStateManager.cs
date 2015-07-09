@@ -31,7 +31,7 @@ namespace BitSharp.Esent
 
             this.CreateOrOpenDatabase();
 
-            this.cursorCache = new DisposableCache<IChainStateCursor>(64,
+            this.cursorCache = new DisposableCache<IChainStateCursor>(256,
                 createFunc: () => new ChainStateCursor(this.jetDatabase, this.jetInstance),
                 prepareAction: cursor =>
                 {
@@ -89,7 +89,8 @@ namespace BitSharp.Esent
             instance.Parameters.NoInformationEvent = true;
             instance.Parameters.WaypointLatency = 1;
             instance.Parameters.MaxSessions = 256;
-            instance.Parameters.MaxOpenTables = 256;
+            instance.Parameters.MaxCursors = 256 * 10;
+            instance.Parameters.MaxOpenTables = 256 * 10;
             if (EsentVersion.SupportsWindows81Features)
             {
                 instance.Parameters.EnableShrinkDatabase = ShrinkDatabaseGrbit.On | ShrinkDatabaseGrbit.Realtime;
