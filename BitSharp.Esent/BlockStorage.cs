@@ -32,7 +32,7 @@ namespace BitSharp.Esent
             this.jetDirectory = Path.Combine(baseDirectory, "Blocks");
             this.jetDatabase = Path.Combine(this.jetDirectory, "Blocks.edb");
 
-            this.cursorCache = new DisposableCache<BlockCursor>(64,
+            this.cursorCache = new DisposableCache<BlockCursor>(1024,
                 createFunc: () => new BlockCursor(this.jetDatabase, this.jetInstance));
 
             this.jetInstance = CreateInstance(this.jetDirectory);
@@ -279,8 +279,9 @@ namespace BitSharp.Esent
             instance.Parameters.MaxVerPages = 1024 * 256;
             instance.Parameters.NoInformationEvent = true;
             instance.Parameters.WaypointLatency = 1;
-            instance.Parameters.MaxSessions = 256;
-            instance.Parameters.MaxOpenTables = 256;
+            instance.Parameters.MaxSessions = 30000;
+            instance.Parameters.MaxCursors = 65536;
+            instance.Parameters.MaxOpenTables = 65536;
             if (EsentVersion.SupportsWindows81Features)
             {
                 instance.Parameters.EnableShrinkDatabase = ShrinkDatabaseGrbit.On | ShrinkDatabaseGrbit.Realtime;
