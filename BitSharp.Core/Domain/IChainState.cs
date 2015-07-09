@@ -12,6 +12,8 @@ namespace BitSharp.Core.Domain
     /// </summary>
     public interface IChainState : IDisposable
     {
+        int CursorCount { get; }
+
         /// <summary>
         /// The full chain for this chain state.
         /// </summary>

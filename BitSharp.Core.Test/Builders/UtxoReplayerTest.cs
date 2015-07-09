@@ -18,6 +18,7 @@ namespace BitSharp.Core.Test.Builders
         {
             var coreStorage = new Mock<ICoreStorage>();
             var chainState = new Mock<IChainState>();
+            chainState.Setup(x => x.CursorCount).Returns(4);
 
             var testBlocks = new TestBlocks();
 

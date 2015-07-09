@@ -20,7 +20,10 @@ namespace BitSharp.Core.Test.Builders
             var blockTxes = new BufferBlock<BlockTx>();
             blockTxes.Complete();
 
-            var lookAhead = UtxoLookAhead.LookAhead(blockTxes, Mock.Of<IDeferredChainStateCursor>());
+            var deferredCursor = new Mock<IDeferredChainStateCursor>();
+            deferredCursor.Setup(x => x.CursorCount).Returns(4);
+
+            var lookAhead = UtxoLookAhead.LookAhead(blockTxes, deferredCursor.Object);
             Assert.AreEqual(0, lookAhead.ReceiveAllAsync().Result.Count);
 
             Assert.IsTrue(lookAhead.Completion.Wait(2000));
@@ -31,7 +34,10 @@ namespace BitSharp.Core.Test.Builders
         {
             var blockTxes = new BufferBlock<BlockTx>();
 
-            var lookAhead = UtxoLookAhead.LookAhead(blockTxes, Mock.Of<IDeferredChainStateCursor>());
+            var deferredCursor = new Mock<IDeferredChainStateCursor>();
+            deferredCursor.Setup(x => x.CursorCount).Returns(4);
+
+            var lookAhead = UtxoLookAhead.LookAhead(blockTxes, deferredCursor.Object);
 
             Assert.IsFalse(lookAhead.Completion.IsCompleted);
 
@@ -47,7 +53,10 @@ namespace BitSharp.Core.Test.Builders
         {
             var blockTxes = new BufferBlock<BlockTx>();
 
-            var lookAhead = UtxoLookAhead.LookAhead(blockTxes, Mock.Of<IDeferredChainStateCursor>());
+            var deferredCursor = new Mock<IDeferredChainStateCursor>();
+            deferredCursor.Setup(x => x.CursorCount).Returns(4);
+
+            var lookAhead = UtxoLookAhead.LookAhead(blockTxes, deferredCursor.Object);
 
             // post a coinbase transaction, the inputs should not be looked up
             var blockTx = new BlockTx(0, RandomData.RandomTransaction(new RandomDataOptions { TxInputCount = 2 }));
@@ -66,6 +75,7 @@ namespace BitSharp.Core.Test.Builders
         public void TestUtxoLookAheadWithTransactions()
         {
             var deferredCursor = new Mock<IDeferredChainStateCursor>();
+            deferredCursor.Setup(x => x.CursorCount).Returns(4);
 
             var blockTxes = new BufferBlock<BlockTx>();
 
@@ -98,6 +108,7 @@ namespace BitSharp.Core.Test.Builders
         public void TestUtxoLookAheadOrdering()
         {
             var deferredCursor = new Mock<IDeferredChainStateCursor>();
+            deferredCursor.Setup(x => x.CursorCount).Returns(4);
 
             var blockTxes = new BufferBlock<BlockTx>();
 
@@ -154,6 +165,7 @@ namespace BitSharp.Core.Test.Builders
         public void TestUtxoLookAheadWarmupException()
         {
             var deferredCursor = new Mock<IDeferredChainStateCursor>();
+            deferredCursor.Setup(x => x.CursorCount).Returns(4);
 
             var blockTxes = new BufferBlock<BlockTx>();
 

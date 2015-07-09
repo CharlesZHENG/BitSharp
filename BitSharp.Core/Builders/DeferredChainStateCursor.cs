@@ -80,6 +80,8 @@ namespace BitSharp.Core.Builders
             unspentTxes.Dispose();
         }
 
+        public int CursorCount { get { return chainState.CursorCount; } }
+
         public bool InTransaction
         {
             get { throw new NotSupportedException(); }

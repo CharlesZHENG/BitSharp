@@ -15,11 +15,12 @@ namespace BitSharp.Core.Domain
 
         public ChainState(Chain chain, IStorageManager storageManager)
         {
+            CursorCount = 32;
             this.chain = chain;
 
             // create a cache of cursors that are in an open snapshot transaction with the current chain state
             var success = false;
-            this.cursorCache = new DisposableCache<DisposeHandle<IChainStateCursor>>(16);
+            this.cursorCache = new DisposableCache<DisposeHandle<IChainStateCursor>>(CursorCount);
             try
             {
                 for (var i = 0; i < this.cursorCache.Capacity; i++)
@@ -62,6 +63,8 @@ namespace BitSharp.Core.Domain
 
             this.cursorCache.Dispose();
         }
+
+        public int CursorCount { get; private set; }
 
         public Chain Chain
         {
