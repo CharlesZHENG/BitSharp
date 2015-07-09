@@ -488,7 +488,7 @@ namespace BitSharp.Node.Workers
             var chunkSize = 2;
             var blockFolder = string.Join(Path.DirectorySeparatorChar.ToString(), Enumerable.Range(0, blockHashString.Length / chunkSize).Select(i => blockHashString.Substring(i * chunkSize, chunkSize)).ToArray());
 
-            if (height >= 150.THOUSAND())
+            if (height >= 225.THOUSAND())
                 return Path.Combine(SecondaryBlockFolder, blockFolder, "{0}.blk".Format2(blockHash));
             else
                 return Path.Combine(@"Y:\BitSharp.Blocks", blockFolder, "{0}.blk".Format2(blockHash));
