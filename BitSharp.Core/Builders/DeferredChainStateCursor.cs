@@ -29,7 +29,7 @@ namespace BitSharp.Core.Builders
         private readonly ChainedHeader originalChainTip;
 
         private DeferredDictionary<UInt256, ChainedHeader> headers;
-        private DeferredDictionary<UInt256, UnspentTx> unspentTxes;
+        private WorkQueueDictionary<UInt256, UnspentTx> unspentTxes;
         private DeferredDictionary<int, BlockSpentTxes> blockSpentTxes;
         private DeferredDictionary<UInt256, IImmutableList<UnmintedTx>> blockUnmintedTxes;
 
@@ -53,13 +53,12 @@ namespace BitSharp.Core.Builders
                     return Tuple.Create(chainState.TryGetHeader(blockHash, out header), header);
                 });
 
-            unspentTxes = new DeferredDictionary<UInt256, UnspentTx>(
+            unspentTxes = new WorkQueueDictionary<UInt256, UnspentTx>(
                 txHash =>
                 {
                     UnspentTx unspentTx;
                     return Tuple.Create(TryLoadUnspenTx(txHash, out unspentTx), unspentTx);
-                },
-                useWorkQueue: true);
+                });
 
             blockSpentTxes = new DeferredDictionary<int, BlockSpentTxes>(
                 blockHeight =>
@@ -78,10 +77,7 @@ namespace BitSharp.Core.Builders
 
         public void Dispose()
         {
-            headers.Dispose();
             unspentTxes.Dispose();
-            blockSpentTxes.Dispose();
-            blockUnmintedTxes.Dispose();
         }
 
         public bool InTransaction
@@ -260,20 +256,20 @@ namespace BitSharp.Core.Builders
                         {
                             switch (operation)
                             {
-                                case WorkItemOperation.Nothing:
+                                case WorkQueueOperation.Nothing:
                                     break;
 
-                                case WorkItemOperation.Add:
+                                case WorkQueueOperation.Add:
                                     if (!parent.TryAddUnspentTx(unspentTx))
                                         throw new InvalidOperationException();
                                     break;
 
-                                case WorkItemOperation.Update:
+                                case WorkQueueOperation.Update:
                                     if (!parent.TryUpdateUnspentTx(unspentTx))
                                         throw new InvalidOperationException();
                                     break;
 
-                                case WorkItemOperation.Delete:
+                                case WorkQueueOperation.Remove:
                                     if (!parent.TryRemoveUnspentTx(unspenTxHash))
                                         throw new InvalidOperationException();
                                     break;
