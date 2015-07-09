@@ -152,7 +152,7 @@ namespace BitSharp.Examples
                 logger.Info(string.Format("Block 1 coinbase output states:    [{0}]", string.Join(",", unspentTx.OutputStates.Select(x => x.ToString()))));
 
                 // look up block 381 list of spent txes
-                IImmutableList<UInt256> spentTxes;
+                BlockSpentTxes spentTxes;
                 chainState.TryGetBlockSpentTxes(381, out spentTxes);
                 logger.Info(string.Format("Block 381 spent txes count:        {0,9:N0}", spentTxes.Count));
             }

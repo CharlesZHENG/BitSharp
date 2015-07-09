@@ -61,16 +61,15 @@ namespace BitSharp.Core.Domain
         }
 
         /// <summary>
-        /// Create a spent transaction representation of this unspent transaction, for a specified block.
+        /// Create a spent transaction representation of this unspent transaction.
         /// </summary>
-        /// <param name="spentBlockIndex">The index (height) of the block in which this transaction became fully spent.</param>
         /// <returns>The spent transaction.</returns>
-        public SpentTx ToSpentTx(int spentBlockIndex)
+        public SpentTx ToSpentTx()
         {
             if (!this.IsFullySpent)
                 throw new InvalidOperationException();
             
-            return new SpentTx(this.txHash, this.blockIndex, this.txIndex, this.outputStates.Length, spentBlockIndex);
+            return new SpentTx(this.txHash, this.blockIndex, this.txIndex);
         }
 
         public override bool Equals(object obj)

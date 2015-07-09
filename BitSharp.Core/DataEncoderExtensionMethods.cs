@@ -1,6 +1,7 @@
 ﻿using BitSharp.Common;
 using BitSharp.Common.ExtensionMethods;
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
@@ -200,11 +201,11 @@ namespace BitSharp.Core.ExtensionMethods
             writer.WriteBytes(encoded.Length, encoded);
         }
 
-        public static void WriteList<T>(this BinaryWriter writer, ImmutableArray<T> list, Action<T> encode)
+        public static void WriteList<T>(this BinaryWriter writer, IReadOnlyList<T> list, Action<T> encode)
         {
-            writer.WriteVarInt((UInt64)list.Length);
+            writer.WriteVarInt((UInt64)list.Count);
 
-            for (var i = 0; i < list.Length; i++)
+            for (var i = 0; i < list.Count; i++)
             {
                 encode(list[i]);
             }

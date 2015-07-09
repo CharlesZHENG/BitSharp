@@ -129,6 +129,8 @@
     <Compile Include="Builders\UtxoReplayer.cs" />
     <Compile Include="Builders\TxLoader.cs" />
     <Compile Include="Builders\BlockValidator.cs" />
+    <Compile Include="Builders\BlockSpentTxesBuilder.cs" />
+    <Compile Include="Domain\BlockSpentTxes.cs" />
     <Compile Include="Domain\UnmintedTx.cs" />
     <Compile Include="Builders\UtxoBuilder.cs" />
     <Compile Include="Domain\LoadedTx.cs" />

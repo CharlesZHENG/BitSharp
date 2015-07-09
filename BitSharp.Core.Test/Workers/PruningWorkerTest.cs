@@ -76,11 +76,13 @@ namespace BitSharp.Core.Test.Workers
                 }
 
                 // add an unspent tx for each transaction to storage
+                var unspentTxes = new UnspentTx[block.Transactions.Length];
                 chainStateCursor.BeginTransaction();
                 for (var txIndex = 0; txIndex < block.Transactions.Length; txIndex++)
                 {
                     var tx = block.Transactions[txIndex];
-                    var unspentTx = new UnspentTx(tx.Hash, blockIndex: 0, txIndex: txIndex, outputStates: new OutputStates(1, OutputState.Unspent));
+                    var unspentTx = new UnspentTx(tx.Hash, blockIndex: 0, txIndex: txIndex, outputStates: new OutputStates(1, OutputState.Spent));
+                    unspentTxes[txIndex] = unspentTx;
                     chainStateCursor.TryAddUnspentTx(unspentTx);
                 }
                 chainStateCursor.CommitTransaction();
@@ -94,7 +96,7 @@ namespace BitSharp.Core.Test.Workers
                 {
                     // create a spent tx to prune the transaction
                     var pruneTx = block.Transactions[pruneTxIndex];
-                    var spentTxes = ImmutableList.Create(pruneTx.Hash);
+                    var spentTxes = BlockSpentTxes.CreateRange(new[] { unspentTxes[pruneTxIndex].ToSpentTx() });
 
                     // store the spent txes for the current pruning block
                     pruneHeight++;

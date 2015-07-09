@@ -22,7 +22,7 @@ namespace BitSharp.Core.Builders
         public IEnumerable<LoadingTx> CalculateUtxo(IChainStateCursor chainStateCursor, Chain chain, IEnumerable<BlockTx> blockTxes)
         {
             var chainedHeader = chain.LastBlock;
-            var blockSpentTxes = ImmutableList.CreateBuilder<UInt256>();
+            var blockSpentTxes = new BlockSpentTxesBuilder();
 
             foreach (var blockTx in blockTxes)
             {
@@ -88,7 +88,7 @@ namespace BitSharp.Core.Builders
             }
         }
 
-        private UnspentTx Spend(IChainStateCursor chainStateCursor, int txIndex, Transaction tx, int inputIndex, TxInput input, ChainedHeader chainedHeader, ImmutableList<UInt256>.Builder blockSpentTxes)
+        private UnspentTx Spend(IChainStateCursor chainStateCursor, int txIndex, Transaction tx, int inputIndex, TxInput input, ChainedHeader chainedHeader, BlockSpentTxesBuilder blockSpentTxes)
         {
             UnspentTx unspentTx;
             if (!chainStateCursor.TryGetUnspentTx(input.PreviousTxOutputKey.TxHash, out unspentTx))
@@ -125,7 +125,7 @@ namespace BitSharp.Core.Builders
             // store pruning information for a fully spent transaction
             if (unspentTx.IsFullySpent)
             {
-                blockSpentTxes.Add(unspentTx.TxHash);
+                blockSpentTxes.AddSpentTx(unspentTx.ToSpentTx());
 
                 // decrement unspent tx count
                 chainStateCursor.UnspentTxCount--;

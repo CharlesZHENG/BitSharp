@@ -190,7 +190,7 @@ namespace BitSharp.Core.Domain
             }
         }
 
-        public bool TryGetBlockSpentTxes(int blockIndex, out IImmutableList<UInt256> spentTxes)
+        public bool TryGetBlockSpentTxes(int blockIndex, out BlockSpentTxes spentTxes)
         {
             using (var handle = this.cursorCache.TakeItem())
             {

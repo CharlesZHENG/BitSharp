@@ -21,7 +21,7 @@ namespace BitSharp.Core.Storage.Memory
         private int? totalOutputCount;
         private ImmutableSortedDictionary<UInt256, ChainedHeader>.Builder headers;
         private ImmutableSortedDictionary<UInt256, UnspentTx>.Builder unspentTransactions;
-        private ImmutableDictionary<int, IImmutableList<UInt256>>.Builder blockSpentTxes;
+        private ImmutableDictionary<int, BlockSpentTxes>.Builder blockSpentTxes;
         private ImmutableDictionary<UInt256, IImmutableList<UnmintedTx>>.Builder blockUnmintedTxes;
 
         private long chainTipVersion;
@@ -360,13 +360,13 @@ namespace BitSharp.Core.Storage.Memory
             return this.blockSpentTxes.ContainsKey(blockIndex);
         }
 
-        public bool TryGetBlockSpentTxes(int blockIndex, out IImmutableList<UInt256> spentTxes)
+        public bool TryGetBlockSpentTxes(int blockIndex, out BlockSpentTxes spentTxes)
         {
             CheckTransaction();
             return this.blockSpentTxes.TryGetValue(blockIndex, out spentTxes);
         }
 
-        public bool TryAddBlockSpentTxes(int blockIndex, IImmutableList<UInt256> spentTxes)
+        public bool TryAddBlockSpentTxes(int blockIndex, BlockSpentTxes spentTxes)
         {
             CheckWriteTransaction();
 

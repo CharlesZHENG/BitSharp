@@ -23,13 +23,14 @@ namespace BitSharp.Core.Builders
         private static readonly DurationMeasure applyUtxoPerDurationMeasure = new DurationMeasure(TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(5));
         private static readonly DurationMeasure applyUtxoPerInclusiveDurationMeasure = new DurationMeasure(TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(5));
         private static readonly AverageMeasure applyUtxoCountMeasure = new AverageMeasure(TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(5));
+        private static readonly AverageMeasure applyUtxoSaveCountMeasure = new AverageMeasure(TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(5));
 
         private readonly IChainState chainState;
         private readonly ChainedHeader originalChainTip;
 
         private DeferredDictionary<UInt256, ChainedHeader> headers;
         private DeferredDictionary<UInt256, UnspentTx> unspentTxes;
-        private DeferredDictionary<int, IImmutableList<UInt256>> blockSpentTxes;
+        private DeferredDictionary<int, BlockSpentTxes> blockSpentTxes;
         private DeferredDictionary<UInt256, IImmutableList<UnmintedTx>> blockUnmintedTxes;
 
         private bool changesApplied;
@@ -60,10 +61,10 @@ namespace BitSharp.Core.Builders
                 },
                 useWorkQueue: true);
 
-            blockSpentTxes = new DeferredDictionary<int, IImmutableList<UInt256>>(
+            blockSpentTxes = new DeferredDictionary<int, BlockSpentTxes>(
                 blockHeight =>
                 {
-                    IImmutableList<UInt256> spentTxes;
+                    BlockSpentTxes spentTxes;
                     return Tuple.Create(chainState.TryGetBlockSpentTxes(blockHeight, out spentTxes), spentTxes);
                 });
 
@@ -175,12 +176,12 @@ namespace BitSharp.Core.Builders
             return blockSpentTxes.ContainsKey(blockIndex);
         }
 
-        public bool TryGetBlockSpentTxes(int blockIndex, out IImmutableList<UInt256> spentTxes)
+        public bool TryGetBlockSpentTxes(int blockIndex, out BlockSpentTxes spentTxes)
         {
             return blockSpentTxes.TryGetValue(blockIndex, out spentTxes);
         }
 
-        public bool TryAddBlockSpentTxes(int blockIndex, IImmutableList<UInt256> spentTxes)
+        public bool TryAddBlockSpentTxes(int blockIndex, BlockSpentTxes spentTxes)
         {
             return blockSpentTxes.TryAdd(blockIndex, spentTxes);
         }
@@ -254,26 +255,33 @@ namespace BitSharp.Core.Builders
                 applyCount++;
                 applyUtxoPerInclusiveDurationMeasure.Measure(() =>
                 {
-                    switch (workItem.Item1)
-                    {
-                        case +1:
-                            if (!parent.TryAddUnspentTx(workItem.Item3))
-                                throw new InvalidOperationException();
-                            break;
+                    workItem.Consume(
+                        (operation, unspenTxHash, unspentTx) =>
+                        {
+                            switch (operation)
+                            {
+                                case WorkItemOperation.Nothing:
+                                    break;
 
-                        case 0:
-                            if (!parent.TryUpdateUnspentTx(workItem.Item3))
-                                throw new InvalidOperationException();
-                            break;
+                                case WorkItemOperation.Add:
+                                    if (!parent.TryAddUnspentTx(unspentTx))
+                                        throw new InvalidOperationException();
+                                    break;
 
-                        case -1:
-                            if (!parent.TryRemoveUnspentTx(workItem.Item2))
-                                throw new InvalidOperationException();
-                            break;
+                                case WorkItemOperation.Update:
+                                    if (!parent.TryUpdateUnspentTx(unspentTx))
+                                        throw new InvalidOperationException();
+                                    break;
 
-                        default:
-                            throw new InvalidOperationException();
-                    }
+                                case WorkItemOperation.Delete:
+                                    if (!parent.TryRemoveUnspentTx(unspenTxHash))
+                                        throw new InvalidOperationException();
+                                    break;
+
+                                default:
+                                    throw new InvalidOperationException();
+                            }
+                        });
                 });
             }
             applyStopwatch.Stop();
@@ -284,6 +292,7 @@ namespace BitSharp.Core.Builders
                 applyUtxoPerDurationMeasure.Tick(TimeSpan.FromTicks(applyStopwatch.Elapsed.Ticks / applyCount));
             }
             applyUtxoCountMeasure.Tick(applyCount);
+            applyUtxoSaveCountMeasure.Tick(unspentTxes.WorkChangeCount);
 
             parent.ChainTip = ChainTip;
             parent.UnspentOutputCount = UnspentOutputCount;
@@ -350,6 +359,7 @@ namespace BitSharp.Core.Builders
                 logger.Info("Apply UTXO First Item:             {0,8:N3}ms", applyUtxoFirstDurationMeasure.GetAverage().TotalMilliseconds);
                 logger.Info("Apply UTXO Duration:               {0,8:N3}ms", applyUtxoDurationMeasure.GetAverage().TotalMilliseconds);
                 logger.Info("Apply UTXO Count:                  {0,8:N0}", applyUtxoCountMeasure.GetAverage());
+                logger.Info("Apply UTXO Saved Work Count:       {0,8:N0}", applyUtxoSaveCountMeasure.GetAverage());
                 logger.Info("Apply UTXO Duration Per:           {0,8:N3}ms", applyUtxoPerDurationMeasure.GetAverage().TotalMilliseconds);
                 logger.Info("Apply UTXO Duration Per Inclusive: {0,8:N3}ms", applyUtxoPerInclusiveDurationMeasure.GetAverage().TotalMilliseconds);
                 logger.Info("---------------------------------------------");

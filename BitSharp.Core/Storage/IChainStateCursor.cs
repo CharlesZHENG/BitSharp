@@ -113,7 +113,7 @@ namespace BitSharp.Core.Storage
         /// <param name="blockIndex">The block's index (height) in the chain.</param>
         /// <param name="spentTxes">Contains the spent transactions when successful; otherwise, null.</param>
         /// <returns>true if the block's spent transactions were retrieved; otherwise, false</returns>
-        bool TryGetBlockSpentTxes(int blockIndex, out IImmutableList<UInt256> spentTxes);
+        bool TryGetBlockSpentTxes(int blockIndex, out BlockSpentTxes spentTxes);
 
         /// <summary>
         /// Add a block's spent transactions.
@@ -121,7 +121,7 @@ namespace BitSharp.Core.Storage
         /// <param name="blockIndex">The block's index (height) in the chain.</param>
         /// <param name="spentTxes">The spent transactions.</param>
         /// <returns>true if the block's spent transactions were added; otherwise, false</returns>
-        bool TryAddBlockSpentTxes(int blockIndex, IImmutableList<UInt256> spentTxes);
+        bool TryAddBlockSpentTxes(int blockIndex, BlockSpentTxes spentTxes);
 
         /// <summary>
         /// Remove a block's spent transactions.

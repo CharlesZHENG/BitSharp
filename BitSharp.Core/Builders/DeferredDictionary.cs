@@ -17,7 +17,8 @@ namespace BitSharp.Core.Builders
         private readonly Dictionary<TKey, TValue> added = new Dictionary<TKey, TValue>();
         private readonly HashSet<TKey> deleted = new HashSet<TKey>();
 
-        private readonly BlockingCollection<Tuple<int, TKey, TValue>> workQueue;
+        private readonly BlockingCollection<WorkItem<TKey, TValue>> workQueue;
+        private readonly Dictionary<TKey, WorkItem<TKey, TValue>> workByKey;
 
         private readonly Func<TKey, Tuple<bool, TValue>> parentTryGetValue;
         private readonly bool useWorkQueue;
@@ -33,7 +34,10 @@ namespace BitSharp.Core.Builders
             this.useWorkQueue = useWorkQueue;
             this.parentEnumerator = parentEnumerator;
             if (useWorkQueue)
-                this.workQueue = new BlockingCollection<Tuple<int, TKey, TValue>>();
+            {
+                this.workQueue = new BlockingCollection<WorkItem<TKey, TValue>>();
+                this.workByKey = new Dictionary<TKey, WorkItem<TKey, TValue>>();
+            }
         }
 
         public void Dispose()
@@ -273,7 +277,7 @@ namespace BitSharp.Core.Builders
             }
         }
 
-        public IEnumerable<Tuple<int, TKey, TValue>> ConsumeWork()
+        public IEnumerable<WorkItem<TKey, TValue>> ConsumeWork()
         {
             if (!useWorkQueue)
                 throw new InvalidOperationException();
@@ -282,22 +286,52 @@ namespace BitSharp.Core.Builders
                 yield return workItem;
         }
 
+        private int workChangeCount;
+        public int WorkChangeCount
+        {
+            get
+            {
+                if (!useWorkQueue)
+                    throw new InvalidOperationException();
+
+                return workChangeCount;
+            }
+            private set
+            {
+                workChangeCount = value;
+            }
+        }
+
         private void QueueAdd(TKey key, TValue value)
         {
-            if (useWorkQueue)
-                workQueue.Add(Tuple.Create(+1, key, value));
+            QueueWork(WorkItemOperation.Add, key, value);
         }
 
         private void QueueUpdate(TKey key, TValue value)
         {
-            if (useWorkQueue)
-                workQueue.Add(Tuple.Create(0, key, value));
+            QueueWork(WorkItemOperation.Update, key, value);
         }
 
         private void QueueRemove(TKey key)
         {
+            QueueWork(WorkItemOperation.Delete, key, default(TValue));
+        }
+
+        private void QueueWork(WorkItemOperation operation, TKey key, TValue value)
+        {
             if (useWorkQueue)
-                workQueue.Add(Tuple.Create(-1, key, default(TValue)));
+            {
+                bool alreadyExists;
+                WorkItem<TKey, TValue> workItem;
+                if (!(alreadyExists = workByKey.TryGetValue(key, out workItem)) || !workItem.TryChange(operation, value))
+                {
+                    workItem = new WorkItem<TKey, TValue>(operation, key, value);
+                    workByKey[key] = workItem;
+                    workQueue.Add(workItem);
+                }
+                else if (alreadyExists)
+                    WorkChangeCount++;
+            }
         }
 
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
@@ -333,5 +367,86 @@ namespace BitSharp.Core.Builders
                 }
             }
         }
+    }
+
+    public class WorkItem<TKey, TValue>
+    {
+        private WorkItemOperation operation;
+        private TKey key;
+        private TValue value;
+        private CompletionCount completion;
+        private readonly object lockObject = new object();
+
+        public WorkItem(WorkItemOperation operation, TKey key, TValue value)
+        {
+            this.operation = operation;
+            this.key = key;
+            this.value = value;
+            this.completion = new CompletionCount(1);
+        }
+
+        public bool TryChange(WorkItemOperation newOperation, TValue newValue)
+        {
+            lock (lockObject)
+            {
+                if (completion.IsComplete)
+                    return false;
+
+                // can't change existing add to add or existing delete to delete
+                if (newOperation == operation && operation != WorkItemOperation.Update)
+                {
+                    throw new InvalidOperationException();
+                }
+                // change existing update or add to use new value on update
+                else if (newOperation == WorkItemOperation.Update && (operation == WorkItemOperation.Add || operation == WorkItemOperation.Update))
+                {
+                    value = newValue;
+                }
+                // change an existing delete to an update on add
+                else if (newOperation == WorkItemOperation.Add && operation == WorkItemOperation.Delete)
+                {
+                    operation = WorkItemOperation.Update;
+                    value = newValue;
+                }
+                // remove an existing add on delete
+                else if (newOperation == WorkItemOperation.Delete && operation == WorkItemOperation.Add)
+                {
+                    operation = WorkItemOperation.Nothing;
+                    value = default(TValue);
+                }
+                // the remaining conditions are all invalid:
+                // - change an existing add to an update
+                // - change an existing update to a delete
+                // - change an existing delete to an update
+                else
+                {
+                    throw new InvalidOperationException();
+                }
+
+                return true;
+            }
+        }
+
+        public void Consume(Action<WorkItemOperation, TKey, TValue> consumeAction)
+        {
+            lock (lockObject)
+            {
+                if (completion.IsComplete)
+                    throw new InvalidOperationException();
+
+                consumeAction(operation, key, value);
+
+                if (!completion.TryComplete())
+                    throw new InvalidOperationException();
+            }
+        }
+    }
+
+    public enum WorkItemOperation
+    {
+        Nothing,
+        Add,
+        Update,
+        Delete
     }
 }

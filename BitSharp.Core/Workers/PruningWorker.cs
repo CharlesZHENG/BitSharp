@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 
 namespace BitSharp.Core.Workers
 {
@@ -27,10 +28,8 @@ namespace BitSharp.Core.Workers
         private readonly AverageMeasure txCountMeasure = new AverageMeasure();
         private readonly AverageMeasure txRateMeasure = new AverageMeasure();
         private readonly DurationMeasure totalDurationMeasure = new DurationMeasure();
-        private readonly DurationMeasure gatherIndexDurationMeasure = new DurationMeasure();
         private readonly DurationMeasure pruneIndexDurationMeasure = new DurationMeasure();
         private readonly DurationMeasure pruneBlocksDurationMeasure = new DurationMeasure();
-        private readonly DurationMeasure commitDurationMeasure = new DurationMeasure();
 
         //TODO
         private ChainBuilder prunedChain;
@@ -60,10 +59,8 @@ namespace BitSharp.Core.Workers
             this.txCountMeasure.Dispose();
             this.txRateMeasure.Dispose();
             this.totalDurationMeasure.Dispose();
-            this.gatherIndexDurationMeasure.Dispose();
             this.pruneIndexDurationMeasure.Dispose();
             this.pruneBlocksDurationMeasure.Dispose();
-            this.commitDurationMeasure.Dispose();
         }
 
         public PruningMode Mode { get; set; }
@@ -144,16 +141,14 @@ namespace BitSharp.Core.Workers
                 Throttler.IfElapsed(TimeSpan.FromSeconds(15), () =>
                 {
                     logger.Info(
-@"Pruned from block {0:#,##0} to {1:#,##0}:
-- avg tx rate:    {2,8:#,##0}/s
+@"Pruned from block {0:N0} to {1:N0}:
+- avg tx rate:    {2,8:N0}/s
 - per block stats:
-- tx count:       {3,8:#,##0}
-- gather index:   {4,12:#,##0.000}s
-- prune blocks:   {5,12:#,##0.000}s
-- prune index:    {6,12:#,##0.000}s
-- commit:         {7,12:#,##0.000}s
-- TOTAL:          {8,12:#,##0.000}s"
-                        .Format2(lastLogHeight, chainedHeader.Height, txRateMeasure.GetAverage(), txCountMeasure.GetAverage(), gatherIndexDurationMeasure.GetAverage().TotalSeconds, pruneBlocksDurationMeasure.GetAverage().TotalSeconds, pruneIndexDurationMeasure.GetAverage().TotalSeconds, commitDurationMeasure.GetAverage().TotalSeconds, totalDurationMeasure.GetAverage().TotalSeconds));
+- tx count:       {3,8:N0}
+- prune blocks:   {4,12:N3}ms
+- prune index:    {5,12:N3}ms
+- TOTAL:          {6,12:N3}ms"
+                        .Format2(lastLogHeight, chainedHeader.Height, txRateMeasure.GetAverage(), txCountMeasure.GetAverage(), pruneBlocksDurationMeasure.GetAverage().TotalMilliseconds, pruneIndexDurationMeasure.GetAverage().TotalMilliseconds, totalDurationMeasure.GetAverage().TotalMilliseconds));
 
                     lastLogHeight = chainedHeader.Height + 1;
                 });
@@ -170,13 +165,11 @@ namespace BitSharp.Core.Workers
 
             var txCount = 0;
             var totalStopwatch = Stopwatch.StartNew();
-            var gatherIndexStopwatch = new Stopwatch();
             var pruneIndexStopwatch = new Stopwatch();
             var pruneBlocksStopwatch = new Stopwatch();
-            var commitStopwatch = new Stopwatch();
 
             // retrieve the spent txes for this block
-            IImmutableList<UInt256> spentTxes;
+            BlockSpentTxes spentTxes;
             chainStateCursor.BeginTransaction(readOnly: true);
             try
             {
@@ -191,138 +184,22 @@ namespace BitSharp.Core.Workers
             {
                 txCount = spentTxes.Count;
 
-                if (mode.HasFlag(PruningMode.BlockTxesPreserveMerkle) || mode.HasFlag(PruningMode.BlockTxesDestroyMerkle))
-                {
-                    // dictionary to keep track of spent transactions against their block
-                    var pruneData = new Dictionary<int, List<int>>();
+                // begin prune block txes (either merkle prune or delete)
+                pruneBlocksStopwatch.Start();
+                var pruneBlockTxesTask = PruneBlockTxes(mode, chain, pruneBlock, spentTxes);
+                var timerTask = pruneBlockTxesTask.ContinueWith(_ => pruneBlocksStopwatch.Stop());
 
-                    gatherIndexStopwatch.Time(() =>
-                    {
-                        chainStateCursor.BeginTransaction(readOnly: true);
-                        try
-                        {
-                            foreach (var spentTxHash in spentTxes)
-                            {
-                                UnspentTx spentTx;
-                                if (chainStateCursor.TryGetUnspentTx(spentTxHash, out spentTx))
-                                {
-                                    // queue up spent tx to be pruned from block txes
-                                    List<int> blockTxIndices;
-                                    if (!pruneData.ContainsKey(spentTx.BlockIndex))
-                                    {
-                                        blockTxIndices = new List<int>();
-                                        pruneData.Add(spentTx.BlockIndex, blockTxIndices);
-                                    }
-                                    else
-                                        blockTxIndices = pruneData[spentTx.BlockIndex];
+                // prune tx index
+                pruneIndexStopwatch.Time(() =>
+                    PruneTxIndex(mode, chain, pruneBlock, spentTxes));
 
-                                    blockTxIndices.Add(spentTx.TxIndex);
-                                }
-                            }
-                        }
-                        finally
-                        {
-                            chainStateCursor.RollbackTransaction();
-                        }
-                    });
+                // wait for block txes prune to finish
+                pruneBlockTxesTask.Wait();
+                timerTask.Wait();
 
-                    // remove spent transactions from block storage
-                    if (pruneData.Count > 0)
-                    {
-                        pruneBlocksStopwatch.Time(() =>
-                        {
-                            using (var blockTxesPruneQueue = new BlockingCollection<KeyValuePair<UInt256, IEnumerable<int>>>())
-                            {
-                                var blocksPruneTask = Task.Run(() => Parallel.ForEach(blockTxesPruneQueue.GetConsumingPartitioner(),
-                                    new ParallelOptions { MaxDegreeOfParallelism = 16 },
-                                    tuple =>
-                                    {
-                                        if (mode.HasFlag(PruningMode.BlockTxesPreserveMerkle))
-                                            this.storageManager.BlockTxesStorage.PruneElements(new[] { tuple });
-                                        else
-                                            this.storageManager.BlockTxesStorage.DeleteElements(new[] { tuple });
-                                    }));
-                                try
-                                {
-                                    foreach (var keyPair in pruneData)
-                                    {
-                                        var confirmedBlockIndex = keyPair.Key;
-                                        var confirmedBlockHash = chain.Blocks[confirmedBlockIndex].Hash;
-                                        var spentTxIndices = keyPair.Value;
-
-                                        blockTxesPruneQueue.Add(new KeyValuePair<UInt256, IEnumerable<int>>(confirmedBlockHash, spentTxIndices));
-                                    }
-                                }
-                                finally
-                                {
-                                    blockTxesPruneQueue.CompleteAdding();
-                                    blocksPruneTask.Wait();
-                                }
-                            }
-                        });
-                    }
-                }
-
-                if (mode.HasFlag(PruningMode.TxIndex))
-                {
-                    pruneIndexStopwatch.Time(() =>
-                    {
-                        using (var spentTxesQueue = new BlockingCollection<UInt256>())
-                        {
-                            var pruneTxIndexTask = TaskPool.Run(16, () =>
-                            {
-                                using (var handle = this.storageManager.OpenChainStateCursor())
-                                {
-                                    var innerChainStateCursor = handle.Item;
-                                    innerChainStateCursor.BeginTransaction();
-                                    var wasCommitted = false;
-                                    try
-                                    {
-                                        foreach (var txHash in spentTxesQueue.GetConsumingEnumerable())
-                                            innerChainStateCursor.TryRemoveUnspentTx(txHash);
-
-                                        //TODO commit time not measured
-                                        innerChainStateCursor.CommitTransaction();
-                                        wasCommitted = true;
-                                    }
-                                    finally
-                                    {
-                                        if (!wasCommitted)
-                                            innerChainStateCursor.RollbackTransaction();
-                                    }
-                                }
-                            });
-
-                            spentTxesQueue.AddFromEnumerable(spentTxes, completeAddingWhenDone: true);
-                            pruneTxIndexTask.Wait();
-                        }
-                    });
-                }
-
-                if (mode.HasFlag(PruningMode.BlockSpentIndex))
-                {
-                    chainStateCursor.BeginTransaction();
-                    var wasCommitted = false;
-                    try
-                    {
-                        // TODO don't immediately remove list of spent txes per block from chain state,
-                        //      use an additional safety buffer in case there was an issue pruning block
-                        //      txes (e.g. didn't flush and crashed), keeping the information  will allow
-                        //      the block txes pruning to be performed again
-                        chainStateCursor.TryRemoveBlockSpentTxes(pruneBlock.Height);
-
-                        commitStopwatch.Time(() =>
-                        {
-                            chainStateCursor.CommitTransaction();
-                            wasCommitted = true;
-                        });
-                    }
-                    finally
-                    {
-                        if (!wasCommitted)
-                            chainStateCursor.RollbackTransaction();
-                    }
-                }
+                // remove block spent txes information
+                //TODO should have a buffer on removing this, block txes pruning may need it again if flush doesn't happen
+                PruneBlockSpentTxes(mode, chain, pruneBlock);
             }
             else //if (pruneBlock.Height > 0)
             {
@@ -335,11 +212,143 @@ namespace BitSharp.Core.Workers
             // track stats
             txCountMeasure.Tick(txCount);
             txRateMeasure.Tick((float)(txCount / totalStopwatch.Elapsed.TotalSeconds));
-            gatherIndexDurationMeasure.Tick(gatherIndexStopwatch.Elapsed);
             pruneIndexDurationMeasure.Tick(pruneIndexStopwatch.Elapsed);
             pruneBlocksDurationMeasure.Tick(pruneBlocksStopwatch.Elapsed);
-            commitDurationMeasure.Tick(commitStopwatch.Elapsed);
             totalDurationMeasure.Tick(totalStopwatch.Elapsed);
+        }
+
+        private Task PruneBlockTxes(PruningMode mode, Chain chain, ChainedHeader pruneBlock, BlockSpentTxes spentTxes)
+        {
+            if (!mode.HasFlag(PruningMode.BlockTxesPreserveMerkle) && !mode.HasFlag(PruningMode.BlockTxesDestroyMerkle))
+                return Task.FromResult(false); //TODO Task.CompletedTask
+
+            // create a source of txes to prune sources, for each block
+            var pruningQueue = new BufferBlock<Tuple<int, BlockingCollection<int>>>();
+
+            // prepare tx pruner, to prune a txes source for a given block
+            var txPruner = new ActionBlock<Tuple<int, BlockingCollection<int>>>(
+                blockWorkItem =>
+                {
+                    var blockIndex = blockWorkItem.Item1;
+                    var blockHash = chain.Blocks[blockIndex].Hash;
+                    using (var spentTxIndices = blockWorkItem.Item2)
+                    {
+                        var pruneWorkItem = new KeyValuePair<UInt256, IEnumerable<int>>(blockHash, spentTxIndices.GetConsumingEnumerable());
+
+                        if (mode.HasFlag(PruningMode.BlockTxesPreserveMerkle))
+                            this.storageManager.BlockTxesStorage.PruneElements(new[] { pruneWorkItem });
+                        else
+                            this.storageManager.BlockTxesStorage.DeleteElements(new[] { pruneWorkItem });
+                    }
+                },
+                new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 16, SingleProducerConstrained = true });
+
+            pruningQueue.LinkTo(txPruner, new DataflowLinkOptions { PropagateCompletion = true });
+
+            // queue spent txes, grouped by block
+            var queueSpentTxes = Task.Run(() =>
+            {
+                var currentBlockIndex = -1;
+                BlockingCollection<int> currentTxIndexQueue = null;
+                try
+                {
+                    foreach (var spentTx in spentTxes)
+                    {
+                        var blockIndex = spentTx.ConfirmedBlockIndex;
+
+                        // detect change in current block index, complete the current tx source and start a new one
+                        if (currentBlockIndex != blockIndex)
+                        {
+                            currentBlockIndex = blockIndex;
+
+                            if (currentTxIndexQueue != null)
+                                currentTxIndexQueue.CompleteAdding();
+
+                            currentTxIndexQueue = new BlockingCollection<int>();
+                            pruningQueue.Post(Tuple.Create(blockIndex, currentTxIndexQueue));
+                        }
+
+                        currentTxIndexQueue.Add(spentTx.TxIndex);
+                    }
+                }
+                finally
+                {
+                    try
+                    {
+                        // complete any unfinished tx source
+                        if (currentTxIndexQueue != null)
+                            currentTxIndexQueue.CompleteAdding();
+                    }
+                    finally
+                    {
+                        // complete overall pruning queue
+                        pruningQueue.Complete();
+                    }
+                }
+            });
+
+            return txPruner.Completion;
+        }
+
+        private void PruneTxIndex(PruningMode mode, Chain chain, ChainedHeader pruneBlock, BlockSpentTxes spentTxes)
+        {
+            if (!mode.HasFlag(PruningMode.TxIndex))
+                return;
+
+            using (var spentTxesQueue = new BlockingCollection<SpentTx>())
+            {
+                var pruneTxIndexTask = TaskPool.Run(16, () =>
+                {
+                    using (var handle = this.storageManager.OpenChainStateCursor())
+                    {
+                        var innerChainStateCursor = handle.Item;
+                        innerChainStateCursor.BeginTransaction();
+                        var wasCommitted = false;
+                        try
+                        {
+                            foreach (var spentTx in spentTxesQueue.GetConsumingEnumerable())
+                                innerChainStateCursor.TryRemoveUnspentTx(spentTx.TxHash);
+
+                            //TODO commit time not measured
+                            innerChainStateCursor.CommitTransaction();
+                            wasCommitted = true;
+                        }
+                        finally
+                        {
+                            if (!wasCommitted)
+                                innerChainStateCursor.RollbackTransaction();
+                        }
+                    }
+                });
+
+                spentTxesQueue.AddFromEnumerable(spentTxes, completeAddingWhenDone: true);
+                pruneTxIndexTask.Wait();
+            }
+        }
+
+        private void PruneBlockSpentTxes(PruningMode mode, Chain chain, ChainedHeader pruneBlock)
+        {
+            if (!mode.HasFlag(PruningMode.BlockSpentIndex))
+                return;
+
+            chainStateCursor.BeginTransaction();
+            var wasCommitted = false;
+            try
+            {
+                // TODO don't immediately remove list of spent txes per block from chain state,
+                //      use an additional safety buffer in case there was an issue pruning block
+                //      txes (e.g. didn't flush and crashed), keeping the information  will allow
+                //      the block txes pruning to be performed again
+                chainStateCursor.TryRemoveBlockSpentTxes(pruneBlock.Height);
+
+                chainStateCursor.CommitTransaction();
+                wasCommitted = true;
+            }
+            finally
+            {
+                if (!wasCommitted)
+                    chainStateCursor.RollbackTransaction();
+            }
         }
     }
 }

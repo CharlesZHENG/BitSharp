@@ -21,7 +21,7 @@ namespace BitSharp.Core.Storage.Memory
         private int totalOutputCount;
         private ImmutableSortedDictionary<UInt256, ChainedHeader>.Builder headers;
         private ImmutableSortedDictionary<UInt256, UnspentTx>.Builder unspentTransactions;
-        private ImmutableDictionary<int, IImmutableList<UInt256>>.Builder blockSpentTxes;
+        private ImmutableDictionary<int, BlockSpentTxes>.Builder blockSpentTxes;
         private ImmutableDictionary<UInt256, IImmutableList<UnmintedTx>>.Builder blockUnmintedTxes;
 
         private long chainTipVersion;
@@ -35,7 +35,7 @@ namespace BitSharp.Core.Storage.Memory
         private long blockSpentTxesVersion;
         private long blockUnmintedTxesVersion;
 
-        public MemoryChainStateStorage(ChainedHeader chainTip = null, int? unspentTxCount = null, int? totalTxCount = null, int? totalInputCount = null, int? totalOutputCount = null, int? unspentOutputCount = null, ImmutableSortedDictionary<UInt256, ChainedHeader> headers = null, ImmutableSortedDictionary<UInt256, UnspentTx> unspentTransactions = null, ImmutableDictionary<int, IImmutableList<UInt256>> blockSpentTxes = null, ImmutableDictionary<UInt256, IImmutableList<UnmintedTx>> blockUnmintedTxes = null)
+        public MemoryChainStateStorage(ChainedHeader chainTip = null, int? unspentTxCount = null, int? totalTxCount = null, int? totalInputCount = null, int? totalOutputCount = null, int? unspentOutputCount = null, ImmutableSortedDictionary<UInt256, ChainedHeader> headers = null, ImmutableSortedDictionary<UInt256, UnspentTx> unspentTransactions = null, ImmutableDictionary<int, BlockSpentTxes> blockSpentTxes = null, ImmutableDictionary<UInt256, IImmutableList<UnmintedTx>> blockUnmintedTxes = null)
         {
             this.chainTip = chainTip;
             this.unspentTxCount = unspentTxCount ?? 0;
@@ -45,7 +45,7 @@ namespace BitSharp.Core.Storage.Memory
             this.totalOutputCount = totalOutputCount ?? 0;
             this.headers = headers != null ? headers.ToBuilder() : ImmutableSortedDictionary.CreateBuilder<UInt256, ChainedHeader>();
             this.unspentTransactions = unspentTransactions != null ? unspentTransactions.ToBuilder() : ImmutableSortedDictionary.CreateBuilder<UInt256, UnspentTx>();
-            this.blockSpentTxes = blockSpentTxes != null ? blockSpentTxes.ToBuilder() : ImmutableDictionary.CreateBuilder<int, IImmutableList<UInt256>>();
+            this.blockSpentTxes = blockSpentTxes != null ? blockSpentTxes.ToBuilder() : ImmutableDictionary.CreateBuilder<int, BlockSpentTxes>();
             this.blockUnmintedTxes = blockUnmintedTxes != null ? blockUnmintedTxes.ToBuilder() : ImmutableDictionary.CreateBuilder<UInt256, IImmutableList<UnmintedTx>>();
         }
 
@@ -56,7 +56,7 @@ namespace BitSharp.Core.Storage.Memory
 
         internal SemaphoreSlim WriteTxLock { get { return this.writeTxLock; } }
 
-        public void BeginTransaction(out ChainedHeader chainTip, out int? unspentTxCount, out int? unspentOutputCount, out int? totalTxCount, out int? totalInputCount, out int? totalOutputCount, out ImmutableSortedDictionary<UInt256, ChainedHeader>.Builder headers, out ImmutableSortedDictionary<UInt256, UnspentTx>.Builder unspentTransactions, out ImmutableDictionary<int, IImmutableList<UInt256>>.Builder blockSpentTxes, out ImmutableDictionary<UInt256, IImmutableList<UnmintedTx>>.Builder blockUnmintedTxes, out long chainTipVersion, out long unspentTxCountVersion, out long unspentOutputCountVersion, out long totalTxCountVersion, out long totalInputCountVersion, out long totalOutputCountVersion, out long headersVersion, out long unspentTxesVersion, out long blockSpentTxesVersion, out long blockUnmintedTxesVersion)
+        public void BeginTransaction(out ChainedHeader chainTip, out int? unspentTxCount, out int? unspentOutputCount, out int? totalTxCount, out int? totalInputCount, out int? totalOutputCount, out ImmutableSortedDictionary<UInt256, ChainedHeader>.Builder headers, out ImmutableSortedDictionary<UInt256, UnspentTx>.Builder unspentTransactions, out ImmutableDictionary<int, BlockSpentTxes>.Builder blockSpentTxes, out ImmutableDictionary<UInt256, IImmutableList<UnmintedTx>>.Builder blockUnmintedTxes, out long chainTipVersion, out long unspentTxCountVersion, out long unspentOutputCountVersion, out long totalTxCountVersion, out long totalInputCountVersion, out long totalOutputCountVersion, out long headersVersion, out long unspentTxesVersion, out long blockSpentTxesVersion, out long blockUnmintedTxesVersion)
         {
             lock (this.lockObject)
             {
@@ -84,7 +84,7 @@ namespace BitSharp.Core.Storage.Memory
             }
         }
 
-        public void CommitTransaction(ChainedHeader chainTip, int? unspentTxCount, int? unspentOutputCount, int? totalTxCount, int? totalInputCount, int? totalOutputCount, ImmutableSortedDictionary<UInt256, ChainedHeader>.Builder headers, ImmutableSortedDictionary<UInt256, UnspentTx>.Builder unspentTransactions, ImmutableDictionary<int, IImmutableList<UInt256>>.Builder blockSpentTxes, ImmutableDictionary<UInt256, IImmutableList<UnmintedTx>>.Builder blockUnmintedTxes, long chainVersion, long unspentTxCountVersion, long unspentOutputCountVersion, long totalTxCountVersion, long totalInputCountVersion, long totalOutputCountVersion, long headersVersion, long unspentTxesVersion, long blockSpentTxesVersion, long blockUnmintedTxesVersion)
+        public void CommitTransaction(ChainedHeader chainTip, int? unspentTxCount, int? unspentOutputCount, int? totalTxCount, int? totalInputCount, int? totalOutputCount, ImmutableSortedDictionary<UInt256, ChainedHeader>.Builder headers, ImmutableSortedDictionary<UInt256, UnspentTx>.Builder unspentTransactions, ImmutableDictionary<int, BlockSpentTxes>.Builder blockSpentTxes, ImmutableDictionary<UInt256, IImmutableList<UnmintedTx>>.Builder blockUnmintedTxes, long chainVersion, long unspentTxCountVersion, long unspentOutputCountVersion, long totalTxCountVersion, long totalInputCountVersion, long totalOutputCountVersion, long headersVersion, long unspentTxesVersion, long blockSpentTxesVersion, long blockUnmintedTxesVersion)
         {
             lock (this.lockObject)
             {

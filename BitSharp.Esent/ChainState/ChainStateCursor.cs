@@ -441,7 +441,7 @@ namespace BitSharp.Esent
             return Api.TrySeek(this.jetSession, this.spentTxTableId, SeekGrbit.SeekEQ);
         }
 
-        public bool TryGetBlockSpentTxes(int blockIndex, out IImmutableList<UInt256> spentTxes)
+        public bool TryGetBlockSpentTxes(int blockIndex, out BlockSpentTxes spentTxes)
         {
             CheckTransaction();
 
@@ -456,7 +456,7 @@ namespace BitSharp.Esent
                 using (var stream = new MemoryStream(spentTxesBytes))
                 using (var reader = new BinaryReader(stream))
                 {
-                    spentTxes = ImmutableList.CreateRange(reader.ReadList(() => DataEncoder.DecodeUInt256(reader)));
+                    spentTxes = BlockSpentTxes.CreateRange(reader.ReadList(() => DataEncoder.DecodeSpentTx(reader)));
                 }
 
                 return true;
@@ -468,7 +468,7 @@ namespace BitSharp.Esent
             }
         }
 
-        public bool TryAddBlockSpentTxes(int blockIndex, IImmutableList<UInt256> spentTxes)
+        public bool TryAddBlockSpentTxes(int blockIndex, BlockSpentTxes spentTxes)
         {
             CheckWriteTransaction();
 
@@ -480,7 +480,7 @@ namespace BitSharp.Esent
                     using (var stream = new MemoryStream())
                     using (var writer = new BinaryWriter(stream))
                     {
-                        writer.WriteList(spentTxes.ToImmutableArray(), spentTx => DataEncoder.EncodeUInt256(writer, spentTx));
+                        writer.WriteList<SpentTx>(spentTxes, spentTx => DataEncoder.EncodeSpentTx(writer, spentTx));
                         spentTxesBytes = stream.ToArray();
                     }
 
@@ -566,7 +566,7 @@ namespace BitSharp.Esent
                     using (var stream = new MemoryStream())
                     using (var writer = new BinaryWriter(stream))
                     {
-                        writer.WriteList(unmintedTxes.ToImmutableArray(), unmintedTx => DataEncoder.EncodeUnmintedTx(writer, unmintedTx));
+                        writer.WriteList(unmintedTxes, unmintedTx => DataEncoder.EncodeUnmintedTx(writer, unmintedTx));
                         unmintedTxesBytes = stream.ToArray();
                     }
 

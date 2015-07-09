@@ -392,9 +392,7 @@ namespace BitSharp.Core
             return new SpentTx(
                 txHash: reader.ReadUInt256(),
                 confirmedBlockIndex: reader.ReadInt32(),
-                txIndex: reader.ReadInt32(),
-                outputCount: reader.ReadInt32(),
-                spentBlockIndex: reader.ReadInt32()
+                txIndex: reader.ReadInt32()
             );
         }
 
@@ -412,8 +410,6 @@ namespace BitSharp.Core
             writer.WriteUInt256(spentTx.TxHash);
             writer.WriteInt32(spentTx.ConfirmedBlockIndex);
             writer.WriteInt32(spentTx.TxIndex);
-            writer.WriteInt32(spentTx.OutputCount);
-            writer.WriteInt32(spentTx.SpentBlockIndex);
         }
 
         public static byte[] EncodeSpentTx(SpentTx spentTx)
