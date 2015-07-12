@@ -262,31 +262,7 @@ namespace BitSharp.Esent
         private static Instance CreateInstance(string directory)
         {
             var instance = new Instance(Guid.NewGuid().ToString());
-
-            instance.Parameters.SystemDirectory = directory;
-            instance.Parameters.LogFileDirectory = directory;
-            instance.Parameters.TempDirectory = directory;
-            instance.Parameters.AlternateDatabaseRecoveryDirectory = directory;
-            instance.Parameters.CreatePathIfNotExist = true;
-            instance.Parameters.BaseName = "epc";
-            instance.Parameters.EnableOnlineDefrag = true;
-            instance.Parameters.EnableIndexChecking = false;
-            instance.Parameters.CircularLog = true;
-            instance.Parameters.CheckpointDepthMax = 64 * 1024 * 1024;
-            instance.Parameters.LogFileSize = 1024;
-            instance.Parameters.LogBuffers = 1024;
-            instance.Parameters.CleanupMismatchedLogFiles = true;
-            instance.Parameters.MaxTemporaryTables = 16;
-            instance.Parameters.MaxVerPages = 1024 * 256;
-            instance.Parameters.NoInformationEvent = true;
-            instance.Parameters.MaxSessions = 30000;
-            instance.Parameters.MaxCursors = int.MaxValue;
-            instance.Parameters.MaxOpenTables = int.MaxValue;
-            if (EsentVersion.SupportsWindows81Features)
-            {
-                instance.Parameters.EnableShrinkDatabase = ShrinkDatabaseGrbit.On | ShrinkDatabaseGrbit.Realtime;
-            }
-
+            EsentStorageManager.InitInstanceParameters(instance, directory);
             return instance;
         }
 
