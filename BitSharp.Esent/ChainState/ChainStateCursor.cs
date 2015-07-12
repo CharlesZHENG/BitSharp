@@ -656,9 +656,8 @@ namespace BitSharp.Esent
 
         public void Defragment()
         {
-            //int passes = -1, seconds = -1;
-            //Api.JetDefragment(defragCursor.jetSession, defragCursor.chainStateDbId, "Chain", ref passes, ref seconds, DefragGrbit.BatchStart);
-            //Api.JetDefragment(defragCursor.jetSession, defragCursor.chainStateDbId, "ChainState", ref passes, ref seconds, DefragGrbit.BatchStart);
+            //int passes = int.MaxValue, seconds = int.MaxValue;
+            //Api.JetDefragment(this.jetSession, this.chainStateDbId, "", ref passes, ref seconds, DefragGrbit.BatchStart);
 
             if (EsentVersion.SupportsWindows81Features)
             {

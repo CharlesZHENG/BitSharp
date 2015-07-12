@@ -269,6 +269,7 @@ namespace BitSharp.Esent
             instance.Parameters.AlternateDatabaseRecoveryDirectory = directory;
             instance.Parameters.CreatePathIfNotExist = true;
             instance.Parameters.BaseName = "epc";
+            instance.Parameters.EnableOnlineDefrag = true;
             instance.Parameters.EnableIndexChecking = false;
             instance.Parameters.CircularLog = true;
             instance.Parameters.CheckpointDepthMax = 64 * 1024 * 1024;
@@ -278,10 +279,9 @@ namespace BitSharp.Esent
             instance.Parameters.MaxTemporaryTables = 16;
             instance.Parameters.MaxVerPages = 1024 * 256;
             instance.Parameters.NoInformationEvent = true;
-            instance.Parameters.WaypointLatency = 1;
             instance.Parameters.MaxSessions = 30000;
-            instance.Parameters.MaxCursors = 65536;
-            instance.Parameters.MaxOpenTables = 65536;
+            instance.Parameters.MaxCursors = int.MaxValue;
+            instance.Parameters.MaxOpenTables = int.MaxValue;
             if (EsentVersion.SupportsWindows81Features)
             {
                 instance.Parameters.EnableShrinkDatabase = ShrinkDatabaseGrbit.On | ShrinkDatabaseGrbit.Realtime;
@@ -487,8 +487,8 @@ namespace BitSharp.Esent
             {
                 var cursor = handle.Item;
 
-                //int passes = -1, seconds = -1;
-                //Api.JetDefragment(cursor.jetSession, cursor.blockDbId, "BlockTxes", ref passes, ref seconds, DefragGrbit.BatchStart);
+                //int passes = int.MaxValue, seconds = int.MaxValue;
+                //Api.JetDefragment(cursor.jetSession, cursor.blockDbId, "", ref passes, ref seconds, DefragGrbit.BatchStart);
 
                 if (EsentVersion.SupportsWindows81Features)
                 {
