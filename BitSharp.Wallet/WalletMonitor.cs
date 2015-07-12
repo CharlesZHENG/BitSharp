@@ -39,7 +39,7 @@ namespace BitSharp.Wallet
         private decimal bitBalance;
 
         public WalletMonitor(CoreDaemon coreDaemon)
-            : base("WalletMonitor", initialNotify: true, minIdleTime: TimeSpan.FromMilliseconds(100), maxIdleTime: TimeSpan.MaxValue)
+            : base("WalletMonitor", initialNotify: true, minIdleTime: TimeSpan.FromMilliseconds(0), maxIdleTime: TimeSpan.MaxValue)
         {
             this.coreDaemon = coreDaemon;
 
