@@ -258,6 +258,7 @@ namespace BitSharp.Core.Builders
             this.commitLock.DoWrite(() =>
             {
                 this.BeginTransaction();
+                var committed = false;
                 try
                 {
                     // keep track of the previoux tx output information for all unminted transactions
@@ -279,11 +280,12 @@ namespace BitSharp.Core.Builders
 
                     // commit the chain state
                     this.CommitTransaction();
+                    committed = true;
                 }
-                catch (Exception)
+                finally
                 {
-                    this.RollbackTransaction();
-                    throw;
+                    if (!committed)
+                        this.RollbackTransaction();
                 }
             });
         }

@@ -25,19 +25,34 @@ namespace BitSharp.Esent
             this.jetDirectory = Path.Combine(baseDirectory, "ChainState");
             this.jetDatabase = Path.Combine(this.jetDirectory, "ChainState.edb");
 
-            this.jetInstance = CreateInstance(this.jetDirectory);
-            this.jetInstance.Init();
+            this.jetInstance = new Instance(Guid.NewGuid().ToString());
+            var success = false;
+            try
+            {
+                EsentStorageManager.InitInstanceParameters(jetInstance, jetDirectory);
+                this.jetInstance.Init();
 
-            this.CreateOrOpenDatabase();
+                this.CreateOrOpenDatabase();
 
-            this.cursorCache = new DisposableCache<IChainStateCursor>(1024,
-                createFunc: () => new ChainStateCursor(this.jetDatabase, this.jetInstance),
-                prepareAction: cursor =>
-                {
-                    // rollback any open transaction before returning the cursor to the cache
-                    if (cursor.InTransaction)
-                        cursor.RollbackTransaction();
-                });
+                this.cursorCache = new DisposableCache<IChainStateCursor>(1024,
+                    createFunc: () => new ChainStateCursor(this.jetDatabase, this.jetInstance),
+                    prepareAction: cursor =>
+                    {
+                        // rollback any open transaction before returning the cursor to the cache
+                        if (cursor.InTransaction)
+                            cursor.RollbackTransaction();
+                    });
+
+                success = true;
+            }
+            finally
+            {
+                if (!success && this.cursorCache != null)
+                    this.cursorCache.Dispose();
+
+                if (!success)
+                    this.jetInstance.Dispose();
+            }
         }
 
         public void Dispose()
@@ -65,13 +80,6 @@ namespace BitSharp.Esent
 
                 ChainStateSchema.CreateDatabase(this.jetDatabase, this.jetInstance);
             }
-        }
-
-        private static Instance CreateInstance(string directory)
-        {
-            var instance = new Instance(Guid.NewGuid().ToString());
-            EsentStorageManager.InitInstanceParameters(instance, directory);
-            return instance;
         }
     }
 }

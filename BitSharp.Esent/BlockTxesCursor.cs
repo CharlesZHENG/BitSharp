@@ -57,6 +57,7 @@ namespace BitSharp.Esent
             out JET_COLUMNID blockTxBytesColumnId)
         {
             jetSession = new Session(jetInstance);
+            var success = false;
             try
             {
                 Api.JetOpenDatabase(jetSession, jetDatabase, "", out blockDbId, readOnly ? OpenDatabaseGrbit.ReadOnly : OpenDatabaseGrbit.None);
@@ -73,11 +74,13 @@ namespace BitSharp.Esent
                 blockDepthColumnId = Api.GetTableColumnid(jetSession, blocksTableId, "Depth");
                 blockTxHashColumnId = Api.GetTableColumnid(jetSession, blocksTableId, "TxHash");
                 blockTxBytesColumnId = Api.GetTableColumnid(jetSession, blocksTableId, "TxBytes");
+
+                success = true;
             }
-            catch (Exception)
+            finally
             {
-                jetSession.Dispose();
-                throw;
+                if (!success)
+                    jetSession.Dispose();
             }
         }
     }

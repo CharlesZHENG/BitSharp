@@ -20,15 +20,18 @@ namespace BitSharp.Core.Storage
             this.splitCount = splitCount;
 
             this.storages = new IBlockTxesStorage[splitCount];
+            var success = false;
             try
             {
                 for (var i = 0; i < this.storages.Length; i++)
                     this.storages[i] = createBlockTxesStorage(i);
+
+                success = true;
             }
-            catch (Exception)
+            finally
             {
-                this.storages.DisposeList();
-                throw;
+                if (!success)
+                    this.storages.DisposeList();
             }
         }
 
@@ -37,15 +40,18 @@ namespace BitSharp.Core.Storage
             this.splitCount = storageLocations.Length;
 
             this.storages = new IBlockTxesStorage[splitCount];
+            var success = false;
             try
             {
                 for (var i = 0; i < storageLocations.Length; i++)
                     this.storages[i] = createBlockTxesStorage(storageLocations[i]);
+
+                success = true;
             }
-            catch (Exception)
+            finally
             {
-                this.storages.DisposeList();
-                throw;
+                if (!success)
+                    this.storages.DisposeList();
             }
         }
 

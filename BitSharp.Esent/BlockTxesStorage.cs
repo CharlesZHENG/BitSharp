@@ -38,16 +38,19 @@ namespace BitSharp.Esent
             this.cursorCache = new DisposableCache<BlockTxesCursor>(1024,
                 createFunc: () => new BlockTxesCursor(this.jetDatabase, this.jetInstance));
 
-            this.jetInstance = CreateInstance(this.jetDirectory);
+            this.jetInstance = new Instance(Guid.NewGuid().ToString());
+            var success = false;
             try
             {
+                EsentStorageManager.InitInstanceParameters(jetInstance, jetDirectory);
                 this.jetInstance.Init();
                 this.CreateOrOpenDatabase();
+                success = true;
             }
-            catch (Exception)
+            finally
             {
-                this.jetInstance.Dispose();
-                throw;
+                if (!success)
+                    this.jetInstance.Dispose();
             }
         }
 
@@ -250,13 +253,6 @@ namespace BitSharp.Esent
             }
         }
 
-        private static Instance CreateInstance(string directory)
-        {
-            var instance = new Instance(Guid.NewGuid().ToString());
-            EsentStorageManager.InitInstanceParameters(instance, directory);
-            return instance;
-        }
-
         private void CreateOrOpenDatabase()
         {
             try
@@ -349,6 +345,7 @@ namespace BitSharp.Esent
                     attachGrbit |= Windows7Grbits.EnableAttachDbBackgroundMaintenance;
 
                 Api.JetAttachDatabase(jetSession, this.jetDatabase, attachGrbit);
+                var success = false;
                 try
                 {
                     JET_DBID blockDbId;
@@ -367,17 +364,19 @@ namespace BitSharp.Esent
                                 jetUpdate.Save();
                             }
                         }
+
+                        success = true;
                     }
-                    catch (Exception)
+                    finally
                     {
-                        Api.JetCloseDatabase(jetSession, blockDbId, CloseDatabaseGrbit.None);
-                        throw;
+                        if (!success)
+                            Api.JetCloseDatabase(jetSession, blockDbId, CloseDatabaseGrbit.None);
                     }
                 }
-                catch (Exception)
+                finally
                 {
-                    Api.JetDetachDatabase(jetSession, this.jetDatabase);
-                    throw;
+                    if (!success)
+                        Api.JetDetachDatabase(jetSession, this.jetDatabase);
                 }
             }
         }

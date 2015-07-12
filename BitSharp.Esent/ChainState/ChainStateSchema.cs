@@ -200,6 +200,7 @@ namespace BitSharp.Esent.ChainState
                     attachGrbit |= Windows7Grbits.EnableAttachDbBackgroundMaintenance;
 
                 Api.JetAttachDatabase(jetSession, jetDatabase, attachGrbit);
+                var success = false;
                 try
                 {
                     using (var cursor = new ChainStateCursor(jetDatabase, jetInstance))
@@ -212,11 +213,13 @@ namespace BitSharp.Esent.ChainState
                             jetUpdate.Save();
                         }
                     }
+
+                    success = true;
                 }
-                catch (Exception)
+                finally
                 {
-                    Api.JetDetachDatabase(jetSession, jetDatabase);
-                    throw;
+                    if (!success)
+                        Api.JetDetachDatabase(jetSession, jetDatabase);
                 }
             }
         }
