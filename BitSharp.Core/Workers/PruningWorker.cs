@@ -9,6 +9,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
@@ -223,23 +224,21 @@ namespace BitSharp.Core.Workers
                 return Task.FromResult(false); //TODO Task.CompletedTask
 
             // create a source of txes to prune sources, for each block
-            var pruningQueue = new BufferBlock<Tuple<int, BlockingCollection<int>>>();
+            var pruningQueue = new BufferBlock<Tuple<int, List<int>>>();
 
             // prepare tx pruner, to prune a txes source for a given block
-            var txPruner = new ActionBlock<Tuple<int, BlockingCollection<int>>>(
+            var txPruner = new ActionBlock<Tuple<int, List<int>>>(
                 blockWorkItem =>
                 {
                     var blockIndex = blockWorkItem.Item1;
                     var blockHash = chain.Blocks[blockIndex].Hash;
-                    using (var spentTxIndices = blockWorkItem.Item2)
-                    {
-                        var pruneWorkItem = new KeyValuePair<UInt256, IEnumerable<int>>(blockHash, spentTxIndices.GetConsumingEnumerable());
+                    var spentTxIndices = blockWorkItem.Item2;
+                    var pruneWorkItem = new KeyValuePair<UInt256, IEnumerable<int>>(blockHash, spentTxIndices);
 
-                        if (mode.HasFlag(PruningMode.BlockTxesPreserveMerkle))
-                            this.storageManager.BlockTxesStorage.PruneElements(new[] { pruneWorkItem });
-                        else
-                            this.storageManager.BlockTxesStorage.DeleteElements(new[] { pruneWorkItem });
-                    }
+                    if (mode.HasFlag(PruningMode.BlockTxesPreserveMerkle))
+                        this.storageManager.BlockTxesStorage.PruneElements(new[] { pruneWorkItem });
+                    else
+                        this.storageManager.BlockTxesStorage.DeleteElements(new[] { pruneWorkItem });
                 },
                 new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 16, SingleProducerConstrained = true });
 
@@ -248,42 +247,20 @@ namespace BitSharp.Core.Workers
             // queue spent txes, grouped by block
             var queueSpentTxes = Task.Run(() =>
             {
-                var currentBlockIndex = -1;
-                BlockingCollection<int> currentTxIndexQueue = null;
                 try
                 {
-                    foreach (var spentTx in spentTxes)
+                    foreach (var spentTxesByBlock in spentTxes.ReadByBlock())
                     {
-                        var blockIndex = spentTx.ConfirmedBlockIndex;
+                        var blockIndex = spentTxesByBlock.Item1;
+                        var txIndices = spentTxesByBlock.Item2.Select(x => x.TxIndex).ToList();
 
-                        // detect change in current block index, complete the current tx source and start a new one
-                        if (currentBlockIndex != blockIndex)
-                        {
-                            currentBlockIndex = blockIndex;
-
-                            if (currentTxIndexQueue != null)
-                                currentTxIndexQueue.CompleteAdding();
-
-                            currentTxIndexQueue = new BlockingCollection<int>();
-                            pruningQueue.Post(Tuple.Create(blockIndex, currentTxIndexQueue));
-                        }
-
-                        currentTxIndexQueue.Add(spentTx.TxIndex);
+                        pruningQueue.Post(Tuple.Create(blockIndex, txIndices));
                     }
                 }
                 finally
                 {
-                    try
-                    {
-                        // complete any unfinished tx source
-                        if (currentTxIndexQueue != null)
-                            currentTxIndexQueue.CompleteAdding();
-                    }
-                    finally
-                    {
-                        // complete overall pruning queue
-                        pruningQueue.Complete();
-                    }
+                    // complete overall pruning queue
+                    pruningQueue.Complete();
                 }
             });
 
