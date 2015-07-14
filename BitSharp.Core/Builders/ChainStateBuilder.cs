@@ -217,14 +217,15 @@ namespace BitSharp.Core.Builders
             loadingTxes.LinkTo(tracker, new DataflowLinkOptions { PropagateCompletion = true });
 
             tracker.Completion.ContinueWith(_ =>
-            {
-                if (newChain.Height > 0)
-                    this.stats.pendingTxesTotalAverageMeasure.Tick(pendingTxCount);
+                {
+                    if (newChain.Height > 0)
+                        this.stats.pendingTxesTotalAverageMeasure.Tick(pendingTxCount);
 
-                calcUtxoStopwatch.Stop();
-                if (newChain.Height > 0)
-                    this.stats.calculateUtxoDurationMeasure.Tick(calcUtxoStopwatch.Elapsed);
-            });
+                    calcUtxoStopwatch.Stop();
+                    if (newChain.Height > 0)
+                        this.stats.calculateUtxoDurationMeasure.Tick(calcUtxoStopwatch.Elapsed);
+                },
+                TaskContinuationOptions.OnlyOnRanToCompletion);
 
             return tracker;
         }
