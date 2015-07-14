@@ -239,8 +239,6 @@ namespace BitSharp.Node.Workers
                                     allRetrieved = false;
                             }));
                     }
-                    else
-                        allRetrieved = false;
                 }
 
                 Task.WaitAll(getBlockTasks.ToArray());
@@ -347,20 +345,26 @@ namespace BitSharp.Node.Workers
             FlushBlock flushBlock;
             while (this.flushQueue.TryDequeue(out flushBlock))
             {
-                this.flushBlocks.Remove(flushBlock.Block.Hash);
-
-                // cooperative loop
-                this.ThrowIfCancelled();
-
                 var peer = flushBlock.Peer;
                 var block = flushBlock.Block;
 
-                StoreBlock(block);
+                try
+                {
+                    // cooperative loop
+                    this.ThrowIfCancelled();
 
-                if (this.coreStorage.TryAddBlock(block))
-                    this.blockDownloadRateMeasure.Tick();
-                else
-                    this.duplicateBlockDownloadCountMeasure.Tick();
+                    StoreBlock(block);
+
+                    if (this.coreStorage.TryAddBlock(block))
+                        this.blockDownloadRateMeasure.Tick();
+                    else
+                        this.duplicateBlockDownloadCountMeasure.Tick();
+                }
+                finally
+                {
+                    // ensure flushBlocks set has dequeued item removed
+                    this.flushBlocks.Remove(block.Hash);
+                }
 
                 BlockRequest blockRequest;
                 this.allBlockRequests.TryRemove(block.Hash, out blockRequest);
