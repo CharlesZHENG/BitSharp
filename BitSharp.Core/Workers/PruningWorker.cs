@@ -23,9 +23,6 @@ namespace BitSharp.Core.Workers
         private readonly IStorageManager storageManager;
         private readonly ChainStateWorker chainStateWorker;
 
-        private readonly DisposeHandle<IChainStateCursor> chainStateCursorHandle;
-        private readonly IChainStateCursor chainStateCursor;
-
         private readonly AverageMeasure txCountMeasure = new AverageMeasure();
         private readonly AverageMeasure txRateMeasure = new AverageMeasure();
         private readonly DurationMeasure totalDurationMeasure = new DurationMeasure();
@@ -44,9 +41,6 @@ namespace BitSharp.Core.Workers
             this.storageManager = storageManager;
             this.chainStateWorker = chainStateWorker;
 
-            this.chainStateCursorHandle = this.storageManager.OpenChainStateCursor();
-            this.chainStateCursor = this.chainStateCursorHandle.Item;
-
             this.prunedChain = new ChainBuilder();
             this.Mode = PruningMode.None;
 
@@ -56,7 +50,6 @@ namespace BitSharp.Core.Workers
 
         protected override void SubDispose()
         {
-            this.chainStateCursorHandle.Dispose();
             this.txCountMeasure.Dispose();
             this.txRateMeasure.Dispose();
             this.totalDurationMeasure.Dispose();
@@ -171,14 +164,12 @@ namespace BitSharp.Core.Workers
 
             // retrieve the spent txes for this block
             BlockSpentTxes spentTxes;
-            chainStateCursor.BeginTransaction(readOnly: true);
-            try
+            using (var handle = this.storageManager.OpenChainStateCursor())
             {
+                var chainStateCursor = handle.Item;
+
+                chainStateCursor.BeginTransaction(readOnly: true);
                 chainStateCursor.TryGetBlockSpentTxes(pruneBlock.Height, out spentTxes);
-            }
-            finally
-            {
-                chainStateCursor.RollbackTransaction();
             }
 
             if (spentTxes != null)
@@ -322,10 +313,12 @@ namespace BitSharp.Core.Workers
             if (!mode.HasFlag(PruningMode.BlockSpentIndex))
                 return;
 
-            chainStateCursor.BeginTransaction();
-            var wasCommitted = false;
-            try
+            using (var handle = this.storageManager.OpenChainStateCursor())
             {
+                var chainStateCursor = handle.Item;
+
+                chainStateCursor.BeginTransaction();
+                
                 // TODO don't immediately remove list of spent txes per block from chain state,
                 //      use an additional safety buffer in case there was an issue pruning block
                 //      txes (e.g. didn't flush and crashed), keeping the information  will allow
@@ -333,12 +326,6 @@ namespace BitSharp.Core.Workers
                 chainStateCursor.TryRemoveBlockSpentTxes(pruneBlock.Height);
 
                 chainStateCursor.CommitTransaction();
-                wasCommitted = true;
-            }
-            finally
-            {
-                if (!wasCommitted)
-                    chainStateCursor.RollbackTransaction();
             }
         }
     }

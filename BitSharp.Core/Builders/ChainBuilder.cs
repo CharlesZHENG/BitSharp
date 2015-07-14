@@ -88,7 +88,7 @@ namespace BitSharp.Core.Builders
         /// </summary>
         /// <param name="chainedHeader">The chained header to add.</param>
         /// <exception cref="InvalidOperationException">Thrown if the chained header does not chain off of the last block in the chain, based on height and previous block hash.</exception>
-        public void AddBlock(ChainedHeader chainedHeader)
+        public ChainBuilder AddBlock(ChainedHeader chainedHeader)
         {
             var lastBlock = this.LastBlock;
             var expectedHash = lastBlock != null ? lastBlock.Hash : chainedHeader.PreviousBlockHash;
@@ -100,6 +100,8 @@ namespace BitSharp.Core.Builders
 
             this.blocks.Add(chainedHeader);
             this.blocksByHash.Add(chainedHeader.Hash, chainedHeader);
+
+            return this;
         }
 
         /// <summary>
@@ -107,7 +109,7 @@ namespace BitSharp.Core.Builders
         /// </summary>
         /// <param name="chainedHeader">The chained header to remove.</param>
         /// <exception cref="InvalidOperationException">Thrown if the chained header is not the last block in the chain.</exception>
-        public void RemoveBlock(ChainedHeader chainedHeader)
+        public ChainBuilder RemoveBlock(ChainedHeader chainedHeader)
         {
             var lastBlock = this.LastBlock;
             if (lastBlock == null
@@ -116,6 +118,8 @@ namespace BitSharp.Core.Builders
 
             this.blocks.RemoveAt(this.blocks.Count - 1);
             this.blocksByHash.Remove(chainedHeader.Hash);
+
+            return this;
         }
 
         public IEnumerable<Tuple<int, ChainedHeader>> NavigateTowards(Chain chain)

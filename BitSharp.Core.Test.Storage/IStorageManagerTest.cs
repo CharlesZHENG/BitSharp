@@ -39,12 +39,11 @@ namespace BitSharp.Core.Test.Storage
                 using (var handle = storageManager.OpenChainStateCursor())
                 {
                     // verify the same cursor was retrieved, ignore storage providers that do not re-use cursors
-                    if (Object.ReferenceEquals(handle.Item, chainStateCursor))
-                    {
-                        // verify the cursor is no longer in a transaction
-                        chainStateCursor = handle.Item;
-                        Assert.IsFalse(chainStateCursor.InTransaction);
-                    }
+                    Assert.AreSame(handle.Item, chainStateCursor);
+
+                    // verify the cursor is no longer in a transaction
+                    chainStateCursor = handle.Item;
+                    Assert.IsFalse(chainStateCursor.InTransaction);
                 }
             }
         }

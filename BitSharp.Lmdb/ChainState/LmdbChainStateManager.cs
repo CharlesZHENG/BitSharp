@@ -21,6 +21,8 @@ namespace BitSharp.Lmdb
         private readonly LightningDatabase blockSpentTxesTableId;
         private readonly LightningDatabase blockUnmintedTxesTableId;
 
+        private readonly DisposableCache<IChainStateCursor> cursorCache;
+
         public LmdbChainStateManager(string baseDirectory, long chainStateSize)
         {
             this.baseDirectory = baseDirectory;
@@ -45,17 +47,26 @@ namespace BitSharp.Lmdb
 
                 txn.Commit();
             }
+
+            this.cursorCache = new DisposableCache<IChainStateCursor>(1024,
+                createFunc: () => new ChainStateCursor(false, this.jetDatabase, this.jetInstance, globalsTableId, headersTableId, unspentTxTableId, blockSpentTxesTableId, blockUnmintedTxesTableId),
+                prepareAction: cursor =>
+                {
+                    // rollback any open transaction before returning the cursor to the cache
+                    if (cursor.InTransaction)
+                        cursor.RollbackTransaction();
+                });
         }
 
         public void Dispose()
         {
+            this.cursorCache.Dispose();
             this.jetInstance.Dispose();
         }
 
         public DisposeHandle<IChainStateCursor> OpenChainStateCursor()
         {
-            var cursor = new ChainStateCursor(false, this.jetDatabase, this.jetInstance, globalsTableId, headersTableId, unspentTxTableId, blockSpentTxesTableId, blockUnmintedTxesTableId);
-            return new DisposeHandle<IChainStateCursor>(() => cursor.Dispose(), cursor);
+            return this.cursorCache.TakeItem();
         }
     }
 }

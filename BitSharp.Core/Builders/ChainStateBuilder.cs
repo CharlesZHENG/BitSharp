@@ -23,14 +23,9 @@ namespace BitSharp.Core.Builders
         private readonly ICoreStorage coreStorage;
         private readonly IStorageManager storageManager;
 
-        private bool inTransaction;
-        private readonly DisposeHandle<IChainStateCursor> chainStateCursorHandle;
-        private readonly IChainStateCursor chainStateCursor;
-        private ChainBuilder chain;
-        private Chain rollbackChain;
+        private readonly ReaderWriterLockSlim commitLock = new ReaderWriterLockSlim();
+        private Chain chain;
         private readonly UtxoBuilder utxoBuilder;
-
-        private readonly ReaderWriterLockSlim commitLock;
 
         private readonly BuilderStats stats;
 
@@ -42,35 +37,27 @@ namespace BitSharp.Core.Builders
 
             this.stats = new BuilderStats();
 
-            this.chainStateCursorHandle = this.storageManager.OpenChainStateCursor();
-            this.chainStateCursor = this.chainStateCursorHandle.Item;
-
-            this.chainStateCursor.BeginTransaction(readOnly: true);
-            try
+            using (var handle = this.storageManager.OpenChainStateCursor())
             {
+                var chainStateCursor = handle.Item;
+
+                chainStateCursor.BeginTransaction(readOnly: true);
                 var chainTip = chainStateCursor.ChainTip;
 
                 Chain chainTipChain;
-                if (!TryReadChain(chainTip != null ? chainTip.Hash : null, out chainTipChain))
+                if (!TryReadChain(chainStateCursor, chainTip != null ? chainTip.Hash : null, out chainTipChain))
                     throw new InvalidOperationException();
 
-                this.chain = chainTipChain.ToBuilder();
-            }
-            finally
-            {
-                this.chainStateCursor.RollbackTransaction();
+                this.chain = chainTipChain;
             }
             this.utxoBuilder = new UtxoBuilder();
 
             // thread count for i/o task (TxLoader)
             var ioThreadCount = Environment.ProcessorCount * 2;
-
-            this.commitLock = new ReaderWriterLockSlim();
         }
 
         public void Dispose()
         {
-            this.chainStateCursorHandle.Dispose();
             this.stats.Dispose();
             this.commitLock.Dispose();
         }
@@ -79,8 +66,7 @@ namespace BitSharp.Core.Builders
         {
             get
             {
-                return this.commitLock.DoRead(() =>
-                    this.chain.ToImmutable());
+                return this.chain;
             }
         }
 
@@ -93,151 +79,144 @@ namespace BitSharp.Core.Builders
 
         public void AddBlock(ChainedHeader chainedHeader, IEnumerable<BlockTx> blockTxes)
         {
-            this.commitLock.DoWrite(() =>
+            var stopwatch = Stopwatch.StartNew();
+
+            using (var handle = this.storageManager.OpenChainStateCursor())
             {
-                var stopwatch = Stopwatch.StartNew();
-                var cursorInTransaction = false;
-                var committed = false;
-                this.BeginTransaction(readOnly: true, onCursor: false);
-                try
+                var chainStateCursor = handle.Item;
+
+                chainStateCursor.BeginTransaction();
+
+                // verify storage chain tip matches this chain state builder's chain tip
+                if (!(chainStateCursor.ChainTip == null && chain.Height == -1)
+                    && (chainStateCursor.ChainTip.Hash != chain.LastBlock.Hash))
                 {
-                    using (var chainState = new ChainState(this.chain.ToImmutable(), this.storageManager))
-                    using (var deferredChainStateCursor = new DeferredChainStateCursor(chainState))
+                    throw new InvalidOperationException("ChainStateBuilder is out of sync with underlying storage.");
+                }
+
+                var newChain = this.chain.ToBuilder().AddBlock(chainedHeader).ToImmutable();
+
+                using (var chainState = new ChainState(this.chain, this.storageManager))
+                using (var deferredChainStateCursor = new DeferredChainStateCursor(chainState))
+                {
+                    var taskStopwatch = Stopwatch.StartNew();
+
+                    // begin reading block txes into the buffer
+                    var blockTxesBuffer = new BufferBlock<BlockTx>();
+                    var sendBlockTxes = blockTxesBuffer.SendAndCompleteAsync(blockTxes);
+                    sendBlockTxes.ContinueWith(_ => this.stats.txesReadDurationMeasure.Tick(taskStopwatch.Elapsed));
+
+                    // warm-up utxo entries for block txes
+                    var warmedBlockTxes = UtxoLookAhead.LookAhead(blockTxesBuffer, deferredChainStateCursor);
+
+                    // track when the overall look ahead completes
+                    warmedBlockTxes.Completion.ContinueWith(_ => this.stats.lookAheadDurationMeasure.Tick(taskStopwatch.Elapsed));
+
+                    // begin calculating the utxo updates
+                    var loadingTxes = new BufferBlock<LoadingTx>();
+                    var totalTxInputCount = 0;
+                    var calcUtxoTask = Task.Run(() =>
                     {
-                        var taskStopwatch = Stopwatch.StartNew();
+                        try
+                        {
+                            foreach (var loadingTx in CalculateUtxo(newChain, warmedBlockTxes.ToEnumerable(), deferredChainStateCursor))
+                            {
+                                loadingTxes.Post(loadingTx);
 
-                        // begin reading block txes into the buffer
-                        var blockTxesBuffer = new BufferBlock<BlockTx>();
-                        var sendBlockTxes = blockTxesBuffer.SendAndCompleteAsync(blockTxes);
-                        sendBlockTxes.ContinueWith(_ => this.stats.txesReadDurationMeasure.Tick(taskStopwatch.Elapsed));
-
-                        // warm-up utxo entries for block txes
-                        var warmedBlockTxes = UtxoLookAhead.LookAhead(blockTxesBuffer, deferredChainStateCursor);
-
-                        // track when the overall look ahead completes
-                        warmedBlockTxes.Completion.ContinueWith(_ => this.stats.lookAheadDurationMeasure.Tick(taskStopwatch.Elapsed));
-
-                        // begin calculating the utxo updates
-                        var loadingTxes = new BufferBlock<LoadingTx>();
-                        var totalTxInputCount = 0;
-                        var calcUtxoTask = Task.Run(() =>
+                                if (!loadingTx.IsCoinbase)
+                                    totalTxInputCount += loadingTx.Transaction.Inputs.Length;
+                            }
+                        }
+                        finally
                         {
                             try
                             {
-                                foreach (var loadingTx in CalculateUtxo(chainedHeader, warmedBlockTxes.ToEnumerable(), deferredChainStateCursor))
-                                {
-                                    loadingTxes.Post(loadingTx);
-
-                                    if (!loadingTx.IsCoinbase)
-                                        totalTxInputCount += loadingTx.Transaction.Inputs.Length;
-                                }
+                                loadingTxes.Complete();
                             }
                             finally
                             {
-                                loadingTxes.Complete();
                                 deferredChainStateCursor.CompleteWorkQueue();
                             }
-                        });
-
-                        // begin loading txes
-                        var loadedTxes = TxLoader.LoadTxes(coreStorage, loadingTxes);
-
-                        // inject a transform block to count input previous transactions that have been loaded
-                        var loadedTxInputCount = 0;
-                        var loadedTxInputsCounter = new TransformBlock<LoadedTx, LoadedTx>(loadingTx =>
-                        {
-                            if (!loadingTx.IsCoinbase)
-                                loadedTxInputCount += loadingTx.InputTxes.Length;
-
-                            return loadingTx;
-                        });
-                        loadedTxes.LinkTo(loadedTxInputsCounter, new DataflowLinkOptions { PropagateCompletion = true });
-
-                        // track how many transactions are waiting to be loaded when utxo calculation completes
-                        calcUtxoTask.ContinueWith(_ =>
-                            this.stats.pendingTxesAtCompleteAverageMeasure.Tick(totalTxInputCount - loadedTxInputCount));
-
-                        // begin validating the block
-                        var blockValidator = BlockValidator.ValidateBlock(coreStorage, rules, chainedHeader, loadedTxInputsCounter);
-
-                        //TODO note - the utxo updates could be applied either while validation is ongoing, or after it is complete
-                        this.stats.applyUtxoDurationMeasure.MeasureIf(chainedHeader.Height > 0, () =>
-                        {
-                            // begin the transaction to apply the utxo changes
-                            this.chainStateCursor.BeginTransaction();
-                            cursorInTransaction = true;
-
-                            // apply the changes, do not yet commit
-                            deferredChainStateCursor.ApplyChangesToParent(this.chainStateCursor);
-                            this.chainStateCursor.ChainTip = chainedHeader;
-                            this.chainStateCursor.TryAddHeader(chainedHeader);
-                        });
-
-                        // wait for block validation to complete, any exceptions that ocurred will be thrown
-                        this.stats.waitToCompleteDurationMeasure.MeasureIf(chainedHeader.Height > 0, () =>
-                        {
-                            sendBlockTxes.Wait();
-                            blockTxesBuffer.Completion.Wait();
-                            warmedBlockTxes.Completion.Wait();
-                            loadingTxes.Completion.Wait();
-                            calcUtxoTask.Wait();
-                            loadedTxes.Completion.Wait();
-                            blockValidator.Wait();
-                        });
-                    }
-
-                    this.stats.commitUtxoDurationMeasure.MeasureIf(chainedHeader.Height > 0, () =>
-                    {
-                        // only commit the utxo changes once block validation has completed
-                        Debug.Assert(cursorInTransaction);
-                        this.chainStateCursor.CommitTransaction();
-                        cursorInTransaction = false;
-
-                        // commit the chain state
-                        this.CommitTransaction(onCursor: false);
-                        committed = true;
+                        }
                     });
 
-                    // MEASURE: Block Rate
-                    if (chainedHeader.Height > 0)
+                    // begin loading txes
+                    var loadedTxes = TxLoader.LoadTxes(coreStorage, loadingTxes);
+
+                    // inject a transform block to count input previous transactions that have been loaded
+                    var loadedTxInputCount = 0;
+                    var loadedTxInputsCounter = new TransformBlock<LoadedTx, LoadedTx>(loadingTx =>
                     {
-                        this.stats.blockRateMeasure.Tick();
-                        stats.addBlockDurationMeasure.Tick(stopwatch.Elapsed);
-                    }
+                        if (!loadingTx.IsCoinbase)
+                            loadedTxInputCount += loadingTx.InputTxes.Length;
+
+                        return loadingTx;
+                    });
+                    loadedTxes.LinkTo(loadedTxInputsCounter, new DataflowLinkOptions { PropagateCompletion = true });
+
+                    // track how many transactions are waiting to be loaded when utxo calculation completes
+                    calcUtxoTask.ContinueWith(_ =>
+                        this.stats.pendingTxesAtCompleteAverageMeasure.Tick(totalTxInputCount - loadedTxInputCount));
+
+                    // begin validating the block
+                    var blockValidator = BlockValidator.ValidateBlock(coreStorage, rules, chainedHeader, loadedTxInputsCounter);
+
+                    //TODO note - the utxo updates could be applied either while validation is ongoing, or after it is complete
+                    this.stats.applyUtxoDurationMeasure.MeasureIf(chainedHeader.Height > 0, () =>
+                    {
+                        // apply the changes, do not yet commit
+                        deferredChainStateCursor.ApplyChangesToParent(chainStateCursor);
+                        chainStateCursor.ChainTip = chainedHeader;
+                        chainStateCursor.TryAddHeader(chainedHeader);
+                    });
+
+                    // wait for block validation to complete, any exceptions that ocurred will be thrown
+                    this.stats.waitToCompleteDurationMeasure.MeasureIf(chainedHeader.Height > 0, () =>
+                    {
+                        sendBlockTxes.Wait();
+                        blockTxesBuffer.Completion.Wait();
+                        warmedBlockTxes.Completion.Wait();
+                        loadingTxes.Completion.Wait();
+                        calcUtxoTask.Wait();
+                        loadedTxes.Completion.Wait();
+                        blockValidator.Wait();
+                    });
                 }
-                finally
+
+                this.stats.commitUtxoDurationMeasure.MeasureIf(chainedHeader.Height > 0, () =>
                 {
-                    //TODO rollback can fail (e.g. out of space), the cursor should be abandoned and recreated if this happens,
-                    //TODO it leaves the builder in an invalid state
+                    // only commit the utxo changes once block validation has completed
+                    this.commitLock.DoWrite(() =>
+                    {
+                        chainStateCursor.CommitTransaction();
+                        this.chain = newChain;
+                    });
+                });
 
-                    // rollback if the transaction was not comitted
-                    if (cursorInTransaction)
-                        this.chainStateCursor.RollbackTransaction();
-
-                    // rollback the chain state on error
-                    if (!committed)
-                        this.RollbackTransaction(onCursor: false);
+                // MEASURE: Block Rate
+                if (chainedHeader.Height > 0)
+                {
+                    this.stats.blockRateMeasure.Tick();
+                    stats.addBlockDurationMeasure.Tick(stopwatch.Elapsed);
                 }
-            });
+            }
 
             this.LogBlockchainProgress();
         }
 
-        private IEnumerable<LoadingTx> CalculateUtxo(ChainedHeader chainedHeader, IEnumerable<BlockTx> blockTxes, IChainStateCursor chainStateCursor)
+        private IEnumerable<LoadingTx> CalculateUtxo(Chain newChain, IEnumerable<BlockTx> blockTxes, IChainStateCursor chainStateCursor)
         {
             var calcUtxoStopwatch = Stopwatch.StartNew();
-            // add the block to the chain
-            this.chain.AddBlock(chainedHeader);
 
             // calculate the new block utxo, only output availability is checked and updated
             var pendingTxCount = 0;
-            foreach (var loadingTx in this.utxoBuilder.CalculateUtxo(chainStateCursor, this.chain.ToImmutable(), blockTxes))
+            foreach (var loadingTx in this.utxoBuilder.CalculateUtxo(chainStateCursor, newChain, blockTxes))
             {
                 if (!rules.BypassPrevTxLoading)
                     yield return loadingTx;
 
                 // track stats, ignore coinbase
-                if (chainedHeader.Height > 0 && !loadingTx.IsCoinbase)
+                if (newChain.Height > 0 && !loadingTx.IsCoinbase)
                 {
                     pendingTxCount += loadingTx.Transaction.Inputs.Length;
                     this.stats.txRateMeasure.Tick();
@@ -245,68 +224,71 @@ namespace BitSharp.Core.Builders
                 }
             }
 
-            if (chainedHeader.Height > 0)
+            if (newChain.Height > 0)
                 this.stats.pendingTxesTotalAverageMeasure.Tick(pendingTxCount);
 
             calcUtxoStopwatch.Stop();
-            if (chainedHeader.Height > 0)
+            if (newChain.Height > 0)
                 this.stats.calculateUtxoDurationMeasure.Tick(calcUtxoStopwatch.Elapsed);
         }
 
         public void RollbackBlock(ChainedHeader chainedHeader, IEnumerable<BlockTx> blockTxes)
         {
-            this.commitLock.DoWrite(() =>
+            using (var handle = this.storageManager.OpenChainStateCursor())
             {
-                this.BeginTransaction();
-                var committed = false;
-                try
+                var chainStateCursor = handle.Item;
+
+                chainStateCursor.BeginTransaction();
+
+                // verify storage chain tip matches this chain state builder's chain tip
+                if (!(chainStateCursor.ChainTip == null && chain.Height == 0)
+                    && (chainStateCursor.ChainTip.Hash != chain.LastBlock.Hash))
                 {
-                    // keep track of the previoux tx output information for all unminted transactions
-                    // the information is removed and will be needed to enable a replay of the rolled back block
-                    var unmintedTxes = ImmutableList.CreateBuilder<UnmintedTx>();
-
-                    // rollback the utxo
-                    this.utxoBuilder.RollbackUtxo(this.chainStateCursor, this.chain.ToImmutable(), chainedHeader, blockTxes, unmintedTxes);
-
-                    // remove the block from the chain
-                    this.chain.RemoveBlock(chainedHeader);
-                    this.chainStateCursor.ChainTip = this.chain.LastBlock;
-
-                    // remove the rollback information
-                    this.chainStateCursor.TryRemoveBlockSpentTxes(chainedHeader.Height);
-
-                    // store the replay information
-                    this.chainStateCursor.TryAddBlockUnmintedTxes(chainedHeader.Hash, unmintedTxes.ToImmutable());
-
-                    // commit the chain state
-                    this.CommitTransaction();
-                    committed = true;
+                    throw new InvalidOperationException("ChainStateBuilder is out of sync with underlying storage.");
                 }
-                finally
+
+                var newChain = this.chain.ToBuilder().RemoveBlock(chainedHeader).ToImmutable();
+
+                // keep track of the previoux tx output information for all unminted transactions
+                // the information is removed and will be needed to enable a replay of the rolled back block
+                var unmintedTxes = ImmutableList.CreateBuilder<UnmintedTx>();
+
+                // rollback the utxo
+                this.utxoBuilder.RollbackUtxo(chainStateCursor, this.chain, chainedHeader, blockTxes, unmintedTxes);
+
+                // remove the block from the chain
+                chainStateCursor.ChainTip = newChain.LastBlock;
+
+                // remove the rollback information
+                chainStateCursor.TryRemoveBlockSpentTxes(chainedHeader.Height);
+
+                // store the replay information
+                chainStateCursor.TryAddBlockUnmintedTxes(chainedHeader.Hash, unmintedTxes.ToImmutable());
+
+                // commit the chain state
+                this.commitLock.DoWrite(() =>
                 {
-                    if (!committed)
-                        this.RollbackTransaction();
-                }
-            });
+                    chainStateCursor.CommitTransaction();
+                    this.chain = newChain;
+                });
+            }
         }
 
         public void LogBlockchainProgress()
         {
             this.commitLock.DoWrite(() =>
             {
-                this.BeginTransaction(readOnly: true);
-                try
+                using (var handle = this.storageManager.OpenChainStateCursor())
                 {
-                    LogProgressInner();
-                }
-                finally
-                {
-                    this.RollbackTransaction();
+                    var chainStateCursor = handle.Item;
+
+                    chainStateCursor.BeginTransaction(readOnly: true);
+                    LogProgressInner(chainStateCursor);
                 }
             });
         }
 
-        private void LogProgressInner()
+        private void LogProgressInner(IChainStateCursor chainStateCursor)
         {
             if (DateTime.UtcNow - this.Stats.lastLogTime < TimeSpan.FromSeconds(15))
                 return;
@@ -348,10 +330,10 @@ namespace BitSharp.Core.Builders
                 /*3*/ blockRate.ToString("#,##0"),
                 /*4*/ txRate.ToString("#,##0"),
                 /*5*/ inputRate.ToString("#,##0"),
-                /*6*/ this.chainStateCursor.TotalTxCount.ToString("#,##0"),
-                /*7*/ this.chainStateCursor.TotalInputCount.ToString("#,##0"),
-                /*8*/ this.chainStateCursor.UnspentTxCount.ToString("#,##0"),
-                /*9*/ this.chainStateCursor.UnspentOutputCount.ToString("#,##0"),
+                /*6*/ chainStateCursor.TotalTxCount.ToString("#,##0"),
+                /*7*/ chainStateCursor.TotalInputCount.ToString("#,##0"),
+                /*8*/ chainStateCursor.UnspentTxCount.ToString("#,##0"),
+                /*9*/ chainStateCursor.UnspentOutputCount.ToString("#,##0"),
                 //TODO stats come from CoreStorage, not exposed on ICoreStorage, stats need to be moved
                 /*10*/ 0, //this.coreStorage.GetTxLoadDuration().TotalMilliseconds,
                 /*11*/ 0, //this.coreStorage.GetTxLoadRate(),
@@ -371,50 +353,16 @@ namespace BitSharp.Core.Builders
         public ChainState ToImmutable()
         {
             return this.commitLock.DoRead(() =>
-                new ChainState(this.chain.ToImmutable(), this.storageManager));
+                new ChainState(this.chain, this.storageManager));
         }
 
-        private void BeginTransaction(bool readOnly = false, bool onCursor = true)
-        {
-            if (this.inTransaction)
-                throw new InvalidOperationException();
-
-            if (onCursor)
-                this.chainStateCursor.BeginTransaction(readOnly);
-            this.rollbackChain = this.chain.ToImmutable();
-            this.inTransaction = true;
-        }
-
-        private void CommitTransaction(bool onCursor = true)
-        {
-            if (!this.inTransaction)
-                throw new InvalidOperationException();
-
-            if (onCursor)
-                this.chainStateCursor.CommitTransaction();
-            this.rollbackChain = null;
-            this.inTransaction = false;
-        }
-
-        private void RollbackTransaction(bool onCursor = true)
-        {
-            if (!this.inTransaction)
-                throw new InvalidOperationException();
-
-            if (onCursor)
-                this.chainStateCursor.RollbackTransaction();
-            this.chain = this.rollbackChain.ToBuilder();
-            this.rollbackChain = null;
-            this.inTransaction = false;
-        }
-
-        private bool TryReadChain(UInt256 blockHash, out Chain chain)
+        private bool TryReadChain(IChainStateCursor chainStateCursor, UInt256 blockHash, out Chain chain)
         {
             return Chain.TryReadChain(blockHash, out chain,
                 headerHash =>
                 {
                     ChainedHeader chainedHeader;
-                    this.chainStateCursor.TryGetHeader(headerHash, out chainedHeader);
+                    chainStateCursor.TryGetHeader(headerHash, out chainedHeader);
                     return chainedHeader;
                 });
         }

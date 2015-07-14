@@ -11,6 +11,8 @@ namespace BitSharp.Core.Storage.Memory
         private readonly MemoryBlockTxesStorage blockTxesStorage;
         private readonly MemoryChainStateStorage chainStateStorage;
 
+        private readonly DisposableCache<IChainStateCursor> cursorCache;
+
         private bool isDisposed;
 
         public MemoryStorageManager()
@@ -22,6 +24,15 @@ namespace BitSharp.Core.Storage.Memory
             this.blockStorage = new MemoryBlockStorage();
             this.blockTxesStorage = new MemoryBlockTxesStorage();
             this.chainStateStorage = new MemoryChainStateStorage(chainTip, unspentTxCount, unspentOutputCount, totalTxCount, totalInputCount, totalOutputCount, headers, unspentTransactions, spentTransactions);
+
+            this.cursorCache = new DisposableCache<IChainStateCursor>(1024,
+                createFunc: () => new MemoryChainStateCursor(this.chainStateStorage),
+                prepareAction: cursor =>
+                {
+                    // rollback any open transaction before returning the cursor to the cache
+                    if (cursor.InTransaction)
+                        cursor.RollbackTransaction();
+                });
         }
 
         public void Dispose()
@@ -34,6 +45,7 @@ namespace BitSharp.Core.Storage.Memory
         {
             if (!isDisposed && disposing)
             {
+                this.cursorCache.Dispose();
                 this.blockStorage.Dispose();
                 this.blockTxesStorage.Dispose();
                 this.chainStateStorage.Dispose();
@@ -54,7 +66,7 @@ namespace BitSharp.Core.Storage.Memory
 
         public DisposeHandle<IChainStateCursor> OpenChainStateCursor()
         {
-            return new DisposeHandle<IChainStateCursor>(null, new MemoryChainStateCursor(this.chainStateStorage));
+            return this.cursorCache.TakeItem();
         }
     }
 }
