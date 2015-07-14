@@ -18,8 +18,6 @@ namespace BitSharp.Core.Builders
         private readonly BufferBlock<WorkItem> workQueue;
         private readonly Dictionary<TKey, WorkItem> workByKey;
 
-        private bool disposed;
-
         public WorkQueueDictionary(Func<TKey, Tuple<bool, TValue>> parentTryGetValue, Func<IEnumerable<KeyValuePair<TKey, TValue>>> parentEnumerator = null)
         {
             this.parentDictionary = new DeferredDictionary<TKey, TValue>(parentTryGetValue, parentEnumerator);
