@@ -95,8 +95,6 @@ namespace BitSharp.Core
         {
             if (!isDisposed && disposing)
             {
-                this.Stop();
-
                 // unwire events
                 this.chainStateWorker.BlockMissed -= HandleBlockMissed;
                 this.targetChainWorker.OnTargetChainChanged -= HandleTargetChainChanged;
