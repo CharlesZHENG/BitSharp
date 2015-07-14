@@ -159,7 +159,7 @@ namespace BitSharp.Node
             }
         }
 
-        public float GetBlockDownloadRate(TimeSpan perUnitTime)
+        public float GetBlockDownloadRate(TimeSpan? perUnitTime = null)
         {
             return this.blockRequestWorker.GetBlockDownloadRate(perUnitTime);
         }

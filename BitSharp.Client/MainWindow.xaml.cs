@@ -171,7 +171,6 @@ namespace BitSharp.Client
                 // setup view model
                 this.viewModel = new MainWindowViewModel(this.kernel, this.dummyMonitor);
                 InitializeComponent();
-                this.viewModel.ViewBlockchainLast();
 
                 // start the blockchain daemon
                 this.coreDaemon.Start();
@@ -224,30 +223,10 @@ namespace BitSharp.Client
             base.OnClosing(e);
         }
 
-        private void ViewFirst_Click(object sender, RoutedEventArgs e)
-        {
-            this.viewModel.ViewBlockchainFirst();
-        }
-
-        private void ViewPrevious_Click(object sender, RoutedEventArgs e)
-        {
-            this.viewModel.ViewBlockchainPrevious();
-        }
-
-        private void ViewNext_Click(object sender, RoutedEventArgs e)
-        {
-            this.viewModel.ViewBlockchainNext();
-        }
-
-        private void ViewLast_Click(object sender, RoutedEventArgs e)
-        {
-            this.viewModel.ViewBlockchainLast();
-        }
-
         private sealed class DummyMonitor : WalletMonitor
         {
             public DummyMonitor(CoreDaemon coreDaemon)
-                : base(coreDaemon)
+                : base(coreDaemon, keepEntries: false)
             {
                 this.AddAddress(new First10000Address());
                 this.AddAddress(new Top10000Address());

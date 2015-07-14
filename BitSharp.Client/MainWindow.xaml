@@ -14,60 +14,27 @@
         <Label Content="{Binding WinningBlockchainHeight}" ContentStringFormat="#,##0" HorizontalAlignment="Left" Margin="106,10,0,0" VerticalAlignment="Top"/>
         <Label Content="Current Height:" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,41,0,0"/>
         <Label Content="{Binding CurrentBlockchainHeight}" ContentStringFormat="#,##0" HorizontalAlignment="Left" Margin="106,41,0,0" VerticalAlignment="Top"/>
+        
         <Label Content="Running Time:" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="200,10,0,0"/>
         <Label Content="{Binding RunningTime}" HorizontalAlignment="Left" Margin="322,10,0,0" VerticalAlignment="Top"/>
         <Label Content="Downloaded Blocks:" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="200,41,0,0"/>
         <Label Content="{Binding DownloadedBlockCount}" ContentStringFormat="#,##0" HorizontalAlignment="Left" Margin="322,41,0,0" VerticalAlignment="Top"/>
+        
         <ProgressBar HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="500" Margin="10,72,0,0" Minimum="0" Maximum="{Binding WinningBlockchainHeight}" Value="{Binding CurrentBlockchainHeight}"/>
-        <Label Content="Spent Transaction Outputs:" HorizontalAlignment="Left" Margin="10,433,0,0" VerticalAlignment="Top"/>
-        <ListView HorizontalAlignment="Left" Height="122" VerticalAlignment="Top" Width="730" Margin="10,464,-212,0" ItemsSource="{Binding ViewBlockchainSpendOutputs}">
-            <ListView.View>
-                <GridView>
-                    <GridViewColumn Header="Prev Tx Hash" Width="450" DisplayMemberBinding="{Binding TxHash}"/>
-                    <GridViewColumn Header="Prev Tx Output Index" DisplayMemberBinding="{Binding TxOutputIndex}"/>
-                </GridView>
-            </ListView.View>
-        </ListView>
-        <Button Content="&lt;&lt;" HorizontalAlignment="Left" VerticalAlignment="Top" Width="30" Margin="10,749,0,0" Click="ViewFirst_Click" IsEnabled="False"/>
-        <Button Content="&lt;" HorizontalAlignment="Left" VerticalAlignment="Top" Width="30" Margin="40,749,0,0" Click="ViewPrevious_Click"/>
-        <TextBox HorizontalAlignment="Left" Height="20" Margin="70,749,0,0" TextWrapping="Wrap" Text="{Binding ViewBlockchainHeight}" VerticalAlignment="Top" Width="55" IsEnabled="False"/>
-        <Button Content="&gt;" HorizontalAlignment="Left" VerticalAlignment="Top" Width="30" Margin="125,749,0,0" Click="ViewNext_Click"/>
-        <Button Content="&gt;&gt;" HorizontalAlignment="Left" VerticalAlignment="Top" Width="30" Margin="155,749,0,0" Click="ViewLast_Click"/>
-        <Label Content="Receiving Transaction Outputs:" HorizontalAlignment="Left" Margin="10,591,0,0" VerticalAlignment="Top"/>
-        <ListView HorizontalAlignment="Left" Height="122" VerticalAlignment="Top" Width="730" Margin="10,622,-212,0" ItemsSource="{Binding ViewBlockchainReceiveOutputs}">
-            <ListView.View>
-                <GridView>
-                    <GridViewColumn Header="Tx Hash" Width="450" DisplayMemberBinding="{Binding TxHash}"/>
-                    <GridViewColumn Header="Tx Output Index" DisplayMemberBinding="{Binding TxOutputIndex}"/>
-                </GridView>
-            </ListView.View>
-        </ListView>
+        
         <Label Content="Block Rate:" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,110,0,0"/>
         <Label Content="{Binding BlockRate}" ContentStringFormat="#,##0'/s'" HorizontalContentAlignment="Right" HorizontalAlignment="Left" Margin="106,110,0,0" VerticalAlignment="Top" Width="75"/>
         <Label Content="Transaction Rate:" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,140,0,0"/>
         <Label Content="{Binding TransactionRate}" ContentStringFormat="#,##0'/s'" HorizontalContentAlignment="Right" HorizontalAlignment="Left" Margin="106,140,0,0" VerticalAlignment="Top" Width="75"/>
         <Label Content="Input Rate:" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,170,0,0"/>
         <Label Content="{Binding InputRate}" ContentStringFormat="#,##0'/s'" HorizontalContentAlignment="Right" HorizontalAlignment="Left" Margin="106,170,0,0" VerticalAlignment="Top" Width="75"/>
+        
         <Label Content="Block Download Rate:" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="200,110,0,0"/>
         <Label Content="{Binding BlockDownloadRate}" ContentStringFormat="#,##0'/s'" HorizontalContentAlignment="Right" HorizontalAlignment="Left" Margin="416,110,0,0" VerticalAlignment="Top" Width="75"/>
         <Label Content="Duplicate Download Count (last 30s):" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="200,140,0,0"/>
         <Label Content="{Binding DuplicateBlockDownloadCount}" ContentStringFormat="#,##0" HorizontalContentAlignment="Right" HorizontalAlignment="Left" Margin="416,140,0,0" VerticalAlignment="Top" Width="75"/>
         <Label Content="Block Miss Count (last 30s):" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="200,170,0,0"/>
         <Label Content="{Binding BlockMissCount}" ContentStringFormat="#,##0" HorizontalContentAlignment="Right" HorizontalAlignment="Left" Margin="416,170,0,0" VerticalAlignment="Top" Width="75"/>
-        <ListView HorizontalAlignment="Left" Height="183" VerticalAlignment="Top" Width="500" Margin="10,240,0,0" ItemsSource="{Binding WalletEntries}">
-            <ListView.View>
-                <GridView>
-                    <GridViewColumn Header="Type" Width="100" DisplayMemberBinding="{Binding Type}"/>
-                    <GridViewColumn Header="Value" Width="200">
-                        <GridViewColumn.CellTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding BitValue,StringFormat='{}{0:#,##0.00}ƀ'}" TextAlignment="Right" />
-                            </DataTemplate>
-                        </GridViewColumn.CellTemplate>
-                    </GridViewColumn>
-                </GridView>
-            </ListView.View>
-        </ListView>
         
         <Label Content="Wallet Height:" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,200,0,0"/>
         <Label Content="{Binding WalletHeight}" ContentStringFormat="#,##0" HorizontalContentAlignment="Right" HorizontalAlignment="Left" Margin="106,200,0,0" VerticalAlignment="Top" Width="75"/>

@@ -180,17 +180,17 @@ namespace BitSharp.Core
             set { this.pruningWorker.PrunableHeight = value; }
         }
 
-        public float GetBlockRate(TimeSpan perUnitTime)
+        public float GetBlockRate(TimeSpan? perUnitTime = null)
         {
             return this.chainStateBuilder.Stats.blockRateMeasure.GetAverage(perUnitTime);
         }
 
-        public float GetTxRate(TimeSpan perUnitTime)
+        public float GetTxRate(TimeSpan? perUnitTime = null)
         {
             return this.chainStateBuilder.Stats.txRateMeasure.GetAverage(perUnitTime);
         }
 
-        public float GetInputRate(TimeSpan perUnitTime)
+        public float GetInputRate(TimeSpan? perUnitTime = null)
         {
             return this.chainStateBuilder.Stats.inputRateMeasure.GetAverage(perUnitTime);
         }

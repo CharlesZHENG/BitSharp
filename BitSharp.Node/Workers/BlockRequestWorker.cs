@@ -80,7 +80,7 @@ namespace BitSharp.Node.Workers
             this.diagnosticWorker = new WorkerMethod("BlockRequestWorker.DiagnosticWorker", DiagnosticWorkerMethod, initialNotify: true, minIdleTime: TimeSpan.FromSeconds(10), maxIdleTime: TimeSpan.FromSeconds(10));
         }
 
-        public float GetBlockDownloadRate(TimeSpan perUnitTime)
+        public float GetBlockDownloadRate(TimeSpan? perUnitTime = null)
         {
             return this.blockDownloadRateMeasure.GetAverage(perUnitTime);
         }
