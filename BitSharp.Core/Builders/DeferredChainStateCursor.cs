@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Threading.Tasks.Dataflow;
 
 namespace BitSharp.Core.Builders
 {
@@ -77,7 +78,6 @@ namespace BitSharp.Core.Builders
 
         public void Dispose()
         {
-            unspentTxes.Dispose();
         }
 
         public int CursorCount { get { return chainState.CursorCount; } }
@@ -231,7 +231,7 @@ namespace BitSharp.Core.Builders
 
         public void CompleteWorkQueue()
         {
-            unspentTxes.CompleteWorkQueue();
+            unspentTxes.WorkQueue.Complete();
         }
 
         public void ApplyChangesToParent(IChainStateCursor parent)
@@ -246,42 +246,47 @@ namespace BitSharp.Core.Builders
             var applyStopwatch = Stopwatch.StartNew();
             var applyCount = 0;
             var firstItemTime = TimeSpan.MinValue;
-            foreach (var workItem in unspentTxes.ConsumeWork())
-            {
-                if (applyCount == 0)
-                    firstItemTime = applyStopwatch.Elapsed;
-                applyCount++;
-                applyUtxoPerInclusiveDurationMeasure.Measure(() =>
+            var utxoApplier = new ActionBlock<WorkQueueDictionary<UInt256, UnspentTx>.WorkItem>(
+                workItem =>
                 {
-                    workItem.Consume(
-                        (operation, unspenTxHash, unspentTx) =>
-                        {
-                            switch (operation)
+                    if (applyCount == 0)
+                        firstItemTime = applyStopwatch.Elapsed;
+                    applyCount++;
+                    applyUtxoPerInclusiveDurationMeasure.Measure(() =>
+                    {
+                        workItem.Consume(
+                            (operation, unspenTxHash, unspentTx) =>
                             {
-                                case WorkQueueOperation.Nothing:
-                                    break;
+                                switch (operation)
+                                {
+                                    case WorkQueueOperation.Nothing:
+                                        break;
 
-                                case WorkQueueOperation.Add:
-                                    if (!parent.TryAddUnspentTx(unspentTx))
+                                    case WorkQueueOperation.Add:
+                                        if (!parent.TryAddUnspentTx(unspentTx))
+                                            throw new InvalidOperationException();
+                                        break;
+
+                                    case WorkQueueOperation.Update:
+                                        if (!parent.TryUpdateUnspentTx(unspentTx))
+                                            throw new InvalidOperationException();
+                                        break;
+
+                                    case WorkQueueOperation.Remove:
+                                        if (!parent.TryRemoveUnspentTx(unspenTxHash))
+                                            throw new InvalidOperationException();
+                                        break;
+
+                                    default:
                                         throw new InvalidOperationException();
-                                    break;
+                                }
+                            });
+                    });
+                }, new ExecutionDataflowBlockOptions { SingleProducerConstrained = true });
 
-                                case WorkQueueOperation.Update:
-                                    if (!parent.TryUpdateUnspentTx(unspentTx))
-                                        throw new InvalidOperationException();
-                                    break;
+            unspentTxes.WorkQueue.LinkTo(utxoApplier, new DataflowLinkOptions { PropagateCompletion = true });
+            utxoApplier.Completion.Wait();
 
-                                case WorkQueueOperation.Remove:
-                                    if (!parent.TryRemoveUnspentTx(unspenTxHash))
-                                        throw new InvalidOperationException();
-                                    break;
-
-                                default:
-                                    throw new InvalidOperationException();
-                            }
-                        });
-                });
-            }
             applyStopwatch.Stop();
             applyUtxoDurationMeasure.Tick(applyStopwatch.Elapsed);
             if (applyCount > 0)

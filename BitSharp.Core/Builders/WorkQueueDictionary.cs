@@ -1,19 +1,21 @@
 ﻿using BitSharp.Common;
+using BitSharp.Common.ExtensionMethods;
 using NLog;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Threading.Tasks.Dataflow;
 
 namespace BitSharp.Core.Builders
 {
-    public class WorkQueueDictionary<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>, IDisposable
+    public class WorkQueueDictionary<TKey, TValue> : IEnumerable<KeyValuePair<TKey, TValue>>
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly DeferredDictionary<TKey, TValue> parentDictionary;
 
-        private readonly BlockingCollection<WorkItem> workQueue;
+        private readonly BufferBlock<WorkItem> workQueue;
         private readonly Dictionary<TKey, WorkItem> workByKey;
 
         private bool disposed;
@@ -21,24 +23,8 @@ namespace BitSharp.Core.Builders
         public WorkQueueDictionary(Func<TKey, Tuple<bool, TValue>> parentTryGetValue, Func<IEnumerable<KeyValuePair<TKey, TValue>>> parentEnumerator = null)
         {
             this.parentDictionary = new DeferredDictionary<TKey, TValue>(parentTryGetValue, parentEnumerator);
-            this.workQueue = new BlockingCollection<WorkItem>();
+            this.workQueue = new BufferBlock<WorkItem>();
             this.workByKey = new Dictionary<TKey, WorkItem>();
-        }
-
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (disposing && !disposed)
-            {
-                workQueue.Dispose();
-
-                disposed = true;
-            }
         }
 
         public IDictionary<TKey, TValue> Updated { get { return parentDictionary.Updated; } }
@@ -109,19 +95,9 @@ namespace BitSharp.Core.Builders
             return parentDictionary.GetEnumerator();
         }
 
-        public void CompleteWorkQueue()
+        public BufferBlock<WorkItem> WorkQueue
         {
-            workQueue.CompleteAdding();
-        }
-
-        public int WorkQueueCount
-        {
-            get { return workQueue.Count; }
-        }
-
-        public IEnumerable<WorkItem> ConsumeWork()
-        {
-            return workQueue.GetConsumingEnumerable();
+            get { return workQueue; }
         }
 
         public int WorkChangeCount { get; private set; }
@@ -149,7 +125,7 @@ namespace BitSharp.Core.Builders
             {
                 workItem = new WorkItem(operation, key, value);
                 workByKey[key] = workItem;
-                workQueue.Add(workItem);
+                workQueue.Post(workItem);
             }
             else if (alreadyExists)
                 WorkChangeCount++;
@@ -238,7 +214,7 @@ namespace BitSharp.Core.Builders
             }
         }
     }
-    
+
     public enum WorkQueueOperation
     {
         Nothing,
