@@ -82,7 +82,7 @@ namespace BitSharp.Client
                 if (isLocalDev)
                 {
                     // location to store a copy of raw blocks to avoid redownload
-                    BlockRequestWorker.SecondaryBlockFolder = @"D:\BitSharp.Blocks\RawBlocks";
+                    BlockRequestWorker.SecondaryBlockFolders = new[] { @"Y:\BitSharp.Blocks", @"D:\BitSharp.Blocks\RawBlocks" };
 
                     // split block txes storage across 2 dedicated SSDs, keep chain state on main SSD
                     blockTxesStorageLocations = new[]

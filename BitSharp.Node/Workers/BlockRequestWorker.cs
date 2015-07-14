@@ -19,7 +19,7 @@ namespace BitSharp.Node.Workers
     public class BlockRequestWorker : Worker
     {
         //TODO
-        public static string SecondaryBlockFolder;
+        public static string[] SecondaryBlockFolders;
 
         private static readonly TimeSpan STALE_REQUEST_TIME = TimeSpan.FromMinutes(5);
         private static readonly TimeSpan MISSED_STALE_REQUEST_TIME = TimeSpan.FromSeconds(3);
@@ -215,7 +215,7 @@ namespace BitSharp.Node.Workers
             this.targetChainQueueIndex = 0;
 
             // get blocks from secondary source, if specified
-            if (SecondaryBlockFolder != null && SecondaryBlockFolder != "")
+            if (SecondaryBlockFolders != null && SecondaryBlockFolders.Length > 0)
             {
                 var allRetrieved = true;
                 for (; this.targetChainQueueIndex < this.targetChainQueue.Count; this.targetChainQueueIndex++)
@@ -443,7 +443,7 @@ namespace BitSharp.Node.Workers
 
         private Block GetBlock(UInt256 blockHash)
         {
-            if (SecondaryBlockFolder == null || SecondaryBlockFolder == "")
+            if (SecondaryBlockFolders == null || SecondaryBlockFolders.Length == 0)
                 return null;
 
             var blockFile = new FileInfo(GetBlockPath(blockHash));
@@ -465,7 +465,7 @@ namespace BitSharp.Node.Workers
 
         private void StoreBlock(Block block)
         {
-            if (SecondaryBlockFolder == null || SecondaryBlockFolder == "")
+            if (SecondaryBlockFolders == null || SecondaryBlockFolders.Length == 0)
                 return;
 
             var blockFile = new FileInfo(GetBlockPath(block.Hash));
@@ -488,10 +488,10 @@ namespace BitSharp.Node.Workers
             var chunkSize = 2;
             var blockFolder = string.Join(Path.DirectorySeparatorChar.ToString(), Enumerable.Range(0, blockHashString.Length / chunkSize).Select(i => blockHashString.Substring(i * chunkSize, chunkSize)).ToArray());
 
-            if (height >= 225.THOUSAND())
-                return Path.Combine(SecondaryBlockFolder, blockFolder, "{0}.blk".Format2(blockHash));
+            if (height >= 225.THOUSAND() && SecondaryBlockFolders.Length >= 2)
+                return Path.Combine(SecondaryBlockFolders[1], blockFolder, "{0}.blk".Format2(blockHash));
             else
-                return Path.Combine(@"Y:\BitSharp.Blocks", blockFolder, "{0}.blk".Format2(blockHash));
+                return Path.Combine(SecondaryBlockFolders[0], blockFolder, "{0}.blk".Format2(blockHash));
         }
 
         private sealed class HeightComparer : IComparer<ChainedHeader>
