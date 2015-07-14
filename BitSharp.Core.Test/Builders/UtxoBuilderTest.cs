@@ -1,4 +1,6 @@
 ﻿using BitSharp.Common;
+using BitSharp.Common.ExtensionMethods;
+using BitSharp.Common.Test;
 using BitSharp.Core.Builders;
 using BitSharp.Core.Domain;
 using BitSharp.Core.Storage.Memory;
@@ -49,7 +51,7 @@ namespace BitSharp.Core.Test.Builders
 
             // spend the input
             chain.AddBlock(chainedHeader1);
-            utxoBuilder.CalculateUtxo(memoryChainStateCursor, chain.ToImmutable(), new[] { emptyCoinbaseTx0, tx0 }).ToList();
+            utxoBuilder.CalculateUtxo(memoryChainStateCursor, chain.ToImmutable(), new[] { emptyCoinbaseTx0, tx0 }.ToBufferBlock()).ToEnumerable().ToList();
 
             // verify utxo storage
             UnspentTx actualUnspentTx;
@@ -65,7 +67,7 @@ namespace BitSharp.Core.Test.Builders
 
             // spend the input
             chain.AddBlock(chainedHeader2);
-            utxoBuilder.CalculateUtxo(memoryChainStateCursor, chain.ToImmutable(), new[] { emptyCoinbaseTx1, tx1 }).ToList();
+            utxoBuilder.CalculateUtxo(memoryChainStateCursor, chain.ToImmutable(), new[] { emptyCoinbaseTx1, tx1 }.ToBufferBlock()).ToEnumerable().ToList();
 
             // verify utxo storage
             Assert.IsTrue(memoryChainStateCursor.TryGetUnspentTx(txHash, out actualUnspentTx));
@@ -80,7 +82,7 @@ namespace BitSharp.Core.Test.Builders
 
             // spend the input
             chain.AddBlock(chainedHeader3);
-            utxoBuilder.CalculateUtxo(memoryChainStateCursor, chain.ToImmutable(), new[] { emptyCoinbaseTx2, tx2 }).ToList();
+            utxoBuilder.CalculateUtxo(memoryChainStateCursor, chain.ToImmutable(), new[] { emptyCoinbaseTx2, tx2 }.ToBufferBlock()).ToEnumerable().ToList();
 
             // verify utxo storage
             Assert.IsTrue(memoryChainStateCursor.TryGetUnspentTx(txHash, out actualUnspentTx));
@@ -88,7 +90,6 @@ namespace BitSharp.Core.Test.Builders
         }
 
         [TestMethod]
-        [ExpectedException(typeof(ValidationException))]
         public void TestDoubleSpend()
         {
             // prepare block
@@ -121,18 +122,17 @@ namespace BitSharp.Core.Test.Builders
 
             // spend the input
             chain.AddBlock(chainedHeader1);
-            utxoBuilder.CalculateUtxo(memoryChainStateCursor, chain.ToImmutable(), new[] { emptyCoinbaseTx0, tx }).ToList();
+            utxoBuilder.CalculateUtxo(memoryChainStateCursor, chain.ToImmutable(), new[] { emptyCoinbaseTx0, tx }.ToBufferBlock()).ToEnumerable().ToList();
 
             // verify utxo storage
             UnspentTx actualUnspentTx;
             Assert.IsTrue(memoryChainStateCursor.TryGetUnspentTx(txHash, out actualUnspentTx));
             Assert.IsTrue(actualUnspentTx.IsFullySpent);
 
-            // attempt to spend the input again
+            // attempt to spend the input again, validation exception should be thrown
             chain.AddBlock(chainedHeader2);
-            utxoBuilder.CalculateUtxo(memoryChainStateCursor, chain.ToImmutable(), new[] { emptyCoinbaseTx1, tx }).ToList();
-
-            // validation exception should be thrown
+            AssertMethods.AssertAggregateThrows<ValidationException>(() =>
+                utxoBuilder.CalculateUtxo(memoryChainStateCursor, chain.ToImmutable(), new[] { emptyCoinbaseTx1, tx }.ToBufferBlock()).ToEnumerable().ToList());
         }
     }
 }

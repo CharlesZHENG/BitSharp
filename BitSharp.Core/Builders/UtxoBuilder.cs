@@ -7,6 +7,8 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 
 namespace BitSharp.Core.Builders
 {
@@ -19,61 +21,88 @@ namespace BitSharp.Core.Builders
 
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        public IEnumerable<LoadingTx> CalculateUtxo(IChainStateCursor chainStateCursor, Chain chain, IEnumerable<BlockTx> blockTxes)
+        public ISourceBlock<LoadingTx> CalculateUtxo(IChainStateCursor chainStateCursor, Chain chain, ISourceBlock<BlockTx> blockTxes)
         {
             var chainedHeader = chain.LastBlock;
             var blockSpentTxes = new BlockSpentTxesBuilder();
 
-            foreach (var blockTx in blockTxes)
-            {
-                var tx = blockTx.Transaction;
-                var txIndex = blockTx.Index;
+            var loadingTxes = new BufferBlock<LoadingTx>();
 
-                var prevOutputTxKeys = ImmutableArray.CreateBuilder<TxLookupKey>(!blockTx.IsCoinbase ? tx.Inputs.Length : 0);
-
-                //TODO apply real coinbase rule
-                // https://github.com/bitcoin/bitcoin/blob/481d89979457d69da07edd99fba451fd42a47f5c/src/core.h#L219
-                if (!blockTx.IsCoinbase)
+            var utxoCalculator = new ActionBlock<BlockTx>(
+                blockTx =>
                 {
-                    // spend each of the transaction's inputs in the utxo
-                    for (var inputIndex = 0; inputIndex < tx.Inputs.Length; inputIndex++)
+                    var tx = blockTx.Transaction;
+                    var txIndex = blockTx.Index;
+
+                    var prevOutputTxKeys = ImmutableArray.CreateBuilder<TxLookupKey>(!blockTx.IsCoinbase ? tx.Inputs.Length : 0);
+
+                    //TODO apply real coinbase rule
+                    // https://github.com/bitcoin/bitcoin/blob/481d89979457d69da07edd99fba451fd42a47f5c/src/core.h#L219
+                    if (!blockTx.IsCoinbase)
                     {
-                        var input = tx.Inputs[inputIndex];
-                        var unspentTx = this.Spend(chainStateCursor, txIndex, tx, inputIndex, input, chainedHeader, blockSpentTxes);
+                        // spend each of the transaction's inputs in the utxo
+                        for (var inputIndex = 0; inputIndex < tx.Inputs.Length; inputIndex++)
+                        {
+                            var input = tx.Inputs[inputIndex];
+                            var unspentTx = this.Spend(chainStateCursor, txIndex, tx, inputIndex, input, chainedHeader, blockSpentTxes);
 
-                        var unspentTxBlockHash = chain.Blocks[unspentTx.BlockIndex].Hash;
-                        prevOutputTxKeys.Add(new TxLookupKey(unspentTxBlockHash, unspentTx.TxIndex));
+                            var unspentTxBlockHash = chain.Blocks[unspentTx.BlockIndex].Hash;
+                            prevOutputTxKeys.Add(new TxLookupKey(unspentTxBlockHash, unspentTx.TxIndex));
+                        }
                     }
-                }
 
-                // there exist two duplicate coinbases in the blockchain, which the design assumes to be impossible
-                // ignore the first occurrences of these duplicates so that they do not need to later be deleted from the utxo, an unsupported operation
-                // no other duplicates will occur again, it is now disallowed
-                var isDupeCoinbase = ((chainedHeader.Height == DUPE_COINBASE_1_HEIGHT && tx.Hash == DUPE_COINBASE_1_HASH)
-                    || (chainedHeader.Height == DUPE_COINBASE_2_HEIGHT && tx.Hash == DUPE_COINBASE_2_HASH));
+                    // there exist two duplicate coinbases in the blockchain, which the design assumes to be impossible
+                    // ignore the first occurrences of these duplicates so that they do not need to later be deleted from the utxo, an unsupported operation
+                    // no other duplicates will occur again, it is now disallowed
+                    var isDupeCoinbase = ((chainedHeader.Height == DUPE_COINBASE_1_HEIGHT && tx.Hash == DUPE_COINBASE_1_HASH)
+                        || (chainedHeader.Height == DUPE_COINBASE_2_HEIGHT && tx.Hash == DUPE_COINBASE_2_HASH));
 
-                // add transaction's outputs to utxo, except for the genesis block and the duplicate coinbases
-                if (chainedHeader.Height > 0 && !isDupeCoinbase)
+                    // add transaction's outputs to utxo, except for the genesis block and the duplicate coinbases
+                    if (chainedHeader.Height > 0 && !isDupeCoinbase)
+                    {
+                        // mint the transaction's outputs in the utxo
+                        this.Mint(chainStateCursor, tx, txIndex, chainedHeader);
+
+                        // increase unspent output count
+                        chainStateCursor.UnspentOutputCount += tx.Outputs.Length;
+
+                        // increment unspent tx count
+                        chainStateCursor.UnspentTxCount++;
+
+                        chainStateCursor.TotalTxCount++;
+                        chainStateCursor.TotalInputCount += tx.Inputs.Length;
+                        chainStateCursor.TotalOutputCount += tx.Outputs.Length;
+                    }
+
+                    loadingTxes.Post(new LoadingTx(txIndex, tx, chainedHeader, prevOutputTxKeys.MoveToImmutable()));
+                });
+
+            blockTxes.LinkTo(utxoCalculator, new DataflowLinkOptions { PropagateCompletion = true });
+
+            utxoCalculator.Completion.ContinueWith(
+                task =>
                 {
-                    // mint the transaction's outputs in the utxo
-                    this.Mint(chainStateCursor, tx, txIndex, chainedHeader);
+                    try
+                    {
+                        if (task.Status == TaskStatus.RanToCompletion)
+                            if (!chainStateCursor.TryAddBlockSpentTxes(chainedHeader.Height, blockSpentTxes.ToImmutable()))
+                                throw new ValidationException(chainedHeader.Hash);
 
-                    // increase unspent output count
-                    chainStateCursor.UnspentOutputCount += tx.Outputs.Length;
+                        if (task.IsCanceled)
+                            ((IDataflowBlock)loadingTxes).Fault(new OperationCanceledException());
+                        else if (task.IsFaulted)
+                            ((IDataflowBlock)loadingTxes).Fault(task.Exception);
+                        else
+                            loadingTxes.Complete();
+                    }
+                    catch (Exception ex)
+                    {
+                        ((IDataflowBlock)loadingTxes).Fault(ex);
+                        throw;
+                    }
+                });
 
-                    // increment unspent tx count
-                    chainStateCursor.UnspentTxCount++;
-
-                    chainStateCursor.TotalTxCount++;
-                    chainStateCursor.TotalInputCount += tx.Inputs.Length;
-                    chainStateCursor.TotalOutputCount += tx.Outputs.Length;
-                }
-
-                yield return new LoadingTx(txIndex, tx, chainedHeader, prevOutputTxKeys.MoveToImmutable());
-            }
-
-            if (!chainStateCursor.TryAddBlockSpentTxes(chainedHeader.Height, blockSpentTxes.ToImmutable()))
-                throw new ValidationException(chainedHeader.Hash);
+            return loadingTxes;
         }
 
         private void Mint(IChainStateCursor chainStateCursor, Transaction tx, int txIndex, ChainedHeader chainedHeader)

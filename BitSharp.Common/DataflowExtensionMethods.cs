@@ -54,15 +54,5 @@ namespace BitSharp.Common.ExtensionMethods
             await target.Completion;
             return items;
         }
-
-        public static IEnumerable<T> ToEnumerable<T>(this ISourceBlock<T> source, CancellationToken cancelToken = default(CancellationToken))
-        {
-            while (source.OutputAvailableAsync(cancelToken).Result)
-            {
-                yield return source.Receive(cancelToken);
-            }
-
-            source.Completion.Wait();
-        }
     }
 }

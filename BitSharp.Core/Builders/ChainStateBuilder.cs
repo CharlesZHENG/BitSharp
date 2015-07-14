@@ -111,49 +111,37 @@ namespace BitSharp.Core.Builders
                     warmedBlockTxes.Completion.ContinueWith(_ => this.stats.lookAheadDurationMeasure.Tick(stopwatch.Elapsed));
 
                     // begin calculating the utxo updates
-                    var loadingTxes = new BufferBlock<LoadingTx>();
+                    var loadingTxes = CalculateUtxo(newChain, warmedBlockTxes, deferredChainStateCursor);
+                    loadingTxes.Completion.ContinueWith(_ =>
+                        deferredChainStateCursor.CompleteWorkQueue());
+
+                    // keep count of total input previous transactions that need to be loaded
                     var totalTxInputCount = 0;
-                    var calcUtxoTask = Task.Run(() =>
-                    {
-                        try
-                        {
-                            foreach (var loadingTx in CalculateUtxo(newChain, warmedBlockTxes.ToEnumerable(), deferredChainStateCursor))
-                            {
-                                loadingTxes.Post(loadingTx);
-
-                                if (!loadingTx.IsCoinbase)
-                                    totalTxInputCount += loadingTx.Transaction.Inputs.Length;
-                            }
-                        }
-                        finally
-                        {
-                            try
-                            {
-                                loadingTxes.Complete();
-                            }
-                            finally
-                            {
-                                deferredChainStateCursor.CompleteWorkQueue();
-                            }
-                        }
-                    });
-
-                    // begin loading txes
-                    var loadedTxes = TxLoader.LoadTxes(coreStorage, loadingTxes);
-
-                    // inject a transform block to count input previous transactions that have been loaded
-                    var loadedTxInputCount = 0;
-                    var loadedTxInputsCounter = new TransformBlock<LoadedTx, LoadedTx>(loadingTx =>
+                    var totalTxInputCounter = new TransformBlock<LoadingTx, LoadingTx>(loadingTx =>
                     {
                         if (!loadingTx.IsCoinbase)
-                            loadedTxInputCount += loadingTx.InputTxes.Length;
+                            totalTxInputCount += loadingTx.Transaction.Inputs.Length;
 
                         return loadingTx;
+                    });
+                    loadingTxes.LinkTo(totalTxInputCounter, new DataflowLinkOptions { PropagateCompletion = true });
+
+                    // begin loading txes
+                    var loadedTxes = TxLoader.LoadTxes(coreStorage, totalTxInputCounter);
+
+                    // keep count of input previous transactions that have been loaded
+                    var loadedTxInputCount = 0;
+                    var loadedTxInputsCounter = new TransformBlock<LoadedTx, LoadedTx>(loadedTx =>
+                    {
+                        if (!loadedTx.IsCoinbase)
+                            loadedTxInputCount += loadedTx.InputTxes.Length;
+
+                        return loadedTx;
                     });
                     loadedTxes.LinkTo(loadedTxInputsCounter, new DataflowLinkOptions { PropagateCompletion = true });
 
                     // track how many transactions are waiting to be loaded when utxo calculation completes
-                    calcUtxoTask.ContinueWith(_ =>
+                    totalTxInputCounter.Completion.ContinueWith(_ =>
                         this.stats.pendingTxesAtCompleteAverageMeasure.Tick(totalTxInputCount - loadedTxInputCount));
 
                     // begin validating the block
@@ -175,7 +163,6 @@ namespace BitSharp.Core.Builders
                         blockTxesBuffer.Completion.Wait();
                         warmedBlockTxes.Completion.Wait();
                         loadingTxes.Completion.Wait();
-                        calcUtxoTask.Wait();
                         loadedTxes.Completion.Wait();
                         blockValidator.Wait();
                     });
@@ -202,32 +189,44 @@ namespace BitSharp.Core.Builders
             this.LogBlockchainProgress();
         }
 
-        private IEnumerable<LoadingTx> CalculateUtxo(Chain newChain, IEnumerable<BlockTx> blockTxes, IChainStateCursor chainStateCursor)
+        private ISourceBlock<LoadingTx> CalculateUtxo(Chain newChain, ISourceBlock<BlockTx> blockTxes, IChainStateCursor chainStateCursor)
         {
             var calcUtxoStopwatch = Stopwatch.StartNew();
+            var pendingTxCount = 0;
 
             // calculate the new block utxo, only output availability is checked and updated
-            var pendingTxCount = 0;
-            foreach (var loadingTx in this.utxoBuilder.CalculateUtxo(chainStateCursor, newChain, blockTxes))
-            {
-                if (!rules.BypassPrevTxLoading)
-                    yield return loadingTx;
+            var loadingTxes = this.utxoBuilder.CalculateUtxo(chainStateCursor, newChain, blockTxes);
 
-                // track stats, ignore coinbase
-                if (newChain.Height > 0 && !loadingTx.IsCoinbase)
+            var tracker = new TransformManyBlock<LoadingTx, LoadingTx>(
+                loadingTx =>
                 {
-                    pendingTxCount += loadingTx.Transaction.Inputs.Length;
-                    this.stats.txRateMeasure.Tick();
-                    this.stats.inputRateMeasure.Tick(loadingTx.Transaction.Inputs.Length);
-                }
-            }
+                    // track stats, ignore coinbase
+                    if (newChain.Height > 0 && !loadingTx.IsCoinbase)
+                    {
+                        pendingTxCount += loadingTx.Transaction.Inputs.Length;
+                        this.stats.txRateMeasure.Tick();
+                        this.stats.inputRateMeasure.Tick(loadingTx.Transaction.Inputs.Length);
+                    }
 
-            if (newChain.Height > 0)
-                this.stats.pendingTxesTotalAverageMeasure.Tick(pendingTxCount);
+                    if (!rules.BypassPrevTxLoading)
+                        return new[] { loadingTx };
+                    else
+                        return new LoadingTx[0];
+                });
 
-            calcUtxoStopwatch.Stop();
-            if (newChain.Height > 0)
-                this.stats.calculateUtxoDurationMeasure.Tick(calcUtxoStopwatch.Elapsed);
+            loadingTxes.LinkTo(tracker, new DataflowLinkOptions { PropagateCompletion = true });
+
+            tracker.Completion.ContinueWith(_ =>
+            {
+                if (newChain.Height > 0)
+                    this.stats.pendingTxesTotalAverageMeasure.Tick(pendingTxCount);
+
+                calcUtxoStopwatch.Stop();
+                if (newChain.Height > 0)
+                    this.stats.calculateUtxoDurationMeasure.Tick(calcUtxoStopwatch.Elapsed);
+            });
+
+            return tracker;
         }
 
         public void RollbackBlock(ChainedHeader chainedHeader, IEnumerable<BlockTx> blockTxes)
