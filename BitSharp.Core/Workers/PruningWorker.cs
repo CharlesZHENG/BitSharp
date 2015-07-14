@@ -272,34 +272,48 @@ namespace BitSharp.Core.Workers
             if (!mode.HasFlag(PruningMode.TxIndex))
                 return;
 
-            using (var spentTxesQueue = new BlockingCollection<SpentTx>())
-            {
-                var pruneTxIndexTask = TaskPool.Run(16, () =>
+            var maxParallelism = 16;
+
+            // prepare a cache of cursors to be used by the pruning action block, allowing a pool of transactions
+            var openedCursors = new ConcurrentBag<IChainStateCursor>();
+            using (var cursorHandles = new DisposableCache<DisposeHandle<IChainStateCursor>>(maxParallelism,
+                () =>
                 {
-                    using (var handle = this.storageManager.OpenChainStateCursor())
+                    // retrieve a new cursor and start its transaction, keeping track of any cursors opened
+                    var cursorHandle = this.storageManager.OpenChainStateCursor();
+                    cursorHandle.Item.BeginTransaction();
+                    openedCursors.Add(cursorHandle.Item);
+
+                    return cursorHandle;
+                }))
+            {
+                var pruneTxIndex = new ActionBlock<SpentTx>(
+                    spentTx =>
                     {
-                        var innerChainStateCursor = handle.Item;
-                        innerChainStateCursor.BeginTransaction();
-                        var wasCommitted = false;
-                        try
+                        using (var handle = cursorHandles.TakeItem())
                         {
-                            foreach (var spentTx in spentTxesQueue.GetConsumingEnumerable())
-                                innerChainStateCursor.TryRemoveUnspentTx(spentTx.TxHash);
+                            var chainStateCursor = handle.Item.Item;
 
-                            //TODO commit time not measured
-                            innerChainStateCursor.CommitTransaction();
-                            wasCommitted = true;
-                        }
-                        finally
-                        {
-                            if (!wasCommitted)
-                                innerChainStateCursor.RollbackTransaction();
-                        }
-                    }
-                });
+                            if (!chainStateCursor.InTransaction)
+                            {
+                                chainStateCursor.BeginTransaction();
+                                openedCursors.Add(chainStateCursor);
+                            }
 
-                spentTxesQueue.AddFromEnumerable(spentTxes, completeAddingWhenDone: true);
-                pruneTxIndexTask.Wait();
+                            chainStateCursor.TryRemoveUnspentTx(spentTx.TxHash);
+                        }
+                    },
+                    new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = maxParallelism, SingleProducerConstrained = true });
+
+                var spentTxesQueue = new BufferBlock<SpentTx>();
+                spentTxesQueue.LinkTo(pruneTxIndex, new DataflowLinkOptions { PropagateCompletion = true });
+                spentTxesQueue.PostAndComplete(spentTxes);
+
+                pruneTxIndex.Completion.Wait();
+
+                // commit all opened cursors on success
+                foreach (var cursor in openedCursors)
+                    cursor.CommitTransaction();
             }
         }
 

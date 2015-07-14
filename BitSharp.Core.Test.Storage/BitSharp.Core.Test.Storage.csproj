@@ -102,6 +102,7 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
+    <Compile Include="IStorageManagerTest.cs" />
     <Compile Include="IChainStateCursorTest.cs" />
     <Compile Include="IBlockTxesStorageTest.cs" />
     <Compile Include="IBlockStorageTest.cs" />
