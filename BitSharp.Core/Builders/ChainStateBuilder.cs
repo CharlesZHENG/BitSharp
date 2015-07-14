@@ -99,18 +99,16 @@ namespace BitSharp.Core.Builders
                 using (var chainState = new ChainState(this.chain, this.storageManager))
                 using (var deferredChainStateCursor = new DeferredChainStateCursor(chainState))
                 {
-                    var taskStopwatch = Stopwatch.StartNew();
-
                     // begin reading block txes into the buffer
                     var blockTxesBuffer = new BufferBlock<BlockTx>();
                     var sendBlockTxes = blockTxesBuffer.SendAndCompleteAsync(blockTxes);
-                    sendBlockTxes.ContinueWith(_ => this.stats.txesReadDurationMeasure.Tick(taskStopwatch.Elapsed));
+                    sendBlockTxes.ContinueWith(_ => this.stats.txesReadDurationMeasure.Tick(stopwatch.Elapsed));
 
                     // warm-up utxo entries for block txes
                     var warmedBlockTxes = UtxoLookAhead.LookAhead(blockTxesBuffer, deferredChainStateCursor);
 
                     // track when the overall look ahead completes
-                    warmedBlockTxes.Completion.ContinueWith(_ => this.stats.lookAheadDurationMeasure.Tick(taskStopwatch.Elapsed));
+                    warmedBlockTxes.Completion.ContinueWith(_ => this.stats.lookAheadDurationMeasure.Tick(stopwatch.Elapsed));
 
                     // begin calculating the utxo updates
                     var loadingTxes = new BufferBlock<LoadingTx>();
