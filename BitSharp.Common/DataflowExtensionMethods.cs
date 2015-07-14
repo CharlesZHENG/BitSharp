@@ -8,9 +8,22 @@ namespace BitSharp.Common.ExtensionMethods
 {
     public static class DataflowExtensionMethods
     {
-        public static Task SendAndCompleteAsync<T>(this ITargetBlock<T> target, IEnumerable<T> items, CancellationToken cancelToken = default(CancellationToken))
+        public static async Task SendAndCompleteAsync<T>(this ITargetBlock<T> target, IEnumerable<T> items, CancellationToken cancelToken = default(CancellationToken))
         {
-            return Task.Run(() => PostAndComplete(target, items, cancelToken));
+            try
+            {
+                foreach (var item in items)
+                {
+                    await target.SendAsync(item, cancelToken);
+                }
+
+                target.Complete();
+            }
+            catch (Exception ex)
+            {
+                target.Fault(ex);
+                throw;
+            }
         }
 
         public static void PostAndComplete<T>(this ITargetBlock<T> target, IEnumerable<T> items, CancellationToken cancelToken = default(CancellationToken))
@@ -28,6 +41,7 @@ namespace BitSharp.Common.ExtensionMethods
             catch (Exception ex)
             {
                 target.Fault(ex);
+                throw;
             }
         }
 
