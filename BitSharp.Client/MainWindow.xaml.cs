@@ -39,10 +39,6 @@ namespace BitSharp.Client
         {
             try
             {
-                // detect local dev machine - TODO proper configuration
-                var isLocalDev = -899308969 ==
-                    (Environment.MachineName + Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)).GetHashCode();
-
                 //TODO
                 //**************************************************************
                 var useTestNet = false;
@@ -79,8 +75,20 @@ namespace BitSharp.Client
 
                 string[] blockTxesStorageLocations = null;
 
-                if (isLocalDev)
+                // detect local dev machine - TODO proper configuration
+                var isAzureVM = (Environment.MachineName == "BITSHARP");
+                var isLocalDev = -899308969 ==
+                    (Environment.MachineName + Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)).GetHashCode();
+
+                if (isAzureVM)
                 {
+                    cacheSizeMaxBytes = null;
+                    BlockRequestWorker.SecondaryBlockFolders = new[] { @"C:\BitSharp.Blocks\RawBlocks" };
+                }
+                else if (isLocalDev)
+                {
+                    cacheSizeMaxBytes = null;
+                    
                     // location to store a copy of raw blocks to avoid redownload
                     BlockRequestWorker.SecondaryBlockFolders = new[] { @"Y:\BitSharp.Blocks", @"D:\BitSharp.Blocks\RawBlocks" };
 
