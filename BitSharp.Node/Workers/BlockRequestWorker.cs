@@ -217,6 +217,8 @@ namespace BitSharp.Node.Workers
             // get blocks from secondary source, if specified
             if (SecondaryBlockFolders != null && SecondaryBlockFolders.Length > 0)
             {
+                var getBlockTasks = new List<Task>();
+
                 var allRetrieved = true;
                 for (; this.targetChainQueueIndex < this.targetChainQueue.Count; this.targetChainQueueIndex++)
                 {
@@ -228,15 +230,20 @@ namespace BitSharp.Node.Workers
                     if (!this.flushBlocks.Contains(requestBlock.Hash)
                         && !this.coreStorage.ContainsBlockTxes(requestBlock.Hash))
                     {
-                        var block = GetBlock(requestBlock.Hash);
-                        if (block != null)
-                            HandleBlock(null, block);
-                        else
-                            allRetrieved = false;
+                        getBlockTasks.Add(Task.Run(() =>
+                            {
+                                var block = GetBlock(requestBlock.Hash);
+                                if (block != null)
+                                    HandleBlock(null, block);
+                                else
+                                    allRetrieved = false;
+                            }));
                     }
                     else
                         allRetrieved = false;
                 }
+
+                Task.WaitAll(getBlockTasks.ToArray());
 
                 // all blocks retrieved from secondary source
                 // return now so that the target chain queue can be updated
@@ -337,12 +344,11 @@ namespace BitSharp.Node.Workers
 
         private void FlushWorkerMethod(WorkerMethod instance)
         {
-            var initalCount = this.flushQueue.Count;
-            var count = 0;
-
             FlushBlock flushBlock;
             while (this.flushQueue.TryDequeue(out flushBlock))
             {
+                this.flushBlocks.Remove(flushBlock.Block.Hash);
+
                 // cooperative loop
                 this.ThrowIfCancelled();
 
@@ -355,8 +361,6 @@ namespace BitSharp.Node.Workers
                     this.blockDownloadRateMeasure.Tick();
                 else
                     this.duplicateBlockDownloadCountMeasure.Tick();
-
-                this.flushBlocks.Remove(block.Hash);
 
                 BlockRequest blockRequest;
                 this.allBlockRequests.TryRemove(block.Hash, out blockRequest);
@@ -371,15 +375,7 @@ namespace BitSharp.Node.Workers
                         this.blockRequestDurationMeasure.Tick(DateTime.UtcNow - requestTime);
                     }
                 }
-
-                this.NotifyWork();
-
-                count++;
-                if (count > initalCount)
-                    break;
             }
-
-            //this.blockCache.Flush();
         }
 
         private void DiagnosticWorkerMethod(WorkerMethod instance)
