@@ -111,11 +111,13 @@ namespace BitSharp.Esent
                     using (var jetTx = cursor.jetSession.BeginTransaction())
                     {
                         var pruningCursor = new MerkleTreePruningCursor(blockHash, cursor);
-                        var cachedCursor = new CachedMerkleTreePruningCursor(pruningCursor);
 
                         // prune the transactions
                         foreach (var index in txIndices)
+                        {
+                            var cachedCursor = new CachedMerkleTreePruningCursor(pruningCursor);
                             MerkleTree.PruneNode(cachedCursor, index);
+                        }
 
                         jetTx.CommitLazy();
                     }
