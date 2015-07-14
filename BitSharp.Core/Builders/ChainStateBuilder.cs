@@ -9,8 +9,8 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
+using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace BitSharp.Core.Builders
@@ -85,6 +85,8 @@ namespace BitSharp.Core.Builders
             {
                 var chainStateCursor = handle.Item;
 
+                //TODO note - the utxo updates could be applied either while validation is ongoing,
+                //TODO        or after it is complete, begin transaction here to apply immediately
                 chainStateCursor.BeginTransaction();
 
                 // verify storage chain tip matches this chain state builder's chain tip
@@ -113,70 +115,55 @@ namespace BitSharp.Core.Builders
                     // begin calculating the utxo updates
                     var loadingTxes = CalculateUtxo(newChain, warmedBlockTxes, deferredChainStateCursor);
                     loadingTxes.Completion.ContinueWith(_ =>
-                        deferredChainStateCursor.CompleteWorkQueue());
-
-                    // keep count of total input previous transactions that need to be loaded
-                    var totalTxInputCount = 0;
-                    var totalTxInputCounter = new TransformBlock<LoadingTx, LoadingTx>(loadingTx =>
                     {
-                        if (!loadingTx.IsCoinbase)
-                            totalTxInputCount += loadingTx.Transaction.Inputs.Length;
-
-                        return loadingTx;
+                        deferredChainStateCursor.CompleteWorkQueue();
+                        this.stats.calculateUtxoDurationMeasure.Tick(stopwatch.Elapsed);
                     });
-                    loadingTxes.LinkTo(totalTxInputCounter, new DataflowLinkOptions { PropagateCompletion = true });
 
                     // begin loading txes
-                    var loadedTxes = TxLoader.LoadTxes(coreStorage, totalTxInputCounter);
-
-                    // keep count of input previous transactions that have been loaded
-                    var loadedTxInputCount = 0;
-                    var loadedTxInputsCounter = new TransformBlock<LoadedTx, LoadedTx>(loadedTx =>
-                    {
-                        if (!loadedTx.IsCoinbase)
-                            loadedTxInputCount += loadedTx.InputTxes.Length;
-
-                        return loadedTx;
-                    });
-                    loadedTxes.LinkTo(loadedTxInputsCounter, new DataflowLinkOptions { PropagateCompletion = true });
-
-                    // track how many transactions are waiting to be loaded when utxo calculation completes
-                    totalTxInputCounter.Completion.ContinueWith(_ =>
-                        this.stats.pendingTxesAtCompleteAverageMeasure.Tick(totalTxInputCount - loadedTxInputCount));
+                    var loadedTxes = TxLoader.LoadTxes(coreStorage, loadingTxes);
 
                     // begin validating the block
-                    var blockValidator = BlockValidator.ValidateBlock(coreStorage, rules, chainedHeader, loadedTxInputsCounter);
+                    var blockValidator = BlockValidator.ValidateBlock(coreStorage, rules, chainedHeader, loadedTxes);
 
-                    //TODO note - the utxo updates could be applied either while validation is ongoing, or after it is complete
-                    this.stats.applyUtxoDurationMeasure.MeasureIf(chainedHeader.Height > 0, () =>
-                    {
-                        // apply the changes, do not yet commit
-                        deferredChainStateCursor.ApplyChangesToParent(chainStateCursor);
-                        chainStateCursor.ChainTip = chainedHeader;
-                        chainStateCursor.TryAddHeader(chainedHeader);
-                    });
+                    // apply the changes, do not yet commit
+                    deferredChainStateCursor.ApplyChangesToParent(chainStateCursor);
+                    chainStateCursor.ChainTip = chainedHeader;
+                    chainStateCursor.TryAddHeader(chainedHeader);
+
+                    if (chainedHeader.Height > 0)
+                        this.stats.applyUtxoDurationMeasure.Tick(stopwatch.Elapsed);
 
                     // wait for block validation to complete, any exceptions that ocurred will be thrown
-                    this.stats.waitToCompleteDurationMeasure.MeasureIf(chainedHeader.Height > 0, () =>
-                    {
-                        sendBlockTxes.Wait();
-                        blockTxesBuffer.Completion.Wait();
-                        warmedBlockTxes.Completion.Wait();
-                        loadingTxes.Completion.Wait();
-                        loadedTxes.Completion.Wait();
-                        blockValidator.Wait();
-                    });
+                    sendBlockTxes.Wait();
+                    blockTxesBuffer.Completion.Wait();
+                    warmedBlockTxes.Completion.Wait();
+                    loadingTxes.Completion.Wait();
+                    loadedTxes.Completion.Wait();
+                    blockValidator.Wait();
+
+                    if (chainedHeader.Height > 0)
+                        this.stats.validateDurationMeasure.Tick(stopwatch.Elapsed);
                 }
 
-                this.stats.commitUtxoDurationMeasure.MeasureIf(chainedHeader.Height > 0, () =>
+                // only commit the utxo changes once block validation has completed
+                this.commitLock.DoWrite(() =>
                 {
-                    // only commit the utxo changes once block validation has completed
-                    this.commitLock.DoWrite(() =>
-                    {
-                        chainStateCursor.CommitTransaction();
-                        this.chain = newChain;
-                    });
+                    chainStateCursor.CommitTransaction();
+                    this.chain = newChain;
                 });
+
+                if (chainedHeader.Height > 0)
+                    this.stats.commitUtxoDurationMeasure.Tick(stopwatch.Elapsed);
+
+                // update total count stats
+                chainStateCursor.BeginTransaction(readOnly: true);
+                stats.Height = chain.Height;
+                stats.TotalTxCount = chainStateCursor.TotalTxCount;
+                stats.TotalInputCount = chainStateCursor.TotalInputCount;
+                stats.UnspentTxCount = chainStateCursor.UnspentTxCount;
+                stats.UnspentOutputCount = chainStateCursor.UnspentOutputCount;
+                chainStateCursor.RollbackTransaction();
 
                 // MEASURE: Block Rate
                 if (chainedHeader.Height > 0)
@@ -191,9 +178,6 @@ namespace BitSharp.Core.Builders
 
         private ISourceBlock<LoadingTx> CalculateUtxo(Chain newChain, ISourceBlock<BlockTx> blockTxes, IChainStateCursor chainStateCursor)
         {
-            var calcUtxoStopwatch = Stopwatch.StartNew();
-            var pendingTxCount = 0;
-
             // calculate the new block utxo, only output availability is checked and updated
             var loadingTxes = this.utxoBuilder.CalculateUtxo(chainStateCursor, newChain, blockTxes);
 
@@ -203,7 +187,6 @@ namespace BitSharp.Core.Builders
                     // track stats, ignore coinbase
                     if (newChain.Height > 0 && !loadingTx.IsCoinbase)
                     {
-                        pendingTxCount += loadingTx.Transaction.Inputs.Length;
                         this.stats.txRateMeasure.Tick();
                         this.stats.inputRateMeasure.Tick(loadingTx.Transaction.Inputs.Length);
                     }
@@ -215,17 +198,6 @@ namespace BitSharp.Core.Builders
                 });
 
             loadingTxes.LinkTo(tracker, new DataflowLinkOptions { PropagateCompletion = true });
-
-            tracker.Completion.ContinueWith(_ =>
-                {
-                    if (newChain.Height > 0)
-                        this.stats.pendingTxesTotalAverageMeasure.Tick(pendingTxCount);
-
-                    calcUtxoStopwatch.Stop();
-                    if (newChain.Height > 0)
-                        this.stats.calculateUtxoDurationMeasure.Tick(calcUtxoStopwatch.Elapsed);
-                },
-                TaskContinuationOptions.OnlyOnRanToCompletion);
 
             return tracker;
         }
@@ -274,77 +246,8 @@ namespace BitSharp.Core.Builders
 
         public void LogBlockchainProgress()
         {
-            this.commitLock.DoWrite(() =>
-            {
-                using (var handle = this.storageManager.OpenChainStateCursor())
-                {
-                    var chainStateCursor = handle.Item;
-
-                    chainStateCursor.BeginTransaction(readOnly: true);
-                    LogProgressInner(chainStateCursor);
-                }
-            });
-        }
-
-        private void LogProgressInner(IChainStateCursor chainStateCursor)
-        {
-            if (DateTime.UtcNow - this.Stats.lastLogTime < TimeSpan.FromSeconds(15))
-                return;
-            else
-                this.Stats.lastLogTime = DateTime.UtcNow;
-
-            var elapsedSeconds = this.Stats.durationStopwatch.Elapsed.TotalSeconds;
-            var blockRate = this.stats.blockRateMeasure.GetAverage(TimeSpan.FromSeconds(1));
-            var txRate = this.stats.txRateMeasure.GetAverage(TimeSpan.FromSeconds(1));
-            var inputRate = this.stats.inputRateMeasure.GetAverage(TimeSpan.FromSeconds(1));
-
-            logger.Info(
-                string.Join("\n",
-                    new string('-', 80),
-                    "Height: {0,10} | Duration: {1} /*| Validation: {2} */| Blocks/s: {3,7} | Tx/s: {4,7} | Inputs/s: {5,7} | Processed Tx: {6,7} | Processed Inputs: {7,7} | Utx Size: {8,7} | Utxo Size: {9,7}",
-                    new string('-', 80),
-                //TODO stats come from CoreStorage, not exposed on ICoreStorage, stats need to be moved
-                //"Avg. Prev Tx Load Time: {10,12:#,##0.000}ms",
-                //"Prev Tx Load Rate:  {11,12:#,##0}/s",
-                //new string('-', 80),
-                    "Block Txes Read:            {12,12:N3}ms",
-                    "UTXO Look-ahead:            {13,12:N3}ms",
-                    "Avg. UTXO Calculation Time: {14,12:#,##0.000}ms",
-                    new string('-', 80),
-                    "Avg. Prev Txes per Block:                  {15,12:#,##0}",
-                    "Avg. Pending Prev Txes at UTXO Completion: {16,12:#,##0}",
-                    new string('-', 80),
-                    "Avg. UTXO Application Time: {17,12:#,##0.000}ms",
-                    "Avg. Wait-to-complete Time: {18,12:#,##0.000}ms",
-                    "Avg. UTXO Commit Time:      {19,12:#,##0.000}ms",
-                    "Avg. AddBlock Time:         {20,12:#,##0.000}ms",
-                    new string('-', 80)
-                )
-                .Format2
-                (
-                /*0*/ this.chain.Height.ToString("#,##0"),
-                /*1*/ this.Stats.durationStopwatch.Elapsed.ToString(@"hh\:mm\:ss"),
-                /*2*/ this.Stats.validateStopwatch.Elapsed.ToString(@"hh\:mm\:ss"),
-                /*3*/ blockRate.ToString("#,##0"),
-                /*4*/ txRate.ToString("#,##0"),
-                /*5*/ inputRate.ToString("#,##0"),
-                /*6*/ chainStateCursor.TotalTxCount.ToString("#,##0"),
-                /*7*/ chainStateCursor.TotalInputCount.ToString("#,##0"),
-                /*8*/ chainStateCursor.UnspentTxCount.ToString("#,##0"),
-                /*9*/ chainStateCursor.UnspentOutputCount.ToString("#,##0"),
-                //TODO stats come from CoreStorage, not exposed on ICoreStorage, stats need to be moved
-                /*10*/ 0, //this.coreStorage.GetTxLoadDuration().TotalMilliseconds,
-                /*11*/ 0, //this.coreStorage.GetTxLoadRate(),
-                /*12*/ this.Stats.txesReadDurationMeasure.GetAverage().TotalMilliseconds,
-                /*13*/ this.Stats.lookAheadDurationMeasure.GetAverage().TotalMilliseconds,
-                /*14*/ this.Stats.calculateUtxoDurationMeasure.GetAverage().TotalMilliseconds,
-                /*15*/ this.Stats.pendingTxesTotalAverageMeasure.GetAverage(),
-                /*16*/ this.Stats.pendingTxesAtCompleteAverageMeasure.GetAverage(),
-                /*17*/ this.Stats.applyUtxoDurationMeasure.GetAverage().TotalMilliseconds,
-                /*18*/ this.Stats.waitToCompleteDurationMeasure.GetAverage().TotalMilliseconds,
-                /*19*/ this.Stats.commitUtxoDurationMeasure.GetAverage().TotalMilliseconds,
-                /*20*/ this.Stats.addBlockDurationMeasure.GetAverage().TotalMilliseconds
-                ));
+            Throttler.IfElapsed(TimeSpan.FromSeconds(15), () =>
+                logger.Info(this.stats.ToString()));
         }
 
         //TODO cache the latest immutable snapshot
@@ -370,41 +273,89 @@ namespace BitSharp.Core.Builders
             private static readonly TimeSpan sampleCutoff = TimeSpan.FromMinutes(5);
             private static readonly TimeSpan sampleResolution = TimeSpan.FromSeconds(5);
 
-            public Stopwatch durationStopwatch = Stopwatch.StartNew();
-            public Stopwatch validateStopwatch = new Stopwatch();
+            internal Stopwatch durationStopwatch = Stopwatch.StartNew();
 
-            public readonly DurationMeasure calculateUtxoDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
-            public readonly DurationMeasure applyUtxoDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
-            public readonly DurationMeasure commitUtxoDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
-            public readonly AverageMeasure pendingTxesTotalAverageMeasure = new AverageMeasure(sampleCutoff, sampleResolution);
-            public readonly AverageMeasure pendingTxesAtCompleteAverageMeasure = new AverageMeasure(sampleCutoff, sampleResolution);
-            public readonly DurationMeasure waitToCompleteDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
-            public readonly DurationMeasure addBlockDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
-            public readonly RateMeasure blockRateMeasure = new RateMeasure(sampleCutoff, sampleResolution);
-            public readonly RateMeasure txRateMeasure = new RateMeasure(sampleCutoff, sampleResolution);
-            public readonly RateMeasure inputRateMeasure = new RateMeasure(sampleCutoff, sampleResolution);
-            public readonly DurationMeasure txesReadDurationMeasure = new DurationMeasure(TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(5));
-            public readonly DurationMeasure lookAheadDurationMeasure = new DurationMeasure(TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(5));
+            public int Height { get; internal set; }
+            public int TotalTxCount { get; internal set; }
+            public int TotalInputCount { get; internal set; }
+            public int UnspentTxCount { get; internal set; }
+            public int UnspentOutputCount { get; internal set; }
 
-            public DateTime lastLogTime = DateTime.UtcNow;
+            internal readonly RateMeasure blockRateMeasure = new RateMeasure(sampleCutoff, sampleResolution);
+            internal readonly RateMeasure txRateMeasure = new RateMeasure(sampleCutoff, sampleResolution);
+            internal readonly RateMeasure inputRateMeasure = new RateMeasure(sampleCutoff, sampleResolution);
+
+            internal readonly DurationMeasure txesReadDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
+            internal readonly DurationMeasure lookAheadDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
+            internal readonly DurationMeasure calculateUtxoDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
+            internal readonly DurationMeasure applyUtxoDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
+            internal readonly DurationMeasure validateDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
+            internal readonly DurationMeasure commitUtxoDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
+            internal readonly DurationMeasure addBlockDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
 
             internal BuilderStats() { }
 
             public void Dispose()
             {
-                this.calculateUtxoDurationMeasure.Dispose();
-                this.applyUtxoDurationMeasure.Dispose();
-                this.commitUtxoDurationMeasure.Dispose();
-                this.pendingTxesTotalAverageMeasure.Dispose();
-                this.pendingTxesAtCompleteAverageMeasure.Dispose();
-                this.waitToCompleteDurationMeasure.Dispose();
                 this.blockRateMeasure.Dispose();
-                this.addBlockDurationMeasure.Dispose();
                 this.txRateMeasure.Dispose();
                 this.inputRateMeasure.Dispose();
+
                 this.txesReadDurationMeasure.Dispose();
                 this.lookAheadDurationMeasure.Dispose();
+                this.calculateUtxoDurationMeasure.Dispose();
+                this.applyUtxoDurationMeasure.Dispose();
+                this.validateDurationMeasure.Dispose();
+                this.commitUtxoDurationMeasure.Dispose();
+                this.addBlockDurationMeasure.Dispose();
             }
-        }
+
+            public override string ToString()
+            {
+                var statString = new StringBuilder();
+
+                statString.AppendLine("Chain State Builder Stats");
+                statString.AppendLine("-------------------------");
+                statString.AppendLine("Height:           {0,15:N0}".Format2(Height));
+                statString.AppendLine("Duration:         {0,15}".Format2(
+                    "{0:#,#00}:{1:mm':'ss}".Format2(durationStopwatch.Elapsed.TotalHours, durationStopwatch.Elapsed)));
+                statString.AppendLine("-------------------------");
+                statString.AppendLine("Blocks Rate:      {0,15:N0}/s".Format2(blockRateMeasure.GetAverage()));
+                statString.AppendLine("Tx Rate:          {0,15:N0}/s".Format2(txRateMeasure.GetAverage()));
+                statString.AppendLine("Input Rate:       {0,15:N0}/s".Format2(inputRateMeasure.GetAverage()));
+                statString.AppendLine("-------------------------");
+                statString.AppendLine("Processed Txes:   {0,15:N0}".Format2(TotalTxCount));
+                statString.AppendLine("Processed Inputs: {0,15:N0}".Format2(TotalInputCount));
+                statString.AppendLine("Utx Size:         {0,15:N0}".Format2(UnspentTxCount));
+                statString.AppendLine("Utxo Size:        {0,15:N0}".Format2(UnspentOutputCount));
+                statString.AppendLine("-------------------------");
+                statString.AppendLine(GetPipelineStat("Block Txes Read", txesReadDurationMeasure, null));
+                statString.AppendLine(GetPipelineStat("UTXO Look-ahead", lookAheadDurationMeasure, txesReadDurationMeasure));
+                statString.AppendLine(GetPipelineStat("UTXO Calculation", calculateUtxoDurationMeasure, lookAheadDurationMeasure));
+                statString.AppendLine(GetPipelineStat("UTXO Application", applyUtxoDurationMeasure, calculateUtxoDurationMeasure));
+                statString.AppendLine(GetPipelineStat("Block Validation", validateDurationMeasure, applyUtxoDurationMeasure));
+                statString.AppendLine(GetPipelineStat("UTXO Commit", commitUtxoDurationMeasure, validateDurationMeasure));
+                statString.Append(GetPipelineStat("AddBlock Total", addBlockDurationMeasure, null));
+
+                return statString.ToString();
+            }
+
+            private string GetPipelineStat(string name, DurationMeasure piplelineDuration, DurationMeasure prevPipelineDuration)
+            {
+                var duration = piplelineDuration.GetAverage();
+                var format = "{0,-20} Completion: {1,12:N3}ms";
+
+                TimeSpan delta;
+                if (prevPipelineDuration != null)
+                {
+                    format += ", Delta: {2,12:N3}ms";
+                    delta = duration - prevPipelineDuration.GetAverage();
+                }
+                else
+                    delta = TimeSpan.Zero;
+
+                return string.Format(format, name + ":", duration.TotalMilliseconds, delta.TotalMilliseconds);
+            }
+       }
     }
 }

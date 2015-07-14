@@ -136,7 +136,7 @@ namespace BitSharp.Core.Workers
                         this.chainStateWorker.NotifyAndStart();
                         if (lagLogged)
                         {
-                            logger.Info("Pruning is resumed.");
+                            logger.Info("Pruning is caught up.");
                             lagLogged = false;
                         }
                     }

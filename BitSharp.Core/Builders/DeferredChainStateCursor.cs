@@ -5,7 +5,6 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 
 namespace BitSharp.Core.Builders
@@ -13,18 +12,6 @@ namespace BitSharp.Core.Builders
     internal class DeferredChainStateCursor : IDeferredChainStateCursor
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
-
-        //TODO
-        private static readonly DurationMeasure readUtxoDurationMeasure = new DurationMeasure(TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(5));
-        private static readonly RateMeasure readUtxoRateMeasure = new RateMeasure(TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(5));
-        private static readonly DurationMeasure missedReadUtxoDurationMeasure = new DurationMeasure(TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(5));
-        private static readonly RateMeasure missedReadUtxoRateMeasure = new RateMeasure(TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(5));
-        private static readonly DurationMeasure applyUtxoFirstDurationMeasure = new DurationMeasure(TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(5));
-        private static readonly DurationMeasure applyUtxoDurationMeasure = new DurationMeasure(TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(5));
-        private static readonly DurationMeasure applyUtxoPerDurationMeasure = new DurationMeasure(TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(5));
-        private static readonly DurationMeasure applyUtxoPerInclusiveDurationMeasure = new DurationMeasure(TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(5));
-        private static readonly AverageMeasure applyUtxoCountMeasure = new AverageMeasure(TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(5));
-        private static readonly AverageMeasure applyUtxoSaveCountMeasure = new AverageMeasure(TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(5));
 
         private readonly IChainState chainState;
         private readonly ChainedHeader originalChainTip;
@@ -58,7 +45,7 @@ namespace BitSharp.Core.Builders
                 txHash =>
                 {
                     UnspentTx unspentTx;
-                    return Tuple.Create(TryLoadUnspenTx(txHash, out unspentTx), unspentTx);
+                    return Tuple.Create(chainState.TryGetUnspentTx(txHash, out unspentTx), unspentTx);
                 });
 
             blockSpentTxes = new DeferredDictionary<int, BlockSpentTxes>(
@@ -224,7 +211,7 @@ namespace BitSharp.Core.Builders
             unspentTxes.WarmupValue(txHash, () =>
             {
                 UnspentTx unspentTx;
-                TryLoadUnspenTx(txHash, out unspentTx);
+                chainState.TryGetUnspentTx(txHash, out unspentTx);
                 return unspentTx;
             });
         }
@@ -243,59 +230,40 @@ namespace BitSharp.Core.Builders
             if (!(currentChainTip == null && originalChainTip == null) && currentChainTip.Hash != originalChainTip.Hash)
                 throw new InvalidOperationException();
 
-            var applyStopwatch = Stopwatch.StartNew();
-            var applyCount = 0;
-            var firstItemTime = TimeSpan.MinValue;
             var utxoApplier = new ActionBlock<WorkQueueDictionary<UInt256, UnspentTx>.WorkItem>(
                 workItem =>
                 {
-                    if (applyCount == 0)
-                        firstItemTime = applyStopwatch.Elapsed;
-                    applyCount++;
-                    applyUtxoPerInclusiveDurationMeasure.Measure(() =>
-                    {
-                        workItem.Consume(
-                            (operation, unspenTxHash, unspentTx) =>
+                    workItem.Consume(
+                        (operation, unspenTxHash, unspentTx) =>
+                        {
+                            switch (operation)
                             {
-                                switch (operation)
-                                {
-                                    case WorkQueueOperation.Nothing:
-                                        break;
+                                case WorkQueueOperation.Nothing:
+                                    break;
 
-                                    case WorkQueueOperation.Add:
-                                        if (!parent.TryAddUnspentTx(unspentTx))
-                                            throw new InvalidOperationException();
-                                        break;
-
-                                    case WorkQueueOperation.Update:
-                                        if (!parent.TryUpdateUnspentTx(unspentTx))
-                                            throw new InvalidOperationException();
-                                        break;
-
-                                    case WorkQueueOperation.Remove:
-                                        if (!parent.TryRemoveUnspentTx(unspenTxHash))
-                                            throw new InvalidOperationException();
-                                        break;
-
-                                    default:
+                                case WorkQueueOperation.Add:
+                                    if (!parent.TryAddUnspentTx(unspentTx))
                                         throw new InvalidOperationException();
-                                }
-                            });
-                    });
+                                    break;
+
+                                case WorkQueueOperation.Update:
+                                    if (!parent.TryUpdateUnspentTx(unspentTx))
+                                        throw new InvalidOperationException();
+                                    break;
+
+                                case WorkQueueOperation.Remove:
+                                    if (!parent.TryRemoveUnspentTx(unspenTxHash))
+                                        throw new InvalidOperationException();
+                                    break;
+
+                                default:
+                                    throw new InvalidOperationException();
+                            }
+                        });
                 });
 
             unspentTxes.WorkQueue.LinkTo(utxoApplier, new DataflowLinkOptions { PropagateCompletion = true });
             utxoApplier.Completion.Wait();
-
-            applyStopwatch.Stop();
-            applyUtxoDurationMeasure.Tick(applyStopwatch.Elapsed);
-            if (applyCount > 0)
-            {
-                applyUtxoFirstDurationMeasure.Tick(firstItemTime);
-                applyUtxoPerDurationMeasure.Tick(TimeSpan.FromTicks(applyStopwatch.Elapsed.Ticks / applyCount));
-            }
-            applyUtxoCountMeasure.Tick(applyCount);
-            applyUtxoSaveCountMeasure.Tick(unspentTxes.WorkChangeCount);
 
             parent.ChainTip = ChainTip;
             parent.UnspentOutputCount = UnspentOutputCount;
@@ -303,16 +271,6 @@ namespace BitSharp.Core.Builders
             parent.TotalTxCount = TotalTxCount;
             parent.TotalInputCount = TotalInputCount;
             parent.TotalOutputCount = TotalOutputCount;
-
-            //foreach (var unspentTx in unspentTxes.Updated.Values)
-            //    if (!parent.TryUpdateUnspentTx(unspentTx))
-            //        throw new InvalidOperationException();
-            //foreach (var unspentTx in unspentTxes.Added.Values)
-            //    if (!parent.TryAddUnspentTx(unspentTx))
-            //        throw new InvalidOperationException();
-            //foreach (var txHash in unspentTxes.Deleted)
-            //    if (!parent.TryRemoveUnspentTx(txHash))
-            //        throw new InvalidOperationException();
 
             if (blockSpentTxes.Updated.Count > 0)
                 throw new InvalidOperationException();
@@ -333,42 +291,6 @@ namespace BitSharp.Core.Builders
                     throw new InvalidOperationException();
 
             changesApplied = true;
-        }
-
-        private bool TryLoadUnspenTx(UInt256 txHash, out UnspentTx unspentTx)
-        {
-            var stopwatch = Stopwatch.StartNew();
-            var result = chainState.TryGetUnspentTx(txHash, out unspentTx);
-            stopwatch.Stop();
-
-            if (result)
-            {
-                readUtxoDurationMeasure.Tick(stopwatch.Elapsed);
-                readUtxoRateMeasure.Tick();
-            }
-            else
-            {
-                missedReadUtxoDurationMeasure.Tick(stopwatch.Elapsed);
-                missedReadUtxoRateMeasure.Tick();
-            }
-
-            Throttler.IfElapsed(TimeSpan.FromSeconds(15), () =>
-            {
-                logger.Info("---------------------------------------------");
-                logger.Info("Read UTXO Duration:                {0,12:N3}ms", readUtxoDurationMeasure.GetAverage().TotalMilliseconds);
-                logger.Info("Read UTXO Rate:                    {0,8:N0}/s", readUtxoRateMeasure.GetAverage());
-                logger.Info("Missed Read UTXO Duration:         {0,12:N3}ms", missedReadUtxoDurationMeasure.GetAverage().TotalMilliseconds);
-                logger.Info("Missed Read UTXO Rate:             {0,8:N0}/s", missedReadUtxoRateMeasure.GetAverage());
-                logger.Info("Apply UTXO First Item:             {0,8:N3}ms", applyUtxoFirstDurationMeasure.GetAverage().TotalMilliseconds);
-                logger.Info("Apply UTXO Duration:               {0,8:N3}ms", applyUtxoDurationMeasure.GetAverage().TotalMilliseconds);
-                logger.Info("Apply UTXO Count:                  {0,8:N0}", applyUtxoCountMeasure.GetAverage());
-                logger.Info("Apply UTXO Saved Work Count:       {0,8:N0}", applyUtxoSaveCountMeasure.GetAverage());
-                logger.Info("Apply UTXO Duration Per:           {0,8:N3}ms", applyUtxoPerDurationMeasure.GetAverage().TotalMilliseconds);
-                logger.Info("Apply UTXO Duration Per Inclusive: {0,8:N3}ms", applyUtxoPerInclusiveDurationMeasure.GetAverage().TotalMilliseconds);
-                logger.Info("---------------------------------------------");
-            });
-
-            return result;
         }
     }
 }

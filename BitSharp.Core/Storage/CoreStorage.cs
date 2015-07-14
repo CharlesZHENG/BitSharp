@@ -1,13 +1,11 @@
 ﻿using BitSharp.Common;
 using BitSharp.Common.ExtensionMethods;
-using BitSharp.Core.Builders;
 using BitSharp.Core.Domain;
 using NLog;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Diagnostics;
 using System.Linq;
 
 namespace BitSharp.Core.Storage
@@ -24,9 +22,6 @@ namespace BitSharp.Core.Storage
 
         private readonly ConcurrentDictionary<UInt256, bool> presentBlockTxes = new ConcurrentDictionary<UInt256, bool>();
         private readonly object[] presentBlockTxesLocks = new object[64];
-
-        private readonly DurationMeasure txLoadDurationMeasure = new DurationMeasure(TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(5));
-        private readonly RateMeasure txLoadRateMeasure = new RateMeasure(TimeSpan.FromMinutes(5), TimeSpan.FromSeconds(5));
 
         private bool isDisposed;
 
@@ -54,9 +49,6 @@ namespace BitSharp.Core.Storage
         {
             if (!isDisposed && disposing)
             {
-                this.txLoadDurationMeasure.Dispose();
-                this.txLoadRateMeasure.Dispose();
-
                 isDisposed = true;
             }
         }
@@ -265,26 +257,7 @@ namespace BitSharp.Core.Storage
 
         public bool TryGetTransaction(UInt256 blockHash, int txIndex, out Transaction transaction)
         {
-            var stopwatch = Stopwatch.StartNew();
-            if (this.blockTxesStorage.TryGetTransaction(blockHash, txIndex, out transaction))
-            {
-                stopwatch.Stop();
-                this.txLoadDurationMeasure.Tick(stopwatch.Elapsed);
-                this.txLoadRateMeasure.Tick();
-                return true;
-            }
-            else
-                return false;
-        }
-
-        public float GetTxLoadRate()
-        {
-            return this.txLoadRateMeasure.GetAverage();
-        }
-
-        public TimeSpan GetTxLoadDuration()
-        {
-            return this.txLoadDurationMeasure.GetAverage();
+            return this.blockTxesStorage.TryGetTransaction(blockHash, txIndex, out transaction);
         }
 
         public bool TryReadBlockTransactions(UInt256 blockHash, bool requireTransactions, out IEnumerator<BlockTx> blockTxes)
