@@ -33,6 +33,7 @@ namespace BitSharp.Core.Workers
         private ChainBuilder prunedChain;
 
         private int lastLogHeight = -1;
+        private bool lagLogged;
 
         public PruningWorker(WorkerConfig workerConfig, ICoreDaemon coreDaemon, IStorageManager storageManager, ChainStateWorker chainStateWorker)
             : base("PruningWorker", workerConfig.initialNotify, workerConfig.minIdleTime, workerConfig.maxIdleTime)
@@ -118,7 +119,10 @@ namespace BitSharp.Core.Workers
                 if (isLagging)
                 {
                     Throttler.IfElapsed(TimeSpan.FromSeconds(5), () =>
-                        logger.Info("Pruning is lagging."));
+                    {
+                        logger.Info("Pruning is lagging.");
+                        lagLogged = true;
+                    });
 
                     //TODO better way to block chain state worker when pruning is behind
                     if (this.chainStateWorker != null && this.chainStateWorker.IsStarted)
@@ -128,7 +132,14 @@ namespace BitSharp.Core.Workers
                 {
                     //TODO better way to block chain state worker when pruning is behind
                     if (this.chainStateWorker != null && !this.chainStateWorker.IsStarted)
+                    {
                         this.chainStateWorker.NotifyAndStart();
+                        if (lagLogged)
+                        {
+                            logger.Info("Pruning is resumed.");
+                            lagLogged = false;
+                        }
+                    }
                 }
 
                 // log pruning stats periodically
