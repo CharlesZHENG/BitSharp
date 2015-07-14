@@ -24,7 +24,7 @@ namespace BitSharp.Common
                     orderedKeys.Enqueue(splitKey(item));
                     return item;
                 },
-                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, SingleProducerConstrained = true });
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken });
 
             // recombine split items in original order
             var pendingCombined = new Dictionary<TKey, TCombine>();
@@ -48,7 +48,7 @@ namespace BitSharp.Common
 
                     return sortedItems;
                 },
-                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, SingleProducerConstrained = true });
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken });
         }
     }
 }

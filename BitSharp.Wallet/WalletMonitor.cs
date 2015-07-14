@@ -220,8 +220,7 @@ namespace BitSharp.Wallet
 
                         ScanForEntry(chainPosition, entryType, output, outputScriptHash);
                     }
-                },
-                new ExecutionDataflowBlockOptions { SingleProducerConstrained = true });
+                });
 
             replayTxes.LinkTo(txScanner, new DataflowLinkOptions { PropagateCompletion = true });
             txScanner.Completion.Wait();

@@ -49,7 +49,7 @@ namespace BitSharp.Core.Builders
                         return new[] { Tuple.Create(loadingTx, -1) };
                     }
                 },
-                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, SingleProducerConstrained = true });
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken });
         }
 
         private static TransformManyBlock<Tuple<LoadingTx, int>, LoadedTx> InitLoadTxInputAndReturnLoadedTx(ICoreStorage coreStorage, CancellationToken cancelToken)
@@ -67,7 +67,7 @@ namespace BitSharp.Core.Builders
                     else
                         return new LoadedTx[0];
                 },
-                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, MaxDegreeOfParallelism = 16, SingleProducerConstrained = true });
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, MaxDegreeOfParallelism = 64 });
         }
 
         private static LoadedTx LoadTxInput(ICoreStorage coreStorage, ConcurrentDictionary<TxLookupKey, Transaction> txCache, LoadingTx loadingTx, int inputIndex)

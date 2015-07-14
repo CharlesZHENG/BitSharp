@@ -4,6 +4,7 @@ using BitSharp.Core.Domain;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
@@ -137,6 +138,12 @@ namespace BitSharp.Core.Test.Storage
         public void TestWriteOperationInReadonlyTransaction()
         {
             RunTest(TestWriteOperationInReadonlyTransaction);
+        }
+
+        [TestMethod]
+        public void TestAccessAcrossThreads()
+        {
+            RunTest(TestAccessAcrossThreads);
         }
 
         private void TestTransactionIsolation(ITestStorageProvider provider)
@@ -1052,6 +1059,69 @@ namespace BitSharp.Core.Test.Storage
                     AssertMethods.AssertThrows<InvalidOperationException>(action);
 
                 chainStateCursor.RollbackTransaction();
+            }
+        }
+
+        public void TestAccessAcrossThreads(ITestStorageProvider provider)
+        {
+            var unspentTx = new UnspentTx(txHash: UInt256.Zero, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent));
+
+            using (var storageManager = provider.OpenStorageManager())
+            using (var handle = storageManager.OpenChainStateCursor())
+            using (var thread1Done = new AutoResetEvent(false))
+            using (var thread2Done = new AutoResetEvent(false))
+            {
+                var chainStateCursor = handle.Item;
+
+                var thread1Actions = new BlockingCollection<Action>();
+                var thread2Actions = new BlockingCollection<Action>();
+
+                var thread1 = new Thread(() =>
+                    {
+                        foreach (var action in thread1Actions.GetConsumingEnumerable())
+                        {
+                            action();
+                            thread1Done.Set();
+                        }
+                    });
+
+                var thread2 = new Thread(() =>
+                {
+                    foreach (var action in thread2Actions.GetConsumingEnumerable())
+                    {
+                        action();
+                        thread2Done.Set();
+                    }
+                });
+
+                thread1.Start();
+                thread2.Start();
+
+                // begin transaction on thread #1
+                thread1Actions.Add(() =>
+                    chainStateCursor.BeginTransaction());
+                thread1Done.WaitOne();
+
+                // commit transaction on thread #2
+                thread2Actions.Add(() =>
+                    chainStateCursor.CommitTransaction());
+                thread2Done.WaitOne();
+
+                // begin transaction on thread #1
+                thread1Actions.Add(() =>
+                    chainStateCursor.BeginTransaction());
+                thread1Done.WaitOne();
+
+                // rollback transaction on thread #2
+                thread2Actions.Add(() =>
+                    chainStateCursor.RollbackTransaction());
+                thread2Done.WaitOne();
+
+                thread1Actions.CompleteAdding();
+                thread2Actions.CompleteAdding();
+
+                thread1.Join();
+                thread2.Join();
             }
         }
     }

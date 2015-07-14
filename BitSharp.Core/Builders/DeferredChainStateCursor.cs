@@ -282,7 +282,7 @@ namespace BitSharp.Core.Builders
                                 }
                             });
                     });
-                }, new ExecutionDataflowBlockOptions { SingleProducerConstrained = true });
+                });
 
             unspentTxes.WorkQueue.LinkTo(utxoApplier, new DataflowLinkOptions { PropagateCompletion = true });
             utxoApplier.Completion.Wait();
