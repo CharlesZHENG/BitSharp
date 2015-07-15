@@ -87,5 +87,38 @@ namespace BitSharp.Core.Test.Builders
             Assert.AreEqual(header1.Hash, actualEx.ExpectedChainTip.Hash);
             Assert.AreEqual(header2.Hash, actualEx.ActualChainTip.Hash);
         }
+
+        [TestMethod]
+        public void TestMissingHeader()
+        {
+            var fakeHeaders = new FakeHeaders();
+            var header0 = fakeHeaders.GenesisChained();
+            var header1 = fakeHeaders.NextChained();
+            var header2 = fakeHeaders.NextChained();
+
+            var rules = Mock.Of<IBlockchainRules>();
+            var coreStorage = new Mock<ICoreStorage>();
+            var storageManager = new Mock<IStorageManager>();
+            var chainStateCursor = new Mock<IChainStateCursor>();
+
+            storageManager.Setup(x => x.OpenChainStateCursor()).Returns(
+                new DisposeHandle<IChainStateCursor>(() => { }, chainStateCursor.Object));
+
+            // don't mock header 1 so it is missing
+            chainStateCursor.Setup(x => x.TryGetHeader(header0.Hash, out header0)).Returns(true);
+            chainStateCursor.Setup(x => x.TryGetHeader(header2.Hash, out header2)).Returns(true);
+
+            // return header 2 as the chain tip
+            chainStateCursor.Setup(x => x.ChainTip).Returns(header2);
+
+            // init chain state builder with missing header
+            StorageCorruptException actualEx;
+            AssertMethods.AssertThrows<StorageCorruptException>(() =>
+                new ChainStateBuilder(rules, coreStorage.Object, storageManager.Object),
+                out actualEx);
+
+            Assert.AreEqual(StorageType.ChainState, actualEx.StorageType);
+            Assert.AreEqual("ChainState is missing header.", actualEx.Message);
+        }
     }
 }

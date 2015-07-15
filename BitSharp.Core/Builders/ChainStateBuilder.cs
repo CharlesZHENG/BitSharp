@@ -35,21 +35,9 @@ namespace BitSharp.Core.Builders
             this.coreStorage = coreStorage;
             this.storageManager = storageManager;
 
+            this.chain = LoadChain();
+
             this.stats = new ChainStateBuilderStats();
-
-            using (var handle = this.storageManager.OpenChainStateCursor())
-            {
-                var chainStateCursor = handle.Item;
-
-                chainStateCursor.BeginTransaction(readOnly: true);
-                var chainTip = chainStateCursor.ChainTip;
-
-                Chain chainTipChain;
-                if (!TryReadChain(chainStateCursor, chainTip != null ? chainTip.Hash : null, out chainTipChain))
-                    throw new InvalidOperationException();
-
-                this.chain = chainTipChain;
-            }
             this.utxoBuilder = new UtxoBuilder();
         }
 
@@ -250,15 +238,31 @@ namespace BitSharp.Core.Builders
                 new ChainState(this.chain, this.storageManager));
         }
 
-        private bool TryReadChain(IChainStateCursor chainStateCursor, UInt256 blockHash, out Chain chain)
+        private Chain LoadChain()
         {
-            return Chain.TryReadChain(blockHash, out chain,
+            using (var handle = this.storageManager.OpenChainStateCursor())
+            {
+                var chainStateCursor = handle.Item;
+
+                chainStateCursor.BeginTransaction(readOnly: true);
+                
+                var chainTip = chainStateCursor.ChainTip;
+                var chainTipHash = chainTip != null ? chainTip.Hash : null;
+
+            Chain chain;
+            if (Chain.TryReadChain(chainTipHash, out chain,
                 headerHash =>
                 {
                     ChainedHeader chainedHeader;
                     chainStateCursor.TryGetHeader(headerHash, out chainedHeader);
                     return chainedHeader;
-                });
+                }))
+            {
+                return chain;
+            }
+            else
+                throw new StorageCorruptException(StorageType.ChainState, "ChainState is missing header.");
+            }
         }
 
         private void CheckChainTip(IChainStateCursor chainStateCursor)
