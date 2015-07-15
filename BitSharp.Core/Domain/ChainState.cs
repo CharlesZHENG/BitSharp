@@ -39,7 +39,7 @@ namespace BitSharp.Core.Domain
                     // verify the chain state matches the expected chain
                     var chainTip = cursor.ChainTip;
                     if (chainTip != chain.LastBlock)
-                        throw new InvalidOperationException();
+                        throw new ChainStateOutOfSyncException(chain.LastBlock, chainTip);
                 }
 
                 success = true;

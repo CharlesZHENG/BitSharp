@@ -91,11 +91,7 @@ namespace BitSharp.Core.Builders
                 chainStateCursor.BeginTransaction();
 
                 // verify storage chain tip matches this chain state builder's chain tip
-                if (!(chainStateCursor.ChainTip == null && chain.Height == -1)
-                    && (chainStateCursor.ChainTip.Hash != chain.LastBlock.Hash))
-                {
-                    throw new InvalidOperationException("ChainStateBuilder is out of sync with underlying storage.");
-                }
+                CheckChainTip(chainStateCursor);
 
                 var newChain = this.chain.ToBuilder().AddBlock(chainedHeader).ToImmutable();
 
@@ -215,11 +211,7 @@ namespace BitSharp.Core.Builders
                 chainStateCursor.BeginTransaction();
 
                 // verify storage chain tip matches this chain state builder's chain tip
-                if (!(chainStateCursor.ChainTip == null && chain.Height == 0)
-                    && (chainStateCursor.ChainTip.Hash != chain.LastBlock.Hash))
-                {
-                    throw new InvalidOperationException("ChainStateBuilder is out of sync with underlying storage.");
-                }
+                CheckChainTip(chainStateCursor);
 
                 var newChain = this.chain.ToBuilder().RemoveBlock(chainedHeader).ToImmutable();
 
@@ -270,6 +262,18 @@ namespace BitSharp.Core.Builders
                     chainStateCursor.TryGetHeader(headerHash, out chainedHeader);
                     return chainedHeader;
                 });
+        }
+
+        private void CheckChainTip(IChainStateCursor chainStateCursor)
+        {
+            var chainTip = chainStateCursor.ChainTip;
+
+            // verify storage chain tip matches this chain state builder's chain tip
+            if (!(chainTip == null && chain.Height == -1)
+                && (chainTip.Hash != chain.LastBlock.Hash))
+            {
+                throw new ChainStateOutOfSyncException(chain.LastBlock, chainTip);
+            }
         }
     }
 }
