@@ -121,6 +121,7 @@
   <ItemGroup>
     <Compile Include="BlockProvider.cs" />
     <Compile Include="BlockReplayer.cs" />
+    <Compile Include="Builders\ChainStateBuilderStats.cs" />
     <Compile Include="Builders\WorkQueueDictionary.cs" />
     <Compile Include="Builders\IDeferredChainStateCursor.cs" />
     <Compile Include="Builders\DeferredChainStateCursor.cs" />
