@@ -23,6 +23,7 @@ namespace BitSharp.Core.Builders
         private readonly ICoreStorage coreStorage;
         private readonly IStorageManager storageManager;
 
+        // commitLock is used to ensure that the chain field and underlying storage are always seen in sync
         private readonly ReaderWriterLockSlim commitLock = new ReaderWriterLockSlim();
         private Chain chain;
         private readonly UtxoBuilder utxoBuilder;
@@ -43,31 +44,26 @@ namespace BitSharp.Core.Builders
 
         public void Dispose()
         {
-            this.stats.Dispose();
-            this.commitLock.Dispose();
+            stats.Dispose();
+            commitLock.Dispose();
         }
 
         public Chain Chain
         {
-            get
-            {
-                return this.chain;
-            }
+            get { return chain; }
         }
 
-        public ChainStateBuilderStats Stats { get { return this.stats; } }
-
-        public void AddBlock(ChainedHeader chainedHeader, IEnumerable<Transaction> transactions)
+        public ChainStateBuilderStats Stats
         {
-            AddBlock(chainedHeader, transactions.Select((tx, txIndex) => new BlockTx(txIndex, depth: 0, hash: tx.Hash, pruned: false, transaction: tx)));
+            get { return stats; }
         }
 
         public void AddBlock(ChainedHeader chainedHeader, IEnumerable<BlockTx> blockTxes)
         {
             var stopwatch = Stopwatch.StartNew();
 
-            using (var chainState = this.ToImmutable())
-            using (var handle = this.storageManager.OpenDeferredChainStateCursor(chainState))
+            using (var chainState = ToImmutable())
+            using (var handle = storageManager.OpenDeferredChainStateCursor(chainState))
             {
                 var chainStateCursor = handle.Item;
 
@@ -78,7 +74,7 @@ namespace BitSharp.Core.Builders
                 // verify storage chain tip matches this chain state builder's chain tip
                 CheckChainTip(chainStateCursor);
 
-                var newChain = this.chain.ToBuilder().AddBlock(chainedHeader).ToImmutable();
+                var newChain = chain.ToBuilder().AddBlock(chainedHeader).ToImmutable();
 
                 // begin reading block txes into the buffer
                 var blockTxesBuffer = new BufferBlock<BlockTx>();
@@ -98,35 +94,25 @@ namespace BitSharp.Core.Builders
 
                 // wait for block txes to read
                 sendBlockTxes.Wait();
-
-                if (chainedHeader.Height > 0)
-                    this.stats.txesReadDurationMeasure.Tick(stopwatch.Elapsed);
+                stats.txesReadDurationMeasure.Tick(stopwatch.Elapsed);
 
                 // wait for utxo look-ahead to complete
                 warmedBlockTxes.Completion.Wait();
-
-                if (chainedHeader.Height > 0)
-                    this.stats.lookAheadDurationMeasure.Tick(stopwatch.Elapsed);
+                stats.lookAheadDurationMeasure.Tick(stopwatch.Elapsed);
 
                 // wait for utxo calculation
                 loadingTxes.Completion.Wait();
-
-                if (chainedHeader.Height > 0)
-                    this.stats.calculateUtxoDurationMeasure.Tick(stopwatch.Elapsed);
+                stats.calculateUtxoDurationMeasure.Tick(stopwatch.Elapsed);
 
                 // apply the utxo changes, do not yet commit
                 chainStateCursor.ChainTip = chainedHeader;
                 chainStateCursor.TryAddHeader(chainedHeader);
                 chainStateCursor.ApplyChanges();
-
-                if (chainedHeader.Height > 0)
-                    this.stats.applyUtxoDurationMeasure.Tick(stopwatch.Elapsed);
+                stats.applyUtxoDurationMeasure.Tick(stopwatch.Elapsed);
 
                 // wait for block validation to complete, any exceptions that ocurred will be thrown
                 blockValidator.Wait();
-
-                if (chainedHeader.Height > 0)
-                    this.stats.validateDurationMeasure.Tick(stopwatch.Elapsed);
+                stats.validateDurationMeasure.Tick(stopwatch.Elapsed);
 
                 var totalTxCount = chainStateCursor.TotalTxCount;
                 var totalInputCount = chainStateCursor.TotalInputCount;
@@ -134,14 +120,12 @@ namespace BitSharp.Core.Builders
                 var unspentOutputCount = chainStateCursor.UnspentOutputCount;
 
                 // only commit the utxo changes once block validation has completed
-                this.commitLock.DoWrite(() =>
+                commitLock.DoWrite(() =>
                 {
                     chainStateCursor.CommitTransaction();
-                    this.chain = newChain;
+                    chain = newChain;
                 });
-
-                if (chainedHeader.Height > 0)
-                    this.stats.commitUtxoDurationMeasure.Tick(stopwatch.Elapsed);
+                stats.commitUtxoDurationMeasure.Tick(stopwatch.Elapsed);
 
                 // update total count stats
                 stats.Height = chain.Height;
@@ -149,31 +133,27 @@ namespace BitSharp.Core.Builders
                 stats.TotalInputCount = totalInputCount;
                 stats.UnspentTxCount = unspentTxCount;
                 stats.UnspentOutputCount = unspentOutputCount;
-
-                // MEASURE: Block Rate
-                if (chainedHeader.Height > 0)
-                {
-                    this.stats.blockRateMeasure.Tick();
-                    stats.addBlockDurationMeasure.Tick(stopwatch.Elapsed);
-                }
             }
 
-            this.LogBlockchainProgress();
+            stats.blockRateMeasure.Tick();
+            stats.addBlockDurationMeasure.Tick(stopwatch.Elapsed);
+
+            LogBlockchainProgress();
         }
 
         private ISourceBlock<LoadingTx> CalculateUtxo(Chain newChain, ISourceBlock<BlockTx> blockTxes, IChainStateCursor chainStateCursor)
         {
             // calculate the new block utxo, only output availability is checked and updated
-            var loadingTxes = this.utxoBuilder.CalculateUtxo(chainStateCursor, newChain, blockTxes);
+            var loadingTxes = utxoBuilder.CalculateUtxo(chainStateCursor, newChain, blockTxes);
 
             var tracker = new TransformManyBlock<LoadingTx, LoadingTx>(
                 loadingTx =>
                 {
                     // track stats, ignore coinbase
-                    if (newChain.Height > 0 && !loadingTx.IsCoinbase)
+                    if (!loadingTx.IsCoinbase)
                     {
-                        this.stats.txRateMeasure.Tick();
-                        this.stats.inputRateMeasure.Tick(loadingTx.Transaction.Inputs.Length);
+                        stats.txRateMeasure.Tick();
+                        stats.inputRateMeasure.Tick(loadingTx.Transaction.Inputs.Length);
                     }
 
                     if (!rules.BypassPrevTxLoading)
@@ -189,7 +169,7 @@ namespace BitSharp.Core.Builders
 
         public void RollbackBlock(ChainedHeader chainedHeader, IEnumerable<BlockTx> blockTxes)
         {
-            using (var handle = this.storageManager.OpenChainStateCursor())
+            using (var handle = storageManager.OpenChainStateCursor())
             {
                 var chainStateCursor = handle.Item;
 
@@ -198,14 +178,14 @@ namespace BitSharp.Core.Builders
                 // verify storage chain tip matches this chain state builder's chain tip
                 CheckChainTip(chainStateCursor);
 
-                var newChain = this.chain.ToBuilder().RemoveBlock(chainedHeader).ToImmutable();
+                var newChain = chain.ToBuilder().RemoveBlock(chainedHeader).ToImmutable();
 
                 // keep track of the previoux tx output information for all unminted transactions
                 // the information is removed and will be needed to enable a replay of the rolled back block
                 var unmintedTxes = ImmutableList.CreateBuilder<UnmintedTx>();
 
                 // rollback the utxo
-                this.utxoBuilder.RollbackUtxo(chainStateCursor, this.chain, chainedHeader, blockTxes, unmintedTxes);
+                utxoBuilder.RollbackUtxo(chainStateCursor, chain, chainedHeader, blockTxes, unmintedTxes);
 
                 // remove the block from the chain
                 chainStateCursor.ChainTip = newChain.LastBlock;
@@ -217,10 +197,10 @@ namespace BitSharp.Core.Builders
                 chainStateCursor.TryAddBlockUnmintedTxes(chainedHeader.Hash, unmintedTxes.ToImmutable());
 
                 // commit the chain state
-                this.commitLock.DoWrite(() =>
+                commitLock.DoWrite(() =>
                 {
                     chainStateCursor.CommitTransaction();
-                    this.chain = newChain;
+                    chain = newChain;
                 });
             }
         }
@@ -228,40 +208,39 @@ namespace BitSharp.Core.Builders
         public void LogBlockchainProgress()
         {
             Throttler.IfElapsed(TimeSpan.FromSeconds(15), () =>
-                logger.Info(this.stats.ToString()));
+                logger.Info(stats.ToString()));
         }
 
-        //TODO cache the latest immutable snapshot
         public ChainState ToImmutable()
         {
-            return this.commitLock.DoRead(() =>
-                new ChainState(this.chain, this.storageManager));
+            return commitLock.DoRead(() =>
+                new ChainState(chain, storageManager));
         }
 
         private Chain LoadChain()
         {
-            using (var handle = this.storageManager.OpenChainStateCursor())
+            using (var handle = storageManager.OpenChainStateCursor())
             {
                 var chainStateCursor = handle.Item;
 
                 chainStateCursor.BeginTransaction(readOnly: true);
-                
+
                 var chainTip = chainStateCursor.ChainTip;
                 var chainTipHash = chainTip != null ? chainTip.Hash : null;
 
-            Chain chain;
-            if (Chain.TryReadChain(chainTipHash, out chain,
-                headerHash =>
+                Chain chain;
+                if (Chain.TryReadChain(chainTipHash, out chain,
+                    headerHash =>
+                    {
+                        ChainedHeader chainedHeader;
+                        chainStateCursor.TryGetHeader(headerHash, out chainedHeader);
+                        return chainedHeader;
+                    }))
                 {
-                    ChainedHeader chainedHeader;
-                    chainStateCursor.TryGetHeader(headerHash, out chainedHeader);
-                    return chainedHeader;
-                }))
-            {
-                return chain;
-            }
-            else
-                throw new StorageCorruptException(StorageType.ChainState, "ChainState is missing header.");
+                    return chain;
+                }
+                else
+                    throw new StorageCorruptException(StorageType.ChainState, "ChainState is missing header.");
             }
         }
 

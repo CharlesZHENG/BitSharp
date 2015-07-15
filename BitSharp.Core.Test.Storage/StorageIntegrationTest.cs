@@ -59,7 +59,8 @@ namespace BitSharp.Core.Test.Storage
                     var block = blocks[blockIndex];
                     var chainedHeader = new ChainedHeader(block.Header, blockIndex, 0);
 
-                    chainStateBuilder.AddBlock(chainedHeader, block.Transactions);
+                    chainStateBuilder.AddBlock(chainedHeader, block.Transactions.Select(
+                        (tx, txIndex) => new BlockTx(txIndex, depth: 0, hash: tx.Hash, pruned: false, transaction: tx)));
 
                     using (var chainState = chainStateBuilder.ToImmutable())
                         expectedUtxoHashes.Add(UtxoCommitment.ComputeHash(chainState));
