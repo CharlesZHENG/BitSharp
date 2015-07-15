@@ -8,19 +8,19 @@ namespace BitSharp.Core.Test
     public class TempDirectory
     {
         public static string BaseDirectory { get; private set; }
-        
+
         // cleanup the entire base directory on first initialization
         static TempDirectory()
         {
             BaseDirectory = Path.Combine(Path.GetTempPath(), "BitSharp", "Tests");
-            
+
             if (Directory.Exists(BaseDirectory))
             {
                 // delete any subfolders, unless they are named with an active process id, which is another test currently in progress
                 foreach (var subFolder in Directory.EnumerateDirectories(BaseDirectory))
                 {
                     int processId;
-                    var isOtherTestFolder = int.TryParse(subFolder, out processId) && IsProcessRunning(processId);
+                    var isOtherTestFolder = int.TryParse(Path.GetFileName(subFolder), out processId) && IsProcessRunning(processId);
 
                     if (!isOtherTestFolder)
                         DeleteDirectory(subFolder);
