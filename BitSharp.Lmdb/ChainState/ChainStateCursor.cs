@@ -16,9 +16,6 @@ namespace BitSharp.Lmdb
 {
     internal class ChainStateCursor : IChainStateCursor
     {
-        //TODO
-        public static bool IndexOutputs { get; set; }
-
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly bool readOnly;

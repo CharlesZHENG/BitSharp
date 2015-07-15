@@ -51,9 +51,6 @@ namespace BitSharp.Core.Builders
                 this.chain = chainTipChain;
             }
             this.utxoBuilder = new UtxoBuilder();
-
-            // thread count for i/o task (TxLoader)
-            var ioThreadCount = Environment.ProcessorCount * 2;
         }
 
         public void Dispose()

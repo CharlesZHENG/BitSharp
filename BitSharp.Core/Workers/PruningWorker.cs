@@ -44,9 +44,6 @@ namespace BitSharp.Core.Workers
 
             this.prunedChain = new ChainBuilder();
             this.Mode = PruningMode.None;
-
-            // initialize a pool of pruning workers
-            var txesPruneThreadCount = Environment.ProcessorCount * 2;
         }
 
         protected override void SubDispose()

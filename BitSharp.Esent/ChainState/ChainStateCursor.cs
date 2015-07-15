@@ -20,9 +20,6 @@ namespace BitSharp.Esent
 {
     internal class ChainStateCursor : IChainStateCursor
     {
-        //TODO
-        public static bool IndexOutputs { get; set; }
-
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         // unique per-instance session context for JetSetSessionContext
