@@ -158,7 +158,7 @@ namespace BitSharp.Core.Builders
 
             parentCursor.CommitTransaction();
             parentHandle.Dispose();
-            
+
             parentHandle = null;
             parentCursor = null;
             utxoApplier = null;
@@ -322,6 +322,15 @@ namespace BitSharp.Core.Builders
             parentCursor.TotalTxCount = TotalTxCount;
             parentCursor.TotalInputCount = TotalInputCount;
             parentCursor.TotalOutputCount = TotalOutputCount;
+
+            if (headers.Updated.Count > 0)
+                throw new InvalidOperationException();
+            foreach (var chainedHeader in headers.Added)
+                if (!parentCursor.TryAddHeader(chainedHeader.Value))
+                    throw new InvalidOperationException();
+            foreach (var blockHash in headers.Deleted)
+                if (!parentCursor.TryRemoveHeader(blockHash))
+                    throw new InvalidOperationException();
 
             if (blockSpentTxes.Updated.Count > 0)
                 throw new InvalidOperationException();
