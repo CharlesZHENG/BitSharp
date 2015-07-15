@@ -102,18 +102,12 @@ namespace BitSharp.Core.Builders
                 // begin reading block txes into the buffer
                 var blockTxesBuffer = new BufferBlock<BlockTx>();
                 var sendBlockTxes = blockTxesBuffer.SendAndCompleteAsync(blockTxes);
-                sendBlockTxes.ContinueWith(_ => this.stats.txesReadDurationMeasure.Tick(stopwatch.Elapsed));
 
                 // warm-up utxo entries for block txes
                 var warmedBlockTxes = UtxoLookAhead.LookAhead(blockTxesBuffer, chainStateCursor);
 
-                // track when the overall look ahead completes
-                warmedBlockTxes.Completion.ContinueWith(_ => this.stats.lookAheadDurationMeasure.Tick(stopwatch.Elapsed));
-
                 // begin calculating the utxo updates
                 var loadingTxes = CalculateUtxo(newChain, warmedBlockTxes, chainStateCursor);
-                loadingTxes.Completion.ContinueWith(_ =>
-                    this.stats.calculateUtxoDurationMeasure.Tick(stopwatch.Elapsed));
 
                 // begin loading txes
                 var loadedTxes = TxLoader.LoadTxes(coreStorage, loadingTxes);
@@ -121,8 +115,23 @@ namespace BitSharp.Core.Builders
                 // begin validating the block
                 var blockValidator = BlockValidator.ValidateBlock(coreStorage, rules, chainedHeader, loadedTxes);
 
+                // wait for block txes to read
+                sendBlockTxes.Wait();
+
+                if (chainedHeader.Height > 0)
+                    this.stats.txesReadDurationMeasure.Tick(stopwatch.Elapsed);
+
+                // wait for utxo look-ahead to complete
+                warmedBlockTxes.Completion.Wait();
+
+                if (chainedHeader.Height > 0)
+                    this.stats.lookAheadDurationMeasure.Tick(stopwatch.Elapsed);
+
                 // wait for utxo calculation
                 loadingTxes.Completion.Wait();
+
+                if (chainedHeader.Height > 0)
+                    this.stats.calculateUtxoDurationMeasure.Tick(stopwatch.Elapsed);
 
                 // apply the utxo changes, do not yet commit
                 chainStateCursor.ChainTip = chainedHeader;
