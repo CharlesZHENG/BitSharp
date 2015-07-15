@@ -493,7 +493,7 @@ namespace BitSharp.Lmdb
             }
         }
 
-        public void BeginTransaction(bool readOnly)
+        public void BeginTransaction(bool readOnly, bool pruneOnly)
         {
             if (this.txn != null)
                 throw new InvalidOperationException();

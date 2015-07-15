@@ -81,7 +81,8 @@ namespace BitSharp.Core.Builders
         {
             var stopwatch = Stopwatch.StartNew();
 
-            using (var handle = this.storageManager.OpenChainStateCursor())
+            using (var chainState = this.ToImmutable())
+            using (var handle = this.storageManager.OpenDeferredChainStateCursor(chainState))
             {
                 var chainStateCursor = handle.Item;
 
@@ -98,53 +99,49 @@ namespace BitSharp.Core.Builders
 
                 var newChain = this.chain.ToBuilder().AddBlock(chainedHeader).ToImmutable();
 
-                using (var chainState = new ChainState(this.chain, this.storageManager))
-                using (var deferredChainStateCursor = new DeferredChainStateCursor(chainState))
-                {
-                    // begin reading block txes into the buffer
-                    var blockTxesBuffer = new BufferBlock<BlockTx>();
-                    var sendBlockTxes = blockTxesBuffer.SendAndCompleteAsync(blockTxes);
-                    sendBlockTxes.ContinueWith(_ => this.stats.txesReadDurationMeasure.Tick(stopwatch.Elapsed));
+                // begin reading block txes into the buffer
+                var blockTxesBuffer = new BufferBlock<BlockTx>();
+                var sendBlockTxes = blockTxesBuffer.SendAndCompleteAsync(blockTxes);
+                sendBlockTxes.ContinueWith(_ => this.stats.txesReadDurationMeasure.Tick(stopwatch.Elapsed));
 
-                    // warm-up utxo entries for block txes
-                    var warmedBlockTxes = UtxoLookAhead.LookAhead(blockTxesBuffer, deferredChainStateCursor);
+                // warm-up utxo entries for block txes
+                var warmedBlockTxes = UtxoLookAhead.LookAhead(blockTxesBuffer, chainStateCursor);
 
-                    // track when the overall look ahead completes
-                    warmedBlockTxes.Completion.ContinueWith(_ => this.stats.lookAheadDurationMeasure.Tick(stopwatch.Elapsed));
+                // track when the overall look ahead completes
+                warmedBlockTxes.Completion.ContinueWith(_ => this.stats.lookAheadDurationMeasure.Tick(stopwatch.Elapsed));
 
-                    // begin calculating the utxo updates
-                    var loadingTxes = CalculateUtxo(newChain, warmedBlockTxes, deferredChainStateCursor);
-                    loadingTxes.Completion.ContinueWith(_ =>
-                    {
-                        deferredChainStateCursor.CompleteWorkQueue();
-                        this.stats.calculateUtxoDurationMeasure.Tick(stopwatch.Elapsed);
-                    });
+                // begin calculating the utxo updates
+                var loadingTxes = CalculateUtxo(newChain, warmedBlockTxes, chainStateCursor);
+                loadingTxes.Completion.ContinueWith(_ =>
+                    this.stats.calculateUtxoDurationMeasure.Tick(stopwatch.Elapsed));
 
-                    // begin loading txes
-                    var loadedTxes = TxLoader.LoadTxes(coreStorage, loadingTxes);
+                // begin loading txes
+                var loadedTxes = TxLoader.LoadTxes(coreStorage, loadingTxes);
 
-                    // begin validating the block
-                    var blockValidator = BlockValidator.ValidateBlock(coreStorage, rules, chainedHeader, loadedTxes);
+                // begin validating the block
+                var blockValidator = BlockValidator.ValidateBlock(coreStorage, rules, chainedHeader, loadedTxes);
 
-                    // apply the changes, do not yet commit
-                    deferredChainStateCursor.ApplyChangesToParent(chainStateCursor);
-                    chainStateCursor.ChainTip = chainedHeader;
-                    chainStateCursor.TryAddHeader(chainedHeader);
+                // wait for utxo calculation
+                loadingTxes.Completion.Wait();
 
-                    if (chainedHeader.Height > 0)
-                        this.stats.applyUtxoDurationMeasure.Tick(stopwatch.Elapsed);
+                // apply the utxo changes, do not yet commit
+                chainStateCursor.ChainTip = chainedHeader;
+                chainStateCursor.TryAddHeader(chainedHeader);
+                chainStateCursor.ApplyChanges();
 
-                    // wait for block validation to complete, any exceptions that ocurred will be thrown
-                    sendBlockTxes.Wait();
-                    blockTxesBuffer.Completion.Wait();
-                    warmedBlockTxes.Completion.Wait();
-                    loadingTxes.Completion.Wait();
-                    loadedTxes.Completion.Wait();
-                    blockValidator.Wait();
+                if (chainedHeader.Height > 0)
+                    this.stats.applyUtxoDurationMeasure.Tick(stopwatch.Elapsed);
 
-                    if (chainedHeader.Height > 0)
-                        this.stats.validateDurationMeasure.Tick(stopwatch.Elapsed);
-                }
+                // wait for block validation to complete, any exceptions that ocurred will be thrown
+                blockValidator.Wait();
+
+                if (chainedHeader.Height > 0)
+                    this.stats.validateDurationMeasure.Tick(stopwatch.Elapsed);
+
+                var totalTxCount = chainStateCursor.TotalTxCount;
+                var totalInputCount = chainStateCursor.TotalInputCount;
+                var unspentTxCount = chainStateCursor.UnspentTxCount;
+                var unspentOutputCount = chainStateCursor.UnspentOutputCount;
 
                 // only commit the utxo changes once block validation has completed
                 this.commitLock.DoWrite(() =>
@@ -157,13 +154,11 @@ namespace BitSharp.Core.Builders
                     this.stats.commitUtxoDurationMeasure.Tick(stopwatch.Elapsed);
 
                 // update total count stats
-                chainStateCursor.BeginTransaction(readOnly: true);
                 stats.Height = chain.Height;
-                stats.TotalTxCount = chainStateCursor.TotalTxCount;
-                stats.TotalInputCount = chainStateCursor.TotalInputCount;
-                stats.UnspentTxCount = chainStateCursor.UnspentTxCount;
-                stats.UnspentOutputCount = chainStateCursor.UnspentOutputCount;
-                chainStateCursor.RollbackTransaction();
+                stats.TotalTxCount = totalTxCount;
+                stats.TotalInputCount = totalInputCount;
+                stats.UnspentTxCount = unspentTxCount;
+                stats.UnspentOutputCount = unspentOutputCount;
 
                 // MEASURE: Block Rate
                 if (chainedHeader.Height > 0)

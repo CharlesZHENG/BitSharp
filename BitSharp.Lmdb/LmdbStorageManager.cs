@@ -1,5 +1,7 @@
 ﻿using BitSharp.Common;
 using BitSharp.Common.ExtensionMethods;
+using BitSharp.Core.Builders;
+using BitSharp.Core.Domain;
 using BitSharp.Core.Storage;
 using LightningDB;
 using NLog;
@@ -123,6 +125,13 @@ namespace BitSharp.Lmdb
                         this.chainStateManager = new LmdbChainStateManager(this.baseDirectory, this.chainStateSize);
 
             return this.chainStateManager.OpenChainStateCursor();
+        }
+
+        public DisposeHandle<IDeferredChainStateCursor> OpenDeferredChainStateCursor(IChainState chainState)
+        {
+            var cursor = new DeferredChainStateCursor(chainState, this);
+            return new DisposeHandle<IDeferredChainStateCursor>(
+                () => cursor.Dispose(), cursor);
         }
 
         internal static void PrepareSparseDatabase(string jetDirectory)

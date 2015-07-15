@@ -283,7 +283,7 @@ namespace BitSharp.Core.Workers
                 {
                     // retrieve a new cursor and start its transaction, keeping track of any cursors opened
                     var cursorHandle = this.storageManager.OpenChainStateCursor();
-                    cursorHandle.Item.BeginTransaction();
+                    cursorHandle.Item.BeginTransaction(pruneOnly: true);
                     openedCursors.Add(cursorHandle.Item);
 
                     return cursorHandle;
@@ -295,12 +295,6 @@ namespace BitSharp.Core.Workers
                         using (var handle = cursorHandles.TakeItem())
                         {
                             var chainStateCursor = handle.Item.Item;
-
-                            if (!chainStateCursor.InTransaction)
-                            {
-                                chainStateCursor.BeginTransaction();
-                                openedCursors.Add(chainStateCursor);
-                            }
 
                             chainStateCursor.TryRemoveUnspentTx(spentTx.TxHash);
                         }
@@ -328,8 +322,8 @@ namespace BitSharp.Core.Workers
             {
                 var chainStateCursor = handle.Item;
 
-                chainStateCursor.BeginTransaction();
-                
+                chainStateCursor.BeginTransaction(pruneOnly: true);
+
                 // TODO don't immediately remove list of spent txes per block from chain state,
                 //      use an additional safety buffer in case there was an issue pruning block
                 //      txes (e.g. didn't flush and crashed), keeping the information  will allow

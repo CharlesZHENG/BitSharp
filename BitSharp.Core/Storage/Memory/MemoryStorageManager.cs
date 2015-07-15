@@ -1,4 +1,5 @@
 ﻿using BitSharp.Common;
+using BitSharp.Core.Builders;
 using BitSharp.Core.Domain;
 using System;
 using System.Collections.Immutable;
@@ -67,6 +68,13 @@ namespace BitSharp.Core.Storage.Memory
         public DisposeHandle<IChainStateCursor> OpenChainStateCursor()
         {
             return this.cursorCache.TakeItem();
+        }
+
+        public DisposeHandle<IDeferredChainStateCursor> OpenDeferredChainStateCursor(IChainState chainState)
+        {
+            var cursor = new DeferredChainStateCursor(chainState, this);
+            return new DisposeHandle<IDeferredChainStateCursor>(
+                () => cursor.Dispose(), cursor);
         }
     }
 }

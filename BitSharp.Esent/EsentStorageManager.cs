@@ -1,5 +1,7 @@
 ﻿using BitSharp.Common;
 using BitSharp.Common.ExtensionMethods;
+using BitSharp.Core.Builders;
+using BitSharp.Core.Domain;
 using BitSharp.Core.Storage;
 using Microsoft.Isam.Esent.Collections.Generic;
 using Microsoft.Isam.Esent.Interop;
@@ -103,6 +105,13 @@ namespace BitSharp.Esent
             return this.chainStateManager.OpenChainStateCursor();
         }
 
+        public DisposeHandle<IDeferredChainStateCursor> OpenDeferredChainStateCursor(IChainState chainState)
+        {
+            var cursor = new DeferredChainStateCursor(chainState, this);
+            return new DisposeHandle<IDeferredChainStateCursor>(
+                () => cursor.Dispose(), cursor);
+        }
+
         internal static void InitSystemParameters(long? cacheSizeMinBytes = null, long? cacheSizeMaxBytes = null)
         {
             //TODO remove reflection once PersistentDictionary is phased out
@@ -123,11 +132,11 @@ namespace BitSharp.Esent
         {
             var _0_5KiB = KiB / 2;
             var _16KiB = 16 * KiB;
-            
+
             var _16MiB = 16 * MiB;
             var _32MiB = 32 * MiB;
             var _256MiB = 256 * MiB;
-            
+
             var logFileCount = 32;
 
             instance.Parameters.SystemDirectory = directory;
@@ -145,7 +154,7 @@ namespace BitSharp.Esent
             instance.Parameters.MaxTemporaryTables = 16;
             instance.Parameters.CircularLog = true;
             instance.Parameters.CleanupMismatchedLogFiles = true;
-            
+
             // unit is KiB
             instance.Parameters.LogFileSize = _32MiB / KiB;
             // unit is 0.5KiB
@@ -154,7 +163,7 @@ namespace BitSharp.Esent
             instance.Parameters.CheckpointDepthMax = logFileCount * (instance.Parameters.LogFileSize * KiB);
             // unit is 16KiB
             instance.Parameters.MaxVerPages = _256MiB / _16KiB;
-            
+
             if (EsentVersion.SupportsWindows81Features)
                 instance.Parameters.EnableShrinkDatabase = ShrinkDatabaseGrbit.On | ShrinkDatabaseGrbit.Realtime;
         }

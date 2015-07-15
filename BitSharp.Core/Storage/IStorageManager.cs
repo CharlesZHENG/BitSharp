@@ -1,4 +1,6 @@
 ﻿using BitSharp.Common;
+using BitSharp.Core.Builders;
+using BitSharp.Core.Domain;
 using System;
 
 namespace BitSharp.Core.Storage
@@ -10,5 +12,7 @@ namespace BitSharp.Core.Storage
         IBlockTxesStorage BlockTxesStorage { get; }
 
         DisposeHandle<IChainStateCursor> OpenChainStateCursor();
+
+        DisposeHandle<IDeferredChainStateCursor> OpenDeferredChainStateCursor(IChainState chainState);
     }
 }
