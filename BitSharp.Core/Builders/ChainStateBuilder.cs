@@ -281,9 +281,9 @@ namespace BitSharp.Core.Builders
             public int UnspentTxCount { get; internal set; }
             public int UnspentOutputCount { get; internal set; }
 
-            internal readonly RateMeasure blockRateMeasure = new RateMeasure(sampleCutoff, sampleResolution);
-            internal readonly RateMeasure txRateMeasure = new RateMeasure(sampleCutoff, sampleResolution);
-            internal readonly RateMeasure inputRateMeasure = new RateMeasure(sampleCutoff, sampleResolution);
+            internal readonly RateMeasure blockRateMeasure = new RateMeasure(sampleCutoff, TimeSpan.FromSeconds(1));
+            internal readonly RateMeasure txRateMeasure = new RateMeasure(sampleCutoff, TimeSpan.FromSeconds(1));
+            internal readonly RateMeasure inputRateMeasure = new RateMeasure(sampleCutoff, TimeSpan.FromSeconds(1));
 
             internal readonly DurationMeasure txesReadDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
             internal readonly DurationMeasure lookAheadDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
