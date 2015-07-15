@@ -20,7 +20,7 @@ namespace BitSharp.Core.Builders
         private readonly Func<TKey, Tuple<bool, TValue>> parentTryGetValue;
         private readonly Func<IEnumerable<KeyValuePair<TKey, TValue>>> parentEnumerator;
 
-        private ConcurrentDictionary<TKey, TValue> parentValues = new ConcurrentDictionary<TKey, TValue>();
+        private ConcurrentDictionary<TKey, Lazy<TValue>> parentValues = new ConcurrentDictionary<TKey, Lazy<TValue>>();
 
         public DeferredDictionary(Func<TKey, Tuple<bool, TValue>> parentTryGetValue, Func<IEnumerable<KeyValuePair<TKey, TValue>>> parentEnumerator = null)
         {
@@ -228,30 +228,29 @@ namespace BitSharp.Core.Builders
 
         public void WarmupValue(TKey key, Func<TValue> valueFunc)
         {
-            parentValues.GetOrAdd(key, _ => valueFunc());
+            parentValues.GetOrAdd(key, _ => new Lazy<TValue>(valueFunc)).Force();
         }
 
         private bool TryGetParentValue(TKey key, out TValue value)
         {
-            if (parentValues.TryGetValue(key, out value))
+            Lazy<TValue> lazyValue;
+            if (parentValues.TryGetValue(key, out lazyValue))
             {
+                value = lazyValue.Value;
                 return value != null;
             }
             else
             {
                 var result = parentTryGetValue(key);
                 if (result.Item1)
-                {
                     value = result.Item2;
-                    parentValues.TryAdd(key, value);
-                    return true;
-                }
                 else
-                {
                     value = default(TValue);
-                    parentValues.TryAdd(key, value);
-                    return false;
-                }
+
+                var valueLocal = value;
+                parentValues.TryAdd(key, new Lazy<TValue>(() => valueLocal));
+
+                return result.Item1;
             }
         }
     }
