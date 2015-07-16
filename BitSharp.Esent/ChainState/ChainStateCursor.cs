@@ -64,6 +64,8 @@ namespace BitSharp.Esent
         private bool inTransaction;
         private bool readOnly;
 
+        private bool disposed;
+
         public ChainStateCursor(string jetDatabase, Instance jetInstance)
         {
             this.jetDatabase = jetDatabase;
@@ -97,17 +99,21 @@ namespace BitSharp.Esent
                     out unmintedDataColumnId);
         }
 
-        ~ChainStateCursor()
-        {
-            this.Dispose();
-        }
-
         public void Dispose()
         {
+            Dispose(true);
             GC.SuppressFinalize(this);
+        }
 
-            Api.JetCloseDatabase(this.jetSession, this.chainStateDbId, CloseDatabaseGrbit.None);
-            this.jetSession.Dispose();
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposed && disposing)
+            {
+                Api.JetCloseDatabase(this.jetSession, this.chainStateDbId, CloseDatabaseGrbit.None);
+                this.jetSession.Dispose();
+
+                disposed = true;
+            }
         }
 
         public bool InTransaction

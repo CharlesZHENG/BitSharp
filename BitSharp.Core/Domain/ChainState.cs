@@ -13,6 +13,8 @@ namespace BitSharp.Core.Domain
 
         private readonly DisposableCache<DisposeHandle<IChainStateCursor>> cursorCache;
 
+        private bool disposed;
+
         public ChainState(Chain chain, IStorageManager storageManager)
         {
             CursorCount = 32;
@@ -52,16 +54,20 @@ namespace BitSharp.Core.Domain
             }
         }
 
-        ~ChainState()
-        {
-            this.Dispose();
-        }
-
         public void Dispose()
         {
+            Dispose(true);
             GC.SuppressFinalize(this);
+        }
 
-            this.cursorCache.Dispose();
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposed && disposing)
+            {
+                this.cursorCache.Dispose();
+
+                disposed = true;
+            }
         }
 
         public int CursorCount { get; private set; }

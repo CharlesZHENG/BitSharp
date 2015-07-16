@@ -15,11 +15,6 @@ namespace BitSharp.Common
             this.item = item;
         }
 
-        ~DisposeHandle()
-        {
-            this.Dispose();
-        }
-
         public void Dispose()
         {
             if (this.isDisposed)
@@ -29,7 +24,6 @@ namespace BitSharp.Common
                 this.disposeAction();
 
             this.isDisposed = true;
-            GC.SuppressFinalize(this);
         }
 
         public T Item
