@@ -30,7 +30,7 @@ namespace BitSharp.Core.Test.Builders
             var chainStateCursor = new Mock<IChainStateCursor>();
 
             storageManager.Setup(x => x.OpenChainStateCursor()).Returns(
-                new DisposeHandle<IChainStateCursor>(() => { }, chainStateCursor.Object));
+                new DisposeHandle<IChainStateCursor>(_ => { }, chainStateCursor.Object));
 
             chainStateCursor.Setup(x => x.ChainTip).Returns(header1);
             chainStateCursor.Setup(x => x.TryGetHeader(header0.Hash, out header0)).Returns(true);
@@ -55,7 +55,7 @@ namespace BitSharp.Core.Test.Builders
             var chainStateCursor = new Mock<IChainStateCursor>();
 
             storageManager.Setup(x => x.OpenChainStateCursor()).Returns(
-                new DisposeHandle<IChainStateCursor>(() => { }, chainStateCursor.Object));
+                new DisposeHandle<IChainStateCursor>(_ => { }, chainStateCursor.Object));
 
             chainStateCursor.Setup(x => x.TryGetHeader(header0.Hash, out header0)).Returns(true);
             chainStateCursor.Setup(x => x.TryGetHeader(header1.Hash, out header1)).Returns(true);
@@ -102,7 +102,7 @@ namespace BitSharp.Core.Test.Builders
             var chainStateCursor = new Mock<IChainStateCursor>();
 
             storageManager.Setup(x => x.OpenChainStateCursor()).Returns(
-                new DisposeHandle<IChainStateCursor>(() => { }, chainStateCursor.Object));
+                new DisposeHandle<IChainStateCursor>(_ => { }, chainStateCursor.Object));
 
             // don't mock header 1 so it is missing
             chainStateCursor.Setup(x => x.TryGetHeader(header0.Hash, out header0)).Returns(true);

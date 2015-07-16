@@ -131,7 +131,7 @@ namespace BitSharp.Lmdb
         {
             var cursor = new DeferredChainStateCursor(chainState, this);
             return new DisposeHandle<IDeferredChainStateCursor>(
-                () => cursor.Dispose(), cursor);
+                _ => cursor.Dispose(), cursor);
         }
 
         internal static void PrepareSparseDatabase(string jetDirectory)

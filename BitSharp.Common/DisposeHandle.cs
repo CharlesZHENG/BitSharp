@@ -4,12 +4,10 @@ namespace BitSharp.Common
 {
     public sealed class DisposeHandle<T> : IDisposable where T : class, IDisposable
     {
-        private readonly Action disposeAction;
+        private readonly Action<DisposeHandle<T>> disposeAction;
         private readonly T item;
 
-        private bool isDisposed;
-
-        public DisposeHandle(Action disposeAction, T item)
+        public DisposeHandle(Action<DisposeHandle<T>> disposeAction, T item)
         {
             this.disposeAction = disposeAction;
             this.item = item;
@@ -17,13 +15,8 @@ namespace BitSharp.Common
 
         public void Dispose()
         {
-            if (this.isDisposed)
-                return;
-
             if (this.disposeAction != null)
-                this.disposeAction();
-
-            this.isDisposed = true;
+                this.disposeAction(this);
         }
 
         public T Item

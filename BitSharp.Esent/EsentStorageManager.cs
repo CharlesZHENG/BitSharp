@@ -109,7 +109,7 @@ namespace BitSharp.Esent
         {
             var cursor = new DeferredChainStateCursor(chainState, this);
             return new DisposeHandle<IDeferredChainStateCursor>(
-                () => cursor.Dispose(), cursor);
+                _ => cursor.Dispose(), cursor);
         }
 
         internal static void InitSystemParameters(long? cacheSizeMinBytes = null, long? cacheSizeMaxBytes = null)

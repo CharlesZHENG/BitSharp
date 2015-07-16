@@ -1,6 +1,7 @@
 ﻿using BitSharp.Common.ExtensionMethods;
 using NLog;
 using System;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Threading;
 
@@ -19,8 +20,9 @@ namespace BitSharp.Common
         private readonly Func<T> createFunc;
         private readonly Action<T> prepareAction;
 
-        private readonly T[] cache;
-        private readonly object cacheLock = new object();
+        private readonly int capacity;
+        private readonly ConcurrentBag<DisposeHandle<T>> cache;
+        private int cacheCount;
 
         private readonly AutoResetEvent itemFreedEvent = new AutoResetEvent(false);
 
@@ -34,7 +36,8 @@ namespace BitSharp.Common
         /// <param name="prepareAction">An action to call on instances before they are returned to the cache. This may be null.</param>
         public DisposableCache(int capacity, Func<T> createFunc = null, Action<T> prepareAction = null)
         {
-            this.cache = new T[capacity];
+            this.capacity = capacity;
+            this.cache = new ConcurrentBag<DisposeHandle<T>>();
             this.createFunc = createFunc;
             this.prepareAction = prepareAction;
         }
@@ -52,8 +55,9 @@ namespace BitSharp.Common
         {
             if (!this.isDisposed && disposing)
             {
-                this.cache.DisposeList();
-                this.itemFreedEvent.Dispose();
+                DisposeHandle<T> handle;
+                while (this.cache.TryTake(out handle))
+                    handle.Item.Dispose();
 
                 this.isDisposed = true;
             }
@@ -64,7 +68,7 @@ namespace BitSharp.Common
         /// </summary>
         public int Capacity
         {
-            get { return this.cache.Length; }
+            get { return this.capacity; }
         }
 
         /// <summary>
@@ -105,7 +109,7 @@ namespace BitSharp.Common
                 {
                     // determine the amount of timeout remaining
                     var remaining = timeout - stopwatch.Elapsed;
-                    
+
                     // if timeout is remaining, wait up to that amount of time for a new instance to become available
                     if (remaining.Ticks > 0)
                         this.itemFreedEvent.WaitOne(remaining);
@@ -119,60 +123,46 @@ namespace BitSharp.Common
         /// <summary>
         /// Make an instance available to the cache. If the maximum capacity would be exceeded, the instance will be disposed instead of being cached.
         /// </summary>
-        /// <param name="item">The instance to be cached.</param>
+        /// <param name="handle">The instance to be cached.</param>
         public void CacheItem(T item)
+        {
+            CacheHandle(new DisposeHandle<T>(CacheHandle, item));
+        }
+
+        private void CacheHandle(DisposeHandle<T> handle)
         {
             // prepare the instance to be cached
             if (this.prepareAction != null)
-                this.prepareAction(item);
+                this.prepareAction(handle.Item);
 
             // attempt to return the instance to the cache
-            var cached = false;
-            lock (this.cacheLock)
+            if (Interlocked.Increment(ref cacheCount) <= capacity)
             {
-                for (var i = 0; i < this.cache.Length; i++)
-                {
-                    if (this.cache[i] == null)
-                    {
-                        this.cache[i] = item;
-                        cached = true;
-                        break;
-                    }
-                }
-            }
-
-            // if cached, notify that an instance became available
-            if (cached)
+                this.cache.Add(handle);
                 this.itemFreedEvent.Set();
-            // otherwise, dispose the uncached instance as its lifetime has expired
+            }
             else
-                item.Dispose();
+            {
+                Interlocked.Decrement(ref cacheCount);
+                handle.Item.Dispose();
+            }
         }
 
         private DisposeHandle<T> TryTakeItem()
         {
+            DisposeHandle<T> handle;
+
             // attempt to take an instance from the cache
-            T item = null;
-            lock (this.cacheLock)
+            if (this.cache.TryTake(out handle))
             {
-                for (var i = 0; i < this.cache.Length; i++)
-                {
-                    if (this.cache[i] != null)
-                    {
-                        item = this.cache[i];
-                        this.cache[i] = null;
-                        break;
-                    }
-                }
+                Interlocked.Decrement(ref cacheCount);
+                return handle;
             }
-
             // if no instance was available, create a new one if allowed
-            if (item == null && this.createFunc != null)
-                item = this.createFunc();
-
-            // if an instance was available, return it wrapped in DisposeHandle which will return the instance back to the cache
-            if (item != null)
-                return new DisposeHandle<T>(() => this.CacheItem(item), item);
+            else if (this.createFunc != null)
+            {
+                return new DisposeHandle<T>(CacheHandle, this.createFunc());
+            }
             // no instance was available
             else
                 return null;

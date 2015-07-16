@@ -74,7 +74,7 @@ namespace BitSharp.Core.Storage.Memory
         {
             var cursor = new DeferredChainStateCursor(chainState, this);
             return new DisposeHandle<IDeferredChainStateCursor>(
-                () => cursor.Dispose(), cursor);
+                _ => cursor.Dispose(), cursor);
         }
     }
 }
