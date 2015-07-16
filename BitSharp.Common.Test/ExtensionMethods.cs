@@ -1,6 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks.Dataflow;
+using System.Reactive.Linq;
 
 namespace BitSharp.Common.Test
 {
@@ -8,12 +9,7 @@ namespace BitSharp.Common.Test
     {
         public static IEnumerable<T> ToEnumerable<T>(this ISourceBlock<T> source, CancellationToken cancelToken = default(CancellationToken))
         {
-            while (source.OutputAvailableAsync(cancelToken).Result)
-            {
-                yield return source.Receive(cancelToken);
-            }
-
-            source.Completion.Wait();
+            return source.AsObservable().ToEnumerable();
         }
 
         public static BufferBlock<T> ToBufferBlock<T>(this IEnumerable<T> items)
