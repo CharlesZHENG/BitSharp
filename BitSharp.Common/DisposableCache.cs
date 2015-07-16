@@ -68,49 +68,51 @@ namespace BitSharp.Common
         }
 
         /// <summary>
-        /// Take an instance from the cache. If allowed, a new instance will be created if no cached instances are available.
+        /// Take an instance from the cache. If allowed, a new instance will be created if no cached instances are available, or an available instace will be waited for.
         /// </summary>
         /// <exception cref="InvalidOperationException">If no cached instance is available when creating new instances is disallowed.</exception>
         /// <returns>A handle to an instance of <typeparamref name="T"/>.</returns>
         public DisposeHandle<T> TakeItem()
         {
-            return TakeItem(required: true);
+            return TakeItem(TimeSpan.MaxValue);
         }
 
         /// <summary>
         /// <para>Take an instance from the cache, with a timeout if no cached instances are available.</para>
-        /// <para>This method is only valid for caches which disallow dymanically creating new instances.</para>
         /// </summary>
         /// <param name="timeout">The timespan to wait for a cache instance to become available.</param>
         /// <exception cref="TimeoutException">If no cached instance became available before the timeout expired.</exception>
         /// <returns>A handle to an instance of <typeparamref name="T"/>.</returns>
         public DisposeHandle<T> TakeItem(TimeSpan timeout)
         {
-            // throw if new instances can be created, a timeout does not apply in this case
-            if (this.createFunc != null)
-                throw new InvalidOperationException();
-
             // track running time
             var stopwatch = Stopwatch.StartNew();
 
             while (true)
             {
                 // try to take a cache instance
-                var handle = this.TakeItem(required: false);
+                var handle = this.TryTakeItem();
 
                 // instance found, return it
                 if (handle != null)
                     return handle;
 
-                // determine the amount of timeout remaining
-                var remaining = timeout - stopwatch.Elapsed;
-
-                // if timeout is remaining, wait up to that amount of time for a new instance to become available
-                if (remaining.Ticks > 0)
-                    this.itemFreedEvent.WaitOne(remaining);
-                // otherwise, throw a timeout exception
+                if (timeout < TimeSpan.Zero || timeout == TimeSpan.MaxValue)
+                {
+                    this.itemFreedEvent.WaitOne();
+                }
                 else
-                    throw new TimeoutException();
+                {
+                    // determine the amount of timeout remaining
+                    var remaining = timeout - stopwatch.Elapsed;
+                    
+                    // if timeout is remaining, wait up to that amount of time for a new instance to become available
+                    if (remaining.Ticks > 0)
+                        this.itemFreedEvent.WaitOne(remaining);
+                    // otherwise, throw a timeout exception
+                    else
+                        throw new TimeoutException();
+                }
             }
         }
 
@@ -147,7 +149,7 @@ namespace BitSharp.Common
                 item.Dispose();
         }
 
-        private DisposeHandle<T> TakeItem(bool required)
+        private DisposeHandle<T> TryTakeItem()
         {
             // attempt to take an instance from the cache
             T item = null;
@@ -171,15 +173,9 @@ namespace BitSharp.Common
             // if an instance was available, return it wrapped in DisposeHandle which will return the instance back to the cache
             if (item != null)
                 return new DisposeHandle<T>(() => this.CacheItem(item), item);
-            // if no instance was available, either throw an exception or return null based on whether one was required
-            else if (required)
-            {
-                logger.Warn("DisposableCache<{0}> ran out of items.".Format2(typeof(T).Name));
-                throw new InvalidOperationException();
-            }
+            // no instance was available
             else
                 return null;
         }
-
     }
 }

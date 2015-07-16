@@ -2,6 +2,7 @@
 using Moq;
 using System;
 using System.Diagnostics;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace BitSharp.Common.Test
@@ -69,26 +70,57 @@ namespace BitSharp.Common.Test
             Assert.AreEqual(3, disposeCount);
         }
 
-        // verify taking an item from an exhausted fixed cached throws an exception
+        // verify taking an item from an exhausted cache waits for a freed item
         [TestMethod]
-        [ExpectedException(typeof(InvalidOperationException))]
         public void TestTakeItemExhausted()
         {
             using (var cache = new DisposableCache<IDisposable>(1))
+            using (var taker1Taken = new AutoResetEvent(false))
+            using (var taker1Finish = new AutoResetEvent(false))
+            using (var taker2Started = new AutoResetEvent(false))
+            using (var taker2Taken = new AutoResetEvent(false))
             {
                 var item = new Mock<IDisposable>().Object;
                 cache.CacheItem(item);
 
-                using (var handle1 = cache.TakeItem())
-                {
-                    using (var handle2 = cache.TakeItem())
+                var taker1 = Task.Run(() =>
                     {
-                    }
-                }
+                        using (var handle1 = cache.TakeItem())
+                        {
+                            taker1Taken.Set();
+                            taker1Finish.WaitOne();
+                        }
+                    });
+
+                // wait for taker 1 to retrieve a cached item
+                taker1Taken.WaitOne();
+
+                var taker2 = Task.Run(() =>
+                    {
+                        taker2Started.Set();
+                        using (var handle2 = cache.TakeItem())
+                        {
+                            taker2Taken.Set();
+                        }
+                    });
+
+                // wait for taker 2 to start
+                Assert.IsTrue(taker2Started.WaitOne(2000));
+
+                // verify taker 2 hasn't been able to retrieve a cached item
+                Assert.IsFalse(taker2Taken.WaitOne(500));
+
+                // allow taker 1 to return its cached item
+                taker1Finish.Set();
+                Assert.IsTrue(taker1.Wait(2000));
+
+                // verify taker 2 then retrieves a cached item
+                Assert.IsTrue(taker2Taken.WaitOne(2000));
+                Assert.IsTrue(taker2.Wait(2000));
             }
         }
 
-        // verify taking an item from an exhausted fixed cached times out properly
+        // verify taking an item from an exhausted cache times out properly
         [TestMethod]
         public void TestTakeItemTimeout()
         {
@@ -117,7 +149,7 @@ namespace BitSharp.Common.Test
             }
         }
 
-        // verify taking an item from an exhausted fixed cache when an item is returned while waiting
+        // verify taking an item from an exhausted cache when an item is returned while waiting
         [TestMethod]
         public void TestTakeItemTimeoutFreed()
         {
