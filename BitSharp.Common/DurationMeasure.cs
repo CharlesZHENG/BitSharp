@@ -104,7 +104,9 @@ namespace BitSharp.Common
                     return TimeSpan.Zero;
 
                 var start = this.samples[0].SampleStart;
-                var now = stopwatch.Elapsed;
+                TimeSpan now;
+                lock (stopwatch)
+                    now = stopwatch.Elapsed;
 
                 var cutoff = now - this.SampleCutoff;
                 var validSamples = this.samples.Where(x => x.SampleStart >= cutoff).ToList();
@@ -123,7 +125,9 @@ namespace BitSharp.Common
         {
             while (true)
             {
-                var start = stopwatch.Elapsed;
+                TimeSpan start;
+                lock (stopwatch)
+                    start = stopwatch.Elapsed;
 
                 try
                 {
@@ -134,7 +138,9 @@ namespace BitSharp.Common
                     return;
                 }
 
-                var now = stopwatch.Elapsed;
+                TimeSpan now;
+                lock (stopwatch)
+                    now = stopwatch.Elapsed;
                 var cutoff = now - this.SampleCutoff;
 
                 this.rwLock.DoWrite(() =>

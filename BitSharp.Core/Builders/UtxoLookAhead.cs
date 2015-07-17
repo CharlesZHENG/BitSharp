@@ -18,8 +18,6 @@ namespace BitSharp.Core.Builders
 
         public static ISourceBlock<BlockTx> LookAhead(ISourceBlock<BlockTx> blockTxes, IDeferredChainStateCursor deferredChainStateCursor, CancellationToken cancelToken = default(CancellationToken))
         {
-            var stopwatch = Stopwatch.StartNew();
-
             var pendingWarmedTxes = new ConcurrentQueue<Tuple<BlockTx, CompletionCount>>();
 
             // queue each utxo entry to be warmed up: each input's previous transaction, and each new transaction

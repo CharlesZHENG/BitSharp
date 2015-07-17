@@ -24,7 +24,7 @@ namespace BitSharp.Common
             this.rwLock = new ReaderWriterLockSlim();
             this.cancelToken = new CancellationTokenSource();
             this.stopwatch = Stopwatch.StartNew();
-            this.samples = new List<Sample> { new Sample { SampleStart = this.stopwatch.Elapsed, SampleDuration = TimeSpan.Zero, TickCount = 0 } };
+            this.samples = new List<Sample> { new Sample { SampleStart = TimeSpan.Zero, SampleDuration = TimeSpan.Zero, TickCount = 0 } };
 
             this.SampleCutoff = sampleCutoff ?? TimeSpan.FromSeconds(30);
             this.SampleResolution = sampleResolution ?? TimeSpan.FromSeconds(1);
@@ -77,7 +77,9 @@ namespace BitSharp.Common
                     return 0;
 
                 var start = this.samples[0].SampleStart;
-                var now = stopwatch.Elapsed;
+                TimeSpan now;
+                lock (stopwatch)
+                    now = stopwatch.Elapsed;
 
                 var duration = now - start;
                 if (duration <= TimeSpan.Zero)
@@ -98,7 +100,9 @@ namespace BitSharp.Common
         {
             while (true)
             {
-                var start = stopwatch.Elapsed;
+                TimeSpan start;
+                lock (stopwatch)
+                    start = stopwatch.Elapsed;
 
                 try
                 {
@@ -109,7 +113,10 @@ namespace BitSharp.Common
                     return;
                 }
 
-                var now = stopwatch.Elapsed;
+                TimeSpan now;
+                lock (stopwatch)
+                    now = stopwatch.Elapsed;
+                
                 var duration = now - start;
                 var cutoff = now - this.SampleCutoff;
 

@@ -55,11 +55,15 @@ namespace BitSharp.Core.Builders
         {
             var statString = new StringBuilder();
 
+            TimeSpan duration;
+            lock (durationStopwatch)
+                duration = durationStopwatch.Elapsed;
+
             statString.AppendLine("Chain State Builder Stats");
             statString.AppendLine("-------------------------");
             statString.AppendLine("Height:           {0,15:N0}".Format2(Height));
             statString.AppendLine("Duration:         {0,15}".Format2(
-                "{0:#,#00}:{1:mm':'ss}".Format2(durationStopwatch.Elapsed.TotalHours, durationStopwatch.Elapsed)));
+                "{0:#,#00}:{1:mm':'ss}".Format2(duration.TotalHours, duration)));
             statString.AppendLine("-------------------------");
             statString.AppendLine("Blocks Rate:      {0,15:N0}/s".Format2(blockRateMeasure.GetAverage()));
             statString.AppendLine("Tx Rate:          {0,15:N0}/s".Format2(txRateMeasure.GetAverage()));
