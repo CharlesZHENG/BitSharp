@@ -62,6 +62,9 @@ namespace BitSharp.Core.Builders
         public async Task AddBlockAsync(ChainedHeader chainedHeader, IEnumerable<BlockTx> blockTxes)
         {
             var stopwatch = Stopwatch.StartNew();
+            var txCount = 0;
+            var inputCount = 0;
+
             await Task.Yield();
 
             using (var chainState = ToImmutable())
@@ -82,11 +85,31 @@ namespace BitSharp.Core.Builders
                 var blockTxesBuffer = new BufferBlock<BlockTx>();
                 var sendBlockTxes = blockTxesBuffer.SendAndCompleteAsync(blockTxes);
 
+                // track tx/input stats
+                var countBlockTxes = new TransformBlock<BlockTx, BlockTx>(
+                    blockTx =>
+                    {
+                        txCount++;
+                        inputCount += blockTx.Transaction.Inputs.Length;
+                        if (!blockTx.IsCoinbase)
+                        {
+                            stats.txRateMeasure.Tick();
+                            stats.inputRateMeasure.Tick(blockTx.Transaction.Inputs.Length);
+                        }
+
+                        return blockTx;
+                    });
+                blockTxesBuffer.LinkTo(countBlockTxes, new DataflowLinkOptions { PropagateCompletion = true });
+
                 // warm-up utxo entries for block txes
-                var warmedBlockTxes = UtxoLookAhead.LookAhead(blockTxesBuffer, chainStateCursor);
+                var warmedBlockTxes = UtxoLookAhead.LookAhead(countBlockTxes, chainStateCursor);
 
                 // begin calculating the utxo updates
-                var loadingTxes = CalculateUtxo(newChain, warmedBlockTxes, chainStateCursor);
+                var loadingTxes = utxoBuilder.CalculateUtxo(chainStateCursor, newChain, warmedBlockTxes);
+
+                //TODO remove bypass paramter
+                if (rules.BypassPrevTxLoading)
+                    loadingTxes = DropAll(loadingTxes);
 
                 // begin loading txes
                 var loadedTxes = TxLoader.LoadTxes(coreStorage, loadingTxes);
@@ -138,35 +161,21 @@ namespace BitSharp.Core.Builders
             }
 
             stats.blockRateMeasure.Tick();
+            stats.txesPerBlockMeasure.Tick(txCount);
+            stats.inputsPerBlockMeasure.Tick(inputCount);
+
             stats.addBlockDurationMeasure.Tick(stopwatch.Elapsed);
 
             LogBlockchainProgress();
         }
 
-        private ISourceBlock<LoadingTx> CalculateUtxo(Chain newChain, ISourceBlock<BlockTx> blockTxes, IChainStateCursor chainStateCursor)
+        private ISourceBlock<T> DropAll<T>(ISourceBlock<T> source)
         {
-            // calculate the new block utxo, only output availability is checked and updated
-            var loadingTxes = utxoBuilder.CalculateUtxo(chainStateCursor, newChain, blockTxes);
+            var empty = new T[0];
+            var dropper = new TransformManyBlock<T, T>(_ => empty);
+            source.LinkTo(dropper, new DataflowLinkOptions { PropagateCompletion = true });
 
-            var tracker = new TransformManyBlock<LoadingTx, LoadingTx>(
-                loadingTx =>
-                {
-                    // track stats, ignore coinbase
-                    if (!loadingTx.IsCoinbase)
-                    {
-                        stats.txRateMeasure.Tick();
-                        stats.inputRateMeasure.Tick(loadingTx.Transaction.Inputs.Length);
-                    }
-
-                    if (!rules.BypassPrevTxLoading)
-                        return new[] { loadingTx };
-                    else
-                        return new LoadingTx[0];
-                });
-
-            loadingTxes.LinkTo(tracker, new DataflowLinkOptions { PropagateCompletion = true });
-
-            return tracker;
+            return dropper;
         }
 
         public void RollbackBlock(ChainedHeader chainedHeader, IEnumerable<BlockTx> blockTxes)

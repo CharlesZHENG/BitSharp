@@ -26,6 +26,9 @@ namespace BitSharp.Core.Builders
         internal readonly RateMeasure txRateMeasure = new RateMeasure(sampleCutoff, TimeSpan.FromSeconds(1));
         internal readonly RateMeasure inputRateMeasure = new RateMeasure(sampleCutoff, TimeSpan.FromSeconds(1));
 
+        internal readonly AverageMeasure txesPerBlockMeasure = new AverageMeasure(sampleCutoff, sampleResolution);
+        internal readonly AverageMeasure inputsPerBlockMeasure = new AverageMeasure(sampleCutoff, sampleResolution);
+
         internal readonly DurationMeasure txesReadDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
         internal readonly DurationMeasure lookAheadDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
         internal readonly DurationMeasure calculateUtxoDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
@@ -41,6 +44,9 @@ namespace BitSharp.Core.Builders
             this.blockRateMeasure.Dispose();
             this.txRateMeasure.Dispose();
             this.inputRateMeasure.Dispose();
+
+            this.txesPerBlockMeasure.Dispose();
+            this.inputsPerBlockMeasure.Dispose();
 
             this.txesReadDurationMeasure.Dispose();
             this.lookAheadDurationMeasure.Dispose();
@@ -63,11 +69,14 @@ namespace BitSharp.Core.Builders
             statString.AppendLine("-------------------------");
             statString.AppendLine("Height:           {0,15:N0}".Format2(Height));
             statString.AppendLine("Duration:         {0,15}".Format2(
-                "{0:#,#00}:{1:mm':'ss}".Format2(duration.TotalHours, duration)));
+                "{0:#,#00}:{1:mm':'ss}".Format2(Math.Floor(duration.TotalHours), duration)));
             statString.AppendLine("-------------------------");
             statString.AppendLine("Blocks Rate:      {0,15:N0}/s".Format2(blockRateMeasure.GetAverage()));
             statString.AppendLine("Tx Rate:          {0,15:N0}/s".Format2(txRateMeasure.GetAverage()));
             statString.AppendLine("Input Rate:       {0,15:N0}/s".Format2(inputRateMeasure.GetAverage()));
+            statString.AppendLine("-------------------------");
+            statString.AppendLine("Txes per block:   {0,15:N0}".Format2(txesPerBlockMeasure.GetAverage()));
+            statString.AppendLine("Inputs per block: {0,15:N0}".Format2(inputsPerBlockMeasure.GetAverage()));
             statString.AppendLine("-------------------------");
             statString.AppendLine("Processed Txes:   {0,15:N0}".Format2(TotalTxCount));
             statString.AppendLine("Processed Inputs: {0,15:N0}".Format2(TotalInputCount));
