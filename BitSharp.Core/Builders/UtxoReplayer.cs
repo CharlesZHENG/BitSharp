@@ -99,7 +99,8 @@ namespace BitSharp.Core.Builders
             SplitCombineBlock.Create<BlockTx, LoadingTx, UInt256>(
                 blockTx => blockTx.Transaction.Hash,
                 loadingTx => loadingTx.Transaction.Hash,
-                out blockTxSplitter, out loadingTxCombiner);
+                out blockTxSplitter, out loadingTxCombiner,
+                cancelToken);
 
             // capture the original order of block txes
             blockTxesBuffer.LinkTo(blockTxSplitter, new DataflowLinkOptions { PropagateCompletion = true });

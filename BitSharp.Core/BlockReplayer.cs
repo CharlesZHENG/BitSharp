@@ -32,7 +32,8 @@ namespace BitSharp.Core.Builders
             SplitCombineBlock.Create<LoadingTx, LoadedTx, UInt256>(
                 loadingTx => loadingTx.Transaction.Hash,
                 loadedTx => loadedTx.Transaction.Hash,
-                out loadingTxSplitter, out loadedTxCombiner);
+                out loadingTxSplitter, out loadedTxCombiner,
+                cancelToken);
 
             // capture the original order of the loading txes
             loadingTxes.LinkTo(loadingTxSplitter, new DataflowLinkOptions { PropagateCompletion = true });
