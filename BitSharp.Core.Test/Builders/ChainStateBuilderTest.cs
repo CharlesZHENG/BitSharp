@@ -72,8 +72,8 @@ namespace BitSharp.Core.Test.Builders
 
             // attempt to add block when out of sync
             ChainStateOutOfSyncException actualEx;
-            AssertMethods.AssertThrows<ChainStateOutOfSyncException>(() =>
-                chainStateBuilder.AddBlock(header2, Enumerable.Empty<BlockTx>()),
+            AssertMethods.AssertAggregateThrows<ChainStateOutOfSyncException>(() =>
+                chainStateBuilder.AddBlockAsync(header2, Enumerable.Empty<BlockTx>()).Wait(),
                 out actualEx);
 
             Assert.AreEqual(header1.Hash, actualEx.ExpectedChainTip.Hash);

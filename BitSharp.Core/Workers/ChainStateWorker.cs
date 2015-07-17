@@ -128,7 +128,7 @@ namespace BitSharp.Core.Workers
                         var blockStopwatch = Stopwatch.StartNew();
                         if (direction > 0)
                         {
-                            this.chainStateBuilder.AddBlock(chainedHeader, blockTxes.UsingAsEnumerable());
+                            this.chainStateBuilder.AddBlockAsync(chainedHeader, blockTxes.UsingAsEnumerable()).Wait();
                         }
                         else if (direction < 0)
                         {

@@ -11,6 +11,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace BitSharp.Core.Builders
@@ -58,9 +59,10 @@ namespace BitSharp.Core.Builders
             get { return stats; }
         }
 
-        public void AddBlock(ChainedHeader chainedHeader, IEnumerable<BlockTx> blockTxes)
+        public async Task AddBlockAsync(ChainedHeader chainedHeader, IEnumerable<BlockTx> blockTxes)
         {
             var stopwatch = Stopwatch.StartNew();
+            await Task.Yield();
 
             using (var chainState = ToImmutable())
             using (var handle = storageManager.OpenDeferredChainStateCursor(chainState))
@@ -93,15 +95,15 @@ namespace BitSharp.Core.Builders
                 var blockValidator = BlockValidator.ValidateBlock(coreStorage, rules, chainedHeader, loadedTxes);
 
                 // wait for block txes to read
-                sendBlockTxes.Wait();
+                await blockTxesBuffer.Completion;
                 stats.txesReadDurationMeasure.Tick(stopwatch.Elapsed);
 
                 // wait for utxo look-ahead to complete
-                warmedBlockTxes.Completion.Wait();
+                await warmedBlockTxes.Completion;
                 stats.lookAheadDurationMeasure.Tick(stopwatch.Elapsed);
 
                 // wait for utxo calculation
-                loadingTxes.Completion.Wait();
+                await loadingTxes.Completion;
                 stats.calculateUtxoDurationMeasure.Tick(stopwatch.Elapsed);
 
                 // apply the utxo changes, do not yet commit
@@ -111,7 +113,7 @@ namespace BitSharp.Core.Builders
                 stats.applyUtxoDurationMeasure.Tick(stopwatch.Elapsed);
 
                 // wait for block validation to complete, any exceptions that ocurred will be thrown
-                blockValidator.Wait();
+                await blockValidator;
                 stats.validateDurationMeasure.Tick(stopwatch.Elapsed);
 
                 var totalTxCount = chainStateCursor.TotalTxCount;
