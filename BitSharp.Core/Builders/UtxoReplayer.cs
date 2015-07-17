@@ -94,25 +94,16 @@ namespace BitSharp.Core.Builders
             else
                 blockTxesBuffer.SendAndCompleteAsync(blockTxes.UsingAsEnumerable().Reverse(), cancelToken);
 
-            // prepare a split/combine to lookup txes in parallel and return them in order
-            TransformBlock<BlockTx, BlockTx> blockTxSplitter; TransformManyBlock<LoadingTx, LoadingTx> loadingTxCombiner;
-            SplitCombineBlock.Create<BlockTx, LoadingTx, UInt256>(
-                blockTx => blockTx.Transaction.Hash,
-                loadingTx => loadingTx.Transaction.Hash,
-                out blockTxSplitter, out loadingTxCombiner,
-                cancelToken);
-
-            // capture the original order of block txes
-            blockTxesBuffer.LinkTo(blockTxSplitter, new DataflowLinkOptions { PropagateCompletion = true });
+            // capture the original block txes order
+            var orderedBlockTxes = OrderingBlock.CaptureOrder<BlockTx, LoadingTx, UInt256>(
+                blockTxesBuffer, blockTx => blockTx.Transaction.Hash, cancelToken);
 
             // begin looking up txes
             var lookupLoadingTx = InitLookupLoadingTx(chainState, replayBlock, cancelToken);
-            blockTxSplitter.LinkTo(lookupLoadingTx, new DataflowLinkOptions { PropagateCompletion = true });
+            orderedBlockTxes.LinkTo(lookupLoadingTx, new DataflowLinkOptions { PropagateCompletion = true });
 
-            // sort looked up txes
-            lookupLoadingTx.LinkTo(loadingTxCombiner, new DataflowLinkOptions { PropagateCompletion = true });
-
-            return loadingTxCombiner;
+            // return the loading txes in original order
+            return orderedBlockTxes.ApplyOrder(lookupLoadingTx, loadingTx => loadingTx.Transaction.Hash, cancelToken); ;
         }
 
         //TODO this should lookup in parallel and then get sorted, like TxLoader, etc.

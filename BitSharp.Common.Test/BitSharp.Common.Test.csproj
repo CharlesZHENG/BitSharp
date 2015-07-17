@@ -117,7 +117,7 @@
     <Compile Include="MockWorker.cs" />
     <Compile Include="DurationMeasureTest.cs" />
     <Compile Include="RateMeasureTest.cs" />
-    <Compile Include="SplitCombineBlockTest.cs" />
+    <Compile Include="OrderingBlockTest.cs" />
     <Compile Include="TestData.cs" />
     <Compile Include="UInt256Test.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

@@ -18,30 +18,20 @@ namespace BitSharp.Core.Builders
 
         public static ISourceBlock<BlockTx> LookAhead(ISourceBlock<BlockTx> blockTxes, IDeferredChainStateCursor deferredChainStateCursor, CancellationToken cancelToken = default(CancellationToken))
         {
-            TransformBlock<BlockTx, BlockTx> blockTxSplitter; TransformManyBlock<BlockTx, BlockTx> blockTxCombiner;
-            SplitCombineBlock.Create<BlockTx, BlockTx, int>(
-                blockTx => blockTx.Index,
-                blockTx => blockTx.Index,
-                out blockTxSplitter, out blockTxCombiner,
-                cancelToken);
-
-            blockTxes.LinkTo(blockTxSplitter, new DataflowLinkOptions { PropagateCompletion = true });
+            // capture the original block txes order
+            var orderedBlockTxes = OrderingBlock.CaptureOrder<BlockTx, BlockTx, int>(
+                blockTxes, blockTx => blockTx.Index, cancelToken);
 
             // queue each utxo entry to be warmed up: each input's previous transaction, and each new transaction
             var queueUnspentTxLookup = InitQueueUnspentTxLookup(cancelToken);
+            orderedBlockTxes.LinkTo(queueUnspentTxLookup, new DataflowLinkOptions { PropagateCompletion = true });
 
-            blockTxSplitter.LinkTo(queueUnspentTxLookup, new DataflowLinkOptions { PropagateCompletion = true });
-
-            // warm up a uxto entry
+            // warm up each uxto entry
             var warmupUtxo = InitWarmupUtxo(deferredChainStateCursor, cancelToken);
-
-            // link the utxo entry queuer to the warmer
             queueUnspentTxLookup.LinkTo(warmupUtxo, new DataflowLinkOptions { PropagateCompletion = true });
 
-            // link notification of a warmed tx to the in-order forwarder
-            warmupUtxo.LinkTo(blockTxCombiner, new DataflowLinkOptions { PropagateCompletion = true });
-
-            return blockTxCombiner;
+            // return the block txes with warmed utxo entries in original order
+            return orderedBlockTxes.ApplyOrder(warmupUtxo, blockTx => blockTx.Index, cancelToken);
         }
 
         private static TransformManyBlock<BlockTx, Tuple<UInt256, CompletionCount, BlockTx>> InitQueueUnspentTxLookup(CancellationToken cancelToken)

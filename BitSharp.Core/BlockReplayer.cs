@@ -27,25 +27,15 @@ namespace BitSharp.Core.Builders
             else
                 loadingTxes = UtxoReplayer.ReplayRollbackUtxo(coreStorage, chainState, replayBlock, cancelToken);
 
-            // prepare a split/combine to load txes in parallel and return them in order
-            TransformBlock<LoadingTx, LoadingTx> loadingTxSplitter; TransformManyBlock<LoadedTx, LoadedTx> loadedTxCombiner;
-            SplitCombineBlock.Create<LoadingTx, LoadedTx, UInt256>(
-                loadingTx => loadingTx.Transaction.Hash,
-                loadedTx => loadedTx.Transaction.Hash,
-                out loadingTxSplitter, out loadedTxCombiner,
-                cancelToken);
-
-            // capture the original order of the loading txes
-            loadingTxes.LinkTo(loadingTxSplitter, new DataflowLinkOptions { PropagateCompletion = true });
+            // capture the original loading txes order
+            var orderedLoadingTxes = OrderingBlock.CaptureOrder<LoadingTx, LoadedTx, UInt256>(
+                loadingTxes, loadingTx => loadingTx.Transaction.Hash, cancelToken);
 
             // begin loading txes
-            var loadedTxes = TxLoader.LoadTxes(coreStorage, loadingTxSplitter, cancelToken);
+            var loadedTxes = TxLoader.LoadTxes(coreStorage, orderedLoadingTxes, cancelToken);
 
-            // sort loaded txes
-            loadedTxes.LinkTo(loadedTxCombiner, new DataflowLinkOptions { PropagateCompletion = true });
-
-            // return replay txes
-            return loadedTxCombiner;
+            // return the loaded txes in original order
+            return orderedLoadingTxes.ApplyOrder(loadedTxes, loadedTx => loadedTx.Transaction.Hash, cancelToken);
         }
     }
 }
