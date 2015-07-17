@@ -18,7 +18,6 @@ namespace BitSharp.Lmdb
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        private readonly bool readOnly;
         private readonly string jetDatabase;
         private readonly LightningEnvironment jetInstance;
         private readonly LightningDatabase globalsTableId;
@@ -36,9 +35,8 @@ namespace BitSharp.Lmdb
 
         private LightningTransaction txn;
 
-        public ChainStateCursor(bool readOnly, string jetDatabase, LightningEnvironment jetInstance, LightningDatabase globalsTableId, LightningDatabase headersTableId, LightningDatabase unspentTxTableId, LightningDatabase blockSpentTxesTableId, LightningDatabase blockUnmintedTxesTableId)
+        public ChainStateCursor(string jetDatabase, LightningEnvironment jetInstance, LightningDatabase globalsTableId, LightningDatabase headersTableId, LightningDatabase unspentTxTableId, LightningDatabase blockSpentTxesTableId, LightningDatabase blockUnmintedTxesTableId)
         {
-            this.readOnly = readOnly;
             this.jetDatabase = jetDatabase;
             this.jetInstance = jetInstance;
             this.globalsTableId = globalsTableId;
@@ -495,7 +493,7 @@ namespace BitSharp.Lmdb
             if (this.txn != null)
                 throw new InvalidOperationException();
 
-            this.txn = this.jetInstance.BeginTransaction(readOnly || this.readOnly ? TransactionBeginFlags.ReadOnly : TransactionBeginFlags.None);
+            this.txn = this.jetInstance.BeginTransaction(readOnly ? TransactionBeginFlags.ReadOnly : TransactionBeginFlags.None);
         }
 
         public void CommitTransaction()

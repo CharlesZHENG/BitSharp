@@ -49,7 +49,7 @@ namespace BitSharp.Lmdb
             }
 
             this.cursorCache = new DisposableCache<IChainStateCursor>(1024,
-                createFunc: () => new ChainStateCursor(false, this.jetDatabase, this.jetInstance, globalsTableId, headersTableId, unspentTxTableId, blockSpentTxesTableId, blockUnmintedTxesTableId),
+                createFunc: () => new ChainStateCursor(this.jetDatabase, this.jetInstance, globalsTableId, headersTableId, unspentTxTableId, blockSpentTxesTableId, blockUnmintedTxesTableId),
                 prepareAction: cursor =>
                 {
                     // rollback any open transaction before returning the cursor to the cache
