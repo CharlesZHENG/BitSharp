@@ -26,8 +26,9 @@ namespace BitSharp.Core.Workers
         private readonly AverageMeasure txCountMeasure = new AverageMeasure();
         private readonly AverageMeasure txRateMeasure = new AverageMeasure();
         private readonly DurationMeasure totalDurationMeasure = new DurationMeasure();
-        private readonly DurationMeasure pruneIndexDurationMeasure = new DurationMeasure();
-        private readonly DurationMeasure pruneBlocksDurationMeasure = new DurationMeasure();
+        private readonly DurationMeasure pruneBlockTxesDurationMeasure = new DurationMeasure();
+        private readonly DurationMeasure pruneTxIndexDurationMeasure = new DurationMeasure();
+        private readonly DurationMeasure pruneSpentTxesDurationMeasure = new DurationMeasure();
 
         //TODO
         private ChainBuilder prunedChain;
@@ -51,8 +52,9 @@ namespace BitSharp.Core.Workers
             this.txCountMeasure.Dispose();
             this.txRateMeasure.Dispose();
             this.totalDurationMeasure.Dispose();
-            this.pruneIndexDurationMeasure.Dispose();
-            this.pruneBlocksDurationMeasure.Dispose();
+            this.pruneBlockTxesDurationMeasure.Dispose();
+            this.pruneTxIndexDurationMeasure.Dispose();
+            this.pruneSpentTxesDurationMeasure.Dispose();
         }
 
         public PruningMode Mode { get; set; }
@@ -96,7 +98,7 @@ namespace BitSharp.Core.Workers
                 if (direction > 0)
                 {
                     // prune the block
-                    this.PruneBlock(mode, processedChain, chainedHeader);
+                    this.PruneBlock(mode, processedChain, chainedHeader).Wait();
 
                     // track pruned block
                     this.prunedChain.AddBlock(chainedHeader);
@@ -149,8 +151,9 @@ namespace BitSharp.Core.Workers
 - tx count:       {3,8:N0}
 - prune blocks:   {4,12:N3}ms
 - prune index:    {5,12:N3}ms
-- TOTAL:          {6,12:N3}ms"
-                        .Format2(lastLogHeight, chainedHeader.Height, txRateMeasure.GetAverage(), txCountMeasure.GetAverage(), pruneBlocksDurationMeasure.GetAverage().TotalMilliseconds, pruneIndexDurationMeasure.GetAverage().TotalMilliseconds, totalDurationMeasure.GetAverage().TotalMilliseconds));
+- prune spent:    {6,12:N3}ms
+- TOTAL:          {7,12:N3}ms"
+                        .Format2(lastLogHeight, chainedHeader.Height, txRateMeasure.GetAverage(), txCountMeasure.GetAverage(), pruneBlockTxesDurationMeasure.GetAverage().TotalMilliseconds, pruneTxIndexDurationMeasure.GetAverage().TotalMilliseconds, pruneSpentTxesDurationMeasure.GetAverage().TotalMilliseconds, totalDurationMeasure.GetAverage().TotalMilliseconds));
 
                     lastLogHeight = chainedHeader.Height + 1;
                 });
@@ -161,14 +164,15 @@ namespace BitSharp.Core.Workers
                 this.chainStateWorker.NotifyAndStart();
         }
 
-        private void PruneBlock(PruningMode mode, Chain chain, ChainedHeader pruneBlock)
+        private async Task PruneBlock(PruningMode mode, Chain chain, ChainedHeader pruneBlock)
         {
             //TODO the replay information about blocks that have been rolled back also needs to be pruned (UnmintedTx)
 
             var txCount = 0;
             var totalStopwatch = Stopwatch.StartNew();
-            var pruneIndexStopwatch = new Stopwatch();
-            var pruneBlocksStopwatch = new Stopwatch();
+            var pruneBlockTxesStopwatch = new Stopwatch();
+            var pruneTxIndexStopwatch = new Stopwatch();
+            var pruneSpentTxesStopwatch = new Stopwatch();
 
             // retrieve the spent txes for this block
             BlockSpentTxes spentTxes;
@@ -184,22 +188,22 @@ namespace BitSharp.Core.Workers
             {
                 txCount = spentTxes.Count;
 
-                // begin prune block txes (either merkle prune or delete)
-                pruneBlocksStopwatch.Start();
-                var pruneBlockTxesTask = PruneBlockTxes(mode, chain, pruneBlock, spentTxes);
-                var timerTask = pruneBlockTxesTask.ContinueWith(_ => pruneBlocksStopwatch.Stop());
+                pruneBlockTxesStopwatch.Start();
+                pruneTxIndexStopwatch.Start();
 
-                // prune tx index
-                pruneIndexStopwatch.Time(() =>
-                    PruneTxIndex(mode, chain, pruneBlock, spentTxes));
-
-                // wait for block txes prune to finish
-                pruneBlockTxesTask.Wait();
-                timerTask.Wait();
+                await Task.WhenAll(
+                    // prune block txes (either merkle prune or delete)
+                    PruneBlockTxesAsync(mode, chain, pruneBlock, spentTxes)
+                        .ContinueWith(_ => pruneBlockTxesStopwatch.Stop()),
+                    // prune tx index
+                    PruneTxIndexAsync(mode, chain, pruneBlock, spentTxes)
+                        .ContinueWith(_ => pruneTxIndexStopwatch.Stop())
+                    );
 
                 // remove block spent txes information
                 //TODO should have a buffer on removing this, block txes pruning may need it again if flush doesn't happen
-                PruneBlockSpentTxes(mode, chain, pruneBlock);
+                pruneSpentTxesStopwatch.Time(() =>
+                    PruneBlockSpentTxes(mode, chain, pruneBlock));
             }
             else //if (pruneBlock.Height > 0)
             {
@@ -212,15 +216,16 @@ namespace BitSharp.Core.Workers
             // track stats
             txCountMeasure.Tick(txCount);
             txRateMeasure.Tick((float)(txCount / totalStopwatch.Elapsed.TotalSeconds));
-            pruneIndexDurationMeasure.Tick(pruneIndexStopwatch.Elapsed);
-            pruneBlocksDurationMeasure.Tick(pruneBlocksStopwatch.Elapsed);
+            pruneBlockTxesDurationMeasure.Tick(pruneBlockTxesStopwatch.Elapsed);
+            pruneTxIndexDurationMeasure.Tick(pruneTxIndexStopwatch.Elapsed);
+            pruneSpentTxesDurationMeasure.Tick(pruneSpentTxesStopwatch.Elapsed);
             totalDurationMeasure.Tick(totalStopwatch.Elapsed);
         }
 
-        private Task PruneBlockTxes(PruningMode mode, Chain chain, ChainedHeader pruneBlock, BlockSpentTxes spentTxes)
+        private async Task PruneBlockTxesAsync(PruningMode mode, Chain chain, ChainedHeader pruneBlock, BlockSpentTxes spentTxes)
         {
             if (!mode.HasFlag(PruningMode.BlockTxesPreserveMerkle) && !mode.HasFlag(PruningMode.BlockTxesDestroyMerkle))
-                return Task.FromResult(false); //TODO Task.CompletedTask
+                return;
 
             // create a source of txes to prune sources, for each block
             var pruningQueue = new BufferBlock<Tuple<int, List<int>>>();
@@ -244,29 +249,26 @@ namespace BitSharp.Core.Workers
             pruningQueue.LinkTo(txPruner, new DataflowLinkOptions { PropagateCompletion = true });
 
             // queue spent txes, grouped by block
-            var queueSpentTxes = Task.Run(() =>
+            try
             {
-                try
+                foreach (var spentTxesByBlock in spentTxes.ReadByBlock())
                 {
-                    foreach (var spentTxesByBlock in spentTxes.ReadByBlock())
-                    {
-                        var blockIndex = spentTxesByBlock.Item1;
-                        var txIndices = spentTxesByBlock.Item2.Select(x => x.TxIndex).ToList();
+                    var blockIndex = spentTxesByBlock.Item1;
+                    var txIndices = spentTxesByBlock.Item2.Select(x => x.TxIndex).ToList();
 
-                        pruningQueue.Post(Tuple.Create(blockIndex, txIndices));
-                    }
+                    await pruningQueue.SendAsync(Tuple.Create(blockIndex, txIndices));
                 }
-                finally
-                {
-                    // complete overall pruning queue
-                    pruningQueue.Complete();
-                }
-            });
+            }
+            finally
+            {
+                // complete overall pruning queue
+                pruningQueue.Complete();
+            }
 
-            return txPruner.Completion;
+            await txPruner.Completion;
         }
 
-        private void PruneTxIndex(PruningMode mode, Chain chain, ChainedHeader pruneBlock, BlockSpentTxes spentTxes)
+        private async Task PruneTxIndexAsync(PruningMode mode, Chain chain, ChainedHeader pruneBlock, BlockSpentTxes spentTxes)
         {
             if (!mode.HasFlag(PruningMode.TxIndex))
                 return;
@@ -300,13 +302,13 @@ namespace BitSharp.Core.Workers
 
                 var spentTxesQueue = new BufferBlock<SpentTx>();
                 spentTxesQueue.LinkTo(pruneTxIndex, new DataflowLinkOptions { PropagateCompletion = true });
-                spentTxesQueue.PostAndComplete(spentTxes);
 
-                pruneTxIndex.Completion.Wait();
+                await spentTxesQueue.SendAndCompleteAsync(spentTxes);
+                await pruneTxIndex.Completion;
 
                 // commit all opened cursors on success
-                foreach (var cursor in openedCursors)
-                    cursor.CommitTransaction();
+                Parallel.ForEach(openedCursors, cursor =>
+                    cursor.CommitTransaction());
             }
         }
 
