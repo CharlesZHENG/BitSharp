@@ -54,7 +54,7 @@ namespace BitSharp.Core.Builders
 
         private static TransformManyBlock<Tuple<LoadingTx, int>, LoadedTx> InitLoadTxInputAndReturnLoadedTx(ICoreStorage coreStorage, CancellationToken cancelToken)
         {
-            var txCache = new ConcurrentDictionary<TxLookupKey, Transaction>();
+            var txCache = new ConcurrentDictionary<TxLookupKey, Lazy<Transaction>>();
             return new TransformManyBlock<Tuple<LoadingTx, int>, LoadedTx>(
                 tuple =>
                 {
@@ -70,34 +70,30 @@ namespace BitSharp.Core.Builders
                 new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, MaxDegreeOfParallelism = 64 });
         }
 
-        private static LoadedTx LoadTxInput(ICoreStorage coreStorage, ConcurrentDictionary<TxLookupKey, Transaction> txCache, LoadingTx loadingTx, int inputIndex)
+        private static LoadedTx LoadTxInput(ICoreStorage coreStorage, ConcurrentDictionary<TxLookupKey, Lazy<Transaction>> txCache, LoadingTx loadingTx, int inputIndex)
         {
             var txIndex = loadingTx.TxIndex;
             var transaction = loadingTx.Transaction;
             var chainedHeader = loadingTx.ChainedHeader;
 
+            // load previous transaction for this input, unless this is a coinbase transaction
             if (!loadingTx.IsCoinbase)
             {
                 var prevOutputTxKey = loadingTx.PrevOutputTxKeys[inputIndex];
 
-                // load previous transactions for each input, unless this is a coinbase transaction
                 var input = transaction.Inputs[inputIndex];
                 var inputPrevTxHash = input.PreviousTxOutputKey.TxHash;
 
-                Transaction inputPrevTx;
-                if (txCache.TryGetValue(prevOutputTxKey, out inputPrevTx))
-                {
-                    if (input.PreviousTxOutputKey.TxHash != inputPrevTx.Hash)
-                        throw new Exception("TODO");
-                }
-                else if (coreStorage.TryGetTransaction(prevOutputTxKey.BlockHash, prevOutputTxKey.TxIndex, out inputPrevTx))
-                {
-                    if (input.PreviousTxOutputKey.TxHash != inputPrevTx.Hash)
-                        throw new Exception("TODO");
+                var inputPrevTx = txCache.GetOrAdd(prevOutputTxKey, new Lazy<Transaction>(() =>
+                    {
+                        Transaction tx;
+                        if (coreStorage.TryGetTransaction(prevOutputTxKey.BlockHash, prevOutputTxKey.TxIndex, out tx))
+                            return tx;
+                        else
+                            throw new MissingDataException(prevOutputTxKey.BlockHash);
+                    })).Value;
 
-                    txCache[prevOutputTxKey] = inputPrevTx;
-                }
-                else
+                if (input.PreviousTxOutputKey.TxHash != inputPrevTx.Hash)
                     throw new Exception("TODO");
 
                 if (loadingTx.InputTxes.TryComplete(inputIndex, inputPrevTx))
