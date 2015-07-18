@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace BitSharp.Core.Builders
@@ -308,13 +309,13 @@ namespace BitSharp.Core.Builders
             });
         }
 
-        public void ApplyChanges()
+        public async Task ApplyChangesAsync()
         {
             if (!inTransaction || changesApplied)
                 throw new InvalidOperationException();
 
             unspentTxes.WorkQueue.Complete();
-            utxoApplier.Completion.Wait();
+            await utxoApplier.Completion;
 
             parentCursor.ChainTip = ChainTip;
             parentCursor.UnspentOutputCount = UnspentOutputCount;

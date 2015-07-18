@@ -1,6 +1,7 @@
 ﻿using BitSharp.Common;
 using BitSharp.Core.Storage;
 using System.Diagnostics;
+using System.Threading.Tasks;
 
 namespace BitSharp.Core.Builders
 {
@@ -10,6 +11,6 @@ namespace BitSharp.Core.Builders
 
         void WarmUnspentTx(UInt256 txHash);
 
-        void ApplyChanges();
+        Task ApplyChangesAsync();
     }
 }

@@ -132,7 +132,7 @@ namespace BitSharp.Core.Builders
                 // apply the utxo changes, do not yet commit
                 chainStateCursor.ChainTip = chainedHeader;
                 chainStateCursor.TryAddHeader(chainedHeader);
-                chainStateCursor.ApplyChanges();
+                await chainStateCursor.ApplyChangesAsync();
                 stats.applyUtxoDurationMeasure.Tick(stopwatch.Elapsed);
 
                 // wait for block validation to complete, any exceptions that ocurred will be thrown
