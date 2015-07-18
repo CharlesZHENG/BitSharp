@@ -8,19 +8,20 @@ namespace BitSharp.Esent
 {
     internal class MerkleTreePruningCursor : IMerkleTreePruningCursor
     {
-        private readonly UInt256 blockHash;
+        private readonly int blockIndex;
         private readonly BlockTxesCursor cursor;
 
-        public MerkleTreePruningCursor(UInt256 blockHash, BlockTxesCursor cursor)
+        public MerkleTreePruningCursor(int blockIndex, BlockTxesCursor cursor)
         {
-            this.blockHash = blockHash;
+            this.blockIndex = blockIndex;
             this.cursor = cursor;
-            Api.JetSetCurrentIndex(cursor.jetSession, cursor.blocksTableId, "IX_BlockHashTxIndex");
+            Api.JetSetCurrentIndex(cursor.jetSession, cursor.blocksTableId, "IX_BlockIndexTxIndex");
         }
 
         public bool TryMoveToIndex(int index)
         {
-            Api.MakeKey(cursor.jetSession, cursor.blocksTableId, DbEncoder.EncodeBlockHashTxIndex(blockHash, index), MakeKeyGrbit.NewKey);
+            Api.MakeKey(cursor.jetSession, cursor.blocksTableId, blockIndex, MakeKeyGrbit.NewKey);
+            Api.MakeKey(cursor.jetSession, cursor.blocksTableId, index, MakeKeyGrbit.None);
 
             return Api.TrySeek(cursor.jetSession, cursor.blocksTableId, SeekGrbit.SeekEQ);
         }
@@ -29,14 +30,12 @@ namespace BitSharp.Esent
         {
             if (Api.TryMovePrevious(cursor.jetSession, cursor.blocksTableId))
             {
-                UInt256 recordBlockHash; int txIndex;
-                DbEncoder.DecodeBlockHashTxIndex(Api.RetrieveColumn(cursor.jetSession, cursor.blocksTableId, cursor.blockHashTxIndexColumnId),
-                    out recordBlockHash, out txIndex);
+                var recordBlockIndex = Api.RetrieveColumnAsInt32(cursor.jetSession, cursor.blocksTableId, cursor.blockIndexColumnId).Value;
 
-                if (blockHash != recordBlockHash)
+                if (blockIndex != recordBlockIndex)
                     Api.TryMoveNext(cursor.jetSession, cursor.blocksTableId);
 
-                return blockHash == recordBlockHash;
+                return blockIndex == recordBlockIndex;
             }
             else
             {
@@ -49,14 +48,12 @@ namespace BitSharp.Esent
         {
             if (Api.TryMoveNext(cursor.jetSession, cursor.blocksTableId))
             {
-                UInt256 recordBlockHash; int txIndex;
-                DbEncoder.DecodeBlockHashTxIndex(Api.RetrieveColumn(cursor.jetSession, cursor.blocksTableId, cursor.blockHashTxIndexColumnId),
-                    out recordBlockHash, out txIndex);
+                var recordBlockIndex = Api.RetrieveColumnAsInt32(cursor.jetSession, cursor.blocksTableId, cursor.blockIndexColumnId).Value;
 
-                if (blockHash != recordBlockHash)
+                if (blockIndex != recordBlockIndex)
                     Api.TryMovePrevious(cursor.jetSession, cursor.blocksTableId);
 
-                return blockHash == recordBlockHash;
+                return blockIndex == recordBlockIndex;
             }
             else
             {
@@ -67,16 +64,16 @@ namespace BitSharp.Esent
 
         public MerkleTreeNode ReadNode()
         {
-            var blockHashTxIndexColumn = new BytesColumnValue { Columnid = cursor.blockHashTxIndexColumnId };
+            var blockIndexColumn = new Int32ColumnValue { Columnid = cursor.blockIndexColumnId };
+            var txIndexColumn = new Int32ColumnValue { Columnid = cursor.txIndexColumnId };
             var depthColumn = new Int32ColumnValue { Columnid = cursor.blockDepthColumnId };
             var txHashColumn = new BytesColumnValue { Columnid = cursor.blockTxHashColumnId };
-            Api.RetrieveColumns(cursor.jetSession, cursor.blocksTableId, blockHashTxIndexColumn, depthColumn, txHashColumn);
+            Api.RetrieveColumns(cursor.jetSession, cursor.blocksTableId, blockIndexColumn, txIndexColumn, depthColumn, txHashColumn);
 
-            UInt256 recordBlockHash; int txIndex;
-            DbEncoder.DecodeBlockHashTxIndex(blockHashTxIndexColumn.Value, out recordBlockHash, out txIndex);
-            if (this.blockHash != recordBlockHash)
+            if (this.blockIndex != blockIndexColumn.Value.Value)
                 throw new InvalidOperationException();
 
+            var txIndex = txIndexColumn.Value.Value;
             var depth = depthColumn.Value.Value;
             var txHash = DbEncoder.DecodeUInt256(txHashColumn.Value);
 
@@ -91,13 +88,13 @@ namespace BitSharp.Esent
             if (!node.Pruned)
                 throw new ArgumentException();
 
-            UInt256 recordBlockHash; int txIndex;
-            DbEncoder.DecodeBlockHashTxIndex(Api.RetrieveColumn(cursor.jetSession, cursor.blocksTableId, cursor.blockHashTxIndexColumnId),
-                out recordBlockHash, out txIndex);
+            var recordBlockIndexColumn = new Int32ColumnValue { Columnid = cursor.blockIndexColumnId };
+            var recordTxIndexColumn = new Int32ColumnValue { Columnid = cursor.txIndexColumnId };
+            Api.RetrieveColumns(cursor.jetSession, cursor.blocksTableId, recordBlockIndexColumn, recordTxIndexColumn);
 
-            if (this.blockHash != recordBlockHash)
+            if (this.blockIndex != recordBlockIndexColumn.Value.Value)
                 throw new InvalidOperationException();
-            if (node.Index != txIndex)
+            if (node.Index != recordTxIndexColumn.Value.Value)
                 throw new InvalidOperationException();
 
             using (var jetUpdate = cursor.jetSession.BeginUpdate(cursor.blocksTableId, JET_prep.Replace))
