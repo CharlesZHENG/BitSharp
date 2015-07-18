@@ -16,7 +16,7 @@ namespace BitSharp.Core.Test.Storage
             {
                 new MemoryTestStorageProvider(),
                 new EsentTestStorageProvider(),
-                new LmdbTestStorageProvider(),
+                //new LmdbTestStorageProvider(),
             };
 
         // Run the specified test method against all providers
