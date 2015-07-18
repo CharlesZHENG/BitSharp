@@ -13,7 +13,7 @@ namespace BitSharp.Core.Test
                 txHash: UInt256.ParseHex("00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff"),
                 txOutputIndex: 0x01
             ),
-            scriptSignature: new byte[] { 0x00, 0x01, 0x02, 0x03, 0x04 },
+            scriptSignature: ImmutableArray.Create<byte>(0x00, 0x01, 0x02, 0x03, 0x04),
             sequence: 0x02
         );
 
@@ -22,7 +22,7 @@ namespace BitSharp.Core.Test
         public static readonly TxOutput TRANSACTION_OUTPUT_1 = new TxOutput
         (
             value: 0x01,
-            scriptPublicKey: new byte[] { 0x00, 0x01, 0x02, 0x03, 0x04 }
+            scriptPublicKey: ImmutableArray.Create<byte>(0x00, 0x01, 0x02, 0x03, 0x04)
         );
 
         public static readonly ImmutableArray<byte> TRANSACTION_OUTPUT_1_BYTES = ImmutableArray.Create<byte>(0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05, 0x00, 0x01, 0x02, 0x03, 0x04);

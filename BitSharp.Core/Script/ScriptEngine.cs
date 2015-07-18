@@ -323,12 +323,12 @@ Verifying script for block {0}, transaction {1}, input {2}
             Debug.Assert(inputIndex < tx.Inputs.Length);
 
             // Blank out other inputs' signatures
-            var empty = new byte[0];
+            var empty = ImmutableArray.Create<byte>();
             var newInputs = ImmutableArray.CreateBuilder<TxInput>(tx.Inputs.Length);
             for (var i = 0; i < tx.Inputs.Length; i++)
             {
                 var oldInput = tx.Inputs[i];
-                var newInput = oldInput.With(scriptSignature: i == inputIndex ? scriptPubKey : empty);
+                var newInput = oldInput.With(scriptSignature: i == inputIndex ? scriptPubKey.ToImmutableArray() : empty);
                 newInputs.Add(newInput);
             }
 

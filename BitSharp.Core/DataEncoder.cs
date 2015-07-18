@@ -281,7 +281,7 @@ namespace BitSharp.Core
                     txHash: reader.ReadUInt256(),
                     txOutputIndex: reader.ReadUInt32()
                 ),
-                scriptSignature: reader.ReadVarBytes(),
+                scriptSignature: reader.ReadVarBytes().ToImmutableArray(),
                 sequence: reader.ReadUInt32()
             );
         }
@@ -318,7 +318,7 @@ namespace BitSharp.Core
             return new TxOutput
             (
                 value: reader.ReadUInt64(),
-                scriptPublicKey: reader.ReadVarBytes()
+                scriptPublicKey: reader.ReadVarBytes().ToImmutableArray()
             );
         }
 

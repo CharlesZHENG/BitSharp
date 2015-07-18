@@ -198,7 +198,7 @@ namespace BitSharp.Wallet
                         {
                             var input = tx.Inputs[inputIndex];
                             var prevOutput = loadedTx.GetInputPrevTxOutput(inputIndex);
-                            var prevOutputScriptHash = new UInt256(SHA256Static.ComputeHash(prevOutput.ScriptPublicKey.ToArray()));
+                            var prevOutputScriptHash = new UInt256(SHA256Static.ComputeHash(prevOutput.ScriptPublicKey));
 
                             var chainPosition = ChainPosition.Fake();
                             var entryType = forward ? EnumWalletEntryType.Spend : EnumWalletEntryType.UnSpend;
@@ -210,7 +210,7 @@ namespace BitSharp.Wallet
                     for (var outputIndex = 0; outputIndex < tx.Outputs.Length; outputIndex++)
                     {
                         var output = tx.Outputs[outputIndex];
-                        var outputScriptHash = new UInt256(SHA256Static.ComputeHash(output.ScriptPublicKey.ToArray()));
+                        var outputScriptHash = new UInt256(SHA256Static.ComputeHash(output.ScriptPublicKey));
 
                         var chainPosition = ChainPosition.Fake();
                         var entryType =

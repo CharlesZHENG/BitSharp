@@ -130,7 +130,7 @@ namespace BitSharp.Core.Script
                             txHash: UInt256.Zero,
                             txOutputIndex: 0
                         ),
-                        scriptSignature: coinbase,
+                        scriptSignature: coinbase.ToImmutableArray(),
                         sequence: 0
                     )
                 ),
@@ -139,7 +139,7 @@ namespace BitSharp.Core.Script
                     new TxOutput
                     (
                         value: 50L * (100 * 1000 * 1000),
-                        scriptPublicKey: CreatePublicKeyScript(publicKey)
+                        scriptPublicKey: CreatePublicKeyScript(publicKey).ToImmutableArray()
                     )
                 ),
                 lockTime: 0
@@ -162,7 +162,7 @@ namespace BitSharp.Core.Script
                             txHash: prevTx.Hash,
                             txOutputIndex: (UInt32)prevInputIndex
                         ),
-                        scriptSignature: new byte[0],
+                        scriptSignature: ImmutableArray.Create<byte>(),
                         sequence: 0
                     )
                 ),
@@ -171,14 +171,14 @@ namespace BitSharp.Core.Script
                     new TxOutput
                     (
                         value: value,
-                        scriptPublicKey: CreatePublicKeyScript(toPublicKey)
+                        scriptPublicKey: CreatePublicKeyScript(toPublicKey).ToImmutableArray()
                     )
                 ),
                 lockTime: 0
             );
 
             // sign the transaction
-            var scriptSignature = CreatePrivateKeyScript(tx, 0, hashType, fromPrivateKey, fromPublicKey);
+            var scriptSignature = CreatePrivateKeyScript(tx, 0, hashType, fromPrivateKey, fromPublicKey).ToImmutableArray();
 
             // add the signature script to the transaction
             tx = tx.With(Inputs: ImmutableArray.Create(tx.Inputs[0].With(scriptSignature: scriptSignature)));

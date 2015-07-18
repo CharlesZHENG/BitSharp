@@ -1,5 +1,7 @@
 ﻿using System;
+using System.Collections.Immutable;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 
 namespace BitSharp.Common
@@ -14,6 +16,12 @@ namespace BitSharp.Common
             var sha256 = GetSHA256();
             return sha256.ComputeHash(buffer);
         }
+        
+        public static byte[] ComputeHash(ImmutableArray<byte> buffer)
+        {
+            var sha256 = GetSHA256();
+            return sha256.ComputeHash(buffer.ToArray());
+        }
 
         public static byte[] ComputeDoubleHash(byte[] buffer)
         {
@@ -25,6 +33,12 @@ namespace BitSharp.Common
         {
             var sha256 = GetSHA256();
             return sha256.ComputeHash(sha256.ComputeHash(inputStream));
+        }
+
+        public static byte[] ComputeDoubleHash(ImmutableArray<byte> buffer)
+        {
+            var sha256 = GetSHA256();
+            return sha256.ComputeHash(sha256.ComputeHash(buffer.ToArray()));
         }
 
         private static SHA256Managed GetSHA256()

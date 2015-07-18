@@ -128,9 +128,9 @@ namespace BitSharp.Core.Test.Script
                 var input = tx.Inputs[inputIndex];
                 var prevOutput = txLookup[input.PreviousTxOutputKey.TxHash].Outputs[input.PreviousTxOutputKey.TxOutputIndex.ToIntChecked()];
 
-                var hashType = GetHashTypeFromScriptSig(input.ScriptSignature);
+                var hashType = GetHashTypeFromScriptSig(input.ScriptSignature.ToArray());
 
-                var actual = scriptEngine.TxSignature(prevOutput.ScriptPublicKey, tx, inputIndex, hashType);
+                var actual = scriptEngine.TxSignature(prevOutput.ScriptPublicKey.ToArray(), tx, inputIndex, hashType);
                 CollectionAssert.AreEqual(expectedSignatures[inputIndex].ToList(), actual.ToList());
             }
         }
@@ -144,12 +144,13 @@ namespace BitSharp.Core.Test.Script
                 var input = tx.Inputs[inputIndex];
                 var prevOutput = txLookup[input.PreviousTxOutputKey.TxHash].Outputs[input.PreviousTxOutputKey.TxOutputIndex.ToIntChecked()];
 
-                var hashType = GetHashTypeFromScriptSig(input.ScriptSignature);
-                var sig = GetSigFromScriptSig(input.ScriptSignature);
-                var pubKey = GetPubKeyFromScripts(input.ScriptSignature, prevOutput.ScriptPublicKey);
+                var scriptSigBytes = input.ScriptSignature.ToArray();
+                var hashType = GetHashTypeFromScriptSig(scriptSigBytes);
+                var sig = GetSigFromScriptSig(scriptSigBytes);
+                var pubKey = GetPubKeyFromScripts(scriptSigBytes, prevOutput.ScriptPublicKey.ToArray());
 
                 byte[] txSignature, txSignatureHash;
-                var result = scriptEngine.VerifySignature(prevOutput.ScriptPublicKey, tx, sig.ToArray(), pubKey.ToArray(), inputIndex, out hashType, out txSignature, out txSignatureHash);
+                var result = scriptEngine.VerifySignature(prevOutput.ScriptPublicKey.ToArray(), tx, sig.ToArray(), pubKey.ToArray(), inputIndex, out hashType, out txSignature, out txSignatureHash);
 
                 Assert.AreEqual(expectedHashTypes[inputIndex], hashType);
                 CollectionAssert.AreEqual(expectedSignatures[inputIndex].ToList(), txSignature.ToList());
@@ -169,7 +170,7 @@ namespace BitSharp.Core.Test.Script
 
                 var script = GetScriptFromInputPrevOutput(input, prevOutput);
 
-                var result = scriptEngine.VerifyScript(UInt256.Zero /*blockHash*/, -1 /*txIndex*/, prevOutput.ScriptPublicKey.ToArray(), tx, inputIndex, script.ToArray());
+                var result = scriptEngine.VerifyScript(UInt256.Zero /*blockHash*/, -1 /*txIndex*/, prevOutput.ScriptPublicKey.ToArray(), tx, inputIndex, script);
 
                 Assert.IsTrue(result);
             }
@@ -202,7 +203,7 @@ namespace BitSharp.Core.Test.Script
 
         private static byte[] GetScriptFromInputPrevOutput(TxInput input, TxOutput prevOutput)
         {
-            return input.ScriptSignature.Concat(prevOutput.ScriptPublicKey);
+            return input.ScriptSignature.Concat(prevOutput.ScriptPublicKey).ToArray();
         }
     }
 }
