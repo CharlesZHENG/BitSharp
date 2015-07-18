@@ -20,7 +20,8 @@ namespace BitSharp.Core.Test
                 foreach (var subFolder in Directory.EnumerateDirectories(BaseDirectory))
                 {
                     int processId;
-                    var isOtherTestFolder = int.TryParse(Path.GetFileName(subFolder), out processId) && IsProcessRunning(processId);
+                    var isOtherTestFolder = int.TryParse(Path.GetFileName(subFolder), out processId)
+                        && IsProcessRunning(processId) && processId != Process.GetCurrentProcess().Id;
 
                     if (!isOtherTestFolder)
                         DeleteDirectory(subFolder);
