@@ -15,10 +15,11 @@ using System.Threading.Tasks;
 
 namespace BitSharp.Node.Workers
 {
-    internal class PeerWorker : Worker
+    public class PeerWorker : Worker
     {
-        private static readonly int CONNECTED_MAX = 3;
-        private static readonly int PENDING_MAX = 2 * CONNECTED_MAX;
+        public static int ConnectedMax { get; set; } = 3;
+        public static int PendingMax { get { return 2 * ConnectedMax; } }
+
         private static readonly int HANDSHAKE_TIMEOUT_MS = 15000;
 
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
@@ -156,11 +157,11 @@ namespace BitSharp.Node.Workers
             // get peer counts
             var connectedCount = this.connectedPeers.Count;
             var pendingCount = this.pendingPeers.Count;
-            var maxConnections = CONNECTED_MAX; // Math.Max(CONNECTED_MAX + 20, PENDING_MAX);
+            var maxConnections = ConnectedMax; // Math.Max(CONNECTED_MAX + 20, PENDING_MAX);
 
             // if there aren't enough peers connected and there is a pending connection slot available, make another connection
-            if (connectedCount < CONNECTED_MAX
-                 && pendingCount < PENDING_MAX
+            if (connectedCount < ConnectedMax
+                 && pendingCount < PendingMax
                  && (connectedCount + pendingCount) < maxConnections)
             {
                 // get number of connections to attempt
@@ -185,7 +186,7 @@ namespace BitSharp.Node.Workers
             }
 
             // check if there are too many peers connected
-            var overConnected = this.connectedPeers.Count - CONNECTED_MAX;
+            var overConnected = this.connectedPeers.Count - ConnectedMax;
             if (overConnected > 0)
             {
                 foreach (var peer in this.connectedPeers.Take(overConnected))
@@ -197,7 +198,7 @@ namespace BitSharp.Node.Workers
                     DisconnectPeer(peer, null);
                 }
             }
-            
+
             return Task.FromResult(false);
         }
 

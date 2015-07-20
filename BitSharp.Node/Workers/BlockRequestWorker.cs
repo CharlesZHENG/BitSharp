@@ -21,6 +21,8 @@ namespace BitSharp.Node.Workers
         //TODO
         public static string[] SecondaryBlockFolders;
 
+        public static TimeSpan LookAheadTime { get; set; } = TimeSpan.FromSeconds(30);
+
         private static readonly TimeSpan STALE_REQUEST_TIME = TimeSpan.FromMinutes(5);
         private static readonly TimeSpan MISSED_STALE_REQUEST_TIME = TimeSpan.FromSeconds(3);
         private static readonly int MAX_REQUESTS_PER_PEER = 100;
@@ -148,8 +150,7 @@ namespace BitSharp.Node.Workers
             else
             {
                 // determine target chain look ahead
-                var lookAheadTime = TimeSpan.FromSeconds(30);
-                this.targetChainLookAhead = 1 + (int)(lookAheadTime.TotalSeconds / blockProcessingTime.TotalSeconds);
+                this.targetChainLookAhead = 1 + (int)(LookAheadTime.TotalSeconds / blockProcessingTime.TotalSeconds);
 
                 logger.Debug(new string('-', 80));
                 logger.Debug("Look Ahead: {0:#,##0}".Format2(this.targetChainLookAhead));

@@ -497,7 +497,7 @@ namespace BitSharp.Node
         }
     }
 
-    internal sealed class CandidatePeer : IComparable<CandidatePeer>
+    public sealed class CandidatePeer : IComparable<CandidatePeer>
     {
         private readonly IPEndPoint ipEndPoint;
         private readonly DateTime time;
