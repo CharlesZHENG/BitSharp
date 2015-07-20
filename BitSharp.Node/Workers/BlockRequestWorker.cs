@@ -117,7 +117,7 @@ namespace BitSharp.Node.Workers
             this.diagnosticWorker.Stop();
         }
 
-        protected override void WorkAction()
+        protected override Task WorkAction()
         {
             // update rates
             new MethodTimer(false).Time("UpdateLookAhead", () =>
@@ -132,6 +132,8 @@ namespace BitSharp.Node.Workers
             //      target chain blocks will be requested from each peer in non-overlapping chunks
             new MethodTimer(false).Time("SendBlockRequests", () =>
                 SendBlockRequests());
+
+            return Task.FromResult(false);
         }
 
         private void UpdateLookAhead()
@@ -340,7 +342,7 @@ namespace BitSharp.Node.Workers
             }
         }
 
-        private void FlushWorkerMethod(WorkerMethod instance)
+        private Task FlushWorkerMethod(WorkerMethod instance)
         {
             FlushBlock flushBlock;
             while (this.flushQueue.TryDequeue(out flushBlock))
@@ -380,9 +382,11 @@ namespace BitSharp.Node.Workers
                     }
                 }
             }
+
+            return Task.FromResult(false);
         }
 
-        private void DiagnosticWorkerMethod(WorkerMethod instance)
+        private Task DiagnosticWorkerMethod(WorkerMethod instance)
         {
             logger.Info(new string('-', 80));
             logger.Info("allBlockRequests.Count: {0:#,##0}".Format2(this.allBlockRequests.Count));
@@ -395,6 +399,8 @@ namespace BitSharp.Node.Workers
             logger.Info("targetChainLookAhead: {0}".Format2(this.targetChainLookAhead));
             logger.Info("flushQueue.Count: {0}".Format2(this.flushQueue.Count));
             logger.Info("flushBlocks.Count: {0}".Format2(this.flushBlocks.Count));
+
+            return Task.FromResult(false);
         }
 
         private void HandleBlock(Peer peer, Block block)

@@ -1,12 +1,13 @@
 ﻿using System;
+using System.Threading.Tasks;
 
 namespace BitSharp.Common
 {
     public class WorkerMethod : Worker
     {
-        private readonly Action<WorkerMethod> workAction;
+        private readonly Func<WorkerMethod, Task> workAction;
 
-        public WorkerMethod(string name, Action<WorkerMethod> workAction, bool initialNotify, TimeSpan minIdleTime, TimeSpan maxIdleTime)
+        public WorkerMethod(string name, Func<WorkerMethod, Task> workAction, bool initialNotify, TimeSpan minIdleTime, TimeSpan maxIdleTime)
             : base(name, initialNotify, minIdleTime, maxIdleTime)
         {
             this.workAction = workAction;
@@ -14,9 +15,9 @@ namespace BitSharp.Common
 
         public object Data { get; set; }
 
-        protected override void WorkAction()
+        protected override Task WorkAction()
         {
-            this.workAction(this);
+            return this.workAction(this);
         }
     }
 }

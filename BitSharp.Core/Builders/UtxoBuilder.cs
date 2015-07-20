@@ -7,6 +7,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
@@ -21,7 +22,7 @@ namespace BitSharp.Core.Builders
 
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        public ISourceBlock<LoadingTx> CalculateUtxo(IChainStateCursor chainStateCursor, Chain chain, ISourceBlock<BlockTx> blockTxes)
+        public ISourceBlock<LoadingTx> CalculateUtxo(IChainStateCursor chainStateCursor, Chain chain, ISourceBlock<BlockTx> blockTxes, CancellationToken cancelToken = default(CancellationToken))
         {
             var chainedHeader = chain.LastBlock;
             var blockSpentTxes = new BlockSpentTxesBuilder();
@@ -75,7 +76,8 @@ namespace BitSharp.Core.Builders
                     }
 
                     loadingTxes.Post(new LoadingTx(txIndex, tx, chainedHeader, prevOutputTxKeys.MoveToImmutable()));
-                });
+                },
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken });
 
             blockTxes.LinkTo(utxoCalculator, new DataflowLinkOptions { PropagateCompletion = true });
 
@@ -100,7 +102,7 @@ namespace BitSharp.Core.Builders
                         ((IDataflowBlock)loadingTxes).Fault(ex);
                         throw;
                     }
-                });
+                }, cancelToken);
 
             return loadingTxes;
         }

@@ -12,6 +12,7 @@ using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace BitSharp.Wallet
@@ -137,7 +138,7 @@ namespace BitSharp.Wallet
             return this.updatedTracker.WaitForUpdate(timeout);
         }
 
-        protected override void WorkAction()
+        protected override async Task WorkAction()
         {
             using (updatedTracker.TryUpdate(staleAction: NotifyWork))
             using (var chainState = this.coreDaemon.GetChainState())
@@ -155,7 +156,7 @@ namespace BitSharp.Wallet
 
                     try
                     {
-                        ScanBlock(coreDaemon.CoreStorage, chainState, chainedHeader, forward);
+                        await ScanBlock(coreDaemon.CoreStorage, chainState, chainedHeader, forward);
                     }
                     catch (MissingDataException) {/*TODO no wallet state is saved, so missing data will be thrown when started up again due to pruning*/}
                     catch (AggregateException) {/*TODO no wallet state is saved, so missing data will be thrown when started up again due to pruning*/}
@@ -182,7 +183,7 @@ namespace BitSharp.Wallet
             }
         }
 
-        private void ScanBlock(ICoreStorage coreStorage, IChainState chainState, ChainedHeader scanBlock, bool forward, CancellationToken cancelToken = default(CancellationToken))
+        private async Task ScanBlock(ICoreStorage coreStorage, IChainState chainState, ChainedHeader scanBlock, bool forward, CancellationToken cancelToken = default(CancellationToken))
         {
             var replayTxes = BlockReplayer.ReplayBlock(coreStorage, chainState, scanBlock.Hash, forward, cancelToken);
 
@@ -223,7 +224,7 @@ namespace BitSharp.Wallet
                 });
 
             replayTxes.LinkTo(txScanner, new DataflowLinkOptions { PropagateCompletion = true });
-            txScanner.Completion.Wait();
+            await txScanner.Completion;
         }
 
         private void ScanForEntry(ChainPosition chainPosition, EnumWalletEntryType walletEntryType, TxOutput txOutput, UInt256 outputScriptHash)

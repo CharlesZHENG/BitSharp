@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace BitSharp.Core.JsonRpc
 {
@@ -102,14 +103,14 @@ namespace BitSharp.Core.JsonRpc
                     this.httpListener.Stop();
             }
 
-            protected override void WorkAction()
+            protected override async Task WorkAction()
             {
                 try
                 {
-                    var context = this.httpListener.GetContext();
+                    var context = await this.httpListener.GetContextAsync();
 
                     var reader = new StreamReader(context.Request.InputStream, Encoding.UTF8);
-                    var line = reader.ReadToEnd();
+                    var line = await reader.ReadToEndAsync();
 
                     var async = new JsonRpcStateAsync(RpcResultHandler, context.Response) { JsonRpc = line };
                     JsonRpcProcessor.Process(async, this.rpcServer);

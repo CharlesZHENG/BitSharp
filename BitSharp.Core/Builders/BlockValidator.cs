@@ -14,7 +14,7 @@ namespace BitSharp.Core.Builders
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        public static async Task ValidateBlock(ICoreStorage coreStorage, IBlockchainRules rules, ChainedHeader chainedHeader, ISourceBlock<LoadedTx> loadedTxes, CancellationToken cancelToken = default(CancellationToken))
+        public static async Task ValidateBlockAsync(ICoreStorage coreStorage, IBlockchainRules rules, ChainedHeader chainedHeader, ISourceBlock<LoadedTx> loadedTxes, CancellationToken cancelToken = default(CancellationToken))
         {
             // validate merkle root
             var merkleStream = new MerkleStream();

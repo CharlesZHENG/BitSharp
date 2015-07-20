@@ -53,7 +53,7 @@ namespace BitSharp.Core.Test.Builders
             // validate block
             ValidationException ex;
             AssertMethods.AssertAggregateThrows<ValidationException>(() =>
-                BlockValidator.ValidateBlock(coreStorage, rules, invalidChainedHeader, loadedTxes).Wait(), out ex);
+                BlockValidator.ValidateBlockAsync(coreStorage, rules, invalidChainedHeader, loadedTxes).Wait(), out ex);
             Assert.IsTrue(ex.Message.Contains("Merkle root is invalid"));
         }
     }

@@ -62,18 +62,16 @@ namespace BitSharp.Node.Workers
             this.flushWorker.Stop();
         }
 
-        protected override void WorkAction()
+        protected override Task WorkAction()
         {
             var now = DateTime.UtcNow;
             var requestTasks = new List<Task>();
 
             var peerCount = this.localClient.ConnectedPeers.Count;
-            if (peerCount == 0)
-                return;
-
             var targetChainLocal = this.coreDaemon.TargetChain;
-            if (targetChainLocal == null)
-                return;
+
+            if (peerCount == 0 || targetChainLocal == null)
+                return Task.FromResult(false);
 
             var blockLocatorHashes = CalculateBlockLocatorHashes(targetChainLocal.Blocks);
 
@@ -96,9 +94,11 @@ namespace BitSharp.Node.Workers
                         break;
                 }
             }
+
+            return Task.FromResult(false);
         }
 
-        private void FlushWorkerMethod(WorkerMethod instance)
+        private Task FlushWorkerMethod(WorkerMethod instance)
         {
             FlushHeaders flushHeaders;
             while (this.flushQueue.TryDequeue(out flushHeaders))
@@ -115,6 +115,8 @@ namespace BitSharp.Node.Workers
                 DateTime ignore;
                 this.headersRequestsByPeer.TryRemove(peer, out ignore);
             }
+
+            return Task.FromResult(false);
         }
 
         private void HandleBlockHeaders(Peer peer, IImmutableList<BlockHeader> blockHeaders)

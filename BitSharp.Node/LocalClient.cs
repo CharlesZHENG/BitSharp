@@ -18,6 +18,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace BitSharp.Node
 {
@@ -119,10 +120,10 @@ namespace BitSharp.Node
                 if (this.Type != RulesEnum.ComparisonToolTestNet)
                 {
                     // add seed peers
-                    AddSeedPeers();
+                    Task.Run(() => AddSeedPeers());
 
                     // add known peers
-                    AddKnownPeers();
+                    Task.Run(() => AddKnownPeers());
                 }
                 else
                 {
@@ -137,7 +138,7 @@ namespace BitSharp.Node
             Dispose(true);
             GC.SuppressFinalize(this);
         }
-        
+
         protected virtual void Dispose(bool disposing)
         {
             if (!isDisposed && disposing)
@@ -481,7 +482,7 @@ namespace BitSharp.Node
             peer.Sender.SendMessageAsync(Messaging.ConstructMessage("pong", payload.ToArray())).Wait();
         }
 
-        private void StatsWorker(WorkerMethod instance)
+        private Task StatsWorker(WorkerMethod instance)
         {
             logger.Info(
                 "UNCONNECTED: {0,3}, PENDING: {1,3}, CONNECTED: {2,3}, BAD: {3,3}, INCOMING: {4,3}, MESSAGES/SEC: {5,6:#,##0}".Format2(
@@ -491,6 +492,8 @@ namespace BitSharp.Node
                 /*3*/ this.peerWorker.BadPeers.Count,
                 /*4*/ this.peerWorker.IncomingCount,
                 /*5*/ this.messageRateMeasure.GetAverage(TimeSpan.FromSeconds(1))));
+
+            return Task.FromResult(false);
         }
     }
 

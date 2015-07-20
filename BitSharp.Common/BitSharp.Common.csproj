@@ -108,6 +108,7 @@
     <Compile Include="DurationMeasure.cs" />
     <Compile Include="CountMeasure.cs" />
     <Compile Include="RateMeasure.cs" />
+    <Compile Include="ResettableCancelToken.cs" />
     <Compile Include="RIPEMD160Static.cs" />
     <Compile Include="SHA256Static.cs" />
     <Compile Include="SortedValueDictionary.cs" />

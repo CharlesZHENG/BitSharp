@@ -1,6 +1,7 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace BitSharp.Common.Test
 {
@@ -15,7 +16,7 @@ namespace BitSharp.Common.Test
             Action subDispose = () => callCount++;
 
             // initialize worker
-            using (var worker = new MockWorker(workAction: () => { }, subDispose: subDispose))
+            using (var worker = new MockWorker(subDispose: subDispose))
             {
                 // verify subDispose has not been called
                 Assert.AreEqual(0, callCount);
@@ -33,7 +34,7 @@ namespace BitSharp.Common.Test
             Action subStart = () => callCount++;
 
             // initialize worker
-            using (var worker = new MockWorker(workAction: () => { }, subStart: subStart))
+            using (var worker = new MockWorker(subStart: subStart))
             {
                 // verify subStart has not been called
                 Assert.AreEqual(0, callCount);
@@ -54,7 +55,7 @@ namespace BitSharp.Common.Test
             Action subStop = () => callCount++;
 
             // initialize worker
-            using (var worker = new MockWorker(workAction: () => { }, subStop: subStop))
+            using (var worker = new MockWorker(subStop: subStop))
             {
                 // verify subStop has not been called
                 Assert.AreEqual(0, callCount);
@@ -84,7 +85,7 @@ namespace BitSharp.Common.Test
         {
             // prepare workAction call tracking
             var callEvent = new AutoResetEvent(false);
-            Action workAction = () => callEvent.Set();
+            Func<Task> workAction = () => { callEvent.Set(); return Task.FromResult(false); };
 
             // initialize worker
             using (var worker = new MockWorker(workAction))
@@ -121,7 +122,7 @@ namespace BitSharp.Common.Test
         {
             // prepare workAction call tracking
             var callEvent = new AutoResetEvent(false);
-            Action workAction = () => callEvent.Set();
+            Func<Task> workAction = () => { callEvent.Set(); return Task.FromResult(false); };
 
             // initialize worker
             using (var worker = new MockWorker(workAction))
@@ -158,7 +159,7 @@ namespace BitSharp.Common.Test
         {
             // prepare workAction call tracking
             var callEvent = new AutoResetEvent(false);
-            Action workAction = () => callEvent.Set();
+            Func<Task> workAction = () => { callEvent.Set(); return Task.FromResult(false); };
 
             // initialize worker
             using (var worker = new MockWorker(workAction))
@@ -201,7 +202,7 @@ namespace BitSharp.Common.Test
         {
             // prepare workAction call tracking
             var callEvent = new AutoResetEvent(false);
-            Action workAction = () => callEvent.Set();
+            Func<Task> workAction = () => { callEvent.Set(); return Task.FromResult(false); };
 
             // initialize worker
             using (var worker = new MockWorker(workAction))
@@ -234,7 +235,7 @@ namespace BitSharp.Common.Test
                 worker.Start();
 
                 // verify workAction has been called
-                wasCalled = callEvent.WaitOne();
+                wasCalled = callEvent.WaitOne(5000);
                 Assert.IsTrue(wasCalled);
             }
         }
@@ -245,13 +246,15 @@ namespace BitSharp.Common.Test
             // create a work action that will throw a cancellation exception on its first call
             var workedEvent = new AutoResetEvent(false);
             var workCount = 0;
-            Action workAction = () =>
+            Func<Task> workAction = () =>
                 {
                     try
                     {
                         workCount++;
                         if (workCount == 1)
                             throw new OperationCanceledException();
+
+                        return Task.FromResult(false);
                     }
                     finally
                     {
@@ -301,7 +304,7 @@ namespace BitSharp.Common.Test
         {
             // prepare workAction to throw exception
             var expectedException = new Exception();
-            Action workAction = () => { throw expectedException; };
+            Func<Task> workAction = () => { throw expectedException; };
 
             // initialize worker
             using (var worker = new MockWorker(workAction))
@@ -329,7 +332,7 @@ namespace BitSharp.Common.Test
         {
             // prepare workAction to throw exception
             Exception currentException = null;
-            Action workAction = () => { throw currentException; };
+            Func<Task> workAction = () => { throw currentException; };
 
             // initialize worker
             using (var worker = new MockWorker(workAction))

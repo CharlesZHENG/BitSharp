@@ -4,6 +4,7 @@ using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace BitSharp.Common
 {
@@ -15,22 +16,33 @@ namespace BitSharp.Common
     /// </summary>
     public abstract class Worker : IDisposable
     {
+        static Worker()
+        {
+            int workerThreads, completionPortThreads;
+            ThreadPool.GetMinThreads(out workerThreads, out completionPortThreads);
+
+            workerThreads = Math.Max(Environment.ProcessorCount * 40, workerThreads);
+            completionPortThreads = Math.Max(Environment.ProcessorCount * 8, completionPortThreads);
+
+            ThreadPool.SetMinThreads(workerThreads, completionPortThreads);
+        }
+
         // dispose timeout, the worker thread will be aborted if it does not stop in a timely fashion on Dispose
         private static readonly TimeSpan DISPOSE_STOP_TIMEOUT = TimeSpan.FromSeconds(10);
 
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         // the WorkerLoop thread
-        private readonly Thread workerThread;
+        private readonly Task workerTask;
 
         // the start event blocks the worker thread until it has been started
-        private readonly ManualResetEventSlim startEvent;
+        private readonly ResettableCancelToken startToken = new ResettableCancelToken();
 
         // the notify event blocks the worker thread until it has been notified, enforcing the minimum idle time
-        private readonly AutoResetEvent notifyEvent;
+        private readonly ResettableCancelToken notifyToken = new ResettableCancelToken();
 
         // the force notify event blocks the worker thread until work is forced, allowing the mimimum idle time to be bypassed
-        private readonly AutoResetEvent forceNotifyEvent;
+        private readonly ResettableCancelToken forceNotifyToken = new ResettableCancelToken();
 
         // the idle event is set when no work is being performed, either when stopped or when waiting for a notification
         private readonly ManualResetEventSlim idleEvent;
@@ -65,19 +77,18 @@ namespace BitSharp.Common
             this.MinIdleTime = minIdleTime;
             this.MaxIdleTime = maxIdleTime;
 
-            this.workerThread = new Thread(WorkerLoop);
-            this.workerThread.Name = "Worker.{0}.WorkerLoop".Format2(name);
-
-            this.startEvent = new ManualResetEventSlim(false);
-            this.notifyEvent = new AutoResetEvent(initialNotify);
-            this.forceNotifyEvent = new AutoResetEvent(initialNotify);
+            if (initialNotify)
+            {
+                this.forceNotifyToken.Cancel();
+                this.notifyToken.Cancel();
+            }
             this.idleEvent = new ManualResetEventSlim(false);
 
             this.isStarted = false;
             this.isAlive = true;
             this.isDisposed = false;
 
-            this.workerThread.Start();
+            this.workerTask = Task.Factory.StartNew((Func<Task>)WorkerLoop, TaskCreationOptions.LongRunning).Unwrap();
         }
 
         /// <summary>
@@ -154,7 +165,7 @@ namespace BitSharp.Common
                     this.SubStart();
 
                     // unblock the worker loop
-                    this.startEvent.Set();
+                    this.startToken.Cancel();
                 }
             }
         }
@@ -188,12 +199,15 @@ namespace BitSharp.Common
                     // invoke the stop hook for the sub-class
                     this.SubStop();
 
+                    // reset the idle event before forcing into an idle state, so that the forced idle can be properly waited on
+                    this.idleEvent.Reset();
+
                     // block the worker loop on the started event
-                    this.startEvent.Reset();
+                    this.startToken.Reset();
 
                     // unblock the notify events to allow the worker loop to block on the started event
-                    this.forceNotifyEvent.Set();
-                    this.notifyEvent.Set();
+                    this.forceNotifyToken.Cancel();
+                    this.notifyToken.Cancel();
 
                     // wait for the worker to idle
                     bool stopped;
@@ -212,8 +226,8 @@ namespace BitSharp.Common
                     // reset the notify events after idling
                     if (stopped)
                     {
-                        this.forceNotifyEvent.Reset();
-                        this.notifyEvent.Reset();
+                        this.forceNotifyToken.Reset();
+                        this.notifyToken.Reset();
                     }
 
                     return stopped;
@@ -249,27 +263,28 @@ namespace BitSharp.Common
                 this.isAlive = false;
 
                 // unblock all events so that the worker loop can exit
-                this.startEvent.Set();
-                this.notifyEvent.Set();
-                this.forceNotifyEvent.Set();
+                this.startToken.Cancel();
+                this.notifyToken.Cancel();
+                this.forceNotifyToken.Cancel();
 
                 // wait for the worker thread to exit
-                if (this.workerThread.IsAlive)
-                {
-                    this.workerThread.Join(DISPOSE_STOP_TIMEOUT);
+                this.workerTask.Wait();
+                //if (this.workerTask.IsAlive)
+                //{
+                //    this.workerTask.Join(DISPOSE_STOP_TIMEOUT);
 
-                    // terminate if still alive
-                    if (this.workerThread.IsAlive)
-                    {
-                        logger.Warn("Worker thread aborted: {0}".Format2(this.Name));
-                        this.workerThread.Abort();
-                    }
-                }
+                //    // terminate if still alive
+                //    if (this.workerTask.IsAlive)
+                //    {
+                //        logger.Warn("Worker thread aborted: {0}".Format2(this.Name));
+                //        this.workerTask.Abort();
+                //    }
+                //}
 
                 // dispose events
-                this.startEvent.Dispose();
-                this.notifyEvent.Dispose();
-                this.forceNotifyEvent.Dispose();
+                this.startToken.Dispose();
+                this.notifyToken.Dispose();
+                this.forceNotifyToken.Dispose();
                 this.idleEvent.Dispose();
 
                 this.isDisposed = true;
@@ -289,7 +304,7 @@ namespace BitSharp.Common
             CheckDisposed();
 
             // unblock the notify event
-            this.notifyEvent.Set();
+            this.notifyToken.Cancel();
 
             // raise the OnNotifyWork event
             var handler = this.OnNotifyWork;
@@ -316,8 +331,8 @@ namespace BitSharp.Common
                 this.SubForceWork();
 
                 // unblock the force notify and notify events
-                this.forceNotifyEvent.Set();
-                this.notifyEvent.Set();
+                this.forceNotifyToken.Cancel();
+                this.notifyToken.Cancel();
             }
 
             var handler = this.OnNotifyWork;
@@ -328,7 +343,7 @@ namespace BitSharp.Common
         /// <summary>
         /// This method to invoke to perform work, must be implemented by the sub-class.
         /// </summary>
-        protected abstract void WorkAction();
+        protected abstract Task WorkAction();
 
         /// <summary>
         /// An optional hook that will be called when the worker is diposed.
@@ -370,7 +385,7 @@ namespace BitSharp.Common
                 throw new ObjectDisposedException("Worker access when disposed: {0}".Format2(this.Name));
         }
 
-        private void WorkerLoop()
+        private async Task WorkerLoop()
         {
             try
             {
@@ -386,21 +401,28 @@ namespace BitSharp.Common
                     this.idleEvent.Set();
 
                     // wait for execution to start
-                    this.startEvent.Wait();
+                    await Task.Delay(TimeSpan.FromMilliseconds(-1), startToken.CancelToken()).ContinueWith(_ => { });
 
                     // cooperative loop
                     if (!this.isStarted)
                         continue;
 
                     // delay for the requested wait time, unless forced
-                    if (!this.forceNotifyEvent.WaitOne(this.MinIdleTime))
-                    {
-                        // wait for work notification
-                        if (this.MaxIdleTime == TimeSpan.MaxValue)
-                            this.notifyEvent.WaitOne();
-                        else
-                            this.notifyEvent.WaitOne(this.MaxIdleTime - this.MinIdleTime); // subtract time already spent waiting
-                    }
+                    var forced = false;
+                    await Task.Delay(this.MinIdleTime, forceNotifyToken.CancelToken()).ContinueWith(_ => { forced = _.IsCanceled; });
+                    forceNotifyToken.Reset();
+
+                    // wait for work notification, subtract time already spent waiting
+                    TimeSpan notifyDelay;
+                    if (forced)
+                        notifyDelay = TimeSpan.Zero;
+                    else if (this.MaxIdleTime == TimeSpan.MaxValue)
+                        notifyDelay = TimeSpan.FromMilliseconds(-1);
+                    else
+                        notifyDelay = this.MaxIdleTime - this.MinIdleTime;
+
+                    await Task.Delay(notifyDelay, notifyToken.CancelToken()).ContinueWith(_ => { });
+                    notifyToken.Reset();
 
                     // cooperative loop
                     if (!this.isStarted)
@@ -418,7 +440,7 @@ namespace BitSharp.Common
                     workerTime.Start();
                     try
                     {
-                        WorkAction();
+                        await WorkAction();
                     }
                     catch (Exception ex)
                     {

@@ -1,6 +1,7 @@
 ﻿using BitSharp.Common;
 using BitSharp.Core.Storage;
 using NLog;
+using System.Threading.Tasks;
 
 namespace BitSharp.Core.Workers
 {
@@ -16,7 +17,7 @@ namespace BitSharp.Core.Workers
             this.storageManager = storageManager;
         }
 
-        protected override void WorkAction()
+        protected override Task WorkAction()
         {
             logger.Info("Begin defragging");
 
@@ -28,6 +29,8 @@ namespace BitSharp.Core.Workers
                 var chainStateCursor = handle.Item;
                 chainStateCursor.Defragment();
             }
+
+            return Task.FromResult(false);
         }
     }
 }

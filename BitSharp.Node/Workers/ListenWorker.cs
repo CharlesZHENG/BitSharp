@@ -67,25 +67,16 @@ namespace BitSharp.Node.Workers
 
         protected override void SubStop()
         {
+            if (listenSocket != null)
+                listenSocket.Close();
             //DisposeSocket();
         }
 
-        protected override void WorkAction()
+        protected override async Task WorkAction()
         {
             try
             {
-                var newSocketTask = Task.Factory.FromAsync<Socket>(this.listenSocket.BeginAccept(null, null), this.listenSocket.EndAccept);
-
-                while (!(newSocketTask.IsCanceled || newSocketTask.IsFaulted || newSocketTask.IsCompleted))
-                {
-                    // cooperative loop
-                    this.ThrowIfCancelled();
-
-                    newSocketTask.Wait(TimeSpan.FromMilliseconds(200));
-                }
-
-                var newSocket = newSocketTask.Result;
-
+                var newSocket = await Task.Factory.FromAsync<Socket>(this.listenSocket.BeginAccept(null, null), this.listenSocket.EndAccept);
                 this.peerWorker.AddIncomingPeer(newSocket);
             }
             catch (OperationCanceledException) { throw; }

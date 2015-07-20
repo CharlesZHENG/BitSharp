@@ -33,6 +33,7 @@ namespace BitSharp.Core.Builders
         internal readonly DurationMeasure lookAheadDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
         internal readonly DurationMeasure calculateUtxoDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
         internal readonly DurationMeasure applyUtxoDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
+        internal readonly DurationMeasure loadTxesDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
         internal readonly DurationMeasure validateDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
         internal readonly DurationMeasure commitUtxoDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
         internal readonly DurationMeasure addBlockDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
@@ -52,6 +53,7 @@ namespace BitSharp.Core.Builders
             this.lookAheadDurationMeasure.Dispose();
             this.calculateUtxoDurationMeasure.Dispose();
             this.applyUtxoDurationMeasure.Dispose();
+            this.loadTxesDurationMeasure.Dispose();
             this.validateDurationMeasure.Dispose();
             this.commitUtxoDurationMeasure.Dispose();
             this.addBlockDurationMeasure.Dispose();
@@ -88,6 +90,7 @@ namespace BitSharp.Core.Builders
             var lookAheadDuration = lookAheadDurationMeasure.GetAverage();
             var calculateUtxoDuration = calculateUtxoDurationMeasure.GetAverage();
             var applyUtxoDuration = applyUtxoDurationMeasure.GetAverage();
+            var loadTxesDuration = loadTxesDurationMeasure.GetAverage();
             var validateDuration = validateDurationMeasure.GetAverage();
             var commitUtxoDuration = commitUtxoDurationMeasure.GetAverage();
             var addBlockDuration = addBlockDurationMeasure.GetAverage();
@@ -96,7 +99,8 @@ namespace BitSharp.Core.Builders
             statString.AppendLine(GetPipelineStat("UTXO Look-ahead", lookAheadDuration, texReadDuration));
             statString.AppendLine(GetPipelineStat("UTXO Calculation", calculateUtxoDuration, lookAheadDuration));
             statString.AppendLine(GetPipelineStat("UTXO Application", applyUtxoDuration, calculateUtxoDuration));
-            statString.AppendLine(GetPipelineStat("Block Validation", validateDuration, applyUtxoDuration));
+            statString.AppendLine(GetPipelineStat("Load Txes", loadTxesDuration, applyUtxoDuration));
+            statString.AppendLine(GetPipelineStat("Block Validation", validateDuration, loadTxesDuration));
             statString.AppendLine(GetPipelineStat("UTXO Commit", commitUtxoDuration, validateDuration));
             statString.Append(GetPipelineStat("AddBlock Total", addBlockDuration, null));
 

@@ -71,7 +71,7 @@ namespace BitSharp.Core.Builders
                 var blockTxesBuffer = new BufferBlock<BlockTx>();
                 blockTxesBuffer.LinkTo(lookupLoadingTx, new DataflowLinkOptions { PropagateCompletion = true });
 
-                blockTxesBuffer.SendAndCompleteAsync(blockTxes.UsingAsEnumerable().Reverse(), cancelToken);
+                blockTxesBuffer.SendAndCompleteAsync(blockTxes.UsingAsEnumerable().Reverse(), cancelToken).Forget();
 
                 return lookupLoadingTx;
             }
@@ -90,9 +90,9 @@ namespace BitSharp.Core.Builders
 
             var blockTxesBuffer = new BufferBlock<BlockTx>();
             if (replayForward)
-                blockTxesBuffer.SendAndCompleteAsync(blockTxes.UsingAsEnumerable(), cancelToken);
+                blockTxesBuffer.SendAndCompleteAsync(blockTxes.UsingAsEnumerable(), cancelToken).Forget();
             else
-                blockTxesBuffer.SendAndCompleteAsync(blockTxes.UsingAsEnumerable().Reverse(), cancelToken);
+                blockTxesBuffer.SendAndCompleteAsync(blockTxes.UsingAsEnumerable().Reverse(), cancelToken).Forget();
 
             // capture the original block txes order
             var orderedBlockTxes = OrderingBlock.CaptureOrder<BlockTx, LoadingTx, UInt256>(

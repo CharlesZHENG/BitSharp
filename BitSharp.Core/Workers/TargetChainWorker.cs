@@ -7,6 +7,7 @@ using BitSharp.Core.Storage;
 using NLog;
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace BitSharp.Core.Workers
 {
@@ -53,10 +54,11 @@ namespace BitSharp.Core.Workers
             return this.updatedTracker.WaitForUpdate(timeout);
         }
 
-        protected override void WorkAction()
+        protected override Task WorkAction()
         {
             UpdateTargetBlock();
             UpdateTargetChain();
+            return Task.FromResult(false);
         }
 
         private void UpdateTargetBlock()

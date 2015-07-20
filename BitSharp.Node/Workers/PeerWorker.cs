@@ -127,10 +127,10 @@ namespace BitSharp.Node.Workers
         {
         }
 
-        protected override void WorkAction()
+        protected override Task WorkAction()
         {
             if (this.localClient.Type == RulesEnum.ComparisonToolTestNet)
-                return;
+                return Task.FromResult(false);
 
             foreach (var peer in this.connectedPeers)
             {
@@ -197,6 +197,8 @@ namespace BitSharp.Node.Workers
                     DisconnectPeer(peer, null);
                 }
             }
+            
+            return Task.FromResult(false);
         }
 
         private async Task<Peer> ConnectToPeer(IPEndPoint remoteEndPoint, bool isSeed)

@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace BitSharp.Core.Workers
 {
@@ -99,7 +100,7 @@ namespace BitSharp.Core.Workers
             this.blockMissCountMeasure.Dispose();
         }
 
-        protected override void WorkAction()
+        protected override async Task WorkAction()
         {
             using (updatedTracker.TryUpdate(staleAction: NotifyWork))
             {
@@ -128,7 +129,7 @@ namespace BitSharp.Core.Workers
                         var blockStopwatch = Stopwatch.StartNew();
                         if (direction > 0)
                         {
-                            this.chainStateBuilder.AddBlockAsync(chainedHeader, blockTxes.UsingAsEnumerable()).Wait();
+                            await this.chainStateBuilder.AddBlockAsync(chainedHeader, blockTxes.UsingAsEnumerable());
                         }
                         else if (direction < 0)
                         {

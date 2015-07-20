@@ -10,6 +10,7 @@ using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace BitSharp.Core
 {
@@ -41,9 +42,6 @@ namespace BitSharp.Core
 
         public CoreDaemon(IBlockchainRules rules, IStorageManager storageManager)
         {
-            //TODO
-            ThreadPool.SetMinThreads(48, 16);
-
             this.rules = rules;
             this.storageManager = storageManager;
             this.coreStorage = new CoreStorage(storageManager);
@@ -154,7 +152,7 @@ namespace BitSharp.Core
                 {
                     if (isStarted == value)
                         return;
-                    
+
                     if (value)
                         InternalStart();
                     else
@@ -205,7 +203,7 @@ namespace BitSharp.Core
 
         public void Start()
         {
-            controlLock.DoWrite(() =>InternalStart());
+            controlLock.DoWrite(() => InternalStart());
         }
 
         private void InternalStart()
@@ -250,7 +248,7 @@ namespace BitSharp.Core
             return this.chainStateBuilder.ToImmutable();
         }
 
-        private void GcWorker(WorkerMethod instance)
+        private Task GcWorker(WorkerMethod instance)
         {
             logger.Info(
                 string.Join("\n",
@@ -264,9 +262,11 @@ namespace BitSharp.Core
                 /*0*/ (float)GC.GetTotalMemory(false) / 1.MILLION(),
                 /*1*/ (float)Process.GetCurrentProcess().PrivateMemorySize64 / 1.MILLION()
                 ));
+
+            return Task.FromResult(false);
         }
 
-        private void UtxoScanWorker(WorkerMethod instance)
+        private Task UtxoScanWorker(WorkerMethod instance)
         {
             // time taking chain state snapshots
             var stopwatch = Stopwatch.StartNew();
@@ -306,6 +306,8 @@ namespace BitSharp.Core
             //    //    }
             //    //});
             //}
+
+            return Task.FromResult(false);
         }
 
         private void HandleBlockMissed(UInt256 blockHash)

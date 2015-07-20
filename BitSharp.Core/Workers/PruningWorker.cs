@@ -61,7 +61,7 @@ namespace BitSharp.Core.Workers
 
         public int PrunableHeight { get; set; }
 
-        protected override void WorkAction()
+        protected override async Task WorkAction()
         {
             // check if pruning is turned off
             var mode = this.Mode;
@@ -98,7 +98,7 @@ namespace BitSharp.Core.Workers
                 if (direction > 0)
                 {
                     // prune the block
-                    this.PruneBlock(mode, processedChain, chainedHeader).Wait();
+                    await this.PruneBlock(mode, processedChain, chainedHeader);
 
                     // track pruned block
                     this.prunedChain.AddBlock(chainedHeader);

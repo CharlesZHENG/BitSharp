@@ -59,7 +59,7 @@ namespace BitSharp.Core.Builders
             get { return stats; }
         }
 
-        public async Task AddBlockAsync(ChainedHeader chainedHeader, IEnumerable<BlockTx> blockTxes)
+        public async Task AddBlockAsync(ChainedHeader chainedHeader, IEnumerable<BlockTx> blockTxes, CancellationToken cancelToken = default(CancellationToken))
         {
             var stopwatch = Stopwatch.StartNew();
             var txCount = 0;
@@ -83,7 +83,7 @@ namespace BitSharp.Core.Builders
 
                 // begin reading block txes into the buffer
                 var blockTxesBuffer = new BufferBlock<BlockTx>();
-                var sendBlockTxes = blockTxesBuffer.SendAndCompleteAsync(blockTxes);
+                var sendBlockTxes = blockTxesBuffer.SendAndCompleteAsync(blockTxes, cancelToken);
 
                 // track tx/input stats
                 var countBlockTxes = new TransformBlock<BlockTx, BlockTx>(
@@ -102,20 +102,20 @@ namespace BitSharp.Core.Builders
                 blockTxesBuffer.LinkTo(countBlockTxes, new DataflowLinkOptions { PropagateCompletion = true });
 
                 // warm-up utxo entries for block txes
-                var warmedBlockTxes = UtxoLookAhead.LookAhead(countBlockTxes, chainStateCursor);
+                var warmedBlockTxes = UtxoLookAhead.LookAhead(countBlockTxes, chainStateCursor, cancelToken);
 
                 // begin calculating the utxo updates
-                var loadingTxes = utxoBuilder.CalculateUtxo(chainStateCursor, newChain, warmedBlockTxes);
+                var loadingTxes = utxoBuilder.CalculateUtxo(chainStateCursor, newChain, warmedBlockTxes, cancelToken);
 
                 //TODO remove bypass paramter
                 if (rules.BypassPrevTxLoading)
                     loadingTxes = DropAll(loadingTxes);
 
                 // begin loading txes
-                var loadedTxes = TxLoader.LoadTxes(coreStorage, loadingTxes);
+                var loadedTxes = TxLoader.LoadTxes(coreStorage, loadingTxes, cancelToken);
 
                 // begin validating the block
-                var blockValidator = BlockValidator.ValidateBlock(coreStorage, rules, chainedHeader, loadedTxes);
+                var blockValidator = BlockValidator.ValidateBlockAsync(coreStorage, rules, chainedHeader, loadedTxes, cancelToken);
 
                 // wait for block txes to read
                 await blockTxesBuffer.Completion;
@@ -134,6 +134,10 @@ namespace BitSharp.Core.Builders
                 chainStateCursor.TryAddHeader(chainedHeader);
                 await chainStateCursor.ApplyChangesAsync();
                 stats.applyUtxoDurationMeasure.Tick(stopwatch.Elapsed);
+
+                // wait for loaded txes to complete
+                await loadedTxes.Completion;
+                stats.loadTxesDurationMeasure.Tick(stopwatch.Elapsed);
 
                 // wait for block validation to complete, any exceptions that ocurred will be thrown
                 await blockValidator;

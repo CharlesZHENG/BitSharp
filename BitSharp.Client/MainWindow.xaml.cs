@@ -1,4 +1,5 @@
-﻿using BitSharp.Common.ExtensionMethods;
+﻿using BitSharp.Common;
+using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core;
 using BitSharp.Core.Rules;
 using BitSharp.Core.Storage.Memory;
@@ -18,6 +19,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 
 namespace BitSharp.Client
@@ -88,7 +90,7 @@ namespace BitSharp.Client
                 else if (isLocalDev)
                 {
                     cacheSizeMaxBytes = null;
-                    
+
                     // location to store a copy of raw blocks to avoid redownload
                     BlockRequestWorker.SecondaryBlockFolders = new[] { @"Y:\BitSharp.Blocks", @"D:\BitSharp.Blocks\RawBlocks" };
 
@@ -184,9 +186,7 @@ namespace BitSharp.Client
                 this.coreDaemon.Start();
 
                 // start p2p client
-                var startThread = new Thread(() => this.localClient.Start(connectToPeers));
-                startThread.Name = "LocalClient.Start";
-                startThread.Start();
+                this.localClient.Start(connectToPeers);
 
                 this.DataContext = this.viewModel;
             }
