@@ -100,6 +100,9 @@ namespace BitSharp.Common
                 if (handle != null)
                     return handle;
 
+                Throttler.IfElapsed(TimeSpan.FromSeconds(5), () =>
+                    logger.Warn($"Disposable cache ran out of items: {GetType().Name}"));
+
                 if (timeout < TimeSpan.Zero || timeout == TimeSpan.MaxValue)
                 {
                     this.itemFreedEvent.WaitOne();
