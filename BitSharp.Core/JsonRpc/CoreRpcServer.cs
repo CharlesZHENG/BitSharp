@@ -115,13 +115,9 @@ namespace BitSharp.Core.JsonRpc
                     var async = new JsonRpcStateAsync(RpcResultHandler, context.Response) { JsonRpc = line };
                     JsonRpcProcessor.Process(async, this.rpcServer);
                 }
-                catch (HttpListenerException)
-                {
-                    // ignore the exception if the worker is stopped
-                    // HttpListenerException will be thrown on SubStop
-                    if (this.IsStarted)
-                        throw;
-                }
+                // ignore the exception if the worker is stopped
+                // HttpListenerException will be thrown on SubStop
+                catch (HttpListenerException) when (!this.IsStarted) { }
                 finally
                 {
                     // always notify to continue accepting connections

@@ -21,8 +21,7 @@ namespace BitSharp.Common.Test
                 Assert.Fail($"No exception thrown, expected: {typeof(T).Name}");
                 ex = null;
             }
-            catch (UnitTestAssertException) { throw; }
-            catch (Exception actualEx)
+            catch (Exception actualEx) when (!(actualEx is UnitTestAssertException))
             {
                 Assert.IsInstanceOfType(actualEx, typeof(T), $"Unexpected exeption thrown: {actualEx}");
                 ex = (T)actualEx;

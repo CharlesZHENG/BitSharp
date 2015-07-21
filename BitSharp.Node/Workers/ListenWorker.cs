@@ -79,8 +79,7 @@ namespace BitSharp.Node.Workers
                 var newSocket = await Task.Factory.FromAsync<Socket>(this.listenSocket.BeginAccept(null, null), this.listenSocket.EndAccept);
                 this.peerWorker.AddIncomingPeer(newSocket);
             }
-            catch (OperationCanceledException) { throw; }
-            catch (Exception ex)
+            catch (Exception ex) when (!(ex is OperationCanceledException))
             {
                 logger.Warn(ex, "Failed incoming connection.");
             }
