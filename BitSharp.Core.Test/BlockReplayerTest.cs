@@ -41,7 +41,7 @@ namespace BitSharp.Core.Test
                         CollectionAssert.AreEqual(
                             expectedTransactions.Select(x => x.Hash).ToList(),
                             actualTransactions.Select(x => x.Transaction.Hash).ToList(),
-                            "Transactions differ at block {0:#,##0}".Format2(blockHeight));
+                            $"Transactions differ at block {blockHeight:#,##0}");
                     }
                 }
             }

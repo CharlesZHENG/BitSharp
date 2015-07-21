@@ -60,7 +60,7 @@ namespace BitSharp.Common.ExtensionMethods
 
         public static string ToHexDataString(this byte[] value)
         {
-            return string.Format("[{0}]", Bits.ToString(value).Replace("-", ",").ToLower());
+            return $"[{Bits.ToString(value).Replace("-", ",").ToLower()}]";
         }
 
         public static string ToHexDataString(this UInt256 value)
@@ -138,23 +138,6 @@ namespace BitSharp.Common.ExtensionMethods
             {
                 semaphore.Release();
             }
-        }
-
-        public static string Format2(this string value, params object[] args)
-        {
-            var result = string.Format(value, args);
-
-            var commentIndex = 0;
-            while ((commentIndex = result.IndexOf("/*")) >= 0)
-            {
-                var commentEndIndex = result.IndexOf("*/", commentIndex + 2);
-                if (commentEndIndex < 0)
-                    break;
-
-                result = result.Remove(commentIndex, commentEndIndex - commentIndex + 2);
-            }
-
-            return result;
         }
 
         public static int ToIntChecked(this UInt32 value)

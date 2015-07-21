@@ -30,9 +30,9 @@ namespace BitSharp.IntegrationTest
                         if (height + 1 >= count)
                             return;
 
-                        logger.Info("Mining block: {0:N0}, daemon height: {1:N0}".Format2(height + 1, daemon.CoreDaemon.CurrentChain.Height));
+                        logger.Info($"Mining block: {height + 1:N0}, daemon height: {daemon.CoreDaemon.CurrentChain.Height:N0}");
                         daemon.MineAndAddBlock(txCount);
-                        logger.Info("Added block:  {0:N0}, daemon height: {1:N0}".Format2(height + 1, daemon.CoreDaemon.CurrentChain.Height));
+                        logger.Info($"Added block:  {height + 1:N0}, daemon height: {daemon.CoreDaemon.CurrentChain.Height:N0}");
                     }
                 };
 

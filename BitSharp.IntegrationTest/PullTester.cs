@@ -44,7 +44,7 @@ namespace BitSharp.IntegrationTest
 
                 // log startup
                 var logger = LogManager.GetCurrentClassLogger();
-                logger.Info("Starting up: {0}".Format2(DateTime.Now));
+                logger.Info($"Starting up: {DateTime.Now}");
 
                 // add storage module
                 kernel.Load(new MemoryStorageModule());
@@ -79,7 +79,7 @@ namespace BitSharp.IntegrationTest
                         var javaProcessInfo = new ProcessStartInfo
                         {
                             FileName = javaPath,
-                            Arguments = @"-jar pull-tests.jar {0} {1} {2}".Format2(tempFile, runLargeReorgs, port),
+                            Arguments = $"-jar pull-tests.jar {tempFile} {runLargeReorgs} {port}",
                             UseShellExecute = false,
                             RedirectStandardOutput = true,
                             RedirectStandardError = true
@@ -96,7 +96,7 @@ namespace BitSharp.IntegrationTest
 
                             javaProcess.WaitForExit();
 
-                            logger.Info("Pull Tester Result: {0}".Format2(javaProcess.ExitCode));
+                            logger.Info($"Pull Tester Result: {javaProcess.ExitCode}");
 
                             Assert.Inconclusive("TODO");
                             Assert.AreEqual(0, javaProcess.ExitCode);

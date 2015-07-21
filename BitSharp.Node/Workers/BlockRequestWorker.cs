@@ -153,8 +153,8 @@ namespace BitSharp.Node.Workers
                 this.targetChainLookAhead = 1 + (int)(LookAheadTime.TotalSeconds / blockProcessingTime.TotalSeconds);
 
                 logger.Debug(new string('-', 80));
-                logger.Debug("Look Ahead: {0:#,##0}".Format2(this.targetChainLookAhead));
-                logger.Debug("Block Request Count: {0:#,##0}".Format2(this.allBlockRequests.Count));
+                logger.Debug($"Look Ahead: {this.targetChainLookAhead:#,##0}");
+                logger.Debug($"Block Request Count: {this.allBlockRequests.Count:#,##0}");
                 logger.Debug(new string('-', 80));
             }
         }
@@ -390,16 +390,16 @@ namespace BitSharp.Node.Workers
         private Task DiagnosticWorkerMethod(WorkerMethod instance)
         {
             logger.Info(new string('-', 80));
-            logger.Info("allBlockRequests.Count: {0:#,##0}".Format2(this.allBlockRequests.Count));
-            logger.Info("blockRequestsByPeer.InnerCount: {0:#,##0}".Format2(this.blockRequestsByPeer.Sum(x => x.Value.Count)));
-            logger.Info("targetChainQueue.Count: {0:#,##0}".Format2(this.targetChainQueue.Count));
-            logger.Info("targetChainQueueIndex: {0:#,##0}".Format2(this.targetChainQueueIndex));
-            logger.Info("blockRequestDurationMeasure: {0}".Format2(this.blockRequestDurationMeasure.GetAverage()));
-            logger.Info("blockDownloadRateMeasure: {0}/s".Format2(this.blockDownloadRateMeasure.GetAverage(TimeSpan.FromSeconds(1))));
-            logger.Info("duplicateBlockDownloadCountMeasure: {0}/s".Format2(this.duplicateBlockDownloadCountMeasure.GetCount()));
-            logger.Info("targetChainLookAhead: {0}".Format2(this.targetChainLookAhead));
-            logger.Info("flushQueue.Count: {0}".Format2(this.flushQueue.Count));
-            logger.Info("flushBlocks.Count: {0}".Format2(this.flushBlocks.Count));
+            logger.Info($"allBlockRequests.Count: {this.allBlockRequests.Count:#,##0}");
+            logger.Info($"blockRequestsByPeer.InnerCount: {this.blockRequestsByPeer.Sum(x => x.Value.Count):#,##0}");
+            logger.Info($"targetChainQueue.Count: {this.targetChainQueue.Count:#,##0}");
+            logger.Info($"targetChainQueueIndex: {this.targetChainQueueIndex:#,##0}");
+            logger.Info($"blockRequestDurationMeasure: {this.blockRequestDurationMeasure.GetAverage()}");
+            logger.Info($"blockDownloadRateMeasure: {this.blockDownloadRateMeasure.GetAverage()}/s");
+            logger.Info($"duplicateBlockDownloadCountMeasure: {this.duplicateBlockDownloadCountMeasure.GetCount()}/s");
+            logger.Info($"targetChainLookAhead: {this.targetChainLookAhead}");
+            logger.Info($"flushQueue.Count: {this.flushQueue.Count}");
+            logger.Info($"flushBlocks.Count: {this.flushBlocks.Count}");
 
             return Task.FromResult(false);
         }
@@ -496,9 +496,9 @@ namespace BitSharp.Node.Workers
             var blockFolder = string.Join(Path.DirectorySeparatorChar.ToString(), Enumerable.Range(0, blockHashString.Length / chunkSize).Select(i => blockHashString.Substring(i * chunkSize, chunkSize)).ToArray());
 
             if (height >= 225.THOUSAND() && SecondaryBlockFolders.Length >= 2)
-                return Path.Combine(SecondaryBlockFolders[1], blockFolder, "{0}.blk".Format2(blockHash));
+                return Path.Combine(SecondaryBlockFolders[1], blockFolder, $"{blockHash}.blk");
             else
-                return Path.Combine(SecondaryBlockFolders[0], blockFolder, "{0}.blk".Format2(blockHash));
+                return Path.Combine(SecondaryBlockFolders[0], blockFolder, $"{blockHash}.blk");
         }
 
         private sealed class HeightComparer : IComparer<ChainedHeader>

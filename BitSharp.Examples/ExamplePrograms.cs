@@ -71,9 +71,9 @@ namespace BitSharp.Examples
         {
             foreach (var exampleMethod in GetType().GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.DeclaredOnly))
             {
-                logger.Info(string.Format("Running example: {0}", exampleMethod.Name));
+                logger.Info($"Running example: {exampleMethod.Name}");
                 exampleMethod.Invoke(this, new object[0]);
-                logger.Info(string.Format("Finished running example: {0}", exampleMethod.Name));
+                logger.Info($"Finished running example: {exampleMethod.Name}");
                 logger.Info("-------------");
                 logger.Info("");
             }
@@ -92,7 +92,7 @@ namespace BitSharp.Examples
             using (storageManager)
             {
                 // report core daemon's progress
-                logger.Info(string.Format("Core daemon height: {0:N0}", coreDaemon.CurrentChain.Height));
+                logger.Info($"Core daemon height: {coreDaemon.CurrentChain.Height:N0}");
             }
         }
 
@@ -134,28 +134,28 @@ namespace BitSharp.Examples
                 var unspentTxes = chainState.ReadUnspentTransactions().ToList();
 
                 // report counts
-                logger.Info(string.Format("Chain.Height:                      {0,9:N0}", chainState.Chain.Height));
-                logger.Info(string.Format("ReadUnspentTransactions().Count(): {0,9:N0}", unspentTxes.Count));
-                logger.Info(string.Format("UnspentTxCount:                    {0,9:N0}", chainState.UnspentTxCount));
-                logger.Info(string.Format("UnspentOutputCount:                {0,9:N0}", chainState.UnspentOutputCount));
-                logger.Info(string.Format("TotalTxCount:                      {0,9:N0}", chainState.TotalTxCount));
-                logger.Info(string.Format("TotalInputCount:                   {0,9:N0}", chainState.TotalInputCount));
-                logger.Info(string.Format("TotalOutputCount:                  {0,9:N0}", chainState.TotalOutputCount));
+                logger.Info($"Chain.Height:                      {chainState.Chain.Height,9:N0}");
+                logger.Info($"ReadUnspentTransactions().Count(): {unspentTxes.Count,9:N0}");
+                logger.Info($"UnspentTxCount:                    {chainState.UnspentTxCount,9:N0}");
+                logger.Info($"UnspentOutputCount:                {chainState.UnspentOutputCount,9:N0}");
+                logger.Info($"TotalTxCount:                      {chainState.TotalTxCount,9:N0}");
+                logger.Info($"TotalInputCount:                   {chainState.TotalInputCount,9:N0}");
+                logger.Info($"TotalOutputCount:                  {chainState.TotalOutputCount,9:N0}");
 
                 // look up genesis coinbase output (will be missing)
                 UnspentTx unspentTx;
                 chainState.TryGetUnspentTx(embeddedBlocks.GetBlock(0).Transactions[0].Hash, out unspentTx);
-                logger.Info(string.Format("Genesis coinbase UnspentTx present? {0,9}", unspentTx != null));
+                logger.Info($"Genesis coinbase UnspentTx present? {unspentTx != null,9}");
 
                 // look up block 1 coinbase output
                 chainState.TryGetUnspentTx(embeddedBlocks.GetBlock(1).Transactions[0].Hash, out unspentTx);
-                logger.Info(string.Format("Block 1 coinbase UnspenTx present? {0,9}", unspentTx != null));
-                logger.Info(string.Format("Block 1 coinbase output states:    [{0}]", string.Join(",", unspentTx.OutputStates.Select(x => x.ToString()))));
+                logger.Info($"Block 1 coinbase UnspenTx present? {unspentTx != null,9}");
+                logger.Info($"Block 1 coinbase output states:    [{string.Join(",", unspentTx.OutputStates.Select(x => x.ToString()))}]");
 
                 // look up block 381 list of spent txes
                 BlockSpentTxes spentTxes;
                 chainState.TryGetBlockSpentTxes(381, out spentTxes);
-                logger.Info(string.Format("Block 381 spent txes count:        {0,9:N0}", spentTxes.Count));
+                logger.Info($"Block 381 spent txes count:        {spentTxes.Count,9:N0}");
             }
         }
 

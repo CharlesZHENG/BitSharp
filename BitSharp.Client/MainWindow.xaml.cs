@@ -129,7 +129,7 @@ namespace BitSharp.Client
 
                 // log startup
                 this.logger = LogManager.GetCurrentClassLogger();
-                this.logger.Info("Starting up: {0}".Format2(DateTime.Now));
+                this.logger.Info($"Starting up: {DateTime.Now}");
 
                 var modules = new List<INinjectModule>();
 
@@ -219,7 +219,7 @@ namespace BitSharp.Client
             this.coreDaemon.Dispose();
             this.kernel.Dispose();
 
-            this.logger.Info("Finished shutting down: {0:#,##0.00}s".Format2(stopwatch.Elapsed.TotalSeconds));
+            this.logger.Info($"Finished shutting down: {stopwatch.Elapsed.TotalSeconds:#,##0.00}s");
             LogManager.Flush();
         }
 

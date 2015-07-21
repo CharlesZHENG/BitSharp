@@ -18,13 +18,13 @@ namespace BitSharp.Common.Test
             try
             {
                 action();
-                Assert.Fail("No exception thrown, expected: {0}".Format2(typeof(T).Name));
+                Assert.Fail($"No exception thrown, expected: {typeof(T).Name}");
                 ex = null;
             }
             catch (UnitTestAssertException) { throw; }
             catch (Exception actualEx)
             {
-                Assert.IsInstanceOfType(actualEx, typeof(T), "Unexpected exeption thrown: {0}".Format2(actualEx));
+                Assert.IsInstanceOfType(actualEx, typeof(T), $"Unexpected exeption thrown: {actualEx}");
                 ex = (T)actualEx;
             }
         }
@@ -42,7 +42,7 @@ namespace BitSharp.Common.Test
 
             var innerExceptions = aggEx.Flatten().InnerExceptions;
             Assert.AreEqual(1, innerExceptions.Count);
-            Assert.IsInstanceOfType(innerExceptions[0], typeof(T), "Unexpected exeption thrown: {0}".Format2(innerExceptions[0]));
+            Assert.IsInstanceOfType(innerExceptions[0], typeof(T), $"Unexpected exeption thrown: {innerExceptions[0]}");
 
             ex = (T)innerExceptions[0];
         }

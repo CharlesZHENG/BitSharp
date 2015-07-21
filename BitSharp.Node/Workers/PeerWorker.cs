@@ -99,7 +99,7 @@ namespace BitSharp.Node.Workers
         public void DisconnectPeer(Peer peer, Exception ex)
         {
             if (ex != null)
-                logger.Debug(ex, "Remote peer failed: {0}".Format2(peer.RemoteEndPoint));
+                logger.Debug(ex, $"Remote peer failed: {peer.RemoteEndPoint}");
 
             RaisePeerDisconnected(peer);
 
@@ -149,7 +149,7 @@ namespace BitSharp.Node.Workers
                 // disconnect slow peers
                 if (peer.BlockMissCount >= 5)
                 {
-                    logger.Info("Disconnecting slow peer: {0}".Format2(peer.RemoteEndPoint));
+                    logger.Info($"Disconnecting slow peer: {peer.RemoteEndPoint}");
                     DisconnectPeer(peer, null);
                 }
             }
@@ -194,7 +194,7 @@ namespace BitSharp.Node.Workers
                     // cooperative loop
                     this.ThrowIfCancelled();
 
-                    logger.Debug("Too many peers connected ({0}), disconnecting {1}".Format2(overConnected, peer));
+                    logger.Debug($"Too many peers connected ({overConnected}), disconnecting {peer}");
                     DisconnectPeer(peer, null);
                 }
             }
@@ -220,7 +220,7 @@ namespace BitSharp.Node.Workers
                 }
                 catch (Exception ex)
                 {
-                    logger.Debug(ex, "Could not connect to {0}".Format2(remoteEndPoint));
+                    logger.Debug(ex, $"Could not connect to {remoteEndPoint}");
                     DisconnectPeer(peer, ex);
                     return null;
                 }

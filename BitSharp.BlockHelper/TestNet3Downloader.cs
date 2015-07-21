@@ -31,7 +31,7 @@ namespace BitSharp.BlockHelper
 
                 // log startup
                 var logger = LogManager.GetCurrentClassLogger();
-                logger.Info("Starting up: {0}".Format2(DateTime.Now));
+                logger.Info($"Starting up: {DateTime.Now}");
 
                 // determine local path of BitSharp.BlockHelper project
                 var projectFolder = Environment.CurrentDirectory;
@@ -98,7 +98,7 @@ namespace BitSharp.BlockHelper
                     for (var height = 0; height <= desiredBlockHeight; height++)
                     {
                         if (height % 1000 == 0)
-                            logger.Info("Writing block: {0:#,##0}".Format2(height));
+                            logger.Info($"Writing block: {height:#,##0}");
 
                         var blockHash = testNetChain.Blocks[height].Hash;
 
@@ -106,7 +106,7 @@ namespace BitSharp.BlockHelper
                         if (!coreDaemon.CoreStorage.TryGetBlock(blockHash, out block))
                             throw new Exception();
 
-                        var blockFile = new FileInfo(Path.Combine(blockFolder, "{0:000000}_{1}.blk".Format2(height, block.Hash)));
+                        var blockFile = new FileInfo(Path.Combine(blockFolder, $"{height:000000}_{block.Hash}.blk"));
 
                         using (var stream = new FileStream(blockFile.FullName, FileMode.Create))
                         using (var writer = new BinaryWriter(stream))

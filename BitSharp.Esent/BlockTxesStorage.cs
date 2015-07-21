@@ -573,7 +573,7 @@ namespace BitSharp.Esent
                     int actualPages;
                     Windows8Api.JetResizeDatabase(cursor.jetSession, cursor.blockDbId, 0, out actualPages, Windows81Grbits.OnlyShrink);
 
-                    logger.Info("Finished shrinking block txes database: {0:#,##0} MB".Format2((float)actualPages * SystemParameters.DatabasePageSize / 1.MILLION()));
+                    logger.Info($"Finished shrinking block txes database: {(float)actualPages * SystemParameters.DatabasePageSize / 1.MILLION():#,##0} MB");
                 }
             }
         }

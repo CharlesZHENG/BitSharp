@@ -24,7 +24,7 @@ namespace BitSharp.Core.Test.Storage
         {
             foreach (var provider in testStorageProviders)
             {
-                Debug.WriteLine("Testing provider: {0}".Format2(provider.Name));
+                Debug.WriteLine($"Testing provider: {provider.Name}");
 
                 provider.TestInitialize();
                 try

@@ -67,24 +67,25 @@ namespace BitSharp.Core.Builders
             lock (durationStopwatch)
                 duration = durationStopwatch.Elapsed;
 
-            statString.AppendLine("Chain State Builder Stats");
-            statString.AppendLine("-------------------------");
-            statString.AppendLine("Height:           {0,15:N0}".Format2(Height));
-            statString.AppendLine("Duration:         {0,15}".Format2(
-                "{0:#,#00}:{1:mm':'ss}".Format2(Math.Floor(duration.TotalHours), duration)));
-            statString.AppendLine("-------------------------");
-            statString.AppendLine("Blocks Rate:      {0,15:N0}/s".Format2(blockRateMeasure.GetAverage()));
-            statString.AppendLine("Tx Rate:          {0,15:N0}/s".Format2(txRateMeasure.GetAverage()));
-            statString.AppendLine("Input Rate:       {0,15:N0}/s".Format2(inputRateMeasure.GetAverage()));
-            statString.AppendLine("-------------------------");
-            statString.AppendLine("Txes per block:   {0,15:N0}".Format2(txesPerBlockMeasure.GetAverage()));
-            statString.AppendLine("Inputs per block: {0,15:N0}".Format2(inputsPerBlockMeasure.GetAverage()));
-            statString.AppendLine("-------------------------");
-            statString.AppendLine("Processed Txes:   {0,15:N0}".Format2(TotalTxCount));
-            statString.AppendLine("Processed Inputs: {0,15:N0}".Format2(TotalInputCount));
-            statString.AppendLine("Utx Size:         {0,15:N0}".Format2(UnspentTxCount));
-            statString.AppendLine("Utxo Size:        {0,15:N0}".Format2(UnspentOutputCount));
-            statString.AppendLine("-------------------------");
+            var durationFormatted = $"{Math.Floor(duration.TotalHours):#,#00}:{duration:mm':'ss}";
+
+            statString.AppendLine($"Chain State Builder Stats");
+            statString.AppendLine($"-------------------------");
+            statString.AppendLine($"Height:           {Height,15:N0}");
+            statString.AppendLine($"Duration:         {durationFormatted,15}");
+            statString.AppendLine($"-------------------------");
+            statString.AppendLine($"Blocks Rate:      {blockRateMeasure.GetAverage(),15:N0}/s");
+            statString.AppendLine($"Tx Rate:          {txRateMeasure.GetAverage(),15:N0}/s");
+            statString.AppendLine($"Input Rate:       {inputRateMeasure.GetAverage(),15:N0}/s");
+            statString.AppendLine($"-------------------------");
+            statString.AppendLine($"Txes per block:   {txesPerBlockMeasure.GetAverage(),15:N0}");
+            statString.AppendLine($"Inputs per block: {inputsPerBlockMeasure.GetAverage(),15:N0}");
+            statString.AppendLine($"-------------------------");
+            statString.AppendLine($"Processed Txes:   {TotalTxCount,15:N0}");
+            statString.AppendLine($"Processed Inputs: {TotalInputCount,15:N0}");
+            statString.AppendLine($"Utx Size:         {UnspentTxCount,15:N0}");
+            statString.AppendLine($"Utxo Size:        {UnspentOutputCount,15:N0}");
+            statString.AppendLine($"-------------------------");
 
             var texReadDuration = txesReadDurationMeasure.GetAverage();
             var lookAheadDuration = lookAheadDurationMeasure.GetAverage();

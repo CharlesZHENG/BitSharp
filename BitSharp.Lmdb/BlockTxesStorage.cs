@@ -277,7 +277,7 @@ namespace BitSharp.Lmdb
 
         public void Defragment()
         {
-            logger.Info("BlockTxes database: {0:#,##0} MB".Format2(this.jetInstance.UsedSize / 1.MILLION()));
+            logger.Info($"BlockTxes database: {this.jetInstance.UsedSize / 1.MILLION():#,##0} MB");
         }
     }
 }

@@ -127,7 +127,7 @@ namespace BitSharp.Node.Network
 
             var magic = Bits.ToUInt32(buffer);
             if (magic != Messaging.Magic)
-                throw new Exception(string.Format("Unknown magic bytes {0}", buffer.ToHexNumberString()));
+                throw new Exception($"Unknown magic bytes {buffer.ToHexNumberString()}");
 
             using (var stream = new NetworkStream(this.socket))
             {
@@ -140,7 +140,7 @@ namespace BitSharp.Node.Network
                 stopwatch.Stop();
 
                 if (logger.IsTraceEnabled)
-                    logger.Trace("{2,25} Received message {0,12} in {1,6} ms".Format2(message.Command, stopwatch.ElapsedMilliseconds, this.socket.RemoteEndPoint));
+                    logger.Trace($"{this.socket.RemoteEndPoint,25} Received message {message.Command,12} in {stopwatch.ElapsedMilliseconds,6} ms");
             }
         }
 
@@ -157,7 +157,7 @@ namespace BitSharp.Node.Network
                 payload = reader.ReadBytes(payloadSize.ToIntChecked());
 
                 if (!Messaging.VerifyPayloadChecksum(payloadChecksum, payload))
-                    throw new Exception(string.Format("Checksum failed for {0}", command));
+                    throw new Exception($"Checksum failed for {command}");
 
                 message = new Message
                 (
@@ -310,7 +310,7 @@ namespace BitSharp.Node.Network
 
                 default:
                     {
-                        logger.Warn("Unhandled incoming message: {0}".Format2(message.Command));
+                        logger.Warn($"Unhandled incoming message: {message.Command}");
                     }
                     break;
             }
@@ -318,7 +318,7 @@ namespace BitSharp.Node.Network
             //TODO
             //if (payloadStream.Position != payloadStream.Length)
             //{
-            //    var exMessage = string.Format("Wrong number of bytes read for {0}, parser error: read {1} bytes from a {2} byte payload", message.Command, payloadStream.Position, payloadStream.Length);
+            //    var exMessage = $"Wrong number of bytes read for {message.Command}, parser error: read {payloadStream.Position} bytes from a {payloadStream.Length} byte payload";
             //    Debug.WriteLine(exMessage);
             //    throw new Exception(exMessage);
             //}

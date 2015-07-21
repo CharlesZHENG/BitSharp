@@ -207,7 +207,7 @@ namespace BitSharp.Node
                     }
                     catch (SocketException ex)
                     {
-                        logger.Warn(ex, "Failed to add seed peer {0}".Format2(hostNameOrAddress));
+                        logger.Warn(ex, $"Failed to add seed peer {hostNameOrAddress}");
                     }
                 };
 
@@ -246,7 +246,7 @@ namespace BitSharp.Node
                 count++;
             }
 
-            logger.Info("LocalClients loaded {0} known peers from database".Format2(count));
+            logger.Info($"LocalClients loaded {count} known peers from database");
         }
 
         private void HandlePeerConnected(Peer peer)
@@ -343,7 +343,7 @@ namespace BitSharp.Node
         private void OnTransaction(Transaction transaction)
         {
             if (logger.IsTraceEnabled)
-                logger.Trace("Received transaction {0}".Format2(transaction.Hash));
+                logger.Trace($"Received transaction {transaction.Hash}");
         }
 
         private void OnReceivedAddresses(ImmutableArray<NetworkAddressWithTime> addresses)
@@ -484,14 +484,14 @@ namespace BitSharp.Node
 
         private Task StatsWorker(WorkerMethod instance)
         {
-            logger.Info(
-                "UNCONNECTED: {0,3}, PENDING: {1,3}, CONNECTED: {2,3}, BAD: {3,3}, INCOMING: {4,3}, MESSAGES/SEC: {5,6:#,##0}".Format2(
-                /*0*/ this.peerWorker.UnconnectedPeersCount,
-                /*1*/ this.peerWorker.PendingPeers.Count,
-                /*2*/ this.peerWorker.ConnectedPeers.Count,
-                /*3*/ this.peerWorker.BadPeers.Count,
-                /*4*/ this.peerWorker.IncomingCount,
-                /*5*/ this.messageRateMeasure.GetAverage(TimeSpan.FromSeconds(1))));
+            logger.Info(string.Join(", ",
+                $"UNCONNECTED: {this.peerWorker.UnconnectedPeersCount,3}",
+                $"PENDING: {this.peerWorker.PendingPeers.Count,3}",
+                $"CONNECTED: {this.peerWorker.ConnectedPeers.Count,3}",
+                $"BAD: {this.peerWorker.BadPeers.Count,3}",
+                $"INCOMING: {this.peerWorker.IncomingCount,3}",
+                $"MESSAGES/SEC: {this.messageRateMeasure.GetAverage(),6:#,##0}"
+            ));
 
             return Task.FromResult(false);
         }

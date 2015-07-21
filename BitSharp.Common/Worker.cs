@@ -215,7 +215,7 @@ namespace BitSharp.Common
                     {
                         stopped = this.idleEvent.Wait(timeout.Value);
                         if (!stopped && timeout.Value > TimeSpan.Zero)
-                            logger.Warn("Worker failed to stop: {0}".Format2(this.Name));
+                            logger.Warn($"Worker failed to stop: {this.Name}");
                     }
                     else
                     {
@@ -382,7 +382,7 @@ namespace BitSharp.Common
         private void CheckDisposed()
         {
             if (this.isDisposed)
-                throw new ObjectDisposedException("Worker access when disposed: {0}".Format2(this.Name));
+                throw new ObjectDisposedException($"Worker access when disposed: {this.Name}");
         }
 
         private async Task WorkerLoop()
@@ -458,7 +458,7 @@ namespace BitSharp.Common
                         // worker leaked an exception
                         if (!cancelled)
                         {
-                            logger.Error(ex, "Unhandled worker exception in {0}: ".Format2(this.Name));
+                            logger.Error(ex, $"Unhandled worker exception in {this.Name}: ");
 
                             // notify work error
                             var errorHandler = this.OnWorkError;
@@ -484,13 +484,13 @@ namespace BitSharp.Common
                     {
                         lastReportTime = DateTime.Now;
                         var percentWorkerTime = workerTime.Elapsed.TotalSeconds / totalTime.Elapsed.TotalSeconds;
-                        logger.Debug("{0,55} work time: {1,10:##0.00%}".Format2(this.Name, percentWorkerTime));
+                        logger.Debug($"{this.Name,55} work time: {percentWorkerTime,10:##0.00%}");
                     }
                 }
             }
             catch (Exception ex)
             {
-                logger.Fatal(ex, "Unhandled worker exception in {0}: ".Format2(this.Name));
+                logger.Fatal(ex, $"Unhandled worker exception in {this.Name}: ");
                 throw;
             }
         }

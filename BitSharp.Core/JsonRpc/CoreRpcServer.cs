@@ -91,7 +91,7 @@ namespace BitSharp.Core.JsonRpc
                 if (this.httpListener == null)
                 {
                     this.httpListener = new HttpListener();
-                    this.httpListener.Prefixes.Add("http://localhost:{0}/".Format2(port));
+                    this.httpListener.Prefixes.Add($"http://localhost:{port}/");
                 }
 
                 this.httpListener.Start();
@@ -135,7 +135,7 @@ namespace BitSharp.Core.JsonRpc
                 var result = async.Result;
                 var response = ((HttpListenerResponse)async.AsyncState);
 
-                Debug.WriteLine("result: {0}".Format2(result));
+                Debug.WriteLine($"result: {result}");
 
                 var resultBytes = Encoding.UTF8.GetBytes(result);
 

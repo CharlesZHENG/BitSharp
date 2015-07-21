@@ -64,7 +64,7 @@ namespace BitSharp.Client
             runningTimeTimer.Tick += (sender, e) =>
             {
                 var runningTime = (DateTime.UtcNow - this.startTime);
-                this.RunningTime = "{0:#,#00}:{1:mm':'ss}".Format2(Math.Floor(runningTime.TotalHours), runningTime);
+                this.RunningTime = $"{Math.Floor(runningTime.TotalHours):#,#00}:{runningTime:mm':'ss}";
             };
             runningTimeTimer.Interval = TimeSpan.FromMilliseconds(100);
             runningTimeTimer.Start();

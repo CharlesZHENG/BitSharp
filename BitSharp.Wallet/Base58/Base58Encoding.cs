@@ -83,7 +83,7 @@ namespace BitSharp.Wallet.Base58
             {
                 int digit = Digits.IndexOf(s[i]); //Slow
                 if (digit < 0)
-                    throw new FormatException(string.Format("Invalid Base58 character `{0}` at position {1}", s[i], i));
+                    throw new FormatException($"Invalid Base58 character `{s[i]}` at position {i}");
                 intData = intData * 58 + digit;
             }
 

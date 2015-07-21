@@ -118,7 +118,7 @@ namespace BitSharp.Core.Builders
                         catch (Exception ex)
                         {
                             var aggEx = ex as AggregateException;
-                            logger.Debug("Ignoring script errors in block: {0,9:#,##0}, errors: {1:#,##0}".Format2(chainedHeader.Height, aggEx != null ? aggEx.InnerExceptions.Count : -1));
+                            logger.Debug($"Ignoring script errors in block: {chainedHeader.Height,9:#,##0}, errors: {(aggEx != null ? aggEx.InnerExceptions.Count : -1):#,##0}");
                         }
                     }
                 },
@@ -127,7 +127,7 @@ namespace BitSharp.Core.Builders
 
         private static ValidationException CreateMerkleRootException(ChainedHeader chainedHeader)
         {
-            return new ValidationException(chainedHeader.Hash, "Failing block {0} at height {1}: Merkle root is invalid".Format2(chainedHeader.Hash.ToHexNumberString(), chainedHeader.Height));
+            return new ValidationException(chainedHeader.Hash, $"Failing block {chainedHeader.Hash} at height {chainedHeader.Height}: Merkle root is invalid");
         }
     }
 }

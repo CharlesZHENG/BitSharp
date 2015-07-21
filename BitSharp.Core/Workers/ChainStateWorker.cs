@@ -133,7 +133,7 @@ namespace BitSharp.Core.Workers
                         }
                         else if (direction < 0)
                         {
-                            logger.Info("Rolling back block {0:#,##0}: {1}".Format2(chainedHeader.Height, chainedHeader.Hash));
+                            logger.Info($"Rolling back block {chainedHeader.Height:#,##0}: {chainedHeader.Hash}");
                             this.chainStateBuilder.RollbackBlock(chainedHeader, blockTxes.UsingAsEnumerable());
                         }
                         else
@@ -210,7 +210,7 @@ namespace BitSharp.Core.Workers
         {
             if (this.lastBlockMissHash == null || this.lastBlockMissHash != blockHash)
             {
-                logger.Debug("ChainStateWorker stalled, missing block: {0}".Format2(blockHash));
+                logger.Debug($"ChainStateWorker stalled, missing block: {blockHash}");
 
                 this.lastBlockMissHash = blockHash;
                 this.blockMissCountMeasure.Tick();

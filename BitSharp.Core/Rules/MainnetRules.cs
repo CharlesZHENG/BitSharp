@@ -296,7 +296,7 @@ namespace BitSharp.Core.Rules
                 // ensure that amount being output from transaction isn't greater than amount being input
                 if (txOutputValue > txInputValue)
                 {
-                    throw new ValidationException(chainedHeader.Hash, "Failing tx {0}: Transaction output value is greater than input value".Format2(tx.Hash.ToHexNumberString()));
+                    throw new ValidationException(chainedHeader.Hash, $"Failing tx {tx.Hash}: Transaction output value is greater than input value");
                 }
 
                 // calculate fee value (unspent amount)
@@ -320,7 +320,7 @@ namespace BitSharp.Core.Rules
             var script = txInput.ScriptSignature.Concat(prevTxOutput.ScriptPublicKey);
             if (!scriptEngine.VerifyScript(chainedHeader.Hash, txIndex, prevTxOutput.ScriptPublicKey.ToArray(), tx, txInputIndex, script.ToArray()))
             {
-                logger.Debug("Script did not pass in block: {0}, tx: {1}, {2}, input: {3}".Format2(chainedHeader.Hash, txIndex, tx.Hash, txInputIndex));
+                logger.Debug($"Script did not pass in block: {chainedHeader.Hash}, tx: {txIndex}, {tx.Hash}, input: {txInputIndex}");
                 throw new ValidationException(chainedHeader.Hash);
             }
         }

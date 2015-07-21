@@ -34,7 +34,7 @@ namespace BitSharp.Core.Test
 
             // log startup
             this.logger = LogManager.GetCurrentClassLogger();
-            this.logger.Info("Starting up: {0}".Format2(DateTime.Now));
+            this.logger.Info($"Starting up: {DateTime.Now}");
 
             this.random = new Random();
             this.blockProvider = TestBlockProvider.CreateForRules(rulesType);

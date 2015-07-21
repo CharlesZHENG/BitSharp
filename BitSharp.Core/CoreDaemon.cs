@@ -253,14 +253,9 @@ namespace BitSharp.Core
             logger.Info(
                 string.Join("\n",
                     new string('-', 80),
-                    "GC Memory:      {0,10:#,##0.00} MB",
-                    "Process Memory: {1,10:#,##0.00} MB",
+                    $"GC Memory:      {(float)GC.GetTotalMemory(false) / 1.MILLION(),10:#,##0.00} MB",
+                    $"Process Memory: {(float)Process.GetCurrentProcess().PrivateMemorySize64 / 1.MILLION(),10:#,##0.00} MB",
                     new string('-', 80)
-                )
-                .Format2
-                (
-                /*0*/ (float)GC.GetTotalMemory(false) / 1.MILLION(),
-                /*1*/ (float)Process.GetCurrentProcess().PrivateMemorySize64 / 1.MILLION()
                 ));
 
             return Task.FromResult(false);
@@ -276,7 +271,7 @@ namespace BitSharp.Core
                 chainStateHeight = chainState.Chain.Height;
             }
             stopwatch.Stop();
-            logger.Info("GetChainState at {0:#,##0}: {1:#,##0.00}s".Format2(chainStateHeight, stopwatch.Elapsed.TotalSeconds));
+            logger.Info($"GetChainState at {chainStateHeight:#,##0}: {stopwatch.Elapsed.TotalSeconds:#,##0.00}s");
 
             // time enumerating chain state snapshots
             stopwatch = Stopwatch.StartNew();
@@ -286,7 +281,7 @@ namespace BitSharp.Core
                 chainState.ReadUnspentTransactions().Count();
             }
             stopwatch.Stop();
-            logger.Info("Enumerate chain state at {0:#,##0}: {1:#,##0.00}s".Format2(chainStateHeight, stopwatch.Elapsed.TotalSeconds));
+            logger.Info($"Enumerate chain state at {chainStateHeight:#,##0}: {stopwatch.Elapsed.TotalSeconds:#,##0.00}s");
 
             //using (var chainStateLocal = this.GetChainState())
             //{

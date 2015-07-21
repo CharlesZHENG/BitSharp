@@ -144,16 +144,16 @@ namespace BitSharp.Core.Workers
                 // log pruning stats periodically
                 Throttler.IfElapsed(TimeSpan.FromSeconds(15), () =>
                 {
-                    logger.Info(
-@"Pruned from block {0:N0} to {1:N0}:
-- avg tx rate:    {2,8:N0}/s
-- per block stats:
-- tx count:       {3,8:N0}
-- prune blocks:   {4,12:N3}ms
-- prune index:    {5,12:N3}ms
-- prune spent:    {6,12:N3}ms
-- TOTAL:          {7,12:N3}ms"
-                        .Format2(lastLogHeight, chainedHeader.Height, txRateMeasure.GetAverage(), txCountMeasure.GetAverage(), pruneBlockTxesDurationMeasure.GetAverage().TotalMilliseconds, pruneTxIndexDurationMeasure.GetAverage().TotalMilliseconds, pruneSpentTxesDurationMeasure.GetAverage().TotalMilliseconds, totalDurationMeasure.GetAverage().TotalMilliseconds));
+                    logger.Info(string.Join(Environment.NewLine,
+                        $"Pruned from block {lastLogHeight:N0} to {chainedHeader.Height:N0}:",
+                        $"- avg tx rate:    {txRateMeasure.GetAverage(),8:N0}/s",
+                        $"- per block stats:",
+                        $"- tx count:       {txCountMeasure.GetAverage(),8:N0}",
+                        $"- prune blocks:   {pruneBlockTxesDurationMeasure.GetAverage().TotalMilliseconds,12:N3}ms",
+                        $"- prune index:    {pruneTxIndexDurationMeasure.GetAverage().TotalMilliseconds,12:N3}ms",
+                        $"- prune spent:    {pruneSpentTxesDurationMeasure.GetAverage().TotalMilliseconds,12:N3}ms",
+                        $"- TOTAL:          {totalDurationMeasure.GetAverage().TotalMilliseconds,12:N3}ms"
+                    ));
 
                     lastLogHeight = chainedHeader.Height + 1;
                 });

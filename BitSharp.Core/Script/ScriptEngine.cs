@@ -270,7 +270,7 @@ Verifying script for block {0}, transaction {1}, input {2}
                             // Unknown op
                             else
                             {
-                                var message = string.Format("Invalid operation in tx {0} input {1}: {2} {3}", tx.Hash.ToHexNumberString(), inputIndex, new[] { opByte }.ToHexNumberString(), OpName(opByte));
+                                var message = $"Invalid operation in tx {tx.Hash} input {inputIndex}: {new[] { opByte }.ToHexNumberString()} {OpName(opByte)}";
                                 //logger.Warn(message);
                                 throw new Exception(message);
                             }
@@ -377,7 +377,7 @@ Verifying script for block {0}, transaction {1}, input {2}
         {
             if (op >= (int)ScriptOp.OP_PUSHBYTES1 && op <= (int)ScriptOp.OP_PUSHBYTES75)
             {
-                return string.Format("OP_PUSHBYTES{0}", op);
+                return $"OP_PUSHBYTES{op}";
             }
             else
             {

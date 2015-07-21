@@ -189,7 +189,7 @@ namespace BitSharp.Node.Network
                         stopwatch.Stop();
 
                         if (logger.IsTraceEnabled)
-                            logger.Trace("Sent {0} in {1} ms\nPayload: {2}".Format2(message.Command, stopwatch.ElapsedMilliseconds, message.Payload.ToArray().ToHexDataString()));
+                            logger.Trace($"Sent {message.Command} in {stopwatch.ElapsedMilliseconds} ms\nPayload: {message.Payload.ToArray().ToHexDataString()}");
                     }
                 });
             }

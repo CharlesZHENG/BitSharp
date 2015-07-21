@@ -44,7 +44,7 @@ namespace BitSharp.Core.Test
 
             // log startup
             this.logger = LogManager.GetCurrentClassLogger();
-            this.logger.Info("Starting up: {0}".Format2(DateTime.Now));
+            this.logger.Info($"Starting up: {DateTime.Now}");
 
             // initialize test blocks
             this.testBlocks = new TestBlocks(genesisBlock);
@@ -153,7 +153,7 @@ namespace BitSharp.Core.Test
         public Block AddBlock(Block block)
         {
             if (!this.coreStorage.TryAddBlock(block))
-                Assert.Fail("Failed to store block: {0}".Format2(block.Hash));
+                Assert.Fail($"Failed to store block: {block.Hash}");
 
             return block;
         }

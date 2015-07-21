@@ -46,7 +46,7 @@ namespace BitSharp.Common
             public ISourceBlock<TCombine> ApplyOrder(ISourceBlock<TCombine> source, Func<TCombine, TKey> keyFunc, CancellationToken cancelToken = default(CancellationToken))
             {
                 if (sorted)
-                    throw new InvalidOperationException("{0} has already been sorted.".Format2(GetType().Name));
+                    throw new InvalidOperationException($"{GetType().Name} has already been sorted.");
 
                 // sort items back into original order
                 var pendingItems = new Dictionary<TKey, TCombine>();

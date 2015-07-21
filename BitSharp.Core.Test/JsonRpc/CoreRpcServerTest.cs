@@ -41,7 +41,7 @@ namespace BitSharp.Core.Test.JsonRpc
                         });
                     var jsonRequestBytes = Encoding.UTF8.GetBytes(jsonRequest);
 
-                    var request = (HttpWebRequest)WebRequest.Create("http://localhost:{0}".Format2(port));
+                    var request = (HttpWebRequest)WebRequest.Create($"http://localhost:{port}");
                     request.Method = WebRequestMethods.Http.Post;
                     using (var requestStream = request.GetRequestStream())
                     {

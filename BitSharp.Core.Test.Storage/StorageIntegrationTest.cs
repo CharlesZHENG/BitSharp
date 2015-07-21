@@ -54,7 +54,7 @@ namespace BitSharp.Core.Test.Storage
                 var expectedUtxoHashes = new List<UInt256>();
                 for (var blockIndex = 0; blockIndex < blocks.Count; blockIndex++)
                 {
-                    Debug.WriteLine("Adding: {0:N0}".Format2(blockIndex));
+                    Debug.WriteLine($"Adding: {blockIndex:N0}");
 
                     var block = blocks[blockIndex];
                     var chainedHeader = new ChainedHeader(block.Header, blockIndex, 0);
@@ -76,7 +76,7 @@ namespace BitSharp.Core.Test.Storage
                 // roll utxo backwards and validate its state at each step along the way
                 for (var blockIndex = blocks.Count - 1; blockIndex >= 1; blockIndex--)
                 {
-                    Debug.WriteLine("Rolling back: {0:N0}".Format2(blockIndex));
+                    Debug.WriteLine($"Rolling back: {blockIndex:N0}");
 
                     var block = blocks[blockIndex];
                     var chainedHeader = new ChainedHeader(block.Header, blockIndex, 0);
