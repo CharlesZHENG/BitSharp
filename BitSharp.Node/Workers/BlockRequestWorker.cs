@@ -215,42 +215,35 @@ namespace BitSharp.Node.Workers
                 }
             }
 
-            // reset target queue index
-            this.targetChainQueueIndex = 0;
-
             // get blocks from secondary source, if specified
             if (SecondaryBlockFolders != null && SecondaryBlockFolders.Length > 0)
             {
-                var getBlockTasks = new List<Task>();
-
                 var allRetrieved = true;
-                for (; this.targetChainQueueIndex < this.targetChainQueue.Count; this.targetChainQueueIndex++)
-                {
-                    if (!this.IsStarted)
-                        break;
-
-                    var requestBlock = this.targetChainQueue[this.targetChainQueueIndex];
-
-                    if (!this.flushBlocks.Contains(requestBlock.Hash)
-                        && !this.coreStorage.ContainsBlockTxes(requestBlock.Hash))
+                Parallel.ForEach(this.targetChainQueue,
+                    (requestBlock, loopState) =>
                     {
-                        getBlockTasks.Add(Task.Run(() =>
-                            {
-                                var block = GetBlock(requestBlock.Hash);
-                                if (block != null)
-                                    HandleBlock(null, block);
-                                else
-                                    allRetrieved = false;
-                            }));
-                    }
-                }
+                        if (!this.IsStarted)
+                        {
+                            loopState.Stop();
+                            return;
+                        }
 
-                await Task.WhenAll(getBlockTasks.ToArray());
+                        if (!this.flushBlocks.Contains(requestBlock.Hash)
+                            && !this.coreStorage.ContainsBlockTxes(requestBlock.Hash))
+                        {
+                            var block = GetBlock(requestBlock.Hash);
+                            if (block != null)
+                                HandleBlock(null, block);
+                            else
+                                allRetrieved = false;
+                        }
+                    });
 
                 // all blocks retrieved from secondary source
                 // return now so that the target chain queue can be updated
-                if (allRetrieved && this.targetChainQueueIndex >= this.targetChainQueue.Count)
+                if (allRetrieved)
                 {
+                    this.targetChainQueueIndex = this.targetChainQueue.Count;
                     this.NotifyWork();
                     return;
                 }
