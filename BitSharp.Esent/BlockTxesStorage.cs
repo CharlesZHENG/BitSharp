@@ -335,7 +335,7 @@ namespace BitSharp.Esent
                         new JET_INDEXCREATE
                         {
                             cbKeyMost = 255,
-                            grbit = CreateIndexGrbit.IndexUnique | CreateIndexGrbit.IndexDisallowNull,
+                            grbit = CreateIndexGrbit.IndexPrimary | CreateIndexGrbit.IndexDisallowNull,
                             szIndexName = "IX_BlockHash",
                             szKey = "+BlockHash\0\0",
                             cbKey = "+BlockHash\0\0".Length
@@ -357,7 +357,7 @@ namespace BitSharp.Esent
                         new JET_INDEXCREATE
                         {
                             cbKeyMost = 255,
-                            grbit = CreateIndexGrbit.IndexUnique | CreateIndexGrbit.IndexDisallowNull,
+                            grbit = CreateIndexGrbit.IndexPrimary | CreateIndexGrbit.IndexDisallowNull,
                             szIndexName = "IX_BlockIndexTxIndex",
                             szKey = "+BlockIndex\0TxIndex\0\0",
                             cbKey = "+BlockIndex\0TxIndex\0\0".Length
