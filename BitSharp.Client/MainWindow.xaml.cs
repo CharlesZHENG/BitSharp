@@ -17,6 +17,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
+using System.Threading.Tasks;
 using System.Windows;
 
 namespace BitSharp.Client
@@ -165,7 +166,7 @@ namespace BitSharp.Client
                 this.dummyMonitor = new DummyMonitor(this.coreDaemon);
                 if (enableDummyWallet)
                 {
-                    this.dummyMonitor.Start();
+                    Task.Run(() => this.dummyMonitor.Start());
                 }
                 else
                 {
@@ -182,10 +183,10 @@ namespace BitSharp.Client
                 InitializeComponent();
 
                 // start the blockchain daemon
-                this.coreDaemon.Start();
+                Task.Run(() => this.coreDaemon.Start());
 
                 // start p2p client
-                this.localClient.Start(connectToPeers);
+                Task.Run(() => this.localClient.Start(connectToPeers));
 
                 this.DataContext = this.viewModel;
             }
@@ -211,6 +212,7 @@ namespace BitSharp.Client
             this.logger.Info("Shutting down");
 
             // shutdown
+            this.viewModel.Dispose();
             this.localClient.Dispose();
             this.dummyMonitor.Dispose();
             this.coreDaemon.Dispose();

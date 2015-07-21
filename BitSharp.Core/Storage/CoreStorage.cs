@@ -15,10 +15,10 @@ namespace BitSharp.Core.Storage
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly IStorageManager storageManager;
-        private readonly IBlockStorage blockStorage;
-        private readonly IBlockTxesStorage blockTxesStorage;
+        private readonly Lazy<IBlockStorage> blockStorage;
+        private readonly Lazy<IBlockTxesStorage> blockTxesStorage;
 
-        private readonly ConcurrentDictionary<UInt256, ChainedHeader> cachedHeaders;
+        private readonly Lazy<ConcurrentDictionary<UInt256, ChainedHeader>> cachedHeaders;
 
         private readonly ConcurrentDictionary<UInt256, bool> presentBlockTxes = new ConcurrentDictionary<UInt256, bool>();
         private readonly object[] presentBlockTxesLocks = new object[64];
@@ -31,12 +31,17 @@ namespace BitSharp.Core.Storage
                 presentBlockTxesLocks[i] = new object();
 
             this.storageManager = storageManager;
-            this.blockStorage = storageManager.BlockStorage;
-            this.blockTxesStorage = storageManager.BlockTxesStorage;
+            this.blockStorage = new Lazy<IBlockStorage>(() => storageManager.BlockStorage);
+            this.blockTxesStorage = new Lazy<IBlockTxesStorage>(() => storageManager.BlockTxesStorage);
 
-            this.cachedHeaders = new ConcurrentDictionary<UInt256, ChainedHeader>();
-            foreach (var chainedHeader in this.blockStorage.ReadChainedHeaders())
-                this.cachedHeaders[chainedHeader.Hash] = chainedHeader;
+            this.cachedHeaders = new Lazy<ConcurrentDictionary<UInt256, ChainedHeader>>(() =>
+            {
+                var cachedHeaders = new ConcurrentDictionary<UInt256, ChainedHeader>();
+                foreach (var chainedHeader in this.blockStorage.Value.ReadChainedHeaders())
+                    cachedHeaders[chainedHeader.Hash] = chainedHeader;
+
+                return cachedHeaders;
+            });
         }
 
         public void Dispose()
@@ -63,7 +68,7 @@ namespace BitSharp.Core.Storage
 
         public int ChainedHeaderCount { get { return -1; } }
 
-        public int BlockWithTxesCount { get { return this.blockTxesStorage.BlockCount; } }
+        public int BlockWithTxesCount { get { return this.blockTxesStorage.Value.BlockCount; } }
 
         internal IStorageManager StorageManager { get { return this.storageManager; } }
 
@@ -78,27 +83,27 @@ namespace BitSharp.Core.Storage
             if (genesisHeader.Height != 0)
                 throw new ArgumentException("genesisHeader");
 
-            if (this.blockStorage.TryAddChainedHeader(genesisHeader))
+            if (this.blockStorage.Value.TryAddChainedHeader(genesisHeader))
             {
-                this.cachedHeaders[genesisHeader.Hash] = genesisHeader;
+                this.cachedHeaders.Value[genesisHeader.Hash] = genesisHeader;
                 RaiseChainedHeaderAdded(genesisHeader);
             }
         }
 
         public bool TryGetChainedHeader(UInt256 blockHash, out ChainedHeader chainedHeader)
         {
-            if (this.cachedHeaders.TryGetValue(blockHash, out chainedHeader))
+            if (this.cachedHeaders.Value.TryGetValue(blockHash, out chainedHeader))
             {
                 return chainedHeader != null;
             }
-            else if (this.blockStorage.TryGetChainedHeader(blockHash, out chainedHeader))
+            else if (this.blockStorage.Value.TryGetChainedHeader(blockHash, out chainedHeader))
             {
-                this.cachedHeaders[blockHash] = chainedHeader;
+                this.cachedHeaders.Value[blockHash] = chainedHeader;
                 return true;
             }
             else
             {
-                this.cachedHeaders[blockHash] = null;
+                this.cachedHeaders.Value[blockHash] = null;
                 return false;
             }
         }
@@ -150,9 +155,9 @@ namespace BitSharp.Core.Storage
                     if (chainedHeader == null)
                         return false;
 
-                    if (this.blockStorage.TryAddChainedHeader(chainedHeader))
+                    if (this.blockStorage.Value.TryAddChainedHeader(chainedHeader))
                     {
-                        this.cachedHeaders[chainedHeader.Hash] = chainedHeader;
+                        this.cachedHeaders.Value[chainedHeader.Hash] = chainedHeader;
 
                         if (!suppressEvent)
                             RaiseChainedHeaderAdded(chainedHeader);
@@ -183,7 +188,7 @@ namespace BitSharp.Core.Storage
 
         public ChainedHeader FindMaxTotalWork()
         {
-            return this.blockStorage.FindMaxTotalWork();
+            return this.blockStorage.Value.FindMaxTotalWork();
         }
 
         public bool ContainsBlockTxes(UInt256 blockHash)
@@ -197,7 +202,7 @@ namespace BitSharp.Core.Storage
                 }
                 else
                 {
-                    present = this.blockTxesStorage.ContainsBlock(blockHash);
+                    present = this.blockTxesStorage.Value.ContainsBlock(blockHash);
                     this.presentBlockTxes.TryAdd(blockHash, present);
                     return present;
                 }
@@ -214,7 +219,7 @@ namespace BitSharp.Core.Storage
                 ChainedHeader chainedHeader;
                 if (TryGetChainedHeader(block.Hash, out chainedHeader) || TryChainHeader(block.Header, out chainedHeader))
                 {
-                    if (this.blockTxesStorage.TryAddBlockTransactions(block.Hash, block.Transactions))
+                    if (this.blockTxesStorage.Value.TryAddBlockTransactions(block.Hash, block.Transactions))
                     {
                         this.presentBlockTxes[block.Hash] = true;
                         RaiseBlockTxesAdded(chainedHeader);
@@ -257,13 +262,13 @@ namespace BitSharp.Core.Storage
 
         public bool TryGetTransaction(UInt256 blockHash, int txIndex, out Transaction transaction)
         {
-            return this.blockTxesStorage.TryGetTransaction(blockHash, txIndex, out transaction);
+            return this.blockTxesStorage.Value.TryGetTransaction(blockHash, txIndex, out transaction);
         }
 
         public bool TryReadBlockTransactions(UInt256 blockHash, bool requireTransactions, out IEnumerator<BlockTx> blockTxes)
         {
             IEnumerator<BlockTx> rawBlockTxes;
-            if (this.blockTxesStorage.TryReadBlockTransactions(blockHash, out rawBlockTxes))
+            if (this.blockTxesStorage.Value.TryReadBlockTransactions(blockHash, out rawBlockTxes))
             {
                 blockTxes = ReadBlockTransactions(blockHash, requireTransactions, rawBlockTxes);
                 return true;
@@ -317,13 +322,13 @@ namespace BitSharp.Core.Storage
 
         public bool IsBlockInvalid(UInt256 blockHash)
         {
-            return this.blockStorage.IsBlockInvalid(blockHash);
+            return this.blockStorage.Value.IsBlockInvalid(blockHash);
         }
 
         //TODO this should mark any blocks chained on top as invalid
         public void MarkBlockInvalid(UInt256 blockHash)
         {
-            this.blockStorage.MarkBlockInvalid(blockHash);
+            this.blockStorage.Value.MarkBlockInvalid(blockHash);
             RaiseBlockInvalidated(blockHash);
         }
 

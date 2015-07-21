@@ -37,6 +37,7 @@ namespace BitSharp.Core
         private readonly WorkerMethod gcWorker;
         private readonly WorkerMethod utxoScanWorker;
 
+        private bool isInitted;
         private bool isStarted;
         private bool isDisposed;
 
@@ -45,10 +46,6 @@ namespace BitSharp.Core
             this.rules = rules;
             this.storageManager = storageManager;
             this.coreStorage = new CoreStorage(storageManager);
-
-            // write genesis block out to storage
-            this.coreStorage.AddGenesisBlock(this.rules.GenesisChainedHeader);
-            this.coreStorage.TryAddBlock(this.rules.GenesisBlock);
 
             // create chain state builder
             this.chainStateBuilder = new ChainStateBuilder(this.rules, this.coreStorage, this.storageManager);
@@ -208,6 +205,15 @@ namespace BitSharp.Core
 
         private void InternalStart()
         {
+            if (!isInitted)
+            {
+                // write genesis block out to storage
+                this.coreStorage.AddGenesisBlock(this.rules.GenesisChainedHeader);
+                this.coreStorage.TryAddBlock(this.rules.GenesisBlock);
+
+                isInitted = true;
+            }
+
             // startup workers
             //this.utxoScanWorker.Start();
             this.gcWorker.Start();

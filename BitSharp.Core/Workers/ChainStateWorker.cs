@@ -30,7 +30,7 @@ namespace BitSharp.Core.Workers
 
         private readonly TargetChainWorker targetChainWorker;
         private readonly ChainStateBuilder chainStateBuilder;
-        private Chain currentChain;
+        private Lazy<Chain> currentChain;
 
         private int? maxHeight;
 
@@ -45,7 +45,7 @@ namespace BitSharp.Core.Workers
 
             this.targetChainWorker = targetChainWorker;
             this.chainStateBuilder = chainStateBuilder;
-            this.currentChain = this.chainStateBuilder.Chain;
+            this.currentChain = new Lazy<Chain>(() => this.chainStateBuilder.Chain);
 
             this.coreStorage.BlockInvalidated += HandleChanged;
             this.coreStorage.BlockTxesAdded += HandleChanged;
@@ -74,7 +74,7 @@ namespace BitSharp.Core.Workers
 
         public Chain CurrentChain
         {
-            get { return this.currentChain; }
+            get { return this.currentChain.Value; }
         }
 
         public void WaitForUpdate()
@@ -142,7 +142,7 @@ namespace BitSharp.Core.Workers
                         blockStopwatch.Stop();
                         this.blockProcessingDurationMeasure.Tick(blockStopwatch.Elapsed);
 
-                        this.currentChain = this.chainStateBuilder.Chain;
+                        this.currentChain = new Lazy<Chain>(() => this.chainStateBuilder.Chain);
 
                         this.OnChainStateChanged?.Invoke();
                     }

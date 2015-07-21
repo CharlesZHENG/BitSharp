@@ -21,13 +21,9 @@ namespace BitSharp.Esent
         private readonly string baseDirectory;
         private readonly string[] blockTxesStorageLocations;
 
-        private readonly object blockStorageLock;
-        private readonly object blockTxesStorageLock;
-        private readonly object chainStateManagerLock;
-
-        private BlockStorage blockStorage;
-        private IBlockTxesStorage blockTxesStorage;
-        private EsentChainStateManager chainStateManager;
+        private Lazy<BlockStorage> blockStorage;
+        private Lazy<IBlockTxesStorage> blockTxesStorage;
+        private Lazy<EsentChainStateManager> chainStateManager;
 
         private bool isDisposed;
 
@@ -36,9 +32,17 @@ namespace BitSharp.Esent
             this.baseDirectory = baseDirectory;
             this.blockTxesStorageLocations = blockTxesStorageLocations;
 
-            this.blockStorageLock = new object();
-            this.blockTxesStorageLock = new object();
-            this.chainStateManagerLock = new object();
+            this.blockStorage = new Lazy<Esent.BlockStorage>(() => new BlockStorage(this.baseDirectory));
+
+            this.blockTxesStorage = new Lazy<IBlockTxesStorage>(() =>
+            {
+                if (blockTxesStorageLocations == null)
+                    return new BlockTxesStorage(this.baseDirectory);
+                else
+                    return new SplitBlockTxesStorage(blockTxesStorageLocations, path => new BlockTxesStorage(path));
+            });
+
+            this.chainStateManager = new Lazy<EsentChainStateManager>(() => new EsentChainStateManager(this.baseDirectory));
         }
 
         public void Dispose()
@@ -51,14 +55,14 @@ namespace BitSharp.Esent
         {
             if (!isDisposed && disposing)
             {
-                if (this.chainStateManager != null)
-                    this.chainStateManager.Dispose();
+                if (this.chainStateManager.IsValueCreated)
+                    this.chainStateManager.Value.Dispose();
 
-                if (this.blockStorage != null)
-                    this.blockStorage.Dispose();
+                if (this.blockStorage.IsValueCreated)
+                    this.blockStorage.Value.Dispose();
 
-                if (this.blockTxesStorage != null)
-                    this.blockTxesStorage.Dispose();
+                if (this.blockTxesStorage.IsValueCreated)
+                    this.blockTxesStorage.Value.Dispose();
 
                 isDisposed = true;
             }
@@ -66,43 +70,17 @@ namespace BitSharp.Esent
 
         public IBlockStorage BlockStorage
         {
-            get
-            {
-                if (this.blockStorage == null)
-                    lock (this.blockStorageLock)
-                        if (this.blockStorage == null)
-                            this.blockStorage = new BlockStorage(this.baseDirectory);
-
-                return this.blockStorage;
-            }
+            get { return blockStorage.Value; }
         }
 
         public IBlockTxesStorage BlockTxesStorage
         {
-            get
-            {
-                if (this.blockTxesStorage == null)
-                    lock (this.blockTxesStorageLock)
-                        if (this.blockTxesStorage == null)
-                        {
-                            if (blockTxesStorageLocations == null)
-                                this.blockTxesStorage = new BlockTxesStorage(this.baseDirectory);
-                            else
-                                this.blockTxesStorage = new SplitBlockTxesStorage(blockTxesStorageLocations, path => new BlockTxesStorage(path));
-                        }
-
-                return this.blockTxesStorage;
-            }
+            get { return blockTxesStorage.Value; }
         }
 
         public DisposeHandle<IChainStateCursor> OpenChainStateCursor()
         {
-            if (this.chainStateManager == null)
-                lock (this.chainStateManagerLock)
-                    if (this.chainStateManager == null)
-                        this.chainStateManager = new EsentChainStateManager(this.baseDirectory);
-
-            return this.chainStateManager.OpenChainStateCursor();
+            return chainStateManager.Value.OpenChainStateCursor();
         }
 
         public DisposeHandle<IDeferredChainStateCursor> OpenDeferredChainStateCursor(IChainState chainState)

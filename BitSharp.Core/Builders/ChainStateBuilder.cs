@@ -24,7 +24,7 @@ namespace BitSharp.Core.Builders
 
         // commitLock is used to ensure that the chain field and underlying storage are always seen in sync
         private readonly ReaderWriterLockSlim commitLock = new ReaderWriterLockSlim();
-        private Chain chain;
+        private Lazy<Chain> chain;
         private readonly UtxoBuilder utxoBuilder;
 
         private readonly ChainStateBuilderStats stats;
@@ -35,7 +35,7 @@ namespace BitSharp.Core.Builders
             this.coreStorage = coreStorage;
             this.storageManager = storageManager;
 
-            this.chain = LoadChain();
+            this.chain = new Lazy<Chain>(() => LoadChain());
 
             this.stats = new ChainStateBuilderStats();
             this.utxoBuilder = new UtxoBuilder();
@@ -49,7 +49,7 @@ namespace BitSharp.Core.Builders
 
         public Chain Chain
         {
-            get { return chain; }
+            get { return chain.Value; }
         }
 
         public ChainStateBuilderStats Stats
@@ -77,7 +77,7 @@ namespace BitSharp.Core.Builders
                 // verify storage chain tip matches this chain state builder's chain tip
                 CheckChainTip(chainStateCursor);
 
-                var newChain = chain.ToBuilder().AddBlock(chainedHeader).ToImmutable();
+                var newChain = chain.Value.ToBuilder().AddBlock(chainedHeader).ToImmutable();
 
                 // begin reading block txes into the buffer
                 var blockTxesBuffer = new BufferBlock<BlockTx>();
@@ -150,12 +150,12 @@ namespace BitSharp.Core.Builders
                 commitLock.DoWrite(() =>
                 {
                     chainStateCursor.CommitTransaction();
-                    chain = newChain;
+                    chain = new Lazy<Chain>(() => newChain);
                 });
                 stats.commitUtxoDurationMeasure.Tick(stopwatch.Elapsed);
 
                 // update total count stats
-                stats.Height = chain.Height;
+                stats.Height = chain.Value.Height;
                 stats.TotalTxCount = totalTxCount;
                 stats.TotalInputCount = totalInputCount;
                 stats.UnspentTxCount = unspentTxCount;
@@ -191,14 +191,14 @@ namespace BitSharp.Core.Builders
                 // verify storage chain tip matches this chain state builder's chain tip
                 CheckChainTip(chainStateCursor);
 
-                var newChain = chain.ToBuilder().RemoveBlock(chainedHeader).ToImmutable();
+                var newChain = chain.Value.ToBuilder().RemoveBlock(chainedHeader).ToImmutable();
 
                 // keep track of the previoux tx output information for all unminted transactions
                 // the information is removed and will be needed to enable a replay of the rolled back block
                 var unmintedTxes = ImmutableList.CreateBuilder<UnmintedTx>();
 
                 // rollback the utxo
-                utxoBuilder.RollbackUtxo(chainStateCursor, chain, chainedHeader, blockTxes, unmintedTxes);
+                utxoBuilder.RollbackUtxo(chainStateCursor, chain.Value, chainedHeader, blockTxes, unmintedTxes);
 
                 // remove the block from the chain
                 chainStateCursor.ChainTip = newChain.LastBlock;
@@ -213,7 +213,7 @@ namespace BitSharp.Core.Builders
                 commitLock.DoWrite(() =>
                 {
                     chainStateCursor.CommitTransaction();
-                    chain = newChain;
+                    chain = new Lazy<Chain>(() => newChain);
                 });
             }
         }
@@ -227,7 +227,7 @@ namespace BitSharp.Core.Builders
         public ChainState ToImmutable()
         {
             return commitLock.DoRead(() =>
-                new ChainState(chain, storageManager));
+                new ChainState(chain.Value, storageManager));
         }
 
         private Chain LoadChain()
@@ -262,10 +262,10 @@ namespace BitSharp.Core.Builders
             var chainTip = chainStateCursor.ChainTip;
 
             // verify storage chain tip matches this chain state builder's chain tip
-            if (!(chainTip == null && chain.Height == -1)
-                && (chainTip.Hash != chain.LastBlock.Hash))
+            if (!(chainTip == null && chain.Value.Height == -1)
+                && (chainTip.Hash != chain.Value.LastBlock.Hash))
             {
-                throw new ChainStateOutOfSyncException(chain.LastBlock, chainTip);
+                throw new ChainStateOutOfSyncException(chain.Value.LastBlock, chainTip);
             }
         }
     }

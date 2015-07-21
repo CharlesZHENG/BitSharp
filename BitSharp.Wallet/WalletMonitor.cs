@@ -45,10 +45,6 @@ namespace BitSharp.Wallet
         {
             this.coreDaemon = coreDaemon;
 
-            //this.chainBuilder = Chain.CreateForGenesisBlock(coreDaemon.Rules.GenesisChainedHeader).ToBuilder();
-            //TODO start from the currently processed chain tip since wallet state isn't persisted
-            this.chainBuilder = coreDaemon.CurrentChain.ToBuilder();
-
             this.addressesByOutputScriptHash = new Dictionary<UInt256, List<MonitoredWalletAddress>>();
             this.matcherAddresses = new List<MonitoredWalletAddress>();
             this.keepEntries = keepEntries;
@@ -136,6 +132,13 @@ namespace BitSharp.Wallet
         public bool WaitForUpdate(TimeSpan timeout)
         {
             return this.updatedTracker.WaitForUpdate(timeout);
+        }
+
+        protected override void SubStart()
+        {
+            //this.chainBuilder = Chain.CreateForGenesisBlock(coreDaemon.Rules.GenesisChainedHeader).ToBuilder();
+            //TODO start from the currently processed chain tip since wallet state isn't persisted
+            this.chainBuilder = coreDaemon.CurrentChain.ToBuilder();
         }
 
         protected override async Task WorkAction()

@@ -1,4 +1,5 @@
-﻿using BitSharp.Core;
+﻿using BitSharp.Common;
+using BitSharp.Core;
 using BitSharp.Core.Storage;
 using BitSharp.Node;
 using BitSharp.Wallet;
@@ -6,11 +7,12 @@ using Ninject;
 using System;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using System.Windows.Threading;
 
 namespace BitSharp.Client
 {
-    public class MainWindowViewModel : INotifyPropertyChanged
+    public class MainWindowViewModel : IDisposable, INotifyPropertyChanged
     {
         public event PropertyChangedEventHandler PropertyChanged;
 
@@ -22,7 +24,7 @@ namespace BitSharp.Client
         private readonly DateTime startTime;
         private string runningTime;
         private readonly DispatcherTimer runningTimeTimer;
-        private readonly DispatcherTimer updateTimer;
+        private readonly WorkerMethod updateWorker;
 
         private long _winningBlockchainHeight;
         private long _currentBlockchainHeight;
@@ -41,12 +43,10 @@ namespace BitSharp.Client
         private decimal bitBalance;
         private decimal btcBalance;
 
-        private readonly Dispatcher dispatcher;
+        private bool disposed;
 
         public MainWindowViewModel(IKernel kernel, WalletMonitor walletMonitor = null)
         {
-            this.dispatcher = Dispatcher.CurrentDispatcher;
-
             this.kernel = kernel;
             this.coreDaemon = kernel.Get<CoreDaemon>();
             this.coreStorage = this.coreDaemon.CoreStorage;
@@ -63,31 +63,49 @@ namespace BitSharp.Client
             runningTimeTimer.Interval = TimeSpan.FromMilliseconds(100);
             runningTimeTimer.Start();
 
-            this.updateTimer = new DispatcherTimer();
-            updateTimer.Tick += (sender, e) =>
-            {
-                this.WinningBlockchainHeight = this.coreDaemon.TargetChainHeight;
-                this.CurrentBlockchainHeight = this.coreDaemon.CurrentChain.Height;
-                this.DownloadedBlockCount = this.coreStorage.BlockWithTxesCount;
-
-                this.BlockRate = this.coreDaemon.GetBlockRate();
-                this.TransactionRate = this.coreDaemon.GetTxRate();
-                this.InputRate = this.coreDaemon.GetInputRate();
-                
-                this.BlockDownloadRate = this.localClient.GetBlockDownloadRate();
-                this.DuplicateBlockDownloadCount = this.localClient.GetDuplicateBlockDownloadCount();
-                this.BlockMissCount = this.localClient.GetBlockMissCount();
-
-                if (walletMonitor != null)
+            this.updateWorker = new WorkerMethod("",
+                _ =>
                 {
-                    this.WalletHeight = this.walletMonitor.WalletHeight;
-                    this.WalletEntriesCount = this.walletMonitor.EntriesCount;
-                    this.BitBalance = this.walletMonitor.BitBalance;
-                    this.BtcBalance = this.walletMonitor.BtcBalance;
-                }
-            };
-            updateTimer.Interval = TimeSpan.FromSeconds(1);
-            updateTimer.Start();
+                    this.WinningBlockchainHeight = this.coreDaemon.TargetChainHeight;
+                    this.CurrentBlockchainHeight = this.coreDaemon.CurrentChain.Height;
+                    this.DownloadedBlockCount = this.coreStorage.BlockWithTxesCount;
+
+                    this.BlockRate = this.coreDaemon.GetBlockRate();
+                    this.TransactionRate = this.coreDaemon.GetTxRate();
+                    this.InputRate = this.coreDaemon.GetInputRate();
+
+                    this.BlockDownloadRate = this.localClient.GetBlockDownloadRate();
+                    this.DuplicateBlockDownloadCount = this.localClient.GetDuplicateBlockDownloadCount();
+                    this.BlockMissCount = this.localClient.GetBlockMissCount();
+
+                    if (walletMonitor != null)
+                    {
+                        this.WalletHeight = this.walletMonitor.WalletHeight;
+                        this.WalletEntriesCount = this.walletMonitor.EntriesCount;
+                        this.BitBalance = this.walletMonitor.BitBalance;
+                        this.BtcBalance = this.walletMonitor.BtcBalance;
+                    }
+
+                    return Task.FromResult(false);
+                },
+                initialNotify: true, minIdleTime: TimeSpan.FromSeconds(1), maxIdleTime: TimeSpan.FromSeconds(1));
+            this.updateWorker.Start();
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposed && disposing)
+            {
+                this.updateWorker.Dispose();
+
+                disposed = true;
+            }
         }
 
         public string RunningTime
