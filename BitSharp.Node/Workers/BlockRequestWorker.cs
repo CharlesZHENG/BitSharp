@@ -13,6 +13,7 @@ using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 
 namespace BitSharp.Node.Workers
 {
@@ -45,8 +46,8 @@ namespace BitSharp.Node.Workers
         private readonly RateMeasure blockDownloadRateMeasure;
         private readonly CountMeasure duplicateBlockDownloadCountMeasure;
 
-        private readonly WorkerMethod flushWorker;
-        private readonly ConcurrentQueue<FlushBlock> flushQueue;
+        private readonly ActionBlock<FlushBlock> flushWorker;
+        private readonly BufferBlock<FlushBlock> flushQueue;
         private readonly ConcurrentSet<UInt256> flushBlocks;
 
         private readonly WorkerMethod diagnosticWorker;
@@ -75,9 +76,11 @@ namespace BitSharp.Node.Workers
             this.targetChainQueueIndex = 0;
             this.targetChainLookAhead = 1;
 
-            this.flushWorker = new WorkerMethod("BlockRequestWorker.FlushWorker", FlushWorkerMethod, initialNotify: true, minIdleTime: TimeSpan.Zero, maxIdleTime: TimeSpan.MaxValue);
-            this.flushQueue = new ConcurrentQueue<FlushBlock>();
+            this.flushWorker = new ActionBlock<FlushBlock>((Action<FlushBlock>)FlushWorkerMethod,
+                new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 32 });
+            this.flushQueue = new BufferBlock<FlushBlock>();
             this.flushBlocks = new ConcurrentSet<UInt256>();
+            this.flushQueue.LinkTo(this.flushWorker, new DataflowLinkOptions { PropagateCompletion = true });
 
             this.diagnosticWorker = new WorkerMethod("BlockRequestWorker.DiagnosticWorker", DiagnosticWorkerMethod, initialNotify: true, minIdleTime: TimeSpan.FromSeconds(10), maxIdleTime: TimeSpan.FromSeconds(10));
         }
@@ -103,23 +106,20 @@ namespace BitSharp.Node.Workers
             this.blockDownloadRateMeasure.Dispose();
             this.duplicateBlockDownloadCountMeasure.Dispose();
 
-            this.flushWorker.Dispose();
             this.diagnosticWorker.Dispose();
         }
 
         protected override void SubStart()
         {
-            this.flushWorker.Start();
             //this.diagnosticWorker.Start();
         }
 
         protected override void SubStop()
         {
-            this.flushWorker.Stop();
             this.diagnosticWorker.Stop();
         }
 
-        protected override Task WorkAction()
+        protected override async Task WorkAction()
         {
             // update rates
             new MethodTimer(false).Time("UpdateLookAhead", () =>
@@ -132,10 +132,8 @@ namespace BitSharp.Node.Workers
             // send out request to peers
             //      missing blocks will be requested from every peer
             //      target chain blocks will be requested from each peer in non-overlapping chunks
-            new MethodTimer(false).Time("SendBlockRequests", () =>
+            await new MethodTimer(false).Time("SendBlockRequests", () =>
                 SendBlockRequests());
-
-            return Task.FromResult(false);
         }
 
         private void UpdateLookAhead()
@@ -176,7 +174,7 @@ namespace BitSharp.Node.Workers
             }
         }
 
-        private void SendBlockRequests()
+        private async Task SendBlockRequests()
         {
             // don't do work on empty target chain queue
             if (this.targetChainQueue.Count == 0)
@@ -244,7 +242,7 @@ namespace BitSharp.Node.Workers
                     }
                 }
 
-                Task.WaitAll(getBlockTasks.ToArray());
+                await Task.WhenAll(getBlockTasks.ToArray());
 
                 // all blocks retrieved from secondary source
                 // return now so that the target chain queue can be updated
@@ -303,7 +301,11 @@ namespace BitSharp.Node.Workers
             }
 
             // wait for request tasks to complete
-            if (!Task.WaitAll(requestTasks.ToArray(), TimeSpan.FromSeconds(10)))
+            var timedOut = false;
+            await Task.WhenAny(
+                Task.WhenAll(requestTasks.ToArray()),
+                Task.Delay(TimeSpan.FromSeconds(10)).ContinueWith(_ => timedOut = true));
+            if (timedOut)
             {
                 logger.Info("Request tasks timed out.");
             }
@@ -343,48 +345,42 @@ namespace BitSharp.Node.Workers
             }
         }
 
-        private Task FlushWorkerMethod(WorkerMethod instance)
+        private void FlushWorkerMethod(FlushBlock flushBlock)
         {
-            FlushBlock flushBlock;
-            while (this.flushQueue.TryDequeue(out flushBlock))
+            var peer = flushBlock.Peer;
+            var block = flushBlock.Block;
+
+            try
             {
-                var peer = flushBlock.Peer;
-                var block = flushBlock.Block;
+                // cooperative loop
+                this.ThrowIfCancelled();
 
-                try
-                {
-                    // cooperative loop
-                    this.ThrowIfCancelled();
+                StoreBlock(block);
 
-                    StoreBlock(block);
-
-                    if (this.coreStorage.TryAddBlock(block))
-                        this.blockDownloadRateMeasure.Tick();
-                    else
-                        this.duplicateBlockDownloadCountMeasure.Tick();
-                }
-                finally
-                {
-                    // ensure flushBlocks set has dequeued item removed
-                    this.flushBlocks.Remove(block.Hash);
-                }
-
-                BlockRequest blockRequest;
-                this.allBlockRequests.TryRemove(block.Hash, out blockRequest);
-
-                if (peer != null)
-                {
-                    DateTime requestTime;
-                    ConcurrentDictionary<UInt256, DateTime> peerBlockRequests;
-                    if (this.blockRequestsByPeer.TryGetValue(peer, out peerBlockRequests)
-                        && peerBlockRequests.TryRemove(block.Hash, out requestTime))
-                    {
-                        this.blockRequestDurationMeasure.Tick(DateTime.UtcNow - requestTime);
-                    }
-                }
+                if (this.coreStorage.TryAddBlock(block))
+                    this.blockDownloadRateMeasure.Tick();
+                else
+                    this.duplicateBlockDownloadCountMeasure.Tick();
+            }
+            finally
+            {
+                // ensure flushBlocks set has dequeued item removed
+                this.flushBlocks.Remove(block.Hash);
             }
 
-            return Task.FromResult(false);
+            BlockRequest blockRequest;
+            this.allBlockRequests.TryRemove(block.Hash, out blockRequest);
+
+            if (peer != null)
+            {
+                DateTime requestTime;
+                ConcurrentDictionary<UInt256, DateTime> peerBlockRequests;
+                if (this.blockRequestsByPeer.TryGetValue(peer, out peerBlockRequests)
+                    && peerBlockRequests.TryRemove(block.Hash, out requestTime))
+                {
+                    this.blockRequestDurationMeasure.Tick(DateTime.UtcNow - requestTime);
+                }
+            }
         }
 
         private Task DiagnosticWorkerMethod(WorkerMethod instance)
@@ -407,8 +403,7 @@ namespace BitSharp.Node.Workers
         private void HandleBlock(Peer peer, Block block)
         {
             this.flushBlocks.Add(block.Hash);
-            this.flushQueue.Enqueue(new FlushBlock(peer, block));
-            this.flushWorker.NotifyWork();
+            this.flushQueue.Post(new FlushBlock(peer, block));
 
             // stop tracking any missed block requests for the received block
             BlockRequest ignore;
