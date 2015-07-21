@@ -63,8 +63,6 @@ namespace BitSharp.Core.Builders
             var txCount = 0;
             var inputCount = 0;
 
-            await Task.Yield();
-
             using (var chainState = ToImmutable())
             using (var handle = storageManager.OpenDeferredChainStateCursor(chainState))
             {

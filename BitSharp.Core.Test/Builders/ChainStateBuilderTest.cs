@@ -23,10 +23,13 @@ namespace BitSharp.Core.Test.Builders
             var rules = Mock.Of<IBlockchainRules>();
             var coreStorage = new Mock<ICoreStorage>();
             var storageManager = new Mock<IStorageManager>();
-            var chainStateCursor = new Mock<IChainStateCursor>();
+            var chainStateCursor = new Mock<IDeferredChainStateCursor>();
 
             storageManager.Setup(x => x.OpenChainStateCursor()).Returns(
                 new DisposeHandle<IChainStateCursor>(_ => { }, chainStateCursor.Object));
+
+            storageManager.Setup(x => x.OpenDeferredChainStateCursor(It.IsAny<IChainState>())).Returns(
+                new DisposeHandle<IDeferredChainStateCursor>(_ => { }, chainStateCursor.Object));
 
             chainStateCursor.Setup(x => x.ChainTip).Returns(header1);
             chainStateCursor.Setup(x => x.TryGetHeader(header0.Hash, out header0)).Returns(true);
@@ -48,10 +51,13 @@ namespace BitSharp.Core.Test.Builders
             var rules = Mock.Of<IBlockchainRules>();
             var coreStorage = new Mock<ICoreStorage>();
             var storageManager = new Mock<IStorageManager>();
-            var chainStateCursor = new Mock<IChainStateCursor>();
+            var chainStateCursor = new Mock<IDeferredChainStateCursor>();
 
             storageManager.Setup(x => x.OpenChainStateCursor()).Returns(
                 new DisposeHandle<IChainStateCursor>(_ => { }, chainStateCursor.Object));
+
+            storageManager.Setup(x => x.OpenDeferredChainStateCursor(It.IsAny<IChainState>())).Returns(
+                new DisposeHandle<IDeferredChainStateCursor>(_ => { }, chainStateCursor.Object));
 
             chainStateCursor.Setup(x => x.TryGetHeader(header0.Hash, out header0)).Returns(true);
             chainStateCursor.Setup(x => x.TryGetHeader(header1.Hash, out header1)).Returns(true);
@@ -62,6 +68,7 @@ namespace BitSharp.Core.Test.Builders
 
             // init chain state builder seeing header 1
             var chainStateBuilder = new ChainStateBuilder(rules, coreStorage.Object, storageManager.Object);
+            Assert.AreEqual(header1.Hash, chainStateBuilder.Chain.LastBlock.Hash);
 
             // alter the chain tip outside of the chain state builder
             chainStateCursor.Setup(x => x.ChainTip).Returns(header2);
@@ -110,7 +117,9 @@ namespace BitSharp.Core.Test.Builders
             // init chain state builder with missing header
             StorageCorruptException actualEx;
             AssertMethods.AssertThrows<StorageCorruptException>(() =>
-                new ChainStateBuilder(rules, coreStorage.Object, storageManager.Object),
+                {
+                    var chain = new ChainStateBuilder(rules, coreStorage.Object, storageManager.Object).Chain;
+                },
                 out actualEx);
 
             Assert.AreEqual(StorageType.ChainState, actualEx.StorageType);
