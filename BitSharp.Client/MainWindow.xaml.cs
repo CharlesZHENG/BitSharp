@@ -82,7 +82,7 @@ namespace BitSharp.Client
                 if (isAzureVM)
                 {
                     cacheSizeMaxBytes = null;
-                    BlockRequestWorker.SecondaryBlockFolders = new[] { @"C:\BitSharp.Blocks\RawBlocks" };
+                    BlockRequestWorker.SecondaryBlockFolders = new[] { @"E:\BitSharp.Blocks\RawBlocks" };
                     BlockRequestWorker.LookAheadTime = TimeSpan.FromMinutes(2);
                     PeerWorker.ConnectedMax = 15;
                 }
