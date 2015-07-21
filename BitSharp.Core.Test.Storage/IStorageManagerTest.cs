@@ -1,17 +1,5 @@
-﻿using BitSharp.Common;
-using BitSharp.Common.ExtensionMethods;
-using BitSharp.Core.Domain;
-using BitSharp.Core.Storage;
-using BitSharp.Core.Test.Rules;
+﻿using BitSharp.Core.Storage;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Ninject;
-using NLog;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Collections.Immutable;
-using System.Diagnostics;
-using System.Linq;
 
 namespace BitSharp.Core.Test.Storage
 {

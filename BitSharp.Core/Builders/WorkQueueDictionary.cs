@@ -1,10 +1,6 @@
-﻿using BitSharp.Common;
-using BitSharp.Common.ExtensionMethods;
-using NLog;
+﻿using NLog;
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Threading.Tasks.Dataflow;
 
 namespace BitSharp.Core.Builders

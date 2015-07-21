@@ -1,5 +1,4 @@
-﻿using BitSharp.Common.ExtensionMethods;
-using NLog;
+﻿using NLog;
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;

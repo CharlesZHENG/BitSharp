@@ -2,9 +2,6 @@
 using BitSharp.Core.Domain;
 using BitSharp.Core.Storage;
 using NLog;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks.Dataflow;
 

@@ -3,7 +3,6 @@ using BitSharp.Common.Test;
 using BitSharp.Core.Builders;
 using BitSharp.Core.Domain;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using Moq;
 using System;
 using System.Collections.Generic;
 using System.Linq;

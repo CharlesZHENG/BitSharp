@@ -3,7 +3,6 @@ using BitSharp.Common.Test;
 using BitSharp.Core.Domain;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
-using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.Linq;

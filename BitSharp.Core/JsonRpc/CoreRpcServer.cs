@@ -1,6 +1,5 @@
 ﻿using AustinHarris.JsonRpc;
 using BitSharp.Common;
-using BitSharp.Common.ExtensionMethods;
 using NLog;
 using System;
 using System.Diagnostics;

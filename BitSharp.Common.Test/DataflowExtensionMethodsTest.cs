@@ -1,5 +1,4 @@
-﻿using BitSharp.Common.ExtensionMethods;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Linq;
 using System.Threading.Tasks.Dataflow;

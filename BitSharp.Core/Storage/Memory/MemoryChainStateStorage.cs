@@ -1,8 +1,6 @@
 ﻿using BitSharp.Common;
-using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Domain;
 using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Threading;
 

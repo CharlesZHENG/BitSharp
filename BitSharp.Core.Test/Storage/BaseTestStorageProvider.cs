@@ -1,7 +1,4 @@
 ﻿using BitSharp.Core.Storage;
-using System;
-using System.Diagnostics;
-using System.IO;
 
 namespace BitSharp.Core.Test.Storage
 {

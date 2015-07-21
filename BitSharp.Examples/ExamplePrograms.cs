@@ -1,5 +1,4 @@
 ﻿using BitSharp.Common;
-using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core;
 using BitSharp.Core.Builders;
 using BitSharp.Core.Domain;
@@ -12,7 +11,6 @@ using NLog.Config;
 using NLog.Targets;
 using System;
 using System.Collections.Generic;
-using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;

@@ -1,5 +1,4 @@
-﻿using BitSharp.Common;
-using BitSharp.Core;
+﻿using BitSharp.Core;
 using BitSharp.Core.Domain;
 using Microsoft.Isam.Esent.Interop;
 using System;

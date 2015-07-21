@@ -1,12 +1,10 @@
 ﻿using BitSharp.Common;
-using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Builders;
 using BitSharp.Core.Domain;
 using BitSharp.Core.Rules;
 using BitSharp.Core.Storage;
 using NLog;
 using System;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace BitSharp.Core.Workers

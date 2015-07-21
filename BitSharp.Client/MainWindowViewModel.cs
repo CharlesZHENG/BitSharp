@@ -1,17 +1,11 @@
-﻿using BitSharp.Common.ExtensionMethods;
-using BitSharp.Core;
-using BitSharp.Core.Domain;
+﻿using BitSharp.Core;
 using BitSharp.Core.Storage;
 using BitSharp.Node;
 using BitSharp.Wallet;
 using Ninject;
 using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
 using System.ComponentModel;
-using System.Linq;
 using System.Runtime.CompilerServices;
-using System.Threading;
 using System.Windows.Threading;
 
 namespace BitSharp.Client

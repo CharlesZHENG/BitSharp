@@ -1,5 +1,4 @@
-﻿using BitSharp.Common.ExtensionMethods;
-using BitSharp.Core.JsonRpc;
+﻿using BitSharp.Core.JsonRpc;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Newtonsoft.Json;
 using NLog;

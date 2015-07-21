@@ -1,6 +1,4 @@
-﻿using BitSharp.Common.ExtensionMethods;
-using BitSharp.Esent.Test;
-using BitSharp.Lmdb.Test;
+﻿using BitSharp.Esent.Test;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
