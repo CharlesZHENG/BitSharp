@@ -463,11 +463,6 @@ namespace BitSharp.Common.ExtensionMethods
             }
         }
 
-        public static IDisposable WaitOnDispose(this Task task)
-        {
-            return new DisposeAction(() => { task.Wait(); task.Dispose(); });
-        }
-
         public static IEnumerable<T> UsingAsEnumerable<T>(this IEnumerator<T> enumerator)
         {
             using (enumerator)

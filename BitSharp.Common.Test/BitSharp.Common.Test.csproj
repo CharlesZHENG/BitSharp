@@ -121,7 +121,6 @@
     <Compile Include="TestData.cs" />
     <Compile Include="UInt256Test.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="TaskPoolTest.cs" />
     <Compile Include="WorkerTest.cs" />
   </ItemGroup>
   <ItemGroup>
