@@ -102,6 +102,9 @@ namespace BitSharp.Node.Workers
             this.coreDaemon.OnTargetChainChanged -= HandleTargetChainChanged;
             this.coreDaemon.BlockMissed -= HandleBlockMissed;
 
+            this.flushQueue.Complete();
+            this.flushWorker.Completion.Wait();
+
             this.blockRequestDurationMeasure.Dispose();
             this.blockDownloadRateMeasure.Dispose();
             this.duplicateBlockDownloadCountMeasure.Dispose();
@@ -347,39 +350,48 @@ namespace BitSharp.Node.Workers
 
         private void FlushWorkerMethod(FlushBlock flushBlock)
         {
-            var peer = flushBlock.Peer;
-            var block = flushBlock.Block;
+            // cooperative loop
+            if (!this.IsStarted)
+                return;
 
             try
             {
-                // cooperative loop
-                this.ThrowIfCancelled();
+                var peer = flushBlock.Peer;
+                var block = flushBlock.Block;
 
-                StoreBlock(block);
-
-                if (this.coreStorage.TryAddBlock(block))
-                    this.blockDownloadRateMeasure.Tick();
-                else
-                    this.duplicateBlockDownloadCountMeasure.Tick();
-            }
-            finally
-            {
-                // ensure flushBlocks set has dequeued item removed
-                this.flushBlocks.Remove(block.Hash);
-            }
-
-            BlockRequest blockRequest;
-            this.allBlockRequests.TryRemove(block.Hash, out blockRequest);
-
-            if (peer != null)
-            {
-                DateTime requestTime;
-                ConcurrentDictionary<UInt256, DateTime> peerBlockRequests;
-                if (this.blockRequestsByPeer.TryGetValue(peer, out peerBlockRequests)
-                    && peerBlockRequests.TryRemove(block.Hash, out requestTime))
+                try
                 {
-                    this.blockRequestDurationMeasure.Tick(DateTime.UtcNow - requestTime);
+                    StoreBlock(block);
+
+                    if (this.coreStorage.TryAddBlock(block))
+                        this.blockDownloadRateMeasure.Tick();
+                    else
+                        this.duplicateBlockDownloadCountMeasure.Tick();
                 }
+                finally
+                {
+                    // ensure flushBlocks set has dequeued item removed
+                    this.flushBlocks.Remove(block.Hash);
+                }
+
+                BlockRequest blockRequest;
+                this.allBlockRequests.TryRemove(block.Hash, out blockRequest);
+
+                if (peer != null)
+                {
+                    DateTime requestTime;
+                    ConcurrentDictionary<UInt256, DateTime> peerBlockRequests;
+                    if (this.blockRequestsByPeer.TryGetValue(peer, out peerBlockRequests)
+                        && peerBlockRequests.TryRemove(block.Hash, out requestTime))
+                    {
+                        this.blockRequestDurationMeasure.Tick(DateTime.UtcNow - requestTime);
+                    }
+                }
+            }
+            // ensure exceptions do not leak and fault the overall flush ActionBlock
+            catch (Exception ex)
+            {
+                logger.Warn(ex, "Exception ocurred flushing block.");
             }
         }
 
