@@ -248,21 +248,15 @@ namespace BitSharp.Core.Workers
             pruningQueue.LinkTo(txPruner, new DataflowLinkOptions { PropagateCompletion = true });
 
             // queue spent txes, grouped by block
-            try
-            {
-                foreach (var spentTxesByBlock in spentTxes.ReadByBlock())
-                {
-                    var blockIndex = spentTxesByBlock.Item1;
-                    var txIndices = spentTxesByBlock.Item2.Select(x => x.TxIndex).ToList();
+            await pruningQueue.SendAndCompleteAsync(
+                spentTxes.ReadByBlock().Select(
+                    spentTxesByBlock =>
+                    {
+                        var blockIndex = spentTxesByBlock.Item1;
+                        var txIndices = spentTxesByBlock.Item2.Select(x => x.TxIndex).ToList();
 
-                    await pruningQueue.SendAsync(Tuple.Create(blockIndex, txIndices));
-                }
-            }
-            finally
-            {
-                // complete overall pruning queue
-                pruningQueue.Complete();
-            }
+                        return Tuple.Create(blockIndex, txIndices);
+                    }));
 
             await txPruner.Completion;
         }
