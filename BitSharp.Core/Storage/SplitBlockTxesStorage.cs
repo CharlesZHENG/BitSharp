@@ -129,7 +129,7 @@ namespace BitSharp.Core.Storage
 
         private IBlockTxesStorage GetStorage(UInt256 blockHash)
         {
-            return this.storages[(int)(blockHash.ToBigInteger() % splitCount)];
+            return this.storages[blockHash.Part4 % (ulong)splitCount];
         }
     }
 }

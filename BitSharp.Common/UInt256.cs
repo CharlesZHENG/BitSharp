@@ -73,6 +73,11 @@ namespace BitSharp.Common
                 throw new ArgumentOutOfRangeException();
         }
 
+        public UInt64 Part1 { get { return part1; } }
+        public UInt64 Part2 { get { return part2; } }
+        public UInt64 Part3 { get { return part3; } }
+        public UInt64 Part4 { get { return part4; } }
+
         public byte[] ToByteArray()
         {
             var buffer = new byte[32];
@@ -346,7 +351,7 @@ namespace BitSharp.Common
             return result;
         }
 
-        public static explicit operator double(UInt256 value)
+        public static explicit operator double (UInt256 value)
         {
             return (double)value.ToBigInteger();
         }
