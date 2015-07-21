@@ -193,10 +193,10 @@ namespace BitSharp.Core.Workers
                 await Task.WhenAll(
                     // prune block txes (either merkle prune or delete)
                     PruneBlockTxesAsync(mode, chain, pruneBlock, spentTxes)
-                        .ContinueWith(_ => pruneBlockTxesStopwatch.Stop()),
+                        .ContinueWith(task => { pruneBlockTxesStopwatch.Stop(); task.Wait(); }),
                     // prune tx index
                     PruneTxIndexAsync(mode, chain, pruneBlock, spentTxes)
-                        .ContinueWith(_ => pruneTxIndexStopwatch.Stop())
+                        .ContinueWith(task => { pruneTxIndexStopwatch.Stop(); task.Wait(); })
                     );
 
                 // remove block spent txes information
