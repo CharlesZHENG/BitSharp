@@ -5,6 +5,7 @@ using BitSharp.Core.Rules;
 using BitSharp.Core.Storage;
 using NLog;
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace BitSharp.Core.Workers
@@ -19,6 +20,7 @@ namespace BitSharp.Core.Workers
         private readonly CoreStorage coreStorage;
 
         private readonly UpdatedTracker updatedTracker = new UpdatedTracker();
+        private readonly ManualResetEventSlim inittedEvent = new ManualResetEventSlim();
 
         private ChainedHeader targetBlock;
         private Chain targetChain;
@@ -38,9 +40,22 @@ namespace BitSharp.Core.Workers
             // cleanup events
             this.coreStorage.ChainedHeaderAdded -= HandleChainedHeaderAdded;
             this.coreStorage.BlockInvalidated -= HandleBlockInvalidated;
+
+            inittedEvent.Dispose();
         }
 
-        public Chain TargetChain { get { return this.targetChain; } }
+        public Chain TargetChain
+        {
+            get
+            {
+                if (!inittedEvent.IsSet)
+                {
+                    NotifyAndStart();
+                    inittedEvent.Wait();
+                }
+                return this.targetChain;
+            }
+        }
 
         public void WaitForUpdate()
         {
@@ -111,6 +126,10 @@ namespace BitSharp.Core.Workers
                     }
                 }
                 catch (MissingDataException) { }
+                finally
+                {
+                    inittedEvent.Set();
+                }
             }
         }
 

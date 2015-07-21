@@ -44,9 +44,6 @@ namespace BitSharp.Core.Test.Workers
             // initialize the target chain worker
             using (var targetChainWorker = kernel.Get<TargetChainWorker>(new ConstructorArgument("workerConfig", new WorkerConfig(initialNotify: true, minIdleTime: TimeSpan.Zero, maxIdleTime: TimeSpan.MaxValue))))
             {
-                // verify initial state
-                Assert.AreEqual(null, targetChainWorker.TargetChain);
-
                 // monitor event firing
                 var targetChainChangedEvent = new AutoResetEvent(false);
                 var onTargetChainChangedCount = 0;
@@ -125,9 +122,6 @@ namespace BitSharp.Core.Test.Workers
             // initialize the target chain worker
             using (var targetChainWorker = kernel.Get<TargetChainWorker>(new ConstructorArgument("workerConfig", new WorkerConfig(initialNotify: true, minIdleTime: TimeSpan.Zero, maxIdleTime: TimeSpan.MaxValue))))
             {
-                // verify initial state
-                Assert.AreEqual(null, targetChainWorker.TargetChain);
-
                 // monitor event firing
                 var targetChainChangedEvent = new AutoResetEvent(false);
                 var onTargetChainChangedCount = 0;

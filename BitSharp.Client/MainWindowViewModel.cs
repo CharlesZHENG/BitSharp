@@ -63,6 +63,11 @@ namespace BitSharp.Client
             runningTimeTimer.Interval = TimeSpan.FromMilliseconds(100);
             runningTimeTimer.Start();
 
+            this.WinningBlockchainHeight = -1;
+            this.CurrentBlockchainHeight = -1;
+            this.DownloadedBlockCount = -1;
+            this.WalletHeight = -1;
+
             this.updateWorker = new WorkerMethod("",
                 _ =>
                 {
