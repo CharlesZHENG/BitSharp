@@ -328,16 +328,12 @@ namespace BitSharp.Node
 
         private void HandleBlock(Peer peer, Block block)
         {
-            var handler = this.OnBlock;
-            if (handler != null)
-                handler(peer, block);
+            this.OnBlock?.Invoke(peer, block);
         }
 
         private void HandleBlockHeaders(Peer peer, IImmutableList<BlockHeader> blockHeaders)
         {
-            var handler = this.OnBlockHeaders;
-            if (handler != null)
-                handler(peer, blockHeaders);
+            this.OnBlockHeaders?.Invoke(peer, blockHeaders);
         }
 
         private void OnTransaction(Transaction transaction)

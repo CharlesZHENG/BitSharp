@@ -329,30 +329,22 @@ namespace BitSharp.Core.Storage
 
         private void RaiseChainedHeaderAdded(ChainedHeader chainedHeader)
         {
-            var handler = this.ChainedHeaderAdded;
-            if (handler != null)
-                handler(chainedHeader);
+            this.ChainedHeaderAdded?.Invoke(chainedHeader);
         }
 
         private void RaiseBlockTxesAdded(ChainedHeader chainedHeader)
         {
-            var handler = this.BlockTxesAdded;
-            if (handler != null)
-                handler(chainedHeader);
+            this.BlockTxesAdded?.Invoke(chainedHeader);
         }
 
         private void RaiseBlockTxesRemoved(ChainedHeader chainedHeader)
         {
-            var handler = this.BlockTxesRemoved;
-            if (handler != null)
-                handler(chainedHeader);
+            this.BlockTxesRemoved?.Invoke(chainedHeader);
         }
 
         private void RaiseBlockInvalidated(UInt256 blockHash)
         {
-            var handler = this.BlockInvalidated;
-            if (handler != null)
-                handler(blockHash);
+            this.BlockInvalidated?.Invoke(blockHash);
         }
 
         private object GetBlockLock(UInt256 blockHash)

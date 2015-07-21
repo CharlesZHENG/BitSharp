@@ -48,9 +48,7 @@ namespace BitSharp.Node.Network
 
         private void Fail(Exception e)
         {
-            var handler = this.OnFailed;
-            if (handler != null)
-                handler(e);
+            this.OnFailed?.Invoke(e);
         }
 
         public void Listen()
@@ -133,9 +131,7 @@ namespace BitSharp.Node.Network
             {
                 var message = WireDecodeMessage(magic, stream);
 
-                var handler = this.OnMessage;
-                if (handler != null)
-                    handler(message);
+                this.OnMessage?.Invoke(message);
 
                 stopwatch.Stop();
 
@@ -175,9 +171,7 @@ namespace BitSharp.Node.Network
                     {
                         var addressPayload = NodeEncoder.DecodeAddressPayload(payload);
 
-                        var handler = this.OnReceivedAddresses;
-                        if (handler != null)
-                            handler(addressPayload.NetworkAddresses);
+                        this.OnReceivedAddresses?.Invoke(addressPayload.NetworkAddresses);
                     }
                     break;
 
@@ -191,9 +185,7 @@ namespace BitSharp.Node.Network
                     {
                         var block = DataEncoder.DecodeBlock(payload);
 
-                        var handler = this.OnBlock;
-                        if (handler != null)
-                            handler(this.owner, block);
+                        this.OnBlock?.Invoke(this.owner, block);
                     }
                     break;
 
@@ -201,9 +193,7 @@ namespace BitSharp.Node.Network
                     {
                         var getBlocksPayload = NodeEncoder.DecodeGetBlocksPayload(payload);
 
-                        var handler = this.OnGetBlocks;
-                        if (handler != null)
-                            handler(getBlocksPayload);
+                        this.OnGetBlocks?.Invoke(getBlocksPayload);
                     }
                     break;
 
@@ -211,9 +201,7 @@ namespace BitSharp.Node.Network
                     {
                         var getHeadersPayload = NodeEncoder.DecodeGetBlocksPayload(payload);
 
-                        var handler = this.OnGetHeaders;
-                        if (handler != null)
-                            handler(getHeadersPayload);
+                        this.OnGetHeaders?.Invoke(getHeadersPayload);
                     }
                     break;
 
@@ -221,9 +209,7 @@ namespace BitSharp.Node.Network
                     {
                         var invPayload = NodeEncoder.DecodeInventoryPayload(payload);
 
-                        var handler = this.OnGetData;
-                        if (handler != null)
-                            handler(invPayload);
+                        this.OnGetData?.Invoke(invPayload);
                     }
                     break;
 
@@ -246,9 +232,7 @@ namespace BitSharp.Node.Network
                             }
                         }
 
-                        var handler = this.OnBlockHeaders;
-                        if (handler != null)
-                            handler(this.owner, blockHeaders.ToImmutable());
+                        this.OnBlockHeaders?.Invoke(this.owner, blockHeaders.ToImmutable());
                     }
                     break;
 
@@ -256,9 +240,7 @@ namespace BitSharp.Node.Network
                     {
                         var invPayload = NodeEncoder.DecodeInventoryPayload(payload);
 
-                        var handler = this.OnInventoryVectors;
-                        if (handler != null)
-                            handler(invPayload.InventoryVectors);
+                        this.OnInventoryVectors?.Invoke(invPayload.InventoryVectors);
                     }
                     break;
 
@@ -266,17 +248,13 @@ namespace BitSharp.Node.Network
                     {
                         var invPayload = NodeEncoder.DecodeInventoryPayload(payload);
 
-                        var handler = this.OnNotFound;
-                        if (handler != null)
-                            handler(invPayload.InventoryVectors);
+                        this.OnNotFound?.Invoke(invPayload.InventoryVectors);
                     }
                     break;
 
                 case "ping":
                     {
-                        var handler = this.OnPing;
-                        if (handler != null)
-                            handler(payload.ToImmutableArray());
+                        this.OnPing?.Invoke(payload.ToImmutableArray());
                     }
                     break;
 
@@ -284,9 +262,7 @@ namespace BitSharp.Node.Network
                     {
                         var tx = DataEncoder.DecodeTransaction(payload);
 
-                        var handler = this.OnTransaction;
-                        if (handler != null)
-                            handler(tx);
+                        this.OnTransaction?.Invoke(tx);
                     }
                     break;
 
@@ -294,17 +270,13 @@ namespace BitSharp.Node.Network
                     {
                         var versionPayload = NodeEncoder.DecodeVersionPayload(payload, payload.Length);
 
-                        var handler = this.OnVersion;
-                        if (handler != null)
-                            handler(versionPayload);
+                        this.OnVersion?.Invoke(versionPayload);
                     }
                     break;
 
                 case "verack":
                     {
-                        var handler = this.OnVersionAcknowledged;
-                        if (handler != null)
-                            handler();
+                        this.OnVersionAcknowledged?.Invoke();
                     }
                     break;
 

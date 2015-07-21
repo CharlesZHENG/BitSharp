@@ -307,16 +307,12 @@ namespace BitSharp.Core
 
         private void HandleBlockMissed(UInt256 blockHash)
         {
-            var handler = this.BlockMissed;
-            if (handler != null)
-                handler(blockHash);
+            this.BlockMissed?.Invoke(blockHash);
         }
 
         private void HandleTargetChainChanged()
         {
-            var handler = this.OnTargetChainChanged;
-            if (handler != null)
-                handler(this, EventArgs.Empty);
+            this.OnTargetChainChanged?.Invoke(this, EventArgs.Empty);
         }
 
         private void HandleChainStateChanged()
@@ -324,9 +320,7 @@ namespace BitSharp.Core
             this.pruningWorker.NotifyWork();
             this.utxoScanWorker.NotifyWork();
 
-            var handler = this.OnChainStateChanged;
-            if (handler != null)
-                handler(this, EventArgs.Empty);
+            this.OnChainStateChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 }

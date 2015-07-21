@@ -109,9 +109,7 @@ namespace BitSharp.Core.Workers
                         logger.Debug($"Winning chained block {newTargetChain.LastBlock.Hash} at height {newTargetChain.Height}, total work: {newTargetChain.LastBlock.TotalWork:X}");
                         this.targetChain = newTargetChain.ToImmutable();
 
-                        var handler = this.OnTargetChainChanged;
-                        if (handler != null)
-                            handler();
+                        this.OnTargetChainChanged?.Invoke();
                     }
                 }
                 catch (MissingDataException) { }

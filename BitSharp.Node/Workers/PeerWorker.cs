@@ -295,16 +295,12 @@ namespace BitSharp.Node.Workers
 
         private void RaisePeerConnected(Peer peer)
         {
-            var handler = this.PeerConnected;
-            if (handler != null)
-                handler(peer);
+            this.PeerConnected?.Invoke(peer);
         }
 
         private void RaisePeerDisconnected(Peer peer)
         {
-            var handler = this.PeerDisconnected;
-            if (handler != null)
-                handler(peer);
+            this.PeerDisconnected?.Invoke(peer);
         }
     }
 }

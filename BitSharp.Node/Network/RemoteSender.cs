@@ -51,9 +51,7 @@ namespace BitSharp.Node.Network
 
         private void Fail(Exception e)
         {
-            var handler = this.OnFailed;
-            if (handler != null)
-                handler(e);
+            this.OnFailed?.Invoke(e);
         }
 
         public async Task RequestKnownAddressesAsync()

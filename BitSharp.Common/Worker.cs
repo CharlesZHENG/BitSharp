@@ -307,9 +307,7 @@ namespace BitSharp.Common
             this.notifyToken.Cancel();
 
             // raise the OnNotifyWork event
-            var handler = this.OnNotifyWork;
-            if (handler != null)
-                handler();
+            this.OnNotifyWork?.Invoke();
         }
 
         /// <summary>
@@ -335,9 +333,7 @@ namespace BitSharp.Common
                 this.notifyToken.Cancel();
             }
 
-            var handler = this.OnNotifyWork;
-            if (handler != null)
-                handler();
+            this.OnNotifyWork?.Invoke();
         }
 
         /// <summary>
@@ -432,9 +428,7 @@ namespace BitSharp.Common
                     this.idleEvent.Reset();
 
                     // notify work started
-                    var startHandler = this.OnWorkStarted;
-                    if (startHandler != null)
-                        startHandler();
+                    this.OnWorkStarted?.Invoke();
 
                     // perform the work
                     workerTime.Start();
@@ -461,9 +455,7 @@ namespace BitSharp.Common
                             logger.Error(ex, $"Unhandled worker exception in {this.Name}: ");
 
                             // notify work error
-                            var errorHandler = this.OnWorkError;
-                            if (errorHandler != null)
-                                errorHandler(ex);
+                            this.OnWorkError?.Invoke(ex);
 
                             // throttle on leaked exception
                             Thread.Sleep(TimeSpan.FromSeconds(1));
@@ -475,9 +467,7 @@ namespace BitSharp.Common
                     }
 
                     // notify work stopped
-                    var stopHandler = this.OnWorkFinished;
-                    if (stopHandler != null)
-                        stopHandler();
+                    this.OnWorkFinished?.Invoke();
 
                     // log worker stats
                     if (DateTime.Now - lastReportTime > TimeSpan.FromSeconds(30))

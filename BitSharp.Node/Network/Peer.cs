@@ -166,9 +166,7 @@ namespace BitSharp.Node.Network
 
         public void Disconnect()
         {
-            var handler = this.OnDisconnect;
-            if (handler != null)
-                handler(this);
+            this.OnDisconnect?.Invoke(this);
 
             this.Dispose();
         }
@@ -205,30 +203,22 @@ namespace BitSharp.Node.Network
 
         private void HandleGetBlocks(GetBlocksPayload payload)
         {
-            var handler = this.OnGetBlocks;
-            if (handler != null)
-                handler(this, payload);
+            this.OnGetBlocks?.Invoke(this, payload);
         }
 
         private void HandleGetHeaders(GetBlocksPayload payload)
         {
-            var handler = this.OnGetHeaders;
-            if (handler != null)
-                handler(this, payload);
+            this.OnGetHeaders?.Invoke(this, payload);
         }
 
         private void HandleGetData(InventoryPayload payload)
         {
-            var handler = this.OnGetData;
-            if (handler != null)
-                handler(this, payload);
+            this.OnGetData?.Invoke(this, payload);
         }
 
         private void HandlePing(ImmutableArray<byte> payload)
         {
-            var handler = this.OnPing;
-            if (handler != null)
-                handler(this, payload);
+            this.OnPing?.Invoke(this, payload);
         }
     }
 }

@@ -169,9 +169,7 @@ namespace BitSharp.Wallet
                     this.walletHeight = this.chainBuilder.Height;
                     this.coreDaemon.PrunableHeight = this.walletHeight;
 
-                    var handler = this.OnScanned;
-                    if (handler != null)
-                        handler();
+                    this.OnScanned?.Invoke();
 
                     // limit how long the chain state snapshot will be kept open
                     if (stopwatch.Elapsed > TimeSpan.FromSeconds(15))
@@ -266,9 +264,7 @@ namespace BitSharp.Wallet
 
                 logger.Debug($"{walletEntryType + ":",-10}   {txOutput.Value / (decimal)(100.MILLION()),20:#,##0.000_000_00} BTC, Entries: {this.entriesCount:#,##0}");
 
-                var handler = this.OnEntryAdded;
-                if (handler != null)
-                    handler(entry);
+                this.OnEntryAdded?.Invoke(entry);
             }
         }
 

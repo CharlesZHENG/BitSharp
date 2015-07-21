@@ -186,9 +186,7 @@ namespace BitSharp.Client
             {
                 currentValue = newValue;
 
-                var handler = this.PropertyChanged;
-                if (handler != null)
-                    handler(this, new PropertyChangedEventArgs(propertyName));
+                this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
             }
         }
     }

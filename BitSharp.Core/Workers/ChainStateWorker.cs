@@ -145,9 +145,7 @@ namespace BitSharp.Core.Workers
 
                         this.currentChain = this.chainStateBuilder.Chain;
 
-                        var handler = this.OnChainStateChanged;
-                        if (handler != null)
-                            handler();
+                        this.OnChainStateChanged?.Invoke();
                     }
 
                     if (didWork)
@@ -216,9 +214,7 @@ namespace BitSharp.Core.Workers
                 this.blockMissCountMeasure.Tick();
             }
 
-            var handler = this.BlockMissed;
-            if (handler != null)
-                handler(blockHash);
+            this.BlockMissed?.Invoke(blockHash);
         }
     }
 }
