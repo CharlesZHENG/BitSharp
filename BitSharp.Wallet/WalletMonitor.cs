@@ -264,7 +264,7 @@ namespace BitSharp.Wallet
                 }
                 this.bitBalance += entry.BitValue * walletEntryType.Direction();
 
-                logger.Debug($"{walletEntryType.ToString() + ":",-10}   {txOutput.Value / (decimal)(100.MILLION()),20:#,##0.000_000_00} BTC, Entries: {this.entriesCount:#,##0}");
+                logger.Debug($"{walletEntryType + ":",-10}   {txOutput.Value / (decimal)(100.MILLION()),20:#,##0.000_000_00} BTC, Entries: {this.entriesCount:#,##0}");
 
                 var handler = this.OnEntryAdded;
                 if (handler != null)

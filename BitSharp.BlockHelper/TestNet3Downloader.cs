@@ -98,7 +98,7 @@ namespace BitSharp.BlockHelper
                     for (var height = 0; height <= desiredBlockHeight; height++)
                     {
                         if (height % 1000 == 0)
-                            logger.Info($"Writing block: {height:#,##0}");
+                            logger.Info($"Writing block: {height:N0}");
 
                         var blockHash = testNetChain.Blocks[height].Hash;
 

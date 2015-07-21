@@ -41,7 +41,7 @@ namespace BitSharp.Core
             }
             catch (Exception)
             {
-                Debug.WriteLine($"Corrupt block header bits: {blockHeader.Bits.ToString("X")}, block {blockHeader.Hash}");
+                Debug.WriteLine($"Corrupt block header bits: {blockHeader:X}, block {blockHeader.Hash}");
                 return -1;
             }
         }

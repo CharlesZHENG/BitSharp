@@ -208,7 +208,7 @@ namespace BitSharp.Core.Workers
             else //if (pruneBlock.Height > 0)
             {
                 //TODO can't throw an exception unless the pruned chain is persisted
-                //logger.Info("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX: {0:#,##0}".Format2(pruneBlock.Height));
+                //logger.Info("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX: {0:N0}".Format2(pruneBlock.Height));
                 //throw new InvalidOperationException();
                 txCount = 0;
             }

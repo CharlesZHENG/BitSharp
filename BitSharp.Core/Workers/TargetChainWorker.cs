@@ -106,7 +106,7 @@ namespace BitSharp.Core.Workers
                             newTargetChain.AddBlock(advanceBlock);
                         }
 
-                        logger.Debug($"Winning chained block {newTargetChain.LastBlock.Hash} at height {newTargetChain.Height}, total work: {newTargetChain.LastBlock.TotalWork.ToString("X")}");
+                        logger.Debug($"Winning chained block {newTargetChain.LastBlock.Hash} at height {newTargetChain.Height}, total work: {newTargetChain.LastBlock.TotalWork:X}");
                         this.targetChain = newTargetChain.ToImmutable();
 
                         var handler = this.OnTargetChainChanged;

@@ -219,7 +219,7 @@ namespace BitSharp.Client
             this.coreDaemon.Dispose();
             this.kernel.Dispose();
 
-            this.logger.Info($"Finished shutting down: {stopwatch.Elapsed.TotalSeconds:#,##0.00}s");
+            this.logger.Info($"Finished shutting down: {stopwatch.Elapsed.TotalSeconds:N2}s");
             LogManager.Flush();
         }
 

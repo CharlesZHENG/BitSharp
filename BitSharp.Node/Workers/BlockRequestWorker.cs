@@ -153,8 +153,8 @@ namespace BitSharp.Node.Workers
                 this.targetChainLookAhead = 1 + (int)(LookAheadTime.TotalSeconds / blockProcessingTime.TotalSeconds);
 
                 logger.Debug(new string('-', 80));
-                logger.Debug($"Look Ahead: {this.targetChainLookAhead:#,##0}");
-                logger.Debug($"Block Request Count: {this.allBlockRequests.Count:#,##0}");
+                logger.Debug($"Look Ahead: {this.targetChainLookAhead:N0}");
+                logger.Debug($"Block Request Count: {this.allBlockRequests.Count:N0}");
                 logger.Debug(new string('-', 80));
             }
         }
@@ -390,10 +390,10 @@ namespace BitSharp.Node.Workers
         private Task DiagnosticWorkerMethod(WorkerMethod instance)
         {
             logger.Info(new string('-', 80));
-            logger.Info($"allBlockRequests.Count: {this.allBlockRequests.Count:#,##0}");
-            logger.Info($"blockRequestsByPeer.InnerCount: {this.blockRequestsByPeer.Sum(x => x.Value.Count):#,##0}");
-            logger.Info($"targetChainQueue.Count: {this.targetChainQueue.Count:#,##0}");
-            logger.Info($"targetChainQueueIndex: {this.targetChainQueueIndex:#,##0}");
+            logger.Info($"allBlockRequests.Count: {this.allBlockRequests.Count:N0}");
+            logger.Info($"blockRequestsByPeer.InnerCount: {this.blockRequestsByPeer.Sum(x => x.Value.Count):N0}");
+            logger.Info($"targetChainQueue.Count: {this.targetChainQueue.Count:N0}");
+            logger.Info($"targetChainQueueIndex: {this.targetChainQueueIndex:N0}");
             logger.Info($"blockRequestDurationMeasure: {this.blockRequestDurationMeasure.GetAverage()}");
             logger.Info($"blockDownloadRateMeasure: {this.blockDownloadRateMeasure.GetAverage()}/s");
             logger.Info($"duplicateBlockDownloadCountMeasure: {this.duplicateBlockDownloadCountMeasure.GetCount()}/s");

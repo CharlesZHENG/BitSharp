@@ -521,7 +521,7 @@ namespace BitSharp.Lmdb
 
         public void Defragment()
         {
-            logger.Info($"ChainState database: {this.jetInstance.UsedSize / 1.MILLION():#,##0} MB");
+            logger.Info($"ChainState database: {this.jetInstance.UsedSize / 1.MILLION():N0} MB");
         }
 
         private void CheckTransaction()

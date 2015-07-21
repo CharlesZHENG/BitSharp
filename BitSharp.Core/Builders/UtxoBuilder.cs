@@ -114,7 +114,7 @@ namespace BitSharp.Core.Builders
             if (!chainStateCursor.TryAddUnspentTx(unspentTx))
             {
                 // duplicate transaction
-                logger.Warn($"Duplicate transaction at block {chainedHeader.Height:#,##0}, {chainedHeader.Hash}, coinbase");
+                logger.Warn($"Duplicate transaction at block {chainedHeader.Height:N0}, {chainedHeader.Hash}, coinbase");
                 throw new ValidationException(chainedHeader.Hash);
             }
         }
@@ -225,7 +225,7 @@ namespace BitSharp.Core.Builders
             if (!chainStateCursor.TryGetUnspentTx(tx.Hash, out unspentTx))
             {
                 // missing transaction output
-                logger.Warn($"Missing transaction at block {chainedHeader.Height:#,##0}, {chainedHeader.Hash}, tx {tx.Hash}");
+                logger.Warn($"Missing transaction at block {chainedHeader.Height:N0}, {chainedHeader.Hash}, tx {tx.Hash}");
                 throw new ValidationException(chainedHeader.Hash);
             }
 

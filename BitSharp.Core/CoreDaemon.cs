@@ -253,8 +253,8 @@ namespace BitSharp.Core
             logger.Info(
                 string.Join("\n",
                     new string('-', 80),
-                    $"GC Memory:      {(float)GC.GetTotalMemory(false) / 1.MILLION(),10:#,##0.00} MB",
-                    $"Process Memory: {(float)Process.GetCurrentProcess().PrivateMemorySize64 / 1.MILLION(),10:#,##0.00} MB",
+                    $"GC Memory:      {(float)GC.GetTotalMemory(false) / 1.MILLION(),10:N2} MB",
+                    $"Process Memory: {(float)Process.GetCurrentProcess().PrivateMemorySize64 / 1.MILLION(),10:N2} MB",
                     new string('-', 80)
                 ));
 
@@ -271,7 +271,7 @@ namespace BitSharp.Core
                 chainStateHeight = chainState.Chain.Height;
             }
             stopwatch.Stop();
-            logger.Info($"GetChainState at {chainStateHeight:#,##0}: {stopwatch.Elapsed.TotalSeconds:#,##0.00}s");
+            logger.Info($"GetChainState at {chainStateHeight:N0}: {stopwatch.Elapsed.TotalSeconds:N2}s");
 
             // time enumerating chain state snapshots
             stopwatch = Stopwatch.StartNew();
@@ -281,11 +281,11 @@ namespace BitSharp.Core
                 chainState.ReadUnspentTransactions().Count();
             }
             stopwatch.Stop();
-            logger.Info($"Enumerate chain state at {chainStateHeight:#,##0}: {stopwatch.Elapsed.TotalSeconds:#,##0.00}s");
+            logger.Info($"Enumerate chain state at {chainStateHeight:N0}: {stopwatch.Elapsed.TotalSeconds:N2}s");
 
             //using (var chainStateLocal = this.GetChainState())
             //{
-            //    new MethodTimer(logger).Time("UTXO Commitment: {0:#,##0}".Format2(chainStateLocal.UnspentTxCount), () =>
+            //    new MethodTimer(logger).Time("UTXO Commitment: {0:N0}".Format2(chainStateLocal.UnspentTxCount), () =>
             //    {
             //        using (var utxoStream = new UtxoStream(logger, chainStateLocal.ReadUnspentTransactions()))
             //        {
@@ -294,7 +294,7 @@ namespace BitSharp.Core
             //        }
             //    });
 
-            //    //new MethodTimer().Time("Full UTXO Scan: {0:#,##0}".Format2(chainStateLocal.Utxo.TransactionCount), () =>
+            //    //new MethodTimer().Time("Full UTXO Scan: {0:N0}".Format2(chainStateLocal.Utxo.TransactionCount), () =>
             //    //{
             //    //    foreach (var output in chainStateLocal.Utxo.GetUnspentTransactions())
             //    //    {

@@ -745,7 +745,7 @@ namespace BitSharp.Esent
                     int actualPages;
                     Windows8Api.JetResizeDatabase(this.jetSession, this.chainStateDbId, 0, out actualPages, Windows81Grbits.OnlyShrink);
 
-                    logger.Info($"Finished shrinking chain state database: {(float)actualPages * SystemParameters.DatabasePageSize / 1.MILLION():#,##0} MB");
+                    logger.Info($"Finished shrinking chain state database: {(float)actualPages * SystemParameters.DatabasePageSize / 1.MILLION():N0} MB");
                 }
             }
         }

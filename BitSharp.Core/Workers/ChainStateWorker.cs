@@ -133,7 +133,7 @@ namespace BitSharp.Core.Workers
                         }
                         else if (direction < 0)
                         {
-                            logger.Info($"Rolling back block {chainedHeader.Height:#,##0}: {chainedHeader.Hash}");
+                            logger.Info($"Rolling back block {chainedHeader.Height:N0}: {chainedHeader.Hash}");
                             this.chainStateBuilder.RollbackBlock(chainedHeader, blockTxes.UsingAsEnumerable());
                         }
                         else

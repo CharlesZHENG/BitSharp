@@ -490,7 +490,7 @@ namespace BitSharp.Node
                 $"CONNECTED: {this.peerWorker.ConnectedPeers.Count,3}",
                 $"BAD: {this.peerWorker.BadPeers.Count,3}",
                 $"INCOMING: {this.peerWorker.IncomingCount,3}",
-                $"MESSAGES/SEC: {this.messageRateMeasure.GetAverage(),6:#,##0}"
+                $"MESSAGES/SEC: {this.messageRateMeasure.GetAverage(),6:N0}"
             ));
 
             return Task.FromResult(false);

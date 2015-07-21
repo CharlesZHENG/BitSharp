@@ -118,7 +118,7 @@ namespace BitSharp.Core.Builders
                         catch (Exception ex)
                         {
                             var aggEx = ex as AggregateException;
-                            logger.Debug($"Ignoring script errors in block: {chainedHeader.Height,9:#,##0}, errors: {(aggEx != null ? aggEx.InnerExceptions.Count : -1):#,##0}");
+                            logger.Debug($"Ignoring script errors in block: {chainedHeader.Height,9:N0}, errors: {(aggEx != null ? aggEx.InnerExceptions.Count : -1):N0}");
                         }
                     }
                 },
