@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
 
 namespace BitSharp.Core.Builders
@@ -26,9 +25,7 @@ namespace BitSharp.Core.Builders
             var chainedHeader = chain.LastBlock;
             var blockSpentTxes = new BlockSpentTxesBuilder();
 
-            var loadingTxes = new BufferBlock<LoadingTx>();
-
-            var utxoCalculator = new ActionBlock<BlockTx>(
+            var utxoCalculator = new TransformBlock<BlockTx, LoadingTx>(
                 blockTx =>
                 {
                     var tx = blockTx.Transaction;
@@ -74,36 +71,17 @@ namespace BitSharp.Core.Builders
                         chainStateCursor.TotalOutputCount += tx.Outputs.Length;
                     }
 
-                    loadingTxes.Post(new LoadingTx(txIndex, tx, chainedHeader, prevOutputTxKeys.MoveToImmutable()));
+                    return new LoadingTx(txIndex, tx, chainedHeader, prevOutputTxKeys.MoveToImmutable());
                 },
                 new ExecutionDataflowBlockOptions { CancellationToken = cancelToken });
 
             blockTxes.LinkTo(utxoCalculator, new DataflowLinkOptions { PropagateCompletion = true });
 
-            utxoCalculator.Completion.ContinueWith(
-                task =>
+            return OnCompleteBlock.Create(utxoCalculator, () =>
                 {
-                    try
-                    {
-                        if (task.Status == TaskStatus.RanToCompletion)
-                            if (!chainStateCursor.TryAddBlockSpentTxes(chainedHeader.Height, blockSpentTxes.ToImmutable()))
-                                throw new ValidationException(chainedHeader.Hash);
-
-                        if (task.IsCanceled)
-                            ((IDataflowBlock)loadingTxes).Fault(new OperationCanceledException());
-                        else if (task.IsFaulted)
-                            ((IDataflowBlock)loadingTxes).Fault(task.Exception);
-                        else
-                            loadingTxes.Complete();
-                    }
-                    catch (Exception ex)
-                    {
-                        ((IDataflowBlock)loadingTxes).Fault(ex);
-                        throw;
-                    }
+                    if (!chainStateCursor.TryAddBlockSpentTxes(chainedHeader.Height, blockSpentTxes.ToImmutable()))
+                        throw new ValidationException(chainedHeader.Hash);
                 }, cancelToken);
-
-            return loadingTxes;
         }
 
         private void Mint(IChainStateCursor chainStateCursor, Transaction tx, int txIndex, ChainedHeader chainedHeader)
