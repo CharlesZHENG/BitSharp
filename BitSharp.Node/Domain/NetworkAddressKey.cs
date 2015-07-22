@@ -7,8 +7,6 @@ namespace BitSharp.Node.Domain
 {
     public class NetworkAddressKey
     {
-        public readonly ImmutableArray<byte> IPv6Address;
-        public readonly UInt16 Port;
         private readonly int _hashCode;
 
         public NetworkAddressKey(ImmutableArray<byte> IPv6Address, UInt16 Port)
@@ -18,6 +16,10 @@ namespace BitSharp.Node.Domain
 
             this._hashCode = Port.GetHashCode() ^ new BigInteger(IPv6Address.ToArray()).GetHashCode();
         }
+
+        public ImmutableArray<byte> IPv6Address { get; }
+
+        public UInt16 Port { get; }
 
         public override bool Equals(object obj)
         {

@@ -147,7 +147,7 @@ namespace BitSharp.Examples
 
                 // look up block 1 coinbase output
                 chainState.TryGetUnspentTx(embeddedBlocks.GetBlock(1).Transactions[0].Hash, out unspentTx);
-                logger.Info($"Block 1 coinbase UnspenTx present? {unspentTx != null,9}");
+                logger.Info($"Block 1 coinbase UnspentTx present? {unspentTx != null,9}");
                 logger.Info($"Block 1 coinbase output states:    [{string.Join(",", unspentTx.OutputStates.Select(x => x.ToString()))}]");
 
                 // look up block 381 list of spent txes

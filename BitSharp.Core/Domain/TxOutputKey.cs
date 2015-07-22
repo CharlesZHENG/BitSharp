@@ -5,22 +5,19 @@ namespace BitSharp.Core.Domain
 {
     public class TxOutputKey
     {
-        private readonly UInt256 _txHash;
-        private readonly UInt32 _txOutputIndex;
-
         private readonly int hashCode;
 
         public TxOutputKey(UInt256 txHash, UInt32 txOutputIndex)
         {
-            this._txHash = txHash;
-            this._txOutputIndex = txOutputIndex;
+            TxHash = txHash;
+            TxOutputIndex = txOutputIndex;
 
             this.hashCode = txHash.GetHashCode() ^ txOutputIndex.GetHashCode();
         }
 
-        public UInt256 TxHash { get { return this._txHash; } }
+        public UInt256 TxHash { get; }
 
-        public UInt32 TxOutputIndex { get { return this._txOutputIndex; } }
+        public UInt32 TxOutputIndex { get; }
 
         public override bool Equals(object obj)
         {

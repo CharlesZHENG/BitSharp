@@ -6,28 +6,25 @@ namespace BitSharp.Core.Domain
 {
     public class ChainedBlock
     {
-        private readonly ChainedHeader chainedHeader;
-        private readonly Block block;
-
         public ChainedBlock(ChainedHeader chainedHeader, Block block)
         {
-            this.chainedHeader = chainedHeader;
-            this.block = block;
+            ChainedHeader = chainedHeader;
+            Block = block;
         }
 
-        public ChainedHeader ChainedHeader { get { return this.chainedHeader; } }
+        public ChainedHeader ChainedHeader { get; }
 
-        public Block Block { get { return this.block; } }
+        public Block Block { get; }
 
-        public int Height { get { return this.chainedHeader.Height; } }
+        public int Height { get { return this.ChainedHeader.Height; } }
 
-        public BigInteger TotalWork { get { return this.chainedHeader.TotalWork; } }
+        public BigInteger TotalWork { get { return this.ChainedHeader.TotalWork; } }
 
-        public UInt256 Hash { get { return this.block.Hash; } }
+        public UInt256 Hash { get { return this.Block.Hash; } }
 
-        public BlockHeader Header { get { return this.block.Header; } }
+        public BlockHeader Header { get { return this.Block.Header; } }
 
-        public ImmutableArray<Transaction> Transactions { get { return this.block.Transactions; } }
+        public ImmutableArray<Transaction> Transactions { get { return this.Block.Transactions; } }
 
         public static implicit operator Block(ChainedBlock chainedBlock)
         {

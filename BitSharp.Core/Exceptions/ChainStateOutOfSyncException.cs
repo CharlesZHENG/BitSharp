@@ -11,8 +11,8 @@ namespace BitSharp.Core
             ActualChainTip = actualChainTip;
         }
 
-        public ChainedHeader ExpectedChainTip { get; private set; }
+        public ChainedHeader ExpectedChainTip { get; }
 
-        public ChainedHeader ActualChainTip { get; private set; }
+        public ChainedHeader ActualChainTip { get; }
     }
 }

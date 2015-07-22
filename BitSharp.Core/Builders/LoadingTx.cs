@@ -5,36 +5,30 @@ namespace BitSharp.Core.Builders
 {
     internal class LoadingTx
     {
-        private readonly Transaction transaction;
-        private readonly int txIndex;
-        private readonly ChainedHeader chainedHeader;
-        private readonly ImmutableArray<TxLookupKey> prevOutputTxKeys;
-        private readonly CompletionArray<Transaction> inputTxes;
-
         public LoadingTx(int txIndex, Transaction transaction, ChainedHeader chainedHeader, ImmutableArray<TxLookupKey> prevOutputTxKeys)
         {
-            this.transaction = transaction;
-            this.txIndex = txIndex;
-            this.chainedHeader = chainedHeader;
-            this.prevOutputTxKeys = prevOutputTxKeys;
-            this.inputTxes = new CompletionArray<Transaction>(transaction.Inputs.Length);
+            Transaction = transaction;
+            TxIndex = txIndex;
+            ChainedHeader = chainedHeader;
+            PrevOutputTxKeys = prevOutputTxKeys;
+            InputTxes = new CompletionArray<Transaction>(transaction.Inputs.Length);
         }
 
-        public bool IsCoinbase { get { return this.txIndex == 0; } }
+        public bool IsCoinbase { get { return this.TxIndex == 0; } }
 
-        public Transaction Transaction { get { return this.transaction; } }
+        public Transaction Transaction { get; }
 
-        public int TxIndex { get { return this.txIndex; } }
+        public int TxIndex { get; }
 
-        public ChainedHeader ChainedHeader { get { return this.chainedHeader; } }
+        public ChainedHeader ChainedHeader { get; }
 
-        public ImmutableArray<TxLookupKey> PrevOutputTxKeys { get { return this.prevOutputTxKeys; } }
+        public ImmutableArray<TxLookupKey> PrevOutputTxKeys { get; }
 
-        public CompletionArray<Transaction> InputTxes { get { return this.inputTxes; } }
+        public CompletionArray<Transaction> InputTxes { get; }
 
         public LoadedTx ToLoadedTx()
         {
-            return new LoadedTx(this.transaction, this.txIndex, this.inputTxes.CompletedArray);
+            return new LoadedTx(this.Transaction, this.TxIndex, this.InputTxes.CompletedArray);
         }
     }
 }

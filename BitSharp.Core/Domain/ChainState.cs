@@ -9,8 +9,6 @@ namespace BitSharp.Core.Domain
 {
     internal class ChainState : IChainState
     {
-        private readonly Chain chain;
-
         private readonly DisposableCache<DisposeHandle<IChainStateCursor>> cursorCache;
 
         private bool disposed;
@@ -18,7 +16,7 @@ namespace BitSharp.Core.Domain
         public ChainState(Chain chain, IStorageManager storageManager)
         {
             CursorCount = 32;
-            this.chain = chain;
+            Chain = chain;
 
             // create a cache of cursors that are in an open snapshot transaction with the current chain state
             var success = false;
@@ -70,12 +68,9 @@ namespace BitSharp.Core.Domain
             }
         }
 
-        public int CursorCount { get; private set; }
+        public int CursorCount { get; }
 
-        public Chain Chain
-        {
-            get { return this.chain; }
-        }
+        public Chain Chain { get; }
 
         public int UnspentTxCount
         {

@@ -5,11 +5,6 @@ namespace BitSharp.Core.Domain
 {
     public class MerkleTreeNode
     {
-        private readonly int index;
-        private readonly int depth;
-        private readonly UInt256 hash;
-        private readonly bool pruned;
-
         public MerkleTreeNode(int index, int depth, UInt256 hash, bool pruned)
         {
             if (index < 0)
@@ -24,21 +19,21 @@ namespace BitSharp.Core.Domain
             if (index % (1 << depth) != 0)
                 throw new ArgumentException("depth");
 
-            this.index = index;
-            this.depth = depth;
-            this.hash = hash;
-            this.pruned = pruned;
+            Index = index;
+            Depth = depth;
+            Hash = hash;
+            Pruned = pruned;
         }
 
-        public int Index { get { return this.index; } }
+        public int Index { get; }
 
-        public int Depth { get { return this.depth; } }
+        public int Depth { get; }
 
-        public UInt256 Hash { get { return this.hash; } }
+        public UInt256 Hash { get; }
 
-        public bool Pruned { get { return this.pruned; } }
+        public bool Pruned { get; }
 
-        public bool IsLeft { get { return (this.index >> this.depth) % 2 == 0; } }
+        public bool IsLeft { get { return (this.Index >> this.Depth) % 2 == 0; } }
 
         public bool IsRight { get { return !this.IsLeft; } }
 
@@ -54,7 +49,7 @@ namespace BitSharp.Core.Domain
 
         public MerkleTreeNode AsPruned()
         {
-            return new MerkleTreeNode(this.index, this.depth, this.hash, pruned: true);
+            return new MerkleTreeNode(this.Index, this.Depth, this.Hash, pruned: true);
         }
 
         public override bool Equals(object obj)
@@ -63,21 +58,21 @@ namespace BitSharp.Core.Domain
                 return false;
 
             var other = (MerkleTreeNode)obj;
-            return other.index == this.index && other.depth == this.depth && other.hash == this.hash && other.pruned == this.pruned;
+            return other.Index == this.Index && other.Depth == this.Depth && other.Hash == this.Hash && other.Pruned == this.Pruned;
         }
 
         public override int GetHashCode()
         {
-            return this.index.GetHashCode() ^ this.depth.GetHashCode() ^ this.hash.GetHashCode();
+            return this.Index.GetHashCode() ^ this.Depth.GetHashCode() ^ this.Hash.GetHashCode();
         }
 
         public static MerkleTreeNode Pair(MerkleTreeNode left, MerkleTreeNode right)
         {
             if (left.Depth != right.Depth)
                 throw new InvalidOperationException();
-            if (!left.pruned)
+            if (!left.Pruned)
                 throw new ArgumentException("left");
-            if (!right.pruned)
+            if (!right.Pruned)
                 throw new ArgumentException("right");
 
             var expectedIndex = left.Index + (1 << left.Depth);
@@ -95,10 +90,10 @@ namespace BitSharp.Core.Domain
 
         public static MerkleTreeNode PairWithSelf(MerkleTreeNode node)
         {
-            if (!node.pruned)
+            if (!node.Pruned)
                 throw new ArgumentException("left");
 
-            return Pair(node, new MerkleTreeNode(node.index + (1 << node.depth), node.depth, node.hash, pruned: true));
+            return Pair(node, new MerkleTreeNode(node.Index + (1 << node.Depth), node.Depth, node.Hash, pruned: true));
         }
 
         public static bool operator ==(MerkleTreeNode left, MerkleTreeNode right)

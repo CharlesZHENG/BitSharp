@@ -6,31 +6,25 @@ namespace BitSharp.Core.Domain
 {
     public class Transaction
     {
-        private readonly UInt32 _version;
-        private readonly ImmutableArray<TxInput> _inputs;
-        private readonly ImmutableArray<TxOutput> _outputs;
-        private readonly UInt32 _lockTime;
-        private readonly UInt256 _hash;
-
         public Transaction(UInt32 version, ImmutableArray<TxInput> inputs, ImmutableArray<TxOutput> outputs, UInt32 lockTime, UInt256 hash = null)
         {
-            this._version = version;
-            this._inputs = inputs;
-            this._outputs = outputs;
-            this._lockTime = lockTime;
+            Version = version;
+            Inputs = inputs;
+            Outputs = outputs;
+            LockTime = lockTime;
 
-            this._hash = hash ?? DataCalculator.CalculateTransactionHash(version, inputs, outputs, lockTime);
+            this.Hash = hash ?? DataCalculator.CalculateTransactionHash(version, inputs, outputs, lockTime);
         }
 
-        public UInt32 Version { get { return this._version; } }
+        public UInt32 Version { get; }
 
-        public ImmutableArray<TxInput> Inputs { get { return this._inputs; } }
+        public ImmutableArray<TxInput> Inputs { get; }
 
-        public ImmutableArray<TxOutput> Outputs { get { return this._outputs; } }
+        public ImmutableArray<TxOutput> Outputs { get; }
 
-        public UInt32 LockTime { get { return this._lockTime; } }
+        public UInt32 LockTime { get; }
 
-        public UInt256 Hash { get { return this._hash; } }
+        public UInt256 Hash { get; }
 
         public Transaction With(UInt32? Version = null, ImmutableArray<TxInput>? Inputs = null, ImmutableArray<TxOutput>? Outputs = null, UInt32? LockTime = null, UInt256 Hash = null)
         {

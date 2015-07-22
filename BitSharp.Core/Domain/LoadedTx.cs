@@ -8,10 +8,6 @@ namespace BitSharp.Core.Domain
     /// </summary>
     public class LoadedTx
     {
-        private readonly Transaction transaction;
-        private readonly int txIndex;
-        private readonly ImmutableArray<Transaction> inputTxes;
-
         /// <summary>
         /// Initializes a new instance of <see cref="LoadedTx"/> with the specified transaction and each input's previous transaction.
         /// </summary>
@@ -20,30 +16,30 @@ namespace BitSharp.Core.Domain
         /// <param name="inputTxes">The array of transactions corresponding to each input's previous transaction.</param>
         public LoadedTx(Transaction transaction, int txIndex, ImmutableArray<Transaction> inputTxes)
         {
-            this.transaction = transaction;
-            this.txIndex = txIndex;
-            this.inputTxes = inputTxes;
+            Transaction = transaction;
+            TxIndex = txIndex;
+            InputTxes = inputTxes;
         }
 
         /// <summary>
         /// Indicates whether this is the coinbase transaction.
         /// </summary>
-        public bool IsCoinbase { get { return this.txIndex == 0; } }
+        public bool IsCoinbase { get { return this.TxIndex == 0; } }
 
         /// <summary>
         /// Gets the transaction.
         /// </summary>
-        public Transaction Transaction { get { return this.transaction; } }
+        public Transaction Transaction { get; }
 
         /// <summary>
         /// Gets the index of the transaction.
         /// </summary>
-        public int TxIndex { get { return this.txIndex; } }
+        public int TxIndex { get; }
 
         /// <summary>
         /// Gets array of transactions corresponding to each input's previous transaction.
         /// </summary>
-        public ImmutableArray<Transaction> InputTxes { get { return this.inputTxes; } }
+        public ImmutableArray<Transaction> InputTxes { get; }
 
         /// <summary>
         /// Get the previous transaction output for the specified input.
@@ -52,7 +48,7 @@ namespace BitSharp.Core.Domain
         /// <returns>The input's previous transaction output.</returns>
         public TxOutput GetInputPrevTxOutput(int inputIndex)
         {
-            return this.inputTxes[inputIndex].Outputs[this.transaction.Inputs[inputIndex].PreviousTxOutputKey.TxOutputIndex.ToIntChecked()];
+            return this.InputTxes[inputIndex].Outputs[this.Transaction.Inputs[inputIndex].PreviousTxOutputKey.TxOutputIndex.ToIntChecked()];
         }
     }
 }

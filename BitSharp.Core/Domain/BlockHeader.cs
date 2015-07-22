@@ -6,43 +6,35 @@ namespace BitSharp.Core.Domain
 {
     public class BlockHeader
     {
-        private readonly UInt32 _version;
-        private readonly UInt256 _previousBlock;
-        private readonly UInt256 _merkleRoot;
-        private readonly UInt32 _time;
-        private readonly UInt32 _bits;
-        private readonly UInt32 _nonce;
-        private readonly UInt256 _hash;
-
         private readonly int hashCode;
 
         public BlockHeader(UInt32 version, UInt256 previousBlock, UInt256 merkleRoot, UInt32 time, UInt32 bits, UInt32 nonce, UInt256 hash = null)
         {
-            this._version = version;
-            this._previousBlock = previousBlock;
-            this._merkleRoot = merkleRoot;
-            this._time = time;
-            this._bits = bits;
-            this._nonce = nonce;
+            Version = version;
+            PreviousBlock = previousBlock;
+            MerkleRoot = merkleRoot;
+            Time = time;
+            Bits = bits;
+            Nonce = nonce;
 
-            this._hash = hash ?? DataCalculator.CalculateBlockHash(version, previousBlock, merkleRoot, time, bits, nonce);
+            Hash = hash ?? DataCalculator.CalculateBlockHash(version, previousBlock, merkleRoot, time, bits, nonce);
 
-            this.hashCode = this._hash.GetHashCode();
+            this.hashCode = this.Hash.GetHashCode();
         }
 
-        public UInt32 Version { get { return this._version; } }
+        public UInt32 Version { get; }
 
-        public UInt256 PreviousBlock { get { return this._previousBlock; } }
+        public UInt256 PreviousBlock { get; }
 
-        public UInt256 MerkleRoot { get { return this._merkleRoot; } }
+        public UInt256 MerkleRoot { get; }
 
-        public UInt32 Time { get { return this._time; } }
+        public UInt32 Time { get; }
 
-        public UInt32 Bits { get { return this._bits; } }
+        public UInt32 Bits { get; }
 
-        public UInt32 Nonce { get { return this._nonce; } }
+        public UInt32 Nonce { get; }
 
-        public UInt256 Hash { get { return this._hash; } }
+        public UInt256 Hash { get; }
 
         public BlockHeader With(UInt32? Version = null, UInt256 PreviousBlock = null, UInt256 MerkleRoot = null, UInt32? Time = null, UInt32? Bits = null, UInt32? Nonce = null)
         {

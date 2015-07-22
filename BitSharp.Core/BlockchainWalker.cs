@@ -100,18 +100,16 @@ namespace BitSharp.Core
 
         private class PathElement
         {
-            private readonly PathChain chain;
-            private readonly ChainedHeader chainedHeader;
 
             public PathElement(PathChain chain, ChainedHeader chainedHeader)
             {
-                this.chain = chain;
-                this.chainedHeader = chainedHeader;
+                Chain = chain;
+                ChainedHeader = chainedHeader;
             }
 
-            public PathChain Chain { get { return this.chain; } }
+            public PathChain Chain { get; }
 
-            public ChainedHeader ChainedHeader { get { return this.chainedHeader; } }
+            public ChainedHeader ChainedHeader { get; }
         }
 
         private enum PathChain

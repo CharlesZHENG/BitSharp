@@ -13,12 +13,6 @@ namespace BitSharp.Core.Domain
     /// </summary>
     public class Chain
     {
-        // chained headers by height
-        private readonly ImmutableList<ChainedHeader> blocks;
-
-        // chained headers by hash
-        private readonly ImmutableDictionary<UInt256, ChainedHeader> blocksByHash;
-
         // constructor, both headers counts must match
         internal Chain(ImmutableList<ChainedHeader> blocks, ImmutableDictionary<UInt256, ChainedHeader> blocksByHash)
         {
@@ -29,24 +23,24 @@ namespace BitSharp.Core.Domain
             if (blocks.Count != blocksByHash.Count)
                 throw new ArgumentException();
 
-            this.blocks = blocks;
-            this.blocksByHash = blocksByHash;
+            Blocks = blocks;
+            BlocksByHash = blocksByHash;
         }
 
         /// <summary>
         /// The chain's genesis header.
         /// </summary>
-        public ChainedHeader GenesisBlock { get { return this.blocks.FirstOrDefault(); } }
+        public ChainedHeader GenesisBlock { get { return this.Blocks.FirstOrDefault(); } }
 
         /// <summary>
         /// The last header in the chain.
         /// </summary>
-        public ChainedHeader LastBlock { get { return this.blocks.LastOrDefault(); } }
+        public ChainedHeader LastBlock { get { return this.Blocks.LastOrDefault(); } }
 
         /// <summary>
         /// The height of the chain. This will be one less than the count of headers.
         /// </summary>
-        public int Height { get { return this.blocks.Count() - 1; } }
+        public int Height { get { return this.Blocks.Count() - 1; } }
 
         /// <summary>
         /// The total amount of work done on this chain.
@@ -56,12 +50,12 @@ namespace BitSharp.Core.Domain
         /// <summary>
         /// The list of headers in the chain, starting from height 0.
         /// </summary>
-        public ImmutableList<ChainedHeader> Blocks { get { return this.blocks; } }
+        public ImmutableList<ChainedHeader> Blocks { get; }
 
         /// <summary>
         /// The dictionary of headers in the chain, indexed by hash.
         /// </summary>
-        public ImmutableDictionary<UInt256, ChainedHeader> BlocksByHash { get { return this.blocksByHash; } }
+        public ImmutableDictionary<UInt256, ChainedHeader> BlocksByHash { get; }
 
         /// <summary>
         /// Enumerate the path of headers to get from this chain to the target chain.
@@ -120,7 +114,7 @@ namespace BitSharp.Core.Domain
                         throw new InvalidOperationException();
 
                     yield return Tuple.Create(-1, currentBlock);
-                    currentBlock = this.blocks[currentBlock.Height - 1];
+                    currentBlock = this.Blocks[currentBlock.Height - 1];
                 }
                 // currently behind target chain
                 else
@@ -147,7 +141,7 @@ namespace BitSharp.Core.Domain
                             throw new InvalidOperationException();
 
                         yield return Tuple.Create(-1, currentBlock);
-                        currentBlock = this.blocks[currentBlock.Height - 1];
+                        currentBlock = this.Blocks[currentBlock.Height - 1];
                     }
                 }
             }

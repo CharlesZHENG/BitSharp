@@ -7,7 +7,7 @@ namespace BitSharp.Core.Test
 {
     public class TempDirectory
     {
-        public static string BaseDirectory { get; private set; }
+        public static string BaseDirectory { get; }
 
         // cleanup the entire base directory on first initialization
         static TempDirectory()

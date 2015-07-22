@@ -4,12 +4,10 @@ namespace BitSharp.Core.Domain
 {
     public class BlockTx : MerkleTreeNode
     {
-        private readonly Transaction transaction;
-
         public BlockTx(int index, int depth, UInt256 hash, bool pruned, Transaction transaction)
             : base(index, depth, hash, pruned)
         {
-            this.transaction = transaction;
+            Transaction = transaction;
         }
 
         //TODO only used by tests
@@ -19,6 +17,6 @@ namespace BitSharp.Core.Domain
 
         public bool IsCoinbase { get { return this.Index == 0; } }
 
-        public Transaction Transaction { get { return this.transaction; } }
+        public Transaction Transaction { get; }
     }
 }

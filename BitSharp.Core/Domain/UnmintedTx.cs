@@ -6,18 +6,15 @@ namespace BitSharp.Core.Domain
 {
     public class UnmintedTx
     {
-        private readonly UInt256 txHash;
-        private readonly ImmutableArray<TxLookupKey> prevOutputTxKeys;
-
         public UnmintedTx(UInt256 txHash, ImmutableArray<TxLookupKey> prevOutputTxKeys)
         {
-            this.txHash = txHash;
-            this.prevOutputTxKeys = prevOutputTxKeys;
+            TxHash = txHash;
+            PrevOutputTxKeys = prevOutputTxKeys;
         }
 
-        public UInt256 TxHash { get { return this.txHash; } }
+        public UInt256 TxHash { get; }
 
-        public ImmutableArray<TxLookupKey> PrevOutputTxKeys { get { return this.prevOutputTxKeys; } }
+        public ImmutableArray<TxLookupKey> PrevOutputTxKeys { get; }
 
         public override bool Equals(object obj)
         {
@@ -25,12 +22,12 @@ namespace BitSharp.Core.Domain
                 return false;
 
             var other = (UnmintedTx)obj;
-            return other.txHash == this.txHash && other.prevOutputTxKeys.SequenceEqual(this.prevOutputTxKeys);
+            return other.TxHash == this.TxHash && other.PrevOutputTxKeys.SequenceEqual(this.PrevOutputTxKeys);
         }
 
         public override int GetHashCode()
         {
-            return this.txHash.GetHashCode(); //TODO ^ this.prevOutputTxKeys.GetHashCode();
+            return this.TxHash.GetHashCode(); //TODO ^ this.prevOutputTxKeys.GetHashCode();
         }
     }
 }

@@ -7,29 +7,24 @@ namespace BitSharp.Wallet
 {
     public class WalletEntry
     {
-        private readonly IImmutableList<MonitoredWalletAddress> addresses;
-        private readonly EnumWalletEntryType type;
-        private readonly ChainPosition chainPosition;
-        private readonly UInt64 value;
-
         public WalletEntry(IImmutableList<MonitoredWalletAddress> addresses, EnumWalletEntryType type, ChainPosition chainPosition, UInt64 value)
         {
-            this.addresses = addresses;
-            this.type = type;
-            this.chainPosition = chainPosition;
-            this.value = value;
+            Addresses = addresses;
+            Type = type;
+            ChainPosition = chainPosition;
+            Value = value;
         }
 
-        public IImmutableList<MonitoredWalletAddress> Addresses { get { return this.addresses; } }
+        public IImmutableList<MonitoredWalletAddress> Addresses { get; }
 
-        public EnumWalletEntryType Type { get { return this.type; } }
+        public EnumWalletEntryType Type { get; }
 
-        public ChainPosition ChainPosition { get { return this.chainPosition; } }
+        public ChainPosition ChainPosition { get; }
 
-        public UInt64 Value { get { return this.value; } }
+        public UInt64 Value { get; }
 
-        public decimal BtcValue { get { return this.value / 100m.MILLION(); } }
+        public decimal BtcValue { get { return this.Value / 100m.MILLION(); } }
 
-        public decimal BitValue { get { return this.value / 100m; } }
+        public decimal BitValue { get { return this.Value / 100m; } }
     }
 }

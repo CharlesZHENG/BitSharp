@@ -7,9 +7,6 @@ namespace BitSharp.Core.Domain
     /// </summary>
     public class TxLookupKey
     {
-        private readonly UInt256 blockHash;
-        private readonly int txIndex;
-
         /// <summary>
         /// Initializes a new instance of <see cref="TxLookupKey"/> with the specified block hash and transaction index.
         /// </summary>
@@ -17,19 +14,19 @@ namespace BitSharp.Core.Domain
         /// <param name="txIndex">The index of the transaction within its block.</param>
         public TxLookupKey(UInt256 blockHash, int txIndex)
         {
-            this.blockHash = blockHash;
-            this.txIndex = txIndex;
+            BlockHash = blockHash;
+            TxIndex = txIndex;
         }
 
         /// <summary>
         /// Gets the hash of the block containing the transaction.
         /// </summary>
-        public UInt256 BlockHash { get { return this.blockHash; } }
+        public UInt256 BlockHash { get; }
 
         /// <summary>
         /// Gets the index of the transaction within its block.
         /// </summary>
-        public int TxIndex { get { return this.txIndex; } }
+        public int TxIndex { get; }
 
         public override bool Equals(object obj)
         {
@@ -37,12 +34,12 @@ namespace BitSharp.Core.Domain
                 return false;
 
             var other = (TxLookupKey)obj;
-            return other.blockHash == this.blockHash && other.txIndex == this.txIndex;
+            return other.BlockHash == this.BlockHash && other.TxIndex == this.TxIndex;
         }
 
         public override int GetHashCode()
         {
-            return this.blockHash.GetHashCode() ^ this.txIndex.GetHashCode();
+            return this.BlockHash.GetHashCode() ^ this.TxIndex.GetHashCode();
         }
     }
 }

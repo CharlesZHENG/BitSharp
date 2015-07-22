@@ -10,6 +10,6 @@ namespace BitSharp.Core
             StorageType = storageType;
         }
 
-        public StorageType StorageType { get; private set; }
+        public StorageType StorageType { get; }
     }
 }

@@ -9,31 +9,27 @@ namespace BitSharp.Core.Domain
     /// </summary>
     public class SpentTx
     {
-        private readonly UInt256 txHash;
-        private readonly int confirmedBlockIndex;
-        private readonly int txIndex;
-
         public SpentTx(UInt256 txHash, int confirmedBlockIndex, int txIndex)
         {
-            this.txHash = txHash;
-            this.confirmedBlockIndex = confirmedBlockIndex;
-            this.txIndex = txIndex;
+            TxHash = txHash;
+            ConfirmedBlockIndex = confirmedBlockIndex;
+            TxIndex = txIndex;
         }
 
         /// <summary>
         /// The transaction's hash.
         /// </summary>
-        public UInt256 TxHash { get { return this.txHash; } }
+        public UInt256 TxHash { get; }
 
         /// <summary>
         /// The block index (height) where the transaction was initially confirmed.
         /// </summary>
-        public int ConfirmedBlockIndex { get { return this.confirmedBlockIndex; } }
+        public int ConfirmedBlockIndex { get; }
 
         /// <summary>
         /// The transaction's index within its confirming block.
         /// </summary>
-        public int TxIndex { get { return this.txIndex; } }
+        public int TxIndex { get; }
 
         public override bool Equals(object obj)
         {
@@ -41,12 +37,12 @@ namespace BitSharp.Core.Domain
                 return false;
 
             var other = (SpentTx)obj;
-            return other.txHash == this.txHash && other.confirmedBlockIndex == this.confirmedBlockIndex && other.txIndex == this.txIndex;
+            return other.TxHash == this.TxHash && other.ConfirmedBlockIndex == this.ConfirmedBlockIndex && other.TxIndex == this.TxIndex;
         }
 
         public override int GetHashCode()
         {
-            return this.txHash.GetHashCode() ^ this.confirmedBlockIndex.GetHashCode() ^ this.txIndex.GetHashCode();
+            return this.TxHash.GetHashCode() ^ this.ConfirmedBlockIndex.GetHashCode() ^ this.TxIndex.GetHashCode();
         }
     }
 }
