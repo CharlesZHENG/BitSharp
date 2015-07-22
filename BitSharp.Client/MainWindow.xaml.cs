@@ -84,8 +84,15 @@ namespace BitSharp.Client
                 {
                     cacheSizeMaxBytes = null;
                     BlockRequestWorker.SecondaryBlockFolders = new[] { @"E:\BitSharp.Blocks\RawBlocks" };
-                    BlockRequestWorker.LookAheadTime = TimeSpan.FromMinutes(2);
                     PeerWorker.ConnectedMax = 15;
+
+                    blockTxesStorageLocations = new[]
+                    {
+                        @"E:\Blocks1",
+                        @"E:\Blocks2",
+                        @"E:\Blocks3",
+                        @"E:\Blocks4",
+                    };
                 }
                 else if (isLocalDev)
                 {
