@@ -47,11 +47,11 @@ namespace BitSharp.Esent
             }
             finally
             {
-                if (!success && this.cursorCache != null)
-                    this.cursorCache.Dispose();
-
                 if (!success)
+                {
+                    this.cursorCache?.Dispose();
                     this.jetInstance.Dispose();
+                }
             }
         }
 

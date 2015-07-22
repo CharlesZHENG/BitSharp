@@ -51,7 +51,7 @@ namespace BitSharp.Core.Domain
         /// <summary>
         /// The total amount of work done on this chain.
         /// </summary>
-        public BigInteger TotalWork { get { return this.LastBlock != null ? this.LastBlock.TotalWork : 0; } }
+        public BigInteger TotalWork { get { return this.LastBlock?.TotalWork ?? 0; } }
 
         /// <summary>
         /// The list of headers in the chain, starting from height 0.
@@ -89,7 +89,7 @@ namespace BitSharp.Core.Domain
         public IEnumerable<Tuple<int, ChainedHeader>> NavigateTowards(Func<Chain> getTargetChain)
         {
             var currentBlock = this.LastBlock;
-            var genesisBlock = currentBlock != null ? this.GenesisBlock : null;
+            var genesisBlock = this.GenesisBlock;
 
             while (true)
             {

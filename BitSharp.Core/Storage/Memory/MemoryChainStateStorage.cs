@@ -41,10 +41,10 @@ namespace BitSharp.Core.Storage.Memory
             this.totalTxCount = totalTxCount ?? 0;
             this.totalInputCount = totalInputCount ?? 0;
             this.totalOutputCount = totalOutputCount ?? 0;
-            this.headers = headers != null ? headers.ToBuilder() : ImmutableSortedDictionary.CreateBuilder<UInt256, ChainedHeader>();
-            this.unspentTransactions = unspentTransactions != null ? unspentTransactions.ToBuilder() : ImmutableSortedDictionary.CreateBuilder<UInt256, UnspentTx>();
-            this.blockSpentTxes = blockSpentTxes != null ? blockSpentTxes.ToBuilder() : ImmutableDictionary.CreateBuilder<int, BlockSpentTxes>();
-            this.blockUnmintedTxes = blockUnmintedTxes != null ? blockUnmintedTxes.ToBuilder() : ImmutableDictionary.CreateBuilder<UInt256, IImmutableList<UnmintedTx>>();
+            this.headers = headers?.ToBuilder() ?? ImmutableSortedDictionary.CreateBuilder<UInt256, ChainedHeader>();
+            this.unspentTransactions = unspentTransactions?.ToBuilder() ?? ImmutableSortedDictionary.CreateBuilder<UInt256, UnspentTx>();
+            this.blockSpentTxes = blockSpentTxes?.ToBuilder() ?? ImmutableDictionary.CreateBuilder<int, BlockSpentTxes>();
+            this.blockUnmintedTxes = blockUnmintedTxes?.ToBuilder() ?? ImmutableDictionary.CreateBuilder<UInt256, IImmutableList<UnmintedTx>>();
         }
 
         public void Dispose()

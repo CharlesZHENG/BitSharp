@@ -29,20 +29,17 @@ namespace BitSharp.Common.Test
 
         protected override void SubDispose()
         {
-            if (this.subDispose != null)
-                this.subDispose();
+            this.subDispose?.Invoke();
         }
 
         protected override void SubStart()
         {
-            if (this.subStart != null)
-                this.subStart();
+            this.subStart?.Invoke();
         }
 
         protected override void SubStop()
         {
-            if (this.subStop != null)
-                this.subStop();
+            this.subStop?.Invoke();
         }
     }
 }

@@ -98,8 +98,7 @@ namespace BitSharp.Core.JsonRpc
 
             protected override void SubStop()
             {
-                if (this.httpListener != null)
-                    this.httpListener.Stop();
+                this.httpListener?.Stop();
             }
 
             protected override async Task WorkAction()

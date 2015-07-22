@@ -67,8 +67,7 @@ namespace BitSharp.Node.Workers
 
         protected override void SubStop()
         {
-            if (listenSocket != null)
-                listenSocket.Close();
+            listenSocket?.Close();
             //DisposeSocket();
         }
 
@@ -87,11 +86,8 @@ namespace BitSharp.Node.Workers
 
         private void DisposeSocket()
         {
-            if (this.listenSocket != null)
-            {
-                this.listenSocket.Dispose();
-                this.listenSocket = null;
-            }
+            this.listenSocket?.Dispose();
+            this.listenSocket = null;
         }
     }
 }

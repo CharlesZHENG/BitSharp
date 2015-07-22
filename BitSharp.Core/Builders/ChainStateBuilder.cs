@@ -237,7 +237,7 @@ namespace BitSharp.Core.Builders
                 chainStateCursor.BeginTransaction(readOnly: true);
 
                 var chainTip = chainStateCursor.ChainTip;
-                var chainTipHash = chainTip != null ? chainTip.Hash : null;
+                var chainTipHash = chainTip?.Hash;
 
                 Chain chain;
                 if (Chain.TryReadChain(chainTipHash, out chain,

@@ -121,11 +121,7 @@ namespace BitSharp.Core
         {
             get
             {
-                var targetChainLocal = this.targetChainWorker.TargetChain;
-                if (targetChainLocal != null)
-                    return targetChainLocal.Height;
-                else
-                    return -1;
+                return this.targetChainWorker.TargetChain?.Height ?? -1;
             }
         }
 

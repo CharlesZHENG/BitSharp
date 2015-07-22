@@ -123,13 +123,13 @@ namespace BitSharp.Core.Workers
                     });
 
                     //TODO better way to block chain state worker when pruning is behind
-                    if (this.chainStateWorker != null && this.chainStateWorker.IsStarted)
+                    if (this.chainStateWorker?.IsStarted ?? false)
                         this.chainStateWorker.Stop(TimeSpan.Zero);
                 }
                 else
                 {
                     //TODO better way to block chain state worker when pruning is behind
-                    if (this.chainStateWorker != null && !this.chainStateWorker.IsStarted)
+                    if (!(this.chainStateWorker?.IsStarted ?? true))
                     {
                         this.chainStateWorker.NotifyAndStart();
                         if (lagLogged)
@@ -159,7 +159,7 @@ namespace BitSharp.Core.Workers
             }
 
             // ensure chain state processing is resumed
-            if (this.chainStateWorker != null && !this.chainStateWorker.IsStarted)
+            if (!(this.chainStateWorker?.IsStarted ?? true))
                 this.chainStateWorker.NotifyAndStart();
         }
 

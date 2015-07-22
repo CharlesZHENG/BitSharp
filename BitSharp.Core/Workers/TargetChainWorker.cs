@@ -99,13 +99,10 @@ namespace BitSharp.Core.Workers
                     var targetBlockLocal = this.targetBlock;
                     var targetChainLocal = this.targetChain;
 
-                    if (targetBlockLocal != null &&
-                        (targetChainLocal == null || targetBlockLocal.Hash != targetChainLocal.LastBlock.Hash))
+                    if (targetBlockLocal != null && targetBlockLocal.Hash != targetChainLocal?.LastBlock.Hash)
                     {
-                        var newTargetChain =
-                            targetChainLocal != null
-                                ? targetChainLocal.ToBuilder()
-                                : new ChainBuilder(Chain.CreateForGenesisBlock(this.rules.GenesisChainedHeader));
+                        var newTargetChain = targetChainLocal?.ToBuilder()
+                            ?? new ChainBuilder(Chain.CreateForGenesisBlock(this.rules.GenesisChainedHeader));
 
                         var deltaBlockPath = new BlockchainWalker().GetBlockchainPath(newTargetChain.LastBlock, targetBlockLocal, blockHash => this.coreStorage.GetChainedHeader(blockHash));
 

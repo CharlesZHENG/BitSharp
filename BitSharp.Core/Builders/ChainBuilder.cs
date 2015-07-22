@@ -71,7 +71,7 @@ namespace BitSharp.Core.Builders
         /// <summary>
         /// The total amount of work done on this chain.
         /// </summary>
-        public BigInteger TotalWork { get { return this.LastBlock != null ? this.LastBlock.TotalWork : 0; } }
+        public BigInteger TotalWork { get { return this.LastBlock?.TotalWork ?? 0; } }
 
         /// <summary>
         /// The list of headers in the chain, starting from height 0.
@@ -91,8 +91,8 @@ namespace BitSharp.Core.Builders
         public ChainBuilder AddBlock(ChainedHeader chainedHeader)
         {
             var lastBlock = this.LastBlock;
-            var expectedHash = lastBlock != null ? lastBlock.Hash : chainedHeader.PreviousBlockHash;
-            var expectedHeight = lastBlock != null ? lastBlock.Height + 1 : 0;
+            var expectedHash = lastBlock?.Hash ?? chainedHeader.PreviousBlockHash;
+            var expectedHeight = (lastBlock?.Height ?? -1) + 1;
 
             if (chainedHeader.PreviousBlockHash != expectedHash
                 || chainedHeader.Height != expectedHeight)
