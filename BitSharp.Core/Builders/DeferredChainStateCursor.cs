@@ -105,7 +105,7 @@ namespace BitSharp.Core.Builders
                     workItem =>
                     {
                         workItem.Consume(
-                            (operation, unspenTxHash, unspentTx) =>
+                            (operation, unspentTxHash, unspentTx) =>
                             {
                                 switch (operation)
                                 {
@@ -123,7 +123,7 @@ namespace BitSharp.Core.Builders
                                         break;
 
                                     case WorkQueueOperation.Remove:
-                                        if (!parentCursor.TryRemoveUnspentTx(unspenTxHash))
+                                        if (!parentCursor.TryRemoveUnspentTx(unspentTxHash))
                                             throw new InvalidOperationException();
                                         break;
 
