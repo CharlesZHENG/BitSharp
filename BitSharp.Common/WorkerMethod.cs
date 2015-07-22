@@ -13,8 +13,6 @@ namespace BitSharp.Common
             this.workAction = workAction;
         }
 
-        public object Data { get; set; }
-
         protected override Task WorkAction()
         {
             return this.workAction(this);
