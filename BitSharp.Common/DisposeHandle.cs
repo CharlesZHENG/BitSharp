@@ -7,6 +7,8 @@ namespace BitSharp.Common
         private readonly Action<DisposeHandle<T>> disposeAction;
         private readonly T item;
 
+        private bool disposed;
+
         public DisposeHandle(Action<DisposeHandle<T>> disposeAction, T item)
         {
             this.disposeAction = disposeAction;
@@ -15,8 +17,12 @@ namespace BitSharp.Common
 
         public void Dispose()
         {
-            if (this.disposeAction != null)
-                this.disposeAction(this);
+            if (!disposed)
+            {
+                this.disposeAction?.Invoke(this);
+
+                disposed = true;
+            }
         }
 
         public T Item

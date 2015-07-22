@@ -1,4 +1,5 @@
-﻿using NLog;
+﻿using BitSharp.Common.ExtensionMethods;
+using NLog;
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -20,7 +21,7 @@ namespace BitSharp.Common
         private readonly Action<T> prepareAction;
 
         private readonly int capacity;
-        private readonly ConcurrentBag<DisposeHandle<T>> cache;
+        private readonly ConcurrentBag<T> cache;
         private int cacheCount;
 
         private readonly AutoResetEvent itemFreedEvent = new AutoResetEvent(false);
@@ -36,7 +37,7 @@ namespace BitSharp.Common
         public DisposableCache(int capacity, Func<T> createFunc = null, Action<T> prepareAction = null)
         {
             this.capacity = capacity;
-            this.cache = new ConcurrentBag<DisposeHandle<T>>();
+            this.cache = new ConcurrentBag<T>();
             this.createFunc = createFunc;
             this.prepareAction = prepareAction;
         }
@@ -54,9 +55,7 @@ namespace BitSharp.Common
         {
             if (!this.isDisposed && disposing)
             {
-                DisposeHandle<T> handle;
-                while (this.cache.TryTake(out handle))
-                    handle.Item.Dispose();
+                this.cache.DisposeList();
 
                 this.isDisposed = true;
             }
@@ -94,10 +93,8 @@ namespace BitSharp.Common
             while (true)
             {
                 // try to take a cache instance
-                var handle = this.TryTakeItem();
-
-                // instance found, return it
-                if (handle != null)
+                DisposeHandle<T> handle;
+                if (this.TryTakeItem(out handle))
                     return handle;
 
                 Throttler.IfElapsed(TimeSpan.FromSeconds(5), () =>
@@ -122,6 +119,31 @@ namespace BitSharp.Common
             }
         }
 
+        public bool TryTakeItem(out DisposeHandle<T> handle)
+        {
+            T item;
+
+            // attempt to take an instance from the cache
+            if (this.cache.TryTake(out item))
+            {
+                Interlocked.Decrement(ref cacheCount);
+                handle = new DisposeHandle<T>(CacheHandle, item);
+                return true;
+            }
+            // if no instance was available, create a new one if allowed
+            else if (this.createFunc != null)
+            {
+                handle = new DisposeHandle<T>(CacheHandle, this.createFunc());
+                return true;
+            }
+            // no instance was available
+            else
+            {
+                handle = null;
+                return false;
+            }
+        }
+
         /// <summary>
         /// Make an instance available to the cache. If the maximum capacity would be exceeded, the instance will be disposed instead of being cached.
         /// </summary>
@@ -134,13 +156,12 @@ namespace BitSharp.Common
         private void CacheHandle(DisposeHandle<T> handle)
         {
             // prepare the instance to be cached
-            if (this.prepareAction != null)
-                this.prepareAction(handle.Item);
+            this.prepareAction?.Invoke(handle.Item);
 
             // attempt to return the instance to the cache
             if (Interlocked.Increment(ref cacheCount) <= capacity)
             {
-                this.cache.Add(handle);
+                this.cache.Add(handle.Item);
                 this.itemFreedEvent.Set();
             }
             else
@@ -148,26 +169,6 @@ namespace BitSharp.Common
                 Interlocked.Decrement(ref cacheCount);
                 handle.Item.Dispose();
             }
-        }
-
-        private DisposeHandle<T> TryTakeItem()
-        {
-            DisposeHandle<T> handle;
-
-            // attempt to take an instance from the cache
-            if (this.cache.TryTake(out handle))
-            {
-                Interlocked.Decrement(ref cacheCount);
-                return handle;
-            }
-            // if no instance was available, create a new one if allowed
-            else if (this.createFunc != null)
-            {
-                return new DisposeHandle<T>(CacheHandle, this.createFunc());
-            }
-            // no instance was available
-            else
-                return null;
         }
     }
 }
