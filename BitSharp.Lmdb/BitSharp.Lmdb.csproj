@@ -101,12 +101,12 @@
   <ItemGroup>
     <Compile Include="DbEncoder.cs" />
     <Compile Include="MerkleTreePruningCursor.cs" />
-    <Compile Include="BlockStorage.cs" />
-    <Compile Include="BlockTxesStorage.cs" />
+    <Compile Include="LmdbBlockStorage.cs" />
+    <Compile Include="LmdbBlockTxesStorage.cs" />
     <Compile Include="ChainState\LmdbChainStateManager.cs" />
     <Compile Include="LmdbStorageManager.cs" />
     <Compile Include="LmdbStorageModule.cs" />
-    <Compile Include="ChainState\ChainStateCursor.cs" />
+    <Compile Include="ChainState\LmdbChainStateCursor.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

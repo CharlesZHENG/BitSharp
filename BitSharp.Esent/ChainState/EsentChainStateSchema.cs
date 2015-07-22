@@ -4,7 +4,7 @@ using System;
 
 namespace BitSharp.Esent.ChainState
 {
-    internal static class ChainStateSchema
+    internal static class EsentChainStateSchema
     {
         public static void CreateDatabase(string jetDatabase, Instance jetInstance)
         {
@@ -203,7 +203,7 @@ namespace BitSharp.Esent.ChainState
                 var success = false;
                 try
                 {
-                    using (var cursor = new ChainStateCursor(jetDatabase, jetInstance))
+                    using (var cursor = new EsentChainStateCursor(jetDatabase, jetInstance))
                     {
                         // reset flush column
                         using (var jetUpdate = cursor.jetSession.BeginUpdate(cursor.flushTableId, JET_prep.Replace))

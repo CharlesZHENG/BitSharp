@@ -14,7 +14,7 @@ using System.Text;
 
 namespace BitSharp.Lmdb
 {
-    internal class ChainStateCursor : IChainStateCursor
+    internal class LmdbChainStateCursor : IChainStateCursor
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
@@ -35,7 +35,7 @@ namespace BitSharp.Lmdb
 
         private LightningTransaction txn;
 
-        public ChainStateCursor(string jetDatabase, LightningEnvironment jetInstance, LightningDatabase globalsTableId, LightningDatabase headersTableId, LightningDatabase unspentTxTableId, LightningDatabase blockSpentTxesTableId, LightningDatabase blockUnmintedTxesTableId)
+        public LmdbChainStateCursor(string jetDatabase, LightningEnvironment jetInstance, LightningDatabase globalsTableId, LightningDatabase headersTableId, LightningDatabase unspentTxTableId, LightningDatabase blockSpentTxesTableId, LightningDatabase blockUnmintedTxesTableId)
         {
             this.jetDatabase = jetDatabase;
             this.jetInstance = jetInstance;

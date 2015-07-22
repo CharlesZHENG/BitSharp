@@ -16,7 +16,7 @@ using Transaction = BitSharp.Core.Domain.Transaction;
 
 namespace BitSharp.Esent
 {
-    public class BlockTxesStorage : IBlockTxesStorage
+    public class EsentBlockTxesStorage : IBlockTxesStorage
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
@@ -24,19 +24,19 @@ namespace BitSharp.Esent
         private readonly string jetDatabase;
         private readonly Instance jetInstance;
 
-        private readonly DisposableCache<BlockTxesCursor> cursorCache;
+        private readonly DisposableCache<EsentBlockTxesCursor> cursorCache;
 
         private bool isDisposed;
 
-        public BlockTxesStorage(string baseDirectory, int? index = null)
+        public EsentBlockTxesStorage(string baseDirectory, int? index = null)
         {
             this.jetDirectory = Path.Combine(baseDirectory, "BlockTxes");
             if (index.HasValue)
                 this.jetDirectory = Path.Combine(jetDirectory, index.Value.ToString());
             this.jetDatabase = Path.Combine(this.jetDirectory, "BlockTxes.edb");
 
-            this.cursorCache = new DisposableCache<BlockTxesCursor>(1024,
-                createFunc: () => new BlockTxesCursor(this.jetDatabase, this.jetInstance));
+            this.cursorCache = new DisposableCache<EsentBlockTxesCursor>(1024,
+                createFunc: () => new EsentBlockTxesCursor(this.jetDatabase, this.jetInstance));
 
             this.jetInstance = new Instance(Guid.NewGuid().ToString());
             var success = false;
@@ -478,7 +478,7 @@ namespace BitSharp.Esent
             }
         }
 
-        private void AddTransaction(int blockIndex, int txIndex, UInt256 txHash, byte[] txBytes, BlockTxesCursor cursor)
+        private void AddTransaction(int blockIndex, int txIndex, UInt256 txHash, byte[] txBytes, EsentBlockTxesCursor cursor)
         {
             using (var jetUpdate = cursor.jetSession.BeginUpdate(cursor.blocksTableId, JET_prep.Insert))
             {
@@ -578,7 +578,7 @@ namespace BitSharp.Esent
             }
         }
 
-        private bool TryGetBlockIndex(BlockTxesCursor cursor, UInt256 blockHash, out int blockIndex)
+        private bool TryGetBlockIndex(EsentBlockTxesCursor cursor, UInt256 blockHash, out int blockIndex)
         {
             Api.JetSetCurrentIndex(cursor.jetSession, cursor.blockIndexTableId, "IX_BlockHash");
             Api.MakeKey(cursor.jetSession, cursor.blockIndexTableId, DbEncoder.EncodeUInt256(blockHash), MakeKeyGrbit.NewKey);
@@ -595,7 +595,7 @@ namespace BitSharp.Esent
             }
         }
 
-        private int AddBlockIndex(BlockTxesCursor cursor, UInt256 blockHash)
+        private int AddBlockIndex(EsentBlockTxesCursor cursor, UInt256 blockHash)
         {
             int blockIndex;
             using (var jetUpdate = cursor.jetSession.BeginUpdate(cursor.blockIndexTableId, JET_prep.Insert))
@@ -609,7 +609,7 @@ namespace BitSharp.Esent
             return blockIndex;
         }
 
-        private void DeleteBlockIndex(BlockTxesCursor cursor, UInt256 blockHash)
+        private void DeleteBlockIndex(EsentBlockTxesCursor cursor, UInt256 blockHash)
         {
             Api.JetSetCurrentIndex(cursor.jetSession, cursor.blockIndexTableId, "IX_BlockHash");
             Api.MakeKey(cursor.jetSession, cursor.blockIndexTableId, DbEncoder.EncodeUInt256(blockHash), MakeKeyGrbit.NewKey);

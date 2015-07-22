@@ -26,7 +26,7 @@ namespace BitSharp.Lmdb
         private readonly object blockTxesStorageLock;
         private readonly object chainStateManagerLock;
 
-        private BlockStorage blockStorage;
+        private LmdbBlockStorage blockStorage;
         private IBlockTxesStorage blockTxesStorage;
         private LmdbChainStateManager chainStateManager;
 
@@ -85,7 +85,7 @@ namespace BitSharp.Lmdb
                 if (this.blockStorage == null)
                     lock (this.blockStorageLock)
                         if (this.blockStorage == null)
-                            this.blockStorage = new BlockStorage(this.baseDirectory, this.blocksSize);
+                            this.blockStorage = new LmdbBlockStorage(this.baseDirectory, this.blocksSize);
 
                 return this.blockStorage;
             }
@@ -103,13 +103,13 @@ namespace BitSharp.Lmdb
                             if (blockTxesStorageLocations == null)
                             {
                                 // split LMDB storage since only one writer is allowed at a time
-                                this.blockTxesStorage = new SplitBlockTxesStorage(splitCount, x => new BlockTxesStorage(this.baseDirectory, this.blockTxesSize / splitCount, x));
+                                this.blockTxesStorage = new SplitBlockTxesStorage(splitCount, x => new LmdbBlockTxesStorage(this.baseDirectory, this.blockTxesSize / splitCount, x));
                             }
                             else
                             {
                                 // LMDB storage should still be further split up within each split location, since only one writer is allowed at a time
                                 this.blockTxesStorage = new SplitBlockTxesStorage(blockTxesStorageLocations, path =>
-                                    new SplitBlockTxesStorage(splitCount, index => new BlockTxesStorage(path, this.blockTxesSize / blockTxesStorageLocations.Length / splitCount, index)));
+                                    new SplitBlockTxesStorage(splitCount, index => new LmdbBlockTxesStorage(path, this.blockTxesSize / blockTxesStorageLocations.Length / splitCount, index)));
                             }
                         }
 

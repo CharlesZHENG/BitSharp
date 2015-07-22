@@ -3,7 +3,7 @@ using System;
 
 namespace BitSharp.Esent
 {
-    internal class BlockTxesCursor : IDisposable
+    internal class EsentBlockTxesCursor : IDisposable
     {
         public readonly string jetDatabase;
         public readonly Instance jetInstance;
@@ -26,7 +26,7 @@ namespace BitSharp.Esent
         public readonly JET_COLUMNID blockTxHashColumnId;
         public readonly JET_COLUMNID blockTxBytesColumnId;
 
-        public BlockTxesCursor(string jetDatabase, Instance jetInstance)
+        public EsentBlockTxesCursor(string jetDatabase, Instance jetInstance)
         {
             this.jetDatabase = jetDatabase;
             this.jetInstance = jetInstance;

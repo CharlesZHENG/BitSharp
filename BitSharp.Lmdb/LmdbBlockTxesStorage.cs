@@ -12,7 +12,7 @@ using System.Text;
 
 namespace BitSharp.Lmdb
 {
-    public class BlockTxesStorage : IBlockTxesStorage
+    public class LmdbBlockTxesStorage : IBlockTxesStorage
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
@@ -25,7 +25,7 @@ namespace BitSharp.Lmdb
 
         private bool isDisposed;
 
-        public BlockTxesStorage(string baseDirectory, long blockTxesSize, int? index = null)
+        public LmdbBlockTxesStorage(string baseDirectory, long blockTxesSize, int? index = null)
         {
             this.jetDirectory = Path.Combine(baseDirectory, "BlockTxes");
             if (index.HasValue)

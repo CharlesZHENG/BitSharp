@@ -8,9 +8,9 @@ namespace BitSharp.Esent
     internal class MerkleTreePruningCursor : IMerkleTreePruningCursor
     {
         private readonly int blockIndex;
-        private readonly BlockTxesCursor cursor;
+        private readonly EsentBlockTxesCursor cursor;
 
-        public MerkleTreePruningCursor(int blockIndex, BlockTxesCursor cursor)
+        public MerkleTreePruningCursor(int blockIndex, EsentBlockTxesCursor cursor)
         {
             this.blockIndex = blockIndex;
             this.cursor = cursor;

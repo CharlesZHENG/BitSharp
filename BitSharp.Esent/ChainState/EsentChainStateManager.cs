@@ -35,7 +35,7 @@ namespace BitSharp.Esent
                 this.CreateOrOpenDatabase();
 
                 this.cursorCache = new DisposableCache<IChainStateCursor>(1024,
-                    createFunc: () => new ChainStateCursor(this.jetDatabase, this.jetInstance),
+                    createFunc: () => new EsentChainStateCursor(this.jetDatabase, this.jetInstance),
                     prepareAction: cursor =>
                     {
                         // rollback any open transaction before returning the cursor to the cache
@@ -70,7 +70,7 @@ namespace BitSharp.Esent
         {
             try
             {
-                ChainStateSchema.OpenDatabase(this.jetDatabase, this.jetInstance, readOnly: false);
+                EsentChainStateSchema.OpenDatabase(this.jetDatabase, this.jetInstance, readOnly: false);
             }
             catch (Exception)
             {
@@ -78,7 +78,7 @@ namespace BitSharp.Esent
                 catch (Exception) { }
                 Directory.CreateDirectory(this.jetDirectory);
 
-                ChainStateSchema.CreateDatabase(this.jetDatabase, this.jetInstance);
+                EsentChainStateSchema.CreateDatabase(this.jetDatabase, this.jetInstance);
             }
         }
     }

@@ -21,7 +21,7 @@ namespace BitSharp.Esent
         private readonly string baseDirectory;
         private readonly string[] blockTxesStorageLocations;
 
-        private Lazy<BlockStorage> blockStorage;
+        private Lazy<EsentBlockStorage> blockStorage;
         private Lazy<IBlockTxesStorage> blockTxesStorage;
         private Lazy<EsentChainStateManager> chainStateManager;
 
@@ -32,14 +32,14 @@ namespace BitSharp.Esent
             this.baseDirectory = baseDirectory;
             this.blockTxesStorageLocations = blockTxesStorageLocations;
 
-            this.blockStorage = new Lazy<Esent.BlockStorage>(() => new BlockStorage(this.baseDirectory));
+            this.blockStorage = new Lazy<Esent.EsentBlockStorage>(() => new EsentBlockStorage(this.baseDirectory));
 
             this.blockTxesStorage = new Lazy<IBlockTxesStorage>(() =>
             {
                 if (blockTxesStorageLocations == null)
-                    return new BlockTxesStorage(this.baseDirectory);
+                    return new EsentBlockTxesStorage(this.baseDirectory);
                 else
-                    return new SplitBlockTxesStorage(blockTxesStorageLocations, path => new BlockTxesStorage(path));
+                    return new SplitBlockTxesStorage(blockTxesStorageLocations, path => new EsentBlockTxesStorage(path));
             });
 
             this.chainStateManager = new Lazy<EsentChainStateManager>(() => new EsentChainStateManager(this.baseDirectory));

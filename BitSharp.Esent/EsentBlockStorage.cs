@@ -15,7 +15,7 @@ using System.IO;
 
 namespace BitSharp.Esent
 {
-    public class BlockStorage : IBlockStorage
+    public class EsentBlockStorage : IBlockStorage
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
@@ -23,17 +23,17 @@ namespace BitSharp.Esent
         private readonly string jetDatabase;
         private readonly Instance jetInstance;
 
-        private readonly DisposableCache<BlockCursor> cursorCache;
+        private readonly DisposableCache<EsentBlockCursor> cursorCache;
 
         private bool isDisposed;
 
-        public BlockStorage(string baseDirectory)
+        public EsentBlockStorage(string baseDirectory)
         {
             this.jetDirectory = Path.Combine(baseDirectory, "Blocks");
             this.jetDatabase = Path.Combine(this.jetDirectory, "Blocks.edb");
 
-            this.cursorCache = new DisposableCache<BlockCursor>(1024,
-                createFunc: () => new BlockCursor(this.jetDatabase, this.jetInstance));
+            this.cursorCache = new DisposableCache<EsentBlockCursor>(1024,
+                createFunc: () => new EsentBlockCursor(this.jetDatabase, this.jetInstance));
 
             this.jetInstance = new Instance(Guid.NewGuid().ToString());
             var success = false;

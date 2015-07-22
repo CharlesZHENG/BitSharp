@@ -18,7 +18,7 @@ using System.Threading;
 
 namespace BitSharp.Esent
 {
-    internal class ChainStateCursor : IChainStateCursor
+    internal class EsentChainStateCursor : IChainStateCursor
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
@@ -66,7 +66,7 @@ namespace BitSharp.Esent
 
         private bool disposed;
 
-        public ChainStateCursor(string jetDatabase, Instance jetInstance)
+        public EsentChainStateCursor(string jetDatabase, Instance jetInstance)
         {
             this.jetDatabase = jetDatabase;
             this.jetInstance = jetInstance;

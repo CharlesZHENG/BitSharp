@@ -106,19 +106,19 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="ChainState\ChainStateSchema.cs" />
+    <Compile Include="ChainState\EsentChainStateSchema.cs" />
     <Compile Include="DbEncoder.cs" />
-    <Compile Include="BlockCursor.cs" />
-    <Compile Include="BlockTxesCursor.cs" />
+    <Compile Include="EsentBlockCursor.cs" />
+    <Compile Include="EsentBlockTxesCursor.cs" />
     <Compile Include="ExtensionMethods.cs" />
     <Compile Include="MerkleTreePruningCursor.cs" />
-    <Compile Include="BlockStorage.cs" />
-    <Compile Include="BlockTxesStorage.cs" />
+    <Compile Include="EsentBlockStorage.cs" />
+    <Compile Include="EsentBlockTxesStorage.cs" />
     <Compile Include="ChainState\EsentChainStateManager.cs" />
     <Compile Include="EsentStorageManager.cs" />
     <Compile Include="NetworkPeerStorage.cs" />
     <Compile Include="EsentStorageModule.cs" />
-    <Compile Include="ChainState\ChainStateCursor.cs" />
+    <Compile Include="ChainState\EsentChainStateCursor.cs" />
     <Compile Include="PersistentObjectDictonary.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

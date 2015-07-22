@@ -11,7 +11,7 @@ using System.IO;
 
 namespace BitSharp.Lmdb
 {
-    public class BlockStorage : IBlockStorage
+    public class LmdbBlockStorage : IBlockStorage
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
@@ -23,7 +23,7 @@ namespace BitSharp.Lmdb
 
         private bool isDisposed;
 
-        public BlockStorage(string baseDirectory, long blocksSize)
+        public LmdbBlockStorage(string baseDirectory, long blocksSize)
         {
             this.jetDirectory = Path.Combine(baseDirectory, "Blocks");
 
