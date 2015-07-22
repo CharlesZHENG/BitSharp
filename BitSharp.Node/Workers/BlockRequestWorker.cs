@@ -77,7 +77,7 @@ namespace BitSharp.Node.Workers
             this.targetChainLookAhead = 1;
 
             this.flushWorker = new ActionBlock<FlushBlock>((Action<FlushBlock>)FlushWorkerMethod,
-                new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 32 });
+                new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = Environment.ProcessorCount });
             this.flushQueue = new BufferBlock<FlushBlock>();
             this.flushBlocks = new ConcurrentSet<UInt256>();
             this.flushQueue.LinkTo(this.flushWorker, new DataflowLinkOptions { PropagateCompletion = true });

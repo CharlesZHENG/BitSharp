@@ -91,7 +91,7 @@ namespace BitSharp.Core.Builders
                     else
                         return new Tuple<LoadedTx, int>[0];
                 },
-                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, MaxDegreeOfParallelism = 16 });
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, MaxDegreeOfParallelism = Environment.ProcessorCount });
         }
 
         private static ActionBlock<Tuple<LoadedTx, int>> InitScriptValidator(IBlockchainRules rules, ChainedHeader chainedHeader, CancellationToken cancelToken)
@@ -121,7 +121,7 @@ namespace BitSharp.Core.Builders
                         }
                     }
                 },
-                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, MaxDegreeOfParallelism = 16 });
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, MaxDegreeOfParallelism = Environment.ProcessorCount });
         }
 
         private static ValidationException CreateMerkleRootException(ChainedHeader chainedHeader)

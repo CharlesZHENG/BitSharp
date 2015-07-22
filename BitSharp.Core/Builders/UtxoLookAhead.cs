@@ -71,7 +71,7 @@ namespace BitSharp.Core.Builders
                     else
                         return new BlockTx[0];
                 },
-                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, MaxDegreeOfParallelism = deferredChainStateCursor.CursorCount });
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, MaxDegreeOfParallelism = Math.Min(Environment.ProcessorCount, deferredChainStateCursor.CursorCount) });
         }
     }
 }

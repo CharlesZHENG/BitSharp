@@ -20,8 +20,8 @@ namespace BitSharp.Common
             int workerThreads, completionPortThreads;
             ThreadPool.GetMinThreads(out workerThreads, out completionPortThreads);
 
-            workerThreads = Math.Max(Environment.ProcessorCount * 40, workerThreads);
-            completionPortThreads = Math.Max(Environment.ProcessorCount * 8, completionPortThreads);
+            workerThreads = Math.Max(Environment.ProcessorCount * 30, workerThreads);
+            completionPortThreads = Math.Max(Environment.ProcessorCount * 4, completionPortThreads);
 
             ThreadPool.SetMinThreads(workerThreads, completionPortThreads);
         }

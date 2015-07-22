@@ -42,7 +42,6 @@ namespace BitSharp.Core.Test
 
             Parallel.For(
                 start, finish,
-                new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount * 2 },
                 () => new LocalMinerState(blockHeaderBytes),
                 (nonceLong, loopState, localState) =>
                 {

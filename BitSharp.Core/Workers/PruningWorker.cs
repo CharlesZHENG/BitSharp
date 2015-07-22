@@ -243,7 +243,7 @@ namespace BitSharp.Core.Workers
                     else
                         this.storageManager.BlockTxesStorage.DeleteElements(new[] { pruneWorkItem });
                 },
-                new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = 64 });
+                new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = Environment.ProcessorCount });
 
             pruningQueue.LinkTo(txPruner, new DataflowLinkOptions { PropagateCompletion = true });
 
@@ -266,7 +266,7 @@ namespace BitSharp.Core.Workers
             if (!mode.HasFlag(PruningMode.TxIndex))
                 return;
 
-            var maxParallelism = 64;
+            var maxParallelism = Environment.ProcessorCount;
 
             // prepare a cache of cursors to be used by the pruning action block, allowing a pool of transactions
             var openedCursors = new ConcurrentBag<IChainStateCursor>();

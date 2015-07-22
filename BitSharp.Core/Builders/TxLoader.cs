@@ -67,7 +67,7 @@ namespace BitSharp.Core.Builders
                     else
                         return new LoadedTx[0];
                 },
-                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, MaxDegreeOfParallelism = 64 });
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, MaxDegreeOfParallelism = Environment.ProcessorCount });
         }
 
         private static LoadedTx LoadTxInput(ICoreStorage coreStorage, ConcurrentDictionary<TxLookupKey, Lazy<Transaction>> txCache, LoadingTx loadingTx, int inputIndex)
