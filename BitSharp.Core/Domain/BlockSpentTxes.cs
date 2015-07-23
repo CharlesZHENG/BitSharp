@@ -17,15 +17,9 @@ namespace BitSharp.Core.Domain
             this.spentTxesByBlock = spentTxesByBlock;
         }
 
-        public int Count
-        {
-            get { return spentTxesByBlock.Count; }
-        }
+        public int Count => spentTxesByBlock.Count;
 
-        public SpentTx this[int index]
-        {
-            get { return spentTxesByBlock[index]; }
-        }
+        public SpentTx this[int index] => spentTxesByBlock[index];
 
         public IEnumerator<SpentTx> GetEnumerator()
         {

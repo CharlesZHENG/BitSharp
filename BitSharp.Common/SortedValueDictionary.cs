@@ -23,10 +23,7 @@ namespace BitSharp.Common
             return this.keys.ContainsKey(key);
         }
 
-        public ICollection<TKey> Keys
-        {
-            get { return this.keys.Keys; }
-        }
+        public ICollection<TKey> Keys => this.keys.Keys;
 
         public bool Remove(TKey key)
         {
@@ -48,10 +45,7 @@ namespace BitSharp.Common
             return this.keys.TryGetValue(key, out value);
         }
 
-        public ICollection<TValue> Values
-        {
-            get { return this.values; }
-        }
+        public ICollection<TValue> Values => this.values;
 
         public TValue this[TKey key]
         {
@@ -95,15 +89,9 @@ namespace BitSharp.Common
             throw new NotImplementedException();
         }
 
-        public int Count
-        {
-            get { return this.keys.Count; }
-        }
+        public int Count => this.keys.Count;
 
-        public bool IsReadOnly
-        {
-            get { return false; }
-        }
+        public bool IsReadOnly => false;
 
         public bool Remove(KeyValuePair<TKey, TValue> item)
         {

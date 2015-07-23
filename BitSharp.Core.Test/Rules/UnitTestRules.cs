@@ -22,11 +22,11 @@ namespace BitSharp.Core.Test.Rules
             this._highestTarget = Target0;
         }
 
-        public override UInt256 HighestTarget { get { return this._highestTarget; } }
+        public override UInt256 HighestTarget => this._highestTarget;
 
-        public override Block GenesisBlock { get { return this._genesisBlock; } }
+        public override Block GenesisBlock => this._genesisBlock;
 
-        public override ChainedHeader GenesisChainedHeader { get { return this._genesisChainedHeader; } }
+        public override ChainedHeader GenesisChainedHeader => this._genesisChainedHeader;
 
         public Action<ChainedHeader, LoadedTx> ValidateTransactionAction { get; set; }
 

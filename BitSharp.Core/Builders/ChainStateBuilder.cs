@@ -47,15 +47,9 @@ namespace BitSharp.Core.Builders
             commitLock.Dispose();
         }
 
-        public Chain Chain
-        {
-            get { return chain.Value; }
-        }
+        public Chain Chain => chain.Value;
 
-        public ChainStateBuilderStats Stats
-        {
-            get { return stats; }
-        }
+        public ChainStateBuilderStats Stats => stats;
 
         public async Task AddBlockAsync(ChainedHeader chainedHeader, IEnumerable<BlockTx> blockTxes, CancellationToken cancelToken = default(CancellationToken))
         {

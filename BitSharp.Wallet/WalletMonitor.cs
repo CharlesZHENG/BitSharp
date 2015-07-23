@@ -72,31 +72,13 @@ namespace BitSharp.Wallet
             }
         }
 
-        public int EntriesCount
-        {
-            get
-            {
-                return this.entriesCount;
-            }
-        }
+        public int EntriesCount => this.entriesCount;
 
-        public int WalletHeight
-        {
-            get { return this.walletHeight; }
-        }
+        public int WalletHeight => this.walletHeight;
 
-        public decimal BitBalance
-        {
-            get
-            {
-                return this.bitBalance;
-            }
-        }
+        public decimal BitBalance => this.bitBalance;
 
-        public decimal BtcBalance
-        {
-            get { return this.BitBalance / 1.MILLION(); }
-        }
+        public decimal BtcBalance => this.BitBalance / 1.MILLION();
 
         //TODO thread safety
         //TODO need to rescan utxo when addresses are added as well

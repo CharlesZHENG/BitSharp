@@ -33,9 +33,9 @@ namespace BitSharp.Core.Domain
 
         public bool Pruned { get; }
 
-        public bool IsLeft { get { return (this.Index >> this.Depth) % 2 == 0; } }
+        public bool IsLeft => (this.Index >> this.Depth) % 2 == 0;
 
-        public bool IsRight { get { return !this.IsLeft; } }
+        public bool IsRight => !this.IsLeft;
 
         public MerkleTreeNode PairWith(MerkleTreeNode right)
         {

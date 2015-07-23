@@ -15,6 +15,7 @@ namespace BitSharp.Core.Domain
             BlockIndex = blockIndex;
             TxIndex = txIndex;
             OutputStates = outputStates;
+            IsFullySpent = OutputStates.All(x => x == OutputState.Spent);
         }
 
         public UnspentTx(UInt256 txHash, int blockIndex, int txIndex, int length, OutputState state)
@@ -23,6 +24,7 @@ namespace BitSharp.Core.Domain
             BlockIndex = blockIndex;
             TxIndex = txIndex;
             OutputStates = new OutputStates(length, state);
+            IsFullySpent = state == OutputState.Spent;
         }
 
         /// <summary>
@@ -48,7 +50,7 @@ namespace BitSharp.Core.Domain
         /// <summary>
         /// True if all of the transaction's outputs are in the spent state.
         /// </summary>
-        public bool IsFullySpent { get { return this.OutputStates.All(x => x == OutputState.Spent); } }
+        public bool IsFullySpent { get; }
 
         public UnspentTx SetOutputState(int index, OutputState value)
         {

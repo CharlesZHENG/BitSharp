@@ -229,7 +229,7 @@ namespace BitSharp.Client
             LogManager.Flush();
         }
 
-        public MainWindowViewModel ViewModel { get { return this.viewModel; } }
+        public MainWindowViewModel ViewModel => this.viewModel;
 
         protected override void OnClosing(CancelEventArgs e)
         {

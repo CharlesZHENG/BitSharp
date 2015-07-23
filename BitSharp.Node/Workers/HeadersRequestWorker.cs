@@ -161,18 +161,15 @@ namespace BitSharp.Node.Workers
 
         private sealed class FlushHeaders
         {
-            private readonly Peer peer;
-            private readonly IImmutableList<BlockHeader> headers;
-
             public FlushHeaders(Peer peer, IImmutableList<BlockHeader> headers)
             {
-                this.peer = peer;
-                this.headers = headers;
+                Peer = peer;
+                Headers = headers;
             }
 
-            public Peer Peer { get { return this.peer; } }
+            public Peer Peer { get; }
 
-            public IImmutableList<BlockHeader> Headers { get { return this.headers; } }
+            public IImmutableList<BlockHeader> Headers { get; }
         }
     }
 }

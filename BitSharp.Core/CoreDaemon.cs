@@ -111,24 +111,15 @@ namespace BitSharp.Core
             }
         }
 
-        public CoreStorage CoreStorage { get { return this.coreStorage; } }
+        public CoreStorage CoreStorage => this.coreStorage;
 
-        public IBlockchainRules Rules { get { return this.rules; } }
+        public IBlockchainRules Rules => this.rules;
 
-        public Chain TargetChain { get { return this.targetChainWorker.TargetChain; } }
+        public Chain TargetChain => this.targetChainWorker.TargetChain;
 
-        public int TargetChainHeight
-        {
-            get
-            {
-                return this.targetChainWorker.TargetChain?.Height ?? -1;
-            }
-        }
+        public int TargetChainHeight => this.targetChainWorker.TargetChain?.Height ?? -1;
 
-        public Chain CurrentChain
-        {
-            get { return this.chainStateWorker.CurrentChain; }
-        }
+        public Chain CurrentChain => this.chainStateWorker.CurrentChain;
 
         public int? MaxHeight
         {

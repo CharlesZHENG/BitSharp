@@ -69,21 +69,21 @@ namespace BitSharp.Core.Test
             this.chain = parent.chain.ToImmutable().ToBuilder();
         }
 
-        public TransactionManager TxManager { get { return txManager; } }
+        public TransactionManager TxManager => txManager;
 
-        public ECPrivateKeyParameters CoinbasePrivateKey { get { return coinbasePrivateKey; } }
+        public ECPrivateKeyParameters CoinbasePrivateKey => coinbasePrivateKey;
 
-        public ECPublicKeyParameters CoinbasePublicKey { get { return coinbasePublicKey; } }
+        public ECPublicKeyParameters CoinbasePublicKey => coinbasePublicKey;
 
-        public Miner Miner { get { return miner; } }
+        public Miner Miner => miner;
 
-        public Block GenesisBlock { get { return blocks.First(); } }
+        public Block GenesisBlock => blocks.First();
 
-        public ImmutableList<Block> Blocks { get { return blocks.ToImmutable(); } }
+        public ImmutableList<Block> Blocks => blocks.ToImmutable();
 
-        public Chain Chain { get { return chain.ToImmutable(); } }
+        public Chain Chain => chain.ToImmutable();
 
-        public UnitTestRules Rules { get { return rules; } }
+        public UnitTestRules Rules => rules;
 
         public Block CreateBlock(UInt256 previousBlockHash, int txCount, UInt256 target = null)
         {

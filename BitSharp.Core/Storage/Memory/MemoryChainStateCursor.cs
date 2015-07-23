@@ -53,7 +53,7 @@ namespace BitSharp.Core.Storage.Memory
             this.chainStateStorage = chainStateStorage;
         }
 
-        internal ImmutableSortedDictionary<UInt256, UnspentTx>.Builder UnspentTransactionsDictionary { get { return this.unspentTransactions; } }
+        internal ImmutableSortedDictionary<UInt256, UnspentTx>.Builder UnspentTransactionsDictionary => this.unspentTransactions;
 
         public void Dispose()
         {
@@ -72,10 +72,7 @@ namespace BitSharp.Core.Storage.Memory
             }
         }
 
-        public bool InTransaction
-        {
-            get { return this.inTransaction; }
-        }
+        public bool InTransaction => this.inTransaction;
 
         public void BeginTransaction(bool readOnly, bool pruneOnly)
         {

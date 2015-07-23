@@ -55,15 +55,9 @@ namespace BitSharp.Core.Storage.Memory
             }
         }
 
-        public IBlockStorage BlockStorage
-        {
-            get { return this.blockStorage; }
-        }
+        public IBlockStorage BlockStorage => this.blockStorage;
 
-        public IBlockTxesStorage BlockTxesStorage
-        {
-            get { return this.blockTxesStorage; }
-        }
+        public IBlockTxesStorage BlockTxesStorage => this.blockTxesStorage;
 
         public DisposeHandle<IChainStateCursor> OpenChainStateCursor()
         {

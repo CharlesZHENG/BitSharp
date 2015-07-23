@@ -8,7 +8,7 @@ namespace BitSharp.Common
 {
     public class UInt256 : IComparable<UInt256>
     {
-        private static readonly UInt256 _zero = new UInt256(new byte[0]);
+        public static UInt256 Zero { get; } = new UInt256(new byte[0]);
 
         // parts are big-endian
         private readonly UInt64 part1;
@@ -73,10 +73,10 @@ namespace BitSharp.Common
                 throw new ArgumentOutOfRangeException();
         }
 
-        public UInt64 Part1 { get { return part1; } }
-        public UInt64 Part2 { get { return part2; } }
-        public UInt64 Part3 { get { return part3; } }
-        public UInt64 Part4 { get { return part4; } }
+        public UInt64 Part1 => part1;
+        public UInt64 Part2 => part2;
+        public UInt64 Part3 => part3;
+        public UInt64 Part4 => part4;
 
         public byte[] ToByteArray()
         {
@@ -145,11 +145,6 @@ namespace BitSharp.Common
                 return +1;
 
             throw new Exception();
-        }
-
-        public static UInt256 Zero
-        {
-            get { return _zero; }
         }
 
         public static explicit operator BigInteger(UInt256 value)

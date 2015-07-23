@@ -27,11 +27,11 @@ namespace BitSharp.Core.Builders
             this.parentEnumerator = parentEnumerator;
         }
 
-        public IDictionary<TKey, TValue> Updated { get { return updated; } }
+        public IDictionary<TKey, TValue> Updated => updated;
 
-        public IDictionary<TKey, TValue> Added { get { return added; } }
+        public IDictionary<TKey, TValue> Added => added;
 
-        public ISet<TKey> Deleted { get { return deleted; } }
+        public ISet<TKey> Deleted => deleted;
 
         public bool ContainsKey(TKey key)
         {

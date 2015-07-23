@@ -10,7 +10,7 @@ namespace BitSharp.Esent.Test
             EsentStorageManager.InitSystemParameters();
         }
 
-        public override string Name { get { return "Esent Storage"; } }
+        public override string Name => "Esent Storage";
 
         public override IStorageManager OpenStorageManager()
         {

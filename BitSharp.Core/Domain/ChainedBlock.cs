@@ -16,15 +16,15 @@ namespace BitSharp.Core.Domain
 
         public Block Block { get; }
 
-        public int Height { get { return this.ChainedHeader.Height; } }
+        public int Height => this.ChainedHeader.Height;
 
-        public BigInteger TotalWork { get { return this.ChainedHeader.TotalWork; } }
+        public BigInteger TotalWork => this.ChainedHeader.TotalWork;
 
-        public UInt256 Hash { get { return this.Block.Hash; } }
+        public UInt256 Hash => this.Block.Hash;
 
-        public BlockHeader Header { get { return this.Block.Header; } }
+        public BlockHeader Header => this.Block.Header;
 
-        public ImmutableArray<Transaction> Transactions { get { return this.Block.Transactions; } }
+        public ImmutableArray<Transaction> Transactions => this.Block.Transactions;
 
         public static implicit operator Block(ChainedBlock chainedBlock)
         {

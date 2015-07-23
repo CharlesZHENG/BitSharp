@@ -100,9 +100,9 @@ namespace BitSharp.Node
             }
         }
 
-        public RulesEnum Type { get { return this.type; } }
+        public RulesEnum Type => this.type;
 
-        internal ConcurrentSet<Peer> ConnectedPeers { get { return this.peerWorker.ConnectedPeers; } }
+        internal ConcurrentSet<Peer> ConnectedPeers => this.peerWorker.ConnectedPeers;
 
         public void Start(bool connectToPeers = true)
         {
@@ -495,24 +495,21 @@ namespace BitSharp.Node
 
     public sealed class CandidatePeer : IComparable<CandidatePeer>
     {
-        private readonly IPEndPoint ipEndPoint;
-        private readonly DateTime time;
-        private readonly bool isSeed;
         private readonly string ipEndPointString;
 
         public CandidatePeer(IPEndPoint ipEndPoint, DateTime time, bool isSeed)
         {
-            this.ipEndPoint = ipEndPoint;
-            this.time = time;
-            this.isSeed = isSeed;
-            this.ipEndPointString = ipEndPoint.ToString();
+            IPEndPoint = ipEndPoint;
+            Time = time;
+            IsSeed = isSeed;
+            ipEndPointString = ipEndPoint.ToString();
         }
 
-        public IPEndPoint IPEndPoint { get { return this.ipEndPoint; } }
+        public IPEndPoint IPEndPoint { get; }
 
-        public DateTime Time { get { return this.time; } }
+        public DateTime Time { get; }
 
-        public bool IsSeed { get { return this.isSeed; } }
+        public bool IsSeed { get; }
 
         public override bool Equals(object obj)
         {
@@ -531,13 +528,13 @@ namespace BitSharp.Node
         // candidate peers are ordered with seeds last, and then by time
         public int CompareTo(CandidatePeer other)
         {
-            if (other.isSeed && !this.isSeed)
+            if (other.IsSeed && !this.IsSeed)
                 return -1;
-            else if (this.isSeed && !other.isSeed)
+            else if (this.IsSeed && !other.IsSeed)
                 return +1;
-            else if (other.time < this.time)
+            else if (other.Time < this.Time)
                 return -1;
-            else if (other.time > this.time)
+            else if (other.Time > this.Time)
                 return +1;
             else
                 return this.ipEndPointString.CompareTo(other.ipEndPointString);

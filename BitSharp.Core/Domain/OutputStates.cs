@@ -31,15 +31,9 @@ namespace BitSharp.Core.Domain
             this.bitArray = bitArray;
         }
 
-        public OutputState this[int index]
-        {
-            get { return Decode(this.bitArray[index]); }
-        }
+        public OutputState this[int index] => Decode(this.bitArray[index]);
 
-        public int Length
-        {
-            get { return this.bitArray.Length; }
-        }
+        public int Length => this.bitArray.Length;
 
         public OutputStates Set(int index, OutputState value)
         {

@@ -20,7 +20,6 @@ namespace BitSharp.Common
         private readonly Func<T> createFunc;
         private readonly Action<T> prepareAction;
 
-        private readonly int capacity;
         private readonly ConcurrentBag<T> cache;
         private int cacheCount;
 
@@ -36,7 +35,7 @@ namespace BitSharp.Common
         /// <param name="prepareAction">An action to call on instances before they are returned to the cache. This may be null.</param>
         public DisposableCache(int capacity, Func<T> createFunc = null, Action<T> prepareAction = null)
         {
-            this.capacity = capacity;
+            this.Capacity = capacity;
             this.cache = new ConcurrentBag<T>();
             this.createFunc = createFunc;
             this.prepareAction = prepareAction;
@@ -64,10 +63,7 @@ namespace BitSharp.Common
         /// <summary>
         /// The maximum capacity of the cache.
         /// </summary>
-        public int Capacity
-        {
-            get { return this.capacity; }
-        }
+        public int Capacity { get; }
 
         /// <summary>
         /// Take an instance from the cache. If allowed, a new instance will be created if no cached instances are available, or an available instace will be waited for.
@@ -159,7 +155,7 @@ namespace BitSharp.Common
             this.prepareAction?.Invoke(handle.Item);
 
             // attempt to return the instance to the cache
-            if (Interlocked.Increment(ref cacheCount) <= capacity)
+            if (Interlocked.Increment(ref cacheCount) <= Capacity)
             {
                 this.cache.Add(handle.Item);
                 this.itemFreedEvent.Set();

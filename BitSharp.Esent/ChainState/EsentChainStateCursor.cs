@@ -116,10 +116,7 @@ namespace BitSharp.Esent
             }
         }
 
-        public bool InTransaction
-        {
-            get { return this.inTransaction; }
-        }
+        public bool InTransaction => this.inTransaction;
 
         public ChainedHeader ChainTip
         {

@@ -27,10 +27,7 @@ namespace BitSharp.Core.Storage.Memory
         {
         }
 
-        public int BlockCount
-        {
-            get { return this.allBlockTxes.Count; }
-        }
+        public int BlockCount => this.allBlockTxes.Count;
 
         public bool ContainsBlock(UInt256 blockHash)
         {

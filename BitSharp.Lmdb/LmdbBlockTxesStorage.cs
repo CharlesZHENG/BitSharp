@@ -188,10 +188,7 @@ namespace BitSharp.Lmdb
             }
         }
 
-        public string Name
-        {
-            get { return "Blocks"; }
-        }
+        public string Name => "Blocks";
 
         public bool TryAddBlockTransactions(UInt256 blockHash, IEnumerable<Transaction> blockTxes)
         {

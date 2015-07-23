@@ -26,10 +26,7 @@ namespace BitSharp.Wallet.Address
             yield return this.outputScriptHash;
         }
 
-        public bool IsMatcher
-        {
-            get { return false; }
-        }
+        public bool IsMatcher => false;
 
         public bool MatchesTxOutput(TxOutput txOutput, UInt256 txOutputScriptHash)
         {

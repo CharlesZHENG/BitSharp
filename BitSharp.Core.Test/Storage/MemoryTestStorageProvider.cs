@@ -5,7 +5,7 @@ namespace BitSharp.Core.Test.Storage
 {
     public class MemoryTestStorageProvider : ITestStorageProvider
     {
-        public string Name { get { return "Memory Storage"; } }
+        public string Name => "Memory Storage";
 
         public void TestInitialize() { }
 

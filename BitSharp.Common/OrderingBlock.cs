@@ -80,10 +80,7 @@ namespace BitSharp.Common
                 orderCapturer.Complete();
             }
 
-            public Task Completion
-            {
-                get { return orderCapturer.Completion; }
-            }
+            public Task Completion => orderCapturer.Completion;
 
             public IDisposable LinkTo(ITargetBlock<TSplit> target, DataflowLinkOptions linkOptions)
             {

@@ -12,13 +12,11 @@ namespace BitSharp.Core
 
     public class MissingDataException : Exception
     {
-        private readonly object key;
-
         public MissingDataException(object key)
         {
-            this.key = key;
+            Key = key;
         }
 
-        public object Key { get { return this.key; } }
+        public object Key { get; }
     }
 }

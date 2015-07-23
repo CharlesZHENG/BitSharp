@@ -52,7 +52,7 @@ namespace BitSharp.Core.Storage.Memory
             this.writeTxLock.Dispose();
         }
 
-        internal SemaphoreSlim WriteTxLock { get { return this.writeTxLock; } }
+        internal SemaphoreSlim WriteTxLock => this.writeTxLock;
 
         public void BeginTransaction(out ChainedHeader chainTip, out int? unspentTxCount, out int? unspentOutputCount, out int? totalTxCount, out int? totalInputCount, out int? totalOutputCount, out ImmutableSortedDictionary<UInt256, ChainedHeader>.Builder headers, out ImmutableSortedDictionary<UInt256, UnspentTx>.Builder unspentTransactions, out ImmutableDictionary<int, BlockSpentTxes>.Builder blockSpentTxes, out ImmutableDictionary<UInt256, IImmutableList<UnmintedTx>>.Builder blockUnmintedTxes, out long chainTipVersion, out long unspentTxCountVersion, out long unspentOutputCountVersion, out long totalTxCountVersion, out long totalInputCountVersion, out long totalOutputCountVersion, out long headersVersion, out long unspentTxesVersion, out long blockSpentTxesVersion, out long blockUnmintedTxesVersion)
         {

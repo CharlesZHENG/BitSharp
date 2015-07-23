@@ -23,8 +23,8 @@ namespace BitSharp.Wallet
 
         public UInt64 Value { get; }
 
-        public decimal BtcValue { get { return this.Value / 100m.MILLION(); } }
+        public decimal BtcValue => this.Value / 100m.MILLION();
 
-        public decimal BitValue { get { return this.Value / 100m; } }
+        public decimal BitValue => this.Value / 100m;
     }
 }

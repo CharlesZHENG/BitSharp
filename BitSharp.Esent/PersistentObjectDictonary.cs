@@ -32,7 +32,7 @@ namespace BitSharp.Esent
             Dispose(true);
             GC.SuppressFinalize(this);
         }
-        
+
         protected virtual void Dispose(bool disposing)
         {
             if (!isDisposed && disposing)
@@ -53,10 +53,8 @@ namespace BitSharp.Esent
             return this.dict.ContainsKey(EncodeKey(key));
         }
 
-        public ICollection<TKey> Keys
-        {
-            get { return new PersistentObjectDictionaryKeyCollection(this.dict.Keys, keyEncoder, keyDecoder); }
-        }
+        public ICollection<TKey> Keys =>
+            new PersistentObjectDictionaryKeyCollection(this.dict.Keys, keyEncoder, keyDecoder);
 
         public bool Remove(TKey key)
         {
@@ -78,10 +76,8 @@ namespace BitSharp.Esent
             }
         }
 
-        public ICollection<TValue> Values
-        {
-            get { return new PersistentObjectDictionaryValueCollection(this.dict.Values, valueEncoder, valueDecoder); }
-        }
+        public ICollection<TValue> Values =>
+            new PersistentObjectDictionaryValueCollection(this.dict.Values, valueEncoder, valueDecoder);
 
         public TValue this[TKey key]
         {
@@ -123,15 +119,9 @@ namespace BitSharp.Esent
             }
         }
 
-        public int Count
-        {
-            get { return this.dict.Count; }
-        }
+        public int Count => this.dict.Count;
 
-        public bool IsReadOnly
-        {
-            get { return this.dict.IsReadOnly; }
-        }
+        public bool IsReadOnly => this.dict.IsReadOnly;
 
         public bool Remove(KeyValuePair<TKey, TValue> item)
         {
@@ -206,15 +196,9 @@ namespace BitSharp.Esent
                 }
             }
 
-            public int Count
-            {
-                get { return this.keyCollection.Count; }
-            }
+            public int Count => this.keyCollection.Count;
 
-            public bool IsReadOnly
-            {
-                get { return this.keyCollection.IsReadOnly; }
-            }
+            public bool IsReadOnly => this.keyCollection.IsReadOnly;
 
             public bool Remove(TKey item)
             {
@@ -281,15 +265,9 @@ namespace BitSharp.Esent
                 }
             }
 
-            public int Count
-            {
-                get { return this.valueCollection.Count; }
-            }
+            public int Count => this.valueCollection.Count;
 
-            public bool IsReadOnly
-            {
-                get { return this.valueCollection.IsReadOnly; }
-            }
+            public bool IsReadOnly => this.valueCollection.IsReadOnly;
 
             public bool Remove(TValue item)
             {

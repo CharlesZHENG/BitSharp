@@ -42,7 +42,7 @@ namespace BitSharp.Core.Test
         {
         }
 
-        public ImmutableList<ChainedHeader> ChainedHeaders { get { return blockHeaders.ToImmutable(); } }
+        public ImmutableList<ChainedHeader> ChainedHeaders => blockHeaders.ToImmutable();
 
         public BlockHeader Genesis()
         {
@@ -84,9 +84,6 @@ namespace BitSharp.Core.Test
             return chainedHeader;
         }
 
-        public ChainedHeader this[int i]
-        {
-            get { return this.blockHeaders[i]; }
-        }
+        public ChainedHeader this[int i] => this.blockHeaders[i];
     }
 }

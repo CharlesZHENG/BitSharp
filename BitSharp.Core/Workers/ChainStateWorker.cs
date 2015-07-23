@@ -72,10 +72,7 @@ namespace BitSharp.Core.Workers
             return this.blockMissCountMeasure.GetCount();
         }
 
-        public Chain CurrentChain
-        {
-            get { return this.currentChain.Value; }
-        }
+        public Chain CurrentChain => this.currentChain.Value;
 
         public void WaitForUpdate()
         {

@@ -33,15 +33,9 @@ namespace BitSharp.Common
             this.bitArray = clone ? (BitArray)bitArray.Clone() : bitArray;
         }
 
-        public bool this[int index]
-        {
-            get { return this.bitArray[index]; }
-        }
+        public bool this[int index] => this.bitArray[index];
 
-        public int Length
-        {
-            get { return this.bitArray.Length; }
-        }
+        public int Length => this.bitArray.Length;
 
         public ImmutableBitArray Set(int index, bool value)
         {
@@ -65,9 +59,9 @@ namespace BitSharp.Common
         {
             var byteLength = (this.bitArray.Length + 7) / 8;
             var bytes = new byte[byteLength];
-            
+
             this.bitArray.CopyTo(bytes, 0);
-            
+
             return bytes;
         }
     }

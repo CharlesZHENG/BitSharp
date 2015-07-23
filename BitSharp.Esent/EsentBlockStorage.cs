@@ -420,15 +420,9 @@ namespace BitSharp.Esent
             }
         }
 
-        public int Count
-        {
-            get { return 0; }
-        }
+        public int Count => 0;
 
-        public string Name
-        {
-            get { return "Blocks"; }
-        }
+        public string Name => "Blocks";
 
         public bool TryRemove(UInt256 blockHash)
         {

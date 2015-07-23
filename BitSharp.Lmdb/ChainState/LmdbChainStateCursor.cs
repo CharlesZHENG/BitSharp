@@ -55,10 +55,7 @@ namespace BitSharp.Lmdb
             }
         }
 
-        public bool InTransaction
-        {
-            get { return this.txn != null; }
-        }
+        public bool InTransaction => this.txn != null;
 
         public ChainedHeader ChainTip
         {

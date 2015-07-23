@@ -9,7 +9,7 @@ namespace BitSharp.Core.Script
     {
         private Stack<ImmutableArray<byte>> stack = new Stack<ImmutableArray<byte>>();
 
-        public int Count { get { return stack.Count; } }
+        public int Count => stack.Count;
 
         // Peek
         public ImmutableArray<byte> PeekBytes()
@@ -26,7 +26,7 @@ namespace BitSharp.Core.Script
         {
             return CastToBigInteger(stack.Peek());
         }
-        
+
         // Pop
         public ImmutableArray<byte> PopBytes()
         {
@@ -76,11 +76,11 @@ namespace BitSharp.Core.Script
                     // Can be negative zero
                     if (i == value.Length - 1 && value[i] == 0x80)
                         return false;
-                    
+
                     return true;
                 }
             }
-            
+
             return false;
         }
 

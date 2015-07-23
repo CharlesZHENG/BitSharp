@@ -68,15 +68,9 @@ namespace BitSharp.Esent
             }
         }
 
-        public IBlockStorage BlockStorage
-        {
-            get { return blockStorage.Value; }
-        }
+        public IBlockStorage BlockStorage => blockStorage.Value;
 
-        public IBlockTxesStorage BlockTxesStorage
-        {
-            get { return blockTxesStorage.Value; }
-        }
+        public IBlockTxesStorage BlockTxesStorage => blockTxesStorage.Value;
 
         public DisposeHandle<IChainStateCursor> OpenChainStateCursor()
         {

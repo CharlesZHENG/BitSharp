@@ -11,7 +11,7 @@ namespace BitSharp.Core.Domain
             Transactions = transactions;
         }
 
-        public UInt256 Hash { get { return this.Header.Hash; } }
+        public UInt256 Hash => this.Header.Hash;
 
         public BlockHeader Header { get; }
 

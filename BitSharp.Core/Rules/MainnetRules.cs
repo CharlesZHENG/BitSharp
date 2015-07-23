@@ -92,15 +92,15 @@ namespace BitSharp.Core.Rules
         public bool IgnoreSignatures { get; set; }
         public bool IgnoreScriptErrors { get; set; }
 
-        public virtual UInt256 HighestTarget { get { return this.highestTarget; } }
+        public virtual UInt256 HighestTarget => this.highestTarget;
 
-        public virtual Block GenesisBlock { get { return this.genesisBlock; } }
+        public virtual Block GenesisBlock => this.genesisBlock;
 
-        public virtual ChainedHeader GenesisChainedHeader { get { return this.genesisChainedHeader; } }
+        public virtual ChainedHeader GenesisChainedHeader => this.genesisChainedHeader;
 
-        public virtual int DifficultyInterval { get { return this.difficultyInterval; } }
+        public virtual int DifficultyInterval => this.difficultyInterval;
 
-        public virtual long DifficultyTargetTimespan { get { return this.difficultyTargetTimespan; } }
+        public virtual long DifficultyTargetTimespan => this.difficultyTargetTimespan;
 
         public virtual double TargetToDifficulty(UInt256 target)
         {

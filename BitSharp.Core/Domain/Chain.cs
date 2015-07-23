@@ -30,22 +30,22 @@ namespace BitSharp.Core.Domain
         /// <summary>
         /// The chain's genesis header.
         /// </summary>
-        public ChainedHeader GenesisBlock { get { return this.Blocks.FirstOrDefault(); } }
+        public ChainedHeader GenesisBlock => this.Blocks.FirstOrDefault();
 
         /// <summary>
         /// The last header in the chain.
         /// </summary>
-        public ChainedHeader LastBlock { get { return this.Blocks.LastOrDefault(); } }
+        public ChainedHeader LastBlock => this.Blocks.LastOrDefault();
 
         /// <summary>
         /// The height of the chain. This will be one less than the count of headers.
         /// </summary>
-        public int Height { get { return this.Blocks.Count() - 1; } }
+        public int Height => this.Blocks.Count() - 1;
 
         /// <summary>
         /// The total amount of work done on this chain.
         /// </summary>
-        public BigInteger TotalWork { get { return this.LastBlock?.TotalWork ?? 0; } }
+        public BigInteger TotalWork => this.LastBlock?.TotalWork ?? 0;
 
         /// <summary>
         /// The list of headers in the chain, starting from height 0.

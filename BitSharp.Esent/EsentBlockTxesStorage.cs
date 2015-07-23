@@ -71,7 +71,7 @@ namespace BitSharp.Esent
             }
         }
 
-        internal Instance JetInstance { get { return this.jetInstance; } }
+        internal Instance JetInstance => this.jetInstance;
 
         public bool ContainsBlock(UInt256 blockHash)
         {
@@ -437,10 +437,7 @@ namespace BitSharp.Esent
             }
         }
 
-        public string Name
-        {
-            get { return "Blocks"; }
-        }
+        public string Name => "Blocks";
 
         public bool TryAddBlockTransactions(UInt256 blockHash, IEnumerable<Transaction> blockTxes)
         {

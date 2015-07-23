@@ -76,8 +76,8 @@ namespace BitSharp.Core.Rules
             this._genesisChainedHeader = ChainedHeader.CreateForGenesisBlock(this._genesisBlock.Header);
         }
 
-        public override Block GenesisBlock { get { return this._genesisBlock; } }
+        public override Block GenesisBlock => this._genesisBlock;
 
-        public override ChainedHeader GenesisChainedHeader { get { return this._genesisChainedHeader; } }
+        public override ChainedHeader GenesisChainedHeader => this._genesisChainedHeader;
     }
 }

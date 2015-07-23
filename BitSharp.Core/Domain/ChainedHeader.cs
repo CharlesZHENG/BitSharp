@@ -15,19 +15,19 @@ namespace BitSharp.Core.Domain
 
         public BlockHeader BlockHeader { get; }
 
-        public UInt32 Version { get { return this.BlockHeader.Version; } }
+        public UInt32 Version => this.BlockHeader.Version;
 
-        public UInt256 PreviousBlockHash { get { return this.BlockHeader.PreviousBlock; } }
+        public UInt256 PreviousBlockHash => this.BlockHeader.PreviousBlock;
 
-        public UInt256 MerkleRoot { get { return this.BlockHeader.MerkleRoot; } }
+        public UInt256 MerkleRoot => this.BlockHeader.MerkleRoot;
 
-        public UInt32 Time { get { return this.BlockHeader.Time; } }
+        public UInt32 Time => this.BlockHeader.Time;
 
-        public UInt32 Bits { get { return this.BlockHeader.Bits; } }
+        public UInt32 Bits => this.BlockHeader.Bits;
 
-        public UInt32 Nonce { get { return this.BlockHeader.Nonce; } }
+        public UInt32 Nonce => this.BlockHeader.Nonce;
 
-        public UInt256 Hash { get { return this.BlockHeader.Hash; } }
+        public UInt256 Hash => this.BlockHeader.Hash;
 
         public int Height { get; }
 

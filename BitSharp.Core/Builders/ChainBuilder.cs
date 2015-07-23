@@ -56,32 +56,32 @@ namespace BitSharp.Core.Builders
         /// <summary>
         /// The chain's genesis header.
         /// </summary>
-        public ChainedHeader GenesisBlock { get { return this.blocks.FirstOrDefault(); } }
+        public ChainedHeader GenesisBlock => this.blocks.FirstOrDefault();
 
         /// <summary>
         /// The last header in the chain.
         /// </summary>
-        public ChainedHeader LastBlock { get { return this.blocks.LastOrDefault(); } }
+        public ChainedHeader LastBlock => this.blocks.LastOrDefault();
 
         /// <summary>
         /// The height of the chain. This will be one less than the count of headers.
         /// </summary>
-        public int Height { get { return this.blocks.Count() - 1; } }
+        public int Height => this.blocks.Count() - 1;
 
         /// <summary>
         /// The total amount of work done on this chain.
         /// </summary>
-        public BigInteger TotalWork { get { return this.LastBlock?.TotalWork ?? 0; } }
+        public BigInteger TotalWork => this.LastBlock?.TotalWork ?? 0;
 
         /// <summary>
         /// The list of headers in the chain, starting from height 0.
         /// </summary>
-        public ImmutableList<ChainedHeader> Blocks { get { return this.blocks.ToImmutable(); } }
+        public ImmutableList<ChainedHeader> Blocks => this.blocks.ToImmutable();
 
         /// <summary>
         /// The dictionary of headers in the chain, indexed by hash.
         /// </summary>
-        public ImmutableDictionary<UInt256, ChainedHeader> BlocksByHash { get { return this.blocksByHash.ToImmutable(); } }
+        public ImmutableDictionary<UInt256, ChainedHeader> BlocksByHash => this.blocksByHash.ToImmutable();
 
         /// <summary>
         /// Add a chained header to the end of this builder.

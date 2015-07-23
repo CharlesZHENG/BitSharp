@@ -18,7 +18,7 @@ namespace BitSharp.Node.Workers
     public class PeerWorker : Worker
     {
         public static int ConnectedMax { get; set; } = 3;
-        public static int PendingMax { get { return 2 * ConnectedMax; } }
+        public static int PendingMax => 2 * ConnectedMax;
 
         private static readonly int HANDSHAKE_TIMEOUT_MS = 15000;
 
@@ -56,13 +56,13 @@ namespace BitSharp.Node.Workers
             }
         }
 
-        internal ConcurrentSet<IPEndPoint> BadPeers { get { return this.badPeers; } }
+        internal ConcurrentSet<IPEndPoint> BadPeers => this.badPeers;
 
-        internal ConcurrentSet<Peer> PendingPeers { get { return this.pendingPeers; } }
+        internal ConcurrentSet<Peer> PendingPeers => this.pendingPeers;
 
-        internal ConcurrentSet<Peer> ConnectedPeers { get { return this.connectedPeers; } }
+        internal ConcurrentSet<Peer> ConnectedPeers => this.connectedPeers;
 
-        internal int IncomingCount { get { return this.incomingCount; } }
+        internal int IncomingCount => this.incomingCount;
 
         public void AddCandidatePeer(CandidatePeer peer)
         {

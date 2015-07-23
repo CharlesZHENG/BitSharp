@@ -21,11 +21,11 @@ namespace BitSharp.Core.Builders
             this.workByKey = new Dictionary<TKey, WorkItem>();
         }
 
-        public IDictionary<TKey, TValue> Updated { get { return parentDictionary.Updated; } }
+        public IDictionary<TKey, TValue> Updated => parentDictionary.Updated;
 
-        public IDictionary<TKey, TValue> Added { get { return parentDictionary.Added; } }
+        public IDictionary<TKey, TValue> Added => parentDictionary.Added;
 
-        public ISet<TKey> Deleted { get { return parentDictionary.Deleted; } }
+        public ISet<TKey> Deleted => parentDictionary.Deleted;
 
         public bool ContainsKey(TKey key)
         {
@@ -89,10 +89,7 @@ namespace BitSharp.Core.Builders
             return parentDictionary.GetEnumerator();
         }
 
-        public BufferBlock<WorkItem> WorkQueue
-        {
-            get { return workQueue; }
-        }
+        public BufferBlock<WorkItem> WorkQueue => workQueue;
 
         public int WorkChangeCount { get; private set; }
 
@@ -140,7 +137,7 @@ namespace BitSharp.Core.Builders
             private WorkQueueOperation operation;
             private TKey key;
             private TValue value;
-            private CompletionCount completion;
+            private bool consumed;
             private readonly object lockObject = new object();
 
             public WorkItem(WorkQueueOperation operation, TKey key, TValue value)
@@ -148,14 +145,14 @@ namespace BitSharp.Core.Builders
                 this.operation = operation;
                 this.key = key;
                 this.value = value;
-                this.completion = new CompletionCount(1);
+                this.consumed = false;
             }
 
             public bool TryChange(WorkQueueOperation newOperation, TValue newValue)
             {
                 lock (lockObject)
                 {
-                    if (completion.IsComplete)
+                    if (consumed)
                         return false;
 
                     // can't change existing add to add or existing delete to delete
@@ -197,13 +194,12 @@ namespace BitSharp.Core.Builders
             {
                 lock (lockObject)
                 {
-                    if (completion.IsComplete)
+                    if (consumed)
                         throw new InvalidOperationException();
 
                     consumeAction(operation, key, value);
 
-                    if (!completion.TryComplete())
-                        throw new InvalidOperationException();
+                    consumed = true;
                 }
             }
         }

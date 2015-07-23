@@ -511,34 +511,28 @@ namespace BitSharp.Node.Workers
 
         private sealed class BlockRequest
         {
-            private readonly Peer peer;
-            private readonly DateTime requestTime;
-
             public BlockRequest(Peer peer, DateTime requestTime)
             {
-                this.peer = peer;
-                this.requestTime = requestTime;
+                Peer = peer;
+                RequestTime = requestTime;
             }
 
-            public Peer Peer { get { return this.peer; } }
+            public Peer Peer { get; }
 
-            public DateTime RequestTime { get { return this.requestTime; } }
+            public DateTime RequestTime { get; }
         }
 
         private sealed class FlushBlock
         {
-            private readonly Peer peer;
-            private readonly Block block;
-
             public FlushBlock(Peer peer, Block block)
             {
-                this.peer = peer;
-                this.block = block;
+                Peer = peer;
+                Block = block;
             }
 
-            public Peer Peer { get { return this.peer; } }
+            public Peer Peer { get; }
 
-            public Block Block { get { return this.block; } }
+            public Block Block { get; }
         }
     }
 }

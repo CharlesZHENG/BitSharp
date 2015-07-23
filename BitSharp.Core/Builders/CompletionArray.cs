@@ -60,6 +60,6 @@ namespace BitSharp.Core.Builders
             return Interlocked.Decrement(ref count) == 0;
         }
 
-        public bool IsComplete { get { return count == 0; } }
+        public bool IsComplete => count == 0;
     }
 }

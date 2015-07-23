@@ -50,7 +50,7 @@ namespace BitSharp.Lmdb
             Dispose(true);
             GC.SuppressFinalize(this);
         }
-        
+
         protected virtual void Dispose(bool disposing)
         {
             if (!isDisposed && disposing)
@@ -201,10 +201,7 @@ namespace BitSharp.Lmdb
             }
         }
 
-        public string Name
-        {
-            get { return "Blocks"; }
-        }
+        public string Name => "Blocks";
 
         public bool TryRemove(UInt256 blockHash)
         {

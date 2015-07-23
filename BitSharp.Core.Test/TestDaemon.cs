@@ -103,25 +103,25 @@ namespace BitSharp.Core.Test
             }
         }
 
-        public IKernel Kernel { get { return this.kernel; } }
+        public IKernel Kernel => this.kernel;
 
-        public TransactionManager TxManager { get { return testBlocks.TxManager; } }
+        public TransactionManager TxManager => testBlocks.TxManager;
 
-        public ECPrivateKeyParameters CoinbasePrivateKey { get { return testBlocks.CoinbasePrivateKey; } }
+        public ECPrivateKeyParameters CoinbasePrivateKey => testBlocks.CoinbasePrivateKey;
 
-        public ECPublicKeyParameters CoinbasePublicKey { get { return testBlocks.CoinbasePublicKey; } }
+        public ECPublicKeyParameters CoinbasePublicKey => testBlocks.CoinbasePublicKey;
 
-        public Miner Miner { get { return testBlocks.Miner; } }
+        public Miner Miner => testBlocks.Miner;
 
-        public Block GenesisBlock { get { return testBlocks.GenesisBlock; } }
+        public Block GenesisBlock => testBlocks.GenesisBlock;
 
-        public TestBlocks TestBlocks { get { return testBlocks; } }
+        public TestBlocks TestBlocks => testBlocks;
 
-        public UnitTestRules Rules { get { return testBlocks.Rules; } }
+        public UnitTestRules Rules => testBlocks.Rules;
 
-        public CoreDaemon CoreDaemon { get { return this.coreDaemon; } }
+        public CoreDaemon CoreDaemon => this.coreDaemon;
 
-        public CoreStorage CoreStorage { get { return this.coreStorage; } }
+        public CoreStorage CoreStorage => this.coreStorage;
 
         public Block CreateEmptyBlock(UInt256 prevBlockHash, UInt256 target = null)
         {

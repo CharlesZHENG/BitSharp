@@ -56,7 +56,7 @@ namespace BitSharp.Core
             }
         }
 
-        public int Count { get { return heightNames.Count; } }
+        public int Count => heightNames.Count;
 
         public IEnumerable<Block> ReadBlocks()
         {

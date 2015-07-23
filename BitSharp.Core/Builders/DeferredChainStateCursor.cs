@@ -74,12 +74,9 @@ namespace BitSharp.Core.Builders
                 RollbackTransaction();
         }
 
-        public int CursorCount { get { return chainState.CursorCount; } }
+        public int CursorCount => chainState.CursorCount;
 
-        public bool InTransaction
-        {
-            get { return inTransaction; }
-        }
+        public bool InTransaction => inTransaction;
 
         public void BeginTransaction(bool readOnly, bool pruneOnly)
         {

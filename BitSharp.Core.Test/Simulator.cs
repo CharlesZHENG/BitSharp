@@ -70,7 +70,7 @@ namespace BitSharp.Core.Test
             Dispose(true);
             GC.SuppressFinalize(this);
         }
-        
+
         protected virtual void Dispose(bool disposing)
         {
             if (!isDisposed && disposing)
@@ -82,11 +82,11 @@ namespace BitSharp.Core.Test
             }
         }
 
-        public BlockProvider BlockProvider { get { return this.blockProvider; } }
+        public BlockProvider BlockProvider => this.blockProvider;
 
-        public IKernel Kernel { get { return this.kernel; } }
+        public IKernel Kernel => this.kernel;
 
-        public CoreDaemon CoreDaemon { get { return this.coreDaemon; } }
+        public CoreDaemon CoreDaemon => this.coreDaemon;
 
         public void AddBlockRange(int fromHeight, int toHeight)
         {

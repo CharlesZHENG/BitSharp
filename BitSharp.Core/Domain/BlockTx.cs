@@ -15,7 +15,7 @@ namespace BitSharp.Core.Domain
             : this(txIndex, 0, tx.Hash, false, tx)
         { }
 
-        public bool IsCoinbase { get { return this.Index == 0; } }
+        public bool IsCoinbase => this.Index == 0;
 
         public Transaction Transaction { get; }
     }

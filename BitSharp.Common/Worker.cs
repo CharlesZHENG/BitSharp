@@ -138,7 +138,7 @@ namespace BitSharp.Common
         /// <summary>
         /// Whether the worker is currently started.
         /// </summary>
-        public bool IsStarted { get { return this.isStarted; } }
+        public bool IsStarted => this.isStarted;
 
         /// <summary>
         /// Start the worker.

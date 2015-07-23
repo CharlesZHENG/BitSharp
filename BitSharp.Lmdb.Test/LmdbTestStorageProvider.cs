@@ -5,7 +5,7 @@ namespace BitSharp.Lmdb.Test
 {
     public class LmdbTestStorageProvider : BaseTestStorageProvider, ITestStorageProvider
     {
-        public override string Name { get { return "Lmdb Storage"; } }
+        public override string Name => "Lmdb Storage";
 
         public override IStorageManager OpenStorageManager()
         {

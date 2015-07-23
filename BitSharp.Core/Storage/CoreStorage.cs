@@ -66,11 +66,11 @@ namespace BitSharp.Core.Storage
 
         public event Action<UInt256> BlockInvalidated;
 
-        public int ChainedHeaderCount { get { return -1; } }
+        public int ChainedHeaderCount => -1;
 
-        public int BlockWithTxesCount { get { return this.blockTxesStorage.Value.BlockCount; } }
+        public int BlockWithTxesCount => this.blockTxesStorage.Value.BlockCount;
 
-        internal IStorageManager StorageManager { get { return this.storageManager; } }
+        internal IStorageManager StorageManager => this.storageManager;
 
         public bool ContainsChainedHeader(UInt256 blockHash)
         {

@@ -25,24 +25,18 @@ namespace BitSharp.Node.Network
         private bool isDisposed;
 
         private bool startedConnecting = false;
-        private bool isConnected = false;
-        private /*readonly*/ IPEndPoint localEndPoint;
-        private readonly IPEndPoint remoteEndPoint;
         private readonly Socket socket;
-        private readonly RemoteReceiver receiver;
-        private readonly RemoteSender sender;
-        private readonly bool isSeed;
 
         private CountMeasure blockMissCountMeasure;
 
         public Peer(IPEndPoint remoteEndPoint, bool isSeed)
         {
-            this.remoteEndPoint = remoteEndPoint;
-            this.isSeed = isSeed;
+            RemoteEndPoint = remoteEndPoint;
+            IsSeed = isSeed;
 
             this.socket = new Socket(remoteEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-            this.receiver = new RemoteReceiver(this, this.socket, persistent: false);
-            this.sender = new RemoteSender(this.socket);
+            Receiver = new RemoteReceiver(this, this.socket, persistent: false);
+            Sender = new RemoteSender(this.socket);
 
             this.blockMissCountMeasure = new CountMeasure(TimeSpan.FromMinutes(10));
 
@@ -52,13 +46,13 @@ namespace BitSharp.Node.Network
         public Peer(Socket socket, bool isSeed)
         {
             this.socket = socket;
-            this.isConnected = true;
+            this.IsConnected = true;
 
-            this.localEndPoint = (IPEndPoint)socket.LocalEndPoint;
-            this.remoteEndPoint = (IPEndPoint)socket.RemoteEndPoint;
+            LocalEndPoint = (IPEndPoint)socket.LocalEndPoint;
+            RemoteEndPoint = (IPEndPoint)socket.RemoteEndPoint;
 
-            this.receiver = new RemoteReceiver(this, this.socket, persistent: false);
-            this.sender = new RemoteSender(this.socket);
+            Receiver = new RemoteReceiver(this, this.socket, persistent: false);
+            Sender = new RemoteSender(this.socket);
 
             this.blockMissCountMeasure = new CountMeasure(TimeSpan.FromMinutes(10));
 
@@ -70,7 +64,7 @@ namespace BitSharp.Node.Network
             Dispose(true);
             GC.SuppressFinalize(this);
         }
-        
+
         protected virtual void Dispose(bool disposing)
         {
             if (!isDisposed && disposing)
@@ -82,7 +76,7 @@ namespace BitSharp.Node.Network
 
                     UnwireNode();
 
-                    this.sender.Dispose();
+                    this.Sender.Dispose();
                     this.socket.Dispose();
                     this.blockMissCountMeasure.Dispose();
                     this.semaphore.Dispose();
@@ -92,17 +86,17 @@ namespace BitSharp.Node.Network
             }
         }
 
-        public IPEndPoint LocalEndPoint { get { return this.localEndPoint; } }
+        public IPEndPoint LocalEndPoint { get; private set; }
 
-        public IPEndPoint RemoteEndPoint { get { return this.remoteEndPoint; } }
+        public IPEndPoint RemoteEndPoint { get; }
 
-        public RemoteReceiver Receiver { get { return this.receiver; } }
+        public RemoteReceiver Receiver { get; }
 
-        public RemoteSender Sender { get { return this.sender; } }
+        public RemoteSender Sender { get; }
 
-        public bool IsConnected { get { return this.isConnected; } }
+        public bool IsConnected { get; private set; }
 
-        public bool IsSeed { get { return this.isSeed; } }
+        public bool IsSeed { get; }
 
         public int BlockMissCount
         {
@@ -136,7 +130,7 @@ namespace BitSharp.Node.Network
                     return;
 
                 // don't connect if already connected, or started connecting elsewhere
-                if (this.isConnected || this.startedConnecting)
+                if (this.IsConnected || this.startedConnecting)
                     return;
 
                 // indicate that connecting will be started
@@ -146,14 +140,14 @@ namespace BitSharp.Node.Network
             // start the connection
             try
             {
-                await Task.Factory.FromAsync(this.socket.BeginConnect(this.remoteEndPoint, null, null), this.socket.EndConnect);
+                await Task.Factory.FromAsync(this.socket.BeginConnect(this.RemoteEndPoint, null, null), this.socket.EndConnect);
 
-                this.localEndPoint = (IPEndPoint)this.socket.LocalEndPoint;
-                this.isConnected = true;
+                this.LocalEndPoint = (IPEndPoint)this.socket.LocalEndPoint;
+                this.IsConnected = true;
             }
             catch (Exception ex)
             {
-                logger.Debug(ex, $"Error on connecting to {remoteEndPoint}");
+                logger.Debug(ex, $"Error on connecting to {RemoteEndPoint}");
                 Disconnect();
             }
             finally
@@ -172,30 +166,30 @@ namespace BitSharp.Node.Network
 
         private void WireNode()
         {
-            this.receiver.OnFailed += HandleFailed;
-            this.sender.OnFailed += HandleFailed;
-            this.receiver.OnGetBlocks += HandleGetBlocks;
-            this.receiver.OnGetHeaders += HandleGetHeaders;
-            this.receiver.OnGetData += HandleGetData;
-            this.receiver.OnPing += HandlePing;
+            this.Receiver.OnFailed += HandleFailed;
+            this.Sender.OnFailed += HandleFailed;
+            this.Receiver.OnGetBlocks += HandleGetBlocks;
+            this.Receiver.OnGetHeaders += HandleGetHeaders;
+            this.Receiver.OnGetData += HandleGetData;
+            this.Receiver.OnPing += HandlePing;
         }
 
         private void UnwireNode()
         {
-            this.receiver.OnFailed -= HandleFailed;
-            this.sender.OnFailed -= HandleFailed;
-            this.receiver.OnGetBlocks -= HandleGetBlocks;
-            this.receiver.OnGetHeaders -= HandleGetHeaders;
-            this.receiver.OnGetData -= HandleGetData;
-            this.receiver.OnPing -= HandlePing;
+            this.Receiver.OnFailed -= HandleFailed;
+            this.Sender.OnFailed -= HandleFailed;
+            this.Receiver.OnGetBlocks -= HandleGetBlocks;
+            this.Receiver.OnGetHeaders -= HandleGetHeaders;
+            this.Receiver.OnGetData -= HandleGetData;
+            this.Receiver.OnPing -= HandlePing;
         }
 
         private void HandleFailed(Exception ex)
         {
             if (ex != null)
-                logger.Debug(ex, $"Remote peer failed: {this.remoteEndPoint}");
+                logger.Debug(ex, $"Remote peer failed: {this.RemoteEndPoint}");
             else
-                logger.Debug($"Remote peer failed: {this.remoteEndPoint}");
+                logger.Debug($"Remote peer failed: {this.RemoteEndPoint}");
 
             Disconnect();
         }

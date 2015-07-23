@@ -64,10 +64,7 @@ namespace BitSharp.Common
         /// <summary>
         /// Gets the number of elements in the set.
         /// </summary>
-        public int Count
-        {
-            get { return _dictionary.Count; }
-        }
+        public int Count => _dictionary.Count;
 
         /// <summary>
         /// Gets a value indicating whether the <see cref="T:System.Collections.Generic.ICollection`1"/> is read-only.
@@ -75,20 +72,14 @@ namespace BitSharp.Common
         /// <returns>
         /// true if the <see cref="T:System.Collections.Generic.ICollection`1"/> is read-only; otherwise, false.
         /// </returns>
-        public bool IsReadOnly { get { return false; } }
+        public bool IsReadOnly => false;
 
         /// <summary>
         /// Gets a value that indicates if the set is empty.
         /// </summary>
-        public bool IsEmpty
-        {
-            get { return _dictionary.IsEmpty; }
-        }
+        public bool IsEmpty => _dictionary.IsEmpty;
 
-        public ICollection<T> Values
-        {
-            get { return _dictionary.Keys; }
-        }
+        public ICollection<T> Values => _dictionary.Keys;
 
         /// <summary>
         /// Adds an item to the <see cref="T:System.Collections.Generic.ICollection`1"/>.
