@@ -87,7 +87,7 @@ namespace BitSharp.Common
             this.isAlive = true;
             this.isDisposed = false;
 
-            this.workerTask = Task.Factory.StartNew((Func<Task>)WorkerLoop, TaskCreationOptions.LongRunning).Unwrap();
+            this.workerTask = Task.Factory.StartNew(WorkerLoop, TaskCreationOptions.LongRunning).Unwrap();
         }
 
         /// <summary>
