@@ -126,10 +126,9 @@ namespace BitSharp.Wallet
         protected override async Task WorkAction()
         {
             using (updatedTracker.TryUpdate(staleAction: NotifyWork))
-            using (var chainState = this.coreDaemon.GetChainState())
             {
                 var stopwatch = Stopwatch.StartNew();
-                foreach (var pathElement in this.chainBuilder.NavigateTowards(chainState.Chain))
+                foreach (var pathElement in this.chainBuilder.NavigateTowards(() => coreDaemon.CurrentChain))
                 {
                     // cooperative loop
                     this.ThrowIfCancelled();
@@ -141,7 +140,8 @@ namespace BitSharp.Wallet
 
                     try
                     {
-                        await ScanBlock(coreDaemon.CoreStorage, chainState, chainedHeader, forward);
+                        using (var chainState = this.coreDaemon.GetChainState())
+                            await ScanBlock(coreDaemon.CoreStorage, chainState, chainedHeader, forward);
                     }
                     catch (MissingDataException) {/*TODO no wallet state is saved, so missing data will be thrown when started up again due to pruning*/}
                     catch (AggregateException) {/*TODO no wallet state is saved, so missing data will be thrown when started up again due to pruning*/}
@@ -155,13 +155,6 @@ namespace BitSharp.Wallet
                     this.coreDaemon.PrunableHeight = this.walletHeight;
 
                     this.OnScanned?.Invoke();
-
-                    // limit how long the chain state snapshot will be kept open
-                    if (stopwatch.Elapsed > TimeSpan.FromSeconds(15))
-                    {
-                        this.NotifyWork();
-                        break;
-                    }
                 }
             }
         }

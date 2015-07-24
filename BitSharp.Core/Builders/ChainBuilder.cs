@@ -124,10 +124,15 @@ namespace BitSharp.Core.Builders
 
         public IEnumerable<Tuple<int, ChainedHeader>> NavigateTowards(Chain chain)
         {
+            return NavigateTowards(() => chain);
+        }
+
+        public IEnumerable<Tuple<int, ChainedHeader>> NavigateTowards(Func<Chain> chain)
+        {
             Tuple<int, ChainedHeader> singleStep;
             do
             {
-                singleStep = this.ToImmutable().NavigateTowards(chain).FirstOrDefault();
+                singleStep = this.ToImmutable().NavigateTowards(chain()).FirstOrDefault();
                 if (singleStep != null)
                     yield return singleStep;
             }
