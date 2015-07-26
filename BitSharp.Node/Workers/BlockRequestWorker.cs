@@ -20,7 +20,7 @@ namespace BitSharp.Node.Workers
     public class BlockRequestWorker : Worker
     {
         //TODO
-        public static string[] SecondaryBlockFolders;
+        public static string SecondaryBlockFolder;
 
         public static TimeSpan LookAheadTime { get; set; } = TimeSpan.FromSeconds(30);
 
@@ -216,7 +216,7 @@ namespace BitSharp.Node.Workers
             }
 
             // get blocks from secondary source, if specified
-            if (SecondaryBlockFolders != null && SecondaryBlockFolders.Length > 0)
+            if (SecondaryBlockFolder != null)
             {
                 var allRetrieved = true;
                 Parallel.ForEach(this.targetChainQueue,
@@ -450,7 +450,7 @@ namespace BitSharp.Node.Workers
 
         private Block GetBlock(UInt256 blockHash)
         {
-            if (SecondaryBlockFolders == null || SecondaryBlockFolders.Length == 0)
+            if (SecondaryBlockFolder == null)
                 return null;
 
             var blockFile = new FileInfo(GetBlockPath(blockHash));
@@ -472,7 +472,7 @@ namespace BitSharp.Node.Workers
 
         private void StoreBlock(Block block)
         {
-            if (SecondaryBlockFolders == null || SecondaryBlockFolders.Length == 0)
+            if (SecondaryBlockFolder == null)
                 return;
 
             var blockFile = new FileInfo(GetBlockPath(block.Hash));
@@ -495,10 +495,7 @@ namespace BitSharp.Node.Workers
             var chunkSize = 2;
             var blockFolder = string.Join(Path.DirectorySeparatorChar.ToString(), Enumerable.Range(0, blockHashString.Length / chunkSize).Select(i => blockHashString.Substring(i * chunkSize, chunkSize)).ToArray());
 
-            if (height >= 225.THOUSAND() && SecondaryBlockFolders.Length >= 2)
-                return Path.Combine(SecondaryBlockFolders[1], blockFolder, $"{blockHash}.blk");
-            else
-                return Path.Combine(SecondaryBlockFolders[0], blockFolder, $"{blockHash}.blk");
+            return Path.Combine(SecondaryBlockFolder, blockFolder, $"{blockHash}.blk");
         }
 
         private sealed class HeightComparer : IComparer<ChainedHeader>
