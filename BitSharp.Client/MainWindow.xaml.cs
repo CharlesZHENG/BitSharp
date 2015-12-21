@@ -77,8 +77,7 @@ namespace BitSharp.Client
 
                 // detect local dev machine - TODO proper configuration
                 var isAzureVM = (Environment.MachineName == "BITSHARP");
-                var isLocalDev = -899308969 ==
-                    (Environment.MachineName + Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments)).GetHashCode();
+                var isLocalDev = (Environment.MachineName == "SKIPPY");
 
                 if (isAzureVM)
                 {
@@ -99,14 +98,14 @@ namespace BitSharp.Client
                     cacheSizeMaxBytes = null;
 
                     // location to store a copy of raw blocks to avoid redownload
-                    BlockRequestWorker.SecondaryBlockFolder = @"D:\BitSharp.Blocks\RawBlocks";
+                    BlockRequestWorker.SecondaryBlockFolder = Path.Combine(baseDirectory, "RawBlocks");
 
                     // split block txes storage across 2 dedicated SSDs, keep chain state on main SSD
-                    blockTxesStorageLocations = new[]
-                    {
-                        @"Y:\BitSharp",
-                        @"Z:\BitSharp",
-                    };
+                    //blockTxesStorageLocations = new[]
+                    //{
+                    //    @"Y:\BitSharp",
+                    //    @"Z:\BitSharp",
+                    //};
                 }
 
                 //TODO
