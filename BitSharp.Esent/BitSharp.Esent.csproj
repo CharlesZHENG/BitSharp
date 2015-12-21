@@ -58,16 +58,16 @@
       <HintPath>..\packages\Base32.1.1.0.2\lib\portable-net40+sl50+win+wpa81+wp80+MonoAndroid10+xamarinios10+MonoTouch10\Base32.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Esent.Collections, Version=1.9.3.2, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Database.Collections.Generic.1.9.3.2\lib\net40\Esent.Collections.dll</HintPath>
+    <Reference Include="Esent.Collections, Version=1.9.2.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Database.Collections.Generic.1.9.2.0\lib\net40\Esent.Collections.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Esent.Interop, Version=1.9.3.2, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\packages\ManagedEsent.1.9.3.2\lib\net40\Esent.Interop.dll</HintPath>
+    <Reference Include="Esent.Interop, Version=1.9.2.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\ManagedEsent.1.9.2.0\lib\net40\Esent.Interop.dll</HintPath>
       <Private>True</Private>
     </Reference>
-    <Reference Include="Esent.Isam, Version=1.9.3.2, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <HintPath>..\packages\Microsoft.Database.Isam.1.9.3.2\lib\net40\Esent.Isam.dll</HintPath>
+    <Reference Include="Esent.Isam, Version=1.9.2.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
+      <HintPath>..\packages\Microsoft.Database.Isam.1.9.2.0\lib\net40\Esent.Isam.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="Ninject, Version=3.2.0.0, Culture=neutral, PublicKeyToken=c7192dc5380945e7, processorArchitecture=MSIL">
