@@ -13,7 +13,7 @@ namespace BitSharp.Core.Test.Storage
         // cleanup this processes random temp directory
         public void TestCleanup()
         {
-            TempDirectory.DeleteDirectory(TestDirectory);
+            TempDirectory.Cleanup();
         }
 
         public string TestDirectory { get; private set; }

@@ -85,20 +85,29 @@ namespace BitSharp.IntegrationTest
                         };
                         using (var javaProcess = Process.Start(javaProcessInfo))
                         {
-                            javaProcess.OutputDataReceived += (sender, e) =>
-                                logger.Info("[Pull Tester]:  " + e.Data);
-                            javaProcess.ErrorDataReceived += (sender, e) =>
-                                logger.Error("[Pull Tester]: " + e.Data);
+                            try
+                            {
+                                javaProcess.OutputDataReceived += (sender, e) =>
+                                    logger.Info("[Pull Tester]:  " + e.Data);
+                                javaProcess.ErrorDataReceived += (sender, e) =>
+                                    logger.Error("[Pull Tester]: " + e.Data);
 
-                            javaProcess.BeginOutputReadLine();
-                            javaProcess.BeginErrorReadLine();
+                                javaProcess.BeginOutputReadLine();
+                                javaProcess.BeginErrorReadLine();
 
-                            javaProcess.WaitForExit();
+                                javaProcess.WaitForExit();
 
-                            logger.Info($"Pull Tester Result: {javaProcess.ExitCode}");
+                                logger.Info($"Pull Tester Result: {javaProcess.ExitCode}");
 
-                            Assert.Inconclusive("TODO");
-                            Assert.AreEqual(0, javaProcess.ExitCode);
+                                Assert.Inconclusive("TODO");
+                                Assert.AreEqual(0, javaProcess.ExitCode);
+                            }
+                            finally
+                            {
+                                // ensure java.exe is terminated
+                                try { javaProcess.Kill(); }
+                                catch (InvalidOperationException) { }
+                            }
                         }
                     }
                 }

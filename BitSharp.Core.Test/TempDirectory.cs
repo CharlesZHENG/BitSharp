@@ -1,11 +1,13 @@
-﻿using System;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
 using System.Diagnostics;
 using System.IO;
 using System.Reactive.Disposables;
 
 namespace BitSharp.Core.Test
 {
-    public class TempDirectory
+    [TestClass]
+    public static class TempDirectory
     {
         public static string BaseDirectory { get; }
 
@@ -13,7 +15,14 @@ namespace BitSharp.Core.Test
         static TempDirectory()
         {
             BaseDirectory = Path.Combine(Path.GetTempPath(), "BitSharp", "Tests");
+            CreateDirectory(BaseDirectory);
 
+            //Cleanup();
+        }
+
+        [AssemblyCleanup]
+        public static void Cleanup()
+        {
             if (Directory.Exists(BaseDirectory))
             {
                 // delete any subfolders, unless they are named with an active process id, which is another test currently in progress
@@ -27,8 +36,6 @@ namespace BitSharp.Core.Test
                         DeleteDirectory(subFolder);
                 }
             }
-            else
-                CreateDirectory(BaseDirectory);
         }
 
         // create a random temp directory for this process
@@ -44,7 +51,7 @@ namespace BitSharp.Core.Test
         {
             var pathLocal = CreateTempDirectory();
             path = pathLocal;
-            return Disposable.Create(() => DeleteDirectory(pathLocal));
+            return Disposable.Create(() => Cleanup());
         }
 
         public static void CreateDirectory(string path)
