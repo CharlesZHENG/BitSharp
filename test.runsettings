@@ -2,6 +2,6 @@
 <RunSettings>
 	<RunConfiguration>
 		<MaxCpuCount>0</MaxCpuCount>
-		<TargetFrameworkVersion>Framework46</TargetFrameworkVersion>
+		<TargetFrameworkVersion>Framework45</TargetFrameworkVersion>
 	</RunConfiguration>
 </RunSettings>
