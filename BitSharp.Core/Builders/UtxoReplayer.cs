@@ -50,6 +50,7 @@ namespace BitSharp.Core.Builders
                         var tx = blockTx.Transaction;
                         var txIndex = blockTx.Index;
                         var prevOutputTxKeys = ImmutableArray.CreateBuilder<TxLookupKey>(!blockTx.IsCoinbase ? tx.Inputs.Length : 0);
+                        ImmutableArray<ImmutableArray<byte>>? inputTxes;
 
                         if (!blockTx.IsCoinbase)
                         {
@@ -58,9 +59,14 @@ namespace BitSharp.Core.Builders
                                 throw new MissingDataException(replayBlock.Hash);
 
                             prevOutputTxKeys.AddRange(unmintedTx.PrevOutputTxKeys);
+                            inputTxes = unmintedTx.InputTxesBytes;
+                        }
+                        else
+                        {
+                            inputTxes = ImmutableArray.Create<ImmutableArray<byte>>();
                         }
 
-                        return new LoadingTx(txIndex, tx, replayBlock, prevOutputTxKeys.MoveToImmutable());
+                        return new LoadingTx(txIndex, tx, replayBlock, prevOutputTxKeys.MoveToImmutable(), inputTxes);
                     });
 
                 IEnumerator<BlockTx> blockTxes;
@@ -117,6 +123,7 @@ namespace BitSharp.Core.Builders
                     var txIndex = blockTx.Index;
 
                     var prevOutputTxKeys = ImmutableArray.CreateBuilder<TxLookupKey>(!blockTx.IsCoinbase ? tx.Inputs.Length : 0);
+                    var inputTxes = ImmutableArray.CreateBuilder<ImmutableArray<byte>>(!blockTx.IsCoinbase ? tx.Inputs.Length : 0);
 
                     if (!blockTx.IsCoinbase)
                     {
@@ -132,10 +139,16 @@ namespace BitSharp.Core.Builders
                             var prevOutputTxIndex = unspentTx.TxIndex;
 
                             prevOutputTxKeys.Add(new TxLookupKey(prevOutputBlockHash, prevOutputTxIndex));
+                            if (unspentTx.TxBytes != null)
+                                inputTxes.Add(unspentTx.TxBytes.Value);
                         }
                     }
 
-                    return new LoadingTx(txIndex, tx, replayBlock, prevOutputTxKeys.MoveToImmutable());
+                    // if the tx bytes weren't stored on the unspent tx, pass null for inputTxes
+                    if (inputTxes.Count < inputTxes.Capacity)
+                        inputTxes = null;
+
+                    return new LoadingTx(txIndex, tx, replayBlock, prevOutputTxKeys.MoveToImmutable(), inputTxes?.MoveToImmutable());
                 },
                 new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, MaxDegreeOfParallelism = Math.Min(Environment.ProcessorCount, chainState.CursorCount) });
         }

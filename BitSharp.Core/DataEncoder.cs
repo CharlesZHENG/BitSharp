@@ -349,14 +349,13 @@ namespace BitSharp.Core
 
         public static UnspentTx DecodeUnspentTx(BinaryReader reader)
         {
-            return new UnspentTx(
-                txHash: reader.ReadUInt256(),
-                blockIndex: reader.ReadInt32(),
-                txIndex: reader.ReadInt32(),
-                outputStates: new OutputStates(
-                    bytes: reader.ReadVarBytes(),
-                    length: reader.ReadInt32())
-            );
+            var txHash = reader.ReadUInt256();
+            var blockIndex = reader.ReadInt32();
+            var index = reader.ReadInt32();
+            var outputStates = new OutputStates(bytes: reader.ReadVarBytes(), length: reader.ReadInt32());
+            var txBytes = reader.ReadBool() ? (ImmutableArray<byte>?)reader.ReadVarBytes().ToImmutableArray() : null;
+
+            return new UnspentTx(txHash, blockIndex, index, outputStates, txBytes);
         }
 
         public static UnspentTx DecodeUnspentTx(byte[] bytes)
@@ -375,6 +374,9 @@ namespace BitSharp.Core
             writer.WriteInt32(unspentTx.TxIndex);
             writer.WriteVarBytes(unspentTx.OutputStates.ToByteArray());
             writer.WriteInt32(unspentTx.OutputStates.Length);
+            writer.WriteBool(unspentTx.TxBytes != null);
+            if (unspentTx.TxBytes != null)
+                writer.WriteVarBytes(unspentTx.TxBytes.Value.ToArray());
         }
 
         public static byte[] EncodeUnspentTx(UnspentTx unspentTx)
@@ -457,10 +459,13 @@ namespace BitSharp.Core
 
         public static UnmintedTx DecodeUnmintedTx(BinaryReader reader)
         {
-            return new UnmintedTx(
-                txHash: reader.ReadUInt256(),
-                prevOutputTxKeys: reader.ReadList(() => DecodeTxLookupKey(reader))
-            );
+            var txHash = reader.ReadUInt256();
+            var prevOutputTxKeys = reader.ReadList(() => DecodeTxLookupKey(reader));
+            var inputTxesBytes = reader.ReadBool() ?
+                (ImmutableArray<ImmutableArray<byte>>?)reader.ReadList(() => reader.ReadVarBytes().ToImmutableArray())
+                : null;
+
+            return new UnmintedTx(txHash, prevOutputTxKeys, inputTxesBytes);
         }
 
         public static UnmintedTx DecodeUnmintedTx(byte[] bytes)
@@ -476,6 +481,9 @@ namespace BitSharp.Core
         {
             writer.WriteUInt256(unmintedTx.TxHash);
             writer.WriteList(unmintedTx.PrevOutputTxKeys, x => EncodeTxLookupKey(writer, x));
+            writer.WriteBool(unmintedTx.InputTxesBytes != null);
+            if (unmintedTx.InputTxesBytes != null)
+                writer.WriteList(unmintedTx.InputTxesBytes.Value, x => writer.WriteVarBytes(x.ToArray()));
         }
 
         public static byte[] EncodeUnmintedTx(UnmintedTx unmintedTx)

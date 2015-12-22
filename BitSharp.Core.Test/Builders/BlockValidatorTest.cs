@@ -33,8 +33,10 @@ namespace BitSharp.Core.Test.Builders
             var txIndex = -1;
             foreach (var tx in block.Transactions)
             {
-                var inputTxes = new Transaction[tx.Inputs.Length];
-                for (var inputIndex = 0; inputIndex < tx.Inputs.Length; inputIndex++)
+                txIndex++;
+
+                var inputTxes = new Transaction[txIndex > 0 ? tx.Inputs.Length : 0];
+                for (var inputIndex = 0; inputIndex < inputTxes.Length; inputIndex++)
                 {
                     // create a transaction for each input, ensure it has an output available for this input
                     var inputTx = RandomData.RandomTransaction(new RandomDataOptions
@@ -44,7 +46,6 @@ namespace BitSharp.Core.Test.Builders
                     inputTxes[inputIndex] = inputTx;
                 }
 
-                txIndex++;
                 loadedTxes.Post(new LoadedTx(tx, txIndex, inputTxes.ToImmutableArray()));
             }
             loadedTxes.Complete();

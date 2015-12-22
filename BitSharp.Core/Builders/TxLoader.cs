@@ -72,39 +72,49 @@ namespace BitSharp.Core.Builders
 
         private static LoadedTx LoadTxInput(ICoreStorage coreStorage, ConcurrentDictionary<TxLookupKey, Lazy<Transaction>> txCache, LoadingTx loadingTx, int inputIndex)
         {
-            var txIndex = loadingTx.TxIndex;
-            var transaction = loadingTx.Transaction;
-            var chainedHeader = loadingTx.ChainedHeader;
-
-            // load previous transaction for this input, unless this is a coinbase transaction
-            if (!loadingTx.IsCoinbase)
+            if (loadingTx.IsPreLoaded)
             {
-                var prevOutputTxKey = loadingTx.PrevOutputTxKeys[inputIndex];
-
-                var input = transaction.Inputs[inputIndex];
-                var inputPrevTxHash = input.PreviousTxOutputKey.TxHash;
-
-                var inputPrevTx = txCache.GetOrAdd(prevOutputTxKey, new Lazy<Transaction>(() =>
-                    {
-                        Transaction tx;
-                        if (coreStorage.TryGetTransaction(prevOutputTxKey.BlockHash, prevOutputTxKey.TxIndex, out tx))
-                            return tx;
-                        else
-                            throw new MissingDataException(prevOutputTxKey.BlockHash);
-                    })).Value;
-
-                if (input.PreviousTxOutputKey.TxHash != inputPrevTx.Hash)
-                    throw new Exception("TODO");
-
-                if (loadingTx.InputTxes.TryComplete(inputIndex, inputPrevTx))
+                if (inputIndex <= 0)
                     return loadingTx.ToLoadedTx();
                 else
                     return null;
             }
             else
             {
-                Debug.Assert(inputIndex == -1);
-                return new LoadedTx(transaction, txIndex, ImmutableArray.Create<Transaction>());
+                var txIndex = loadingTx.TxIndex;
+                var transaction = loadingTx.Transaction;
+                var chainedHeader = loadingTx.ChainedHeader;
+
+                // load previous transaction for this input, unless this is a coinbase transaction
+                if (!loadingTx.IsCoinbase)
+                {
+                    var prevOutputTxKey = loadingTx.PrevOutputTxKeys[inputIndex];
+
+                    var input = transaction.Inputs[inputIndex];
+                    var inputPrevTxHash = input.PreviousTxOutputKey.TxHash;
+
+                    var inputPrevTx = txCache.GetOrAdd(prevOutputTxKey, new Lazy<Transaction>(() =>
+                        {
+                            Transaction tx;
+                            if (coreStorage.TryGetTransaction(prevOutputTxKey.BlockHash, prevOutputTxKey.TxIndex, out tx))
+                                return tx;
+                            else
+                                throw new MissingDataException(prevOutputTxKey.BlockHash);
+                        })).Value;
+
+                    if (input.PreviousTxOutputKey.TxHash != inputPrevTx.Hash)
+                        throw new Exception("TODO");
+
+                    if (loadingTx.InputTxesBytes.TryComplete(inputIndex, DataEncoder.EncodeTransaction(inputPrevTx).ToImmutableArray()))
+                        return loadingTx.ToLoadedTx();
+                    else
+                        return null;
+                }
+                else
+                {
+                    Debug.Assert(inputIndex == -1);
+                    return new LoadedTx(transaction, txIndex, ImmutableArray.Create<Transaction>());
+                }
             }
         }
     }

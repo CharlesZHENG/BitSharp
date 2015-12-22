@@ -1,4 +1,5 @@
 ﻿using BitSharp.Common.ExtensionMethods;
+using System;
 using System.Collections.Immutable;
 
 namespace BitSharp.Core.Domain
@@ -19,6 +20,16 @@ namespace BitSharp.Core.Domain
             Transaction = transaction;
             TxIndex = txIndex;
             InputTxes = inputTxes;
+            if (TxIndex == 0)
+            {
+                if (inputTxes.Length != 0)
+                    throw new InvalidOperationException($"Coinbase InputTxes.Length: {inputTxes.Length}");
+            }
+            else
+            {
+                if (inputTxes.Length != transaction.Inputs.Length)
+                    throw new InvalidOperationException($"Transaction.Inputs.Length: {transaction.Inputs.Length}, InputTxes.Length: {inputTxes.Length}");
+            }
         }
 
         /// <summary>
@@ -48,7 +59,18 @@ namespace BitSharp.Core.Domain
         /// <returns>The input's previous transaction output.</returns>
         public TxOutput GetInputPrevTxOutput(int inputIndex)
         {
-            return this.InputTxes[inputIndex].Outputs[this.Transaction.Inputs[inputIndex].PreviousTxOutputKey.TxOutputIndex.ToIntChecked()];
+            if (inputIndex < 0)
+                throw new ArgumentException($"{nameof(inputIndex)} of {inputIndex} is < 0");
+            else if (inputIndex >= Transaction.Inputs.Length)
+                throw new ArgumentException($"{nameof(inputIndex)} of {inputIndex} is >= {Transaction.Inputs.Length}");
+
+            var prevTxOutputsLength = this.InputTxes[inputIndex].Outputs.Length;
+            var prevTxOutputIndex = this.Transaction.Inputs[inputIndex].PreviousTxOutputKey.TxOutputIndex.ToIntChecked();
+
+            if (prevTxOutputIndex < 0 || prevTxOutputIndex >= prevTxOutputsLength)
+                throw new InvalidOperationException($"{nameof(prevTxOutputIndex)} of {prevTxOutputIndex} is < 0 or >= {prevTxOutputsLength}");
+
+            return this.InputTxes[inputIndex].Outputs[prevTxOutputIndex];
         }
     }
 }

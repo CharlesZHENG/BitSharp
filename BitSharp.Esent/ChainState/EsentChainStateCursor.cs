@@ -13,6 +13,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
+using System.Linq;
 using System.Reactive.Disposables;
 using System.Threading;
 
@@ -52,6 +53,7 @@ namespace BitSharp.Esent
         public readonly JET_COLUMNID blockIndexColumnId;
         public readonly JET_COLUMNID txIndexColumnId;
         public readonly JET_COLUMNID outputStatesColumnId;
+        public readonly JET_COLUMNID txBytesColumnId;
 
         public readonly JET_TABLEID spentTxTableId;
         public readonly JET_COLUMNID spentSpentBlockIndexColumnId;
@@ -91,6 +93,7 @@ namespace BitSharp.Esent
                     out this.blockIndexColumnId,
                     out this.txIndexColumnId,
                     out this.outputStatesColumnId,
+                    out this.txBytesColumnId,
                 out spentTxTableId,
                     out spentSpentBlockIndexColumnId,
                     out spentDataColumnId,
@@ -344,30 +347,33 @@ namespace BitSharp.Esent
 
         public bool TryGetUnspentTx(UInt256 txHash, out UnspentTx unspentTx)
         {
-            CheckTransaction();
+                CheckTransaction();
 
-            using (SetSessionContext())
-            {
-                Api.JetSetCurrentIndex(this.jetSession, this.unspentTxTableId, "IX_TxHash");
-                Api.MakeKey(this.jetSession, this.unspentTxTableId, DbEncoder.EncodeUInt256(txHash), MakeKeyGrbit.NewKey);
-                if (Api.TrySeek(this.jetSession, this.unspentTxTableId, SeekGrbit.SeekEQ))
+                using (SetSessionContext())
                 {
-                    var blockIndexColumn = new Int32ColumnValue { Columnid = this.blockIndexColumnId };
-                    var txIndexColumn = new Int32ColumnValue { Columnid = this.txIndexColumnId };
-                    var outputStatesColumn = new BytesColumnValue { Columnid = this.outputStatesColumnId };
-                    Api.RetrieveColumns(this.jetSession, this.unspentTxTableId, blockIndexColumn, txIndexColumn, outputStatesColumn);
+                    Api.JetSetCurrentIndex(this.jetSession, this.unspentTxTableId, "IX_TxHash");
+                    Api.MakeKey(this.jetSession, this.unspentTxTableId, DbEncoder.EncodeUInt256(txHash), MakeKeyGrbit.NewKey);
+                    if (Api.TrySeek(this.jetSession, this.unspentTxTableId, SeekGrbit.SeekEQ))
+                    {
+                        var blockIndexColumn = new Int32ColumnValue { Columnid = this.blockIndexColumnId };
+                        var txIndexColumn = new Int32ColumnValue { Columnid = this.txIndexColumnId };
+                        var outputStatesColumn = new BytesColumnValue { Columnid = this.outputStatesColumnId };
+                        var txBytesColum = new BytesColumnValue { Columnid = this.txBytesColumnId };
+                        var txBytesColumn = new BytesColumnValue { Columnid = this.txBytesColumnId };
+                        Api.RetrieveColumns(this.jetSession, this.unspentTxTableId, blockIndexColumn, txIndexColumn, outputStatesColumn, txBytesColumn);
 
-                    var blockIndex = blockIndexColumn.Value.Value;
-                    var txIndex = txIndexColumn.Value.Value;
-                    var outputStates = DataEncoder.DecodeOutputStates(outputStatesColumn.Value);
+                        var blockIndex = blockIndexColumn.Value.Value;
+                        var txIndex = txIndexColumn.Value.Value;
+                        var outputStates = DataEncoder.DecodeOutputStates(outputStatesColumn.Value);
+                        var txBytes = txBytesColumn.Value.ToImmutableArray();
 
-                    unspentTx = new UnspentTx(txHash, blockIndex, txIndex, outputStates);
-                    return true;
+                        unspentTx = new UnspentTx(txHash, blockIndex, txIndex, outputStates, txBytes);
+                        return true;
+                    }
+
+                    unspentTx = default(UnspentTx);
+                    return false;
                 }
-
-                unspentTx = default(UnspentTx);
-                return false;
-            }
         }
 
         public bool TryAddUnspentTx(UnspentTx unspentTx)
@@ -384,7 +390,8 @@ namespace BitSharp.Esent
                             new BytesColumnValue { Columnid = this.txHashColumnId, Value = DbEncoder.EncodeUInt256(unspentTx.TxHash) },
                             new Int32ColumnValue { Columnid = this.blockIndexColumnId, Value = unspentTx.BlockIndex },
                             new Int32ColumnValue { Columnid = this.txIndexColumnId, Value = unspentTx.TxIndex },
-                            new BytesColumnValue { Columnid = this.outputStatesColumnId, Value = DataEncoder.EncodeOutputStates(unspentTx.OutputStates) });
+                            new BytesColumnValue { Columnid = this.outputStatesColumnId, Value = DataEncoder.EncodeOutputStates(unspentTx.OutputStates) },
+                            new BytesColumnValue { Columnid = this.txBytesColumnId, Value = unspentTx.TxBytes?.ToArray() });
 
                         jetUpdate.Save();
                     }
@@ -466,14 +473,16 @@ namespace BitSharp.Esent
                         var blockIndexColumn = new Int32ColumnValue { Columnid = this.blockIndexColumnId };
                         var txIndexColumn = new Int32ColumnValue { Columnid = this.txIndexColumnId };
                         var outputStatesColumn = new BytesColumnValue { Columnid = this.outputStatesColumnId };
-                        Api.RetrieveColumns(this.jetSession, this.unspentTxTableId, txHashColumn, blockIndexColumn, txIndexColumn, outputStatesColumn);
+                        var txBytesColumn = new BytesColumnValue { Columnid = this.txBytesColumnId };
+                        Api.RetrieveColumns(this.jetSession, this.unspentTxTableId, txHashColumn, blockIndexColumn, txIndexColumn, outputStatesColumn, txBytesColumn);
 
                         var txHash = DbEncoder.DecodeUInt256(txHashColumn.Value);
                         var blockIndex = blockIndexColumn.Value.Value;
                         var txIndex = txIndexColumn.Value.Value;
                         var outputStates = DataEncoder.DecodeOutputStates(outputStatesColumn.Value);
+                        var txBytes = txBytesColumn.Value.ToImmutableArray();
 
-                        yield return new UnspentTx(txHash, blockIndex, txIndex, outputStates);
+                        yield return new UnspentTx(txHash, blockIndex, txIndex, outputStates, txBytes);
                     }
                     while (Api.TryMoveNext(this.jetSession, this.unspentTxTableId));
                 }
@@ -767,6 +776,7 @@ namespace BitSharp.Esent
             out JET_COLUMNID blockIndexColumnId,
             out JET_COLUMNID txIndexColumnId,
             out JET_COLUMNID outputStatesColumnId,
+            out JET_COLUMNID txBytesColumnId,
             out JET_TABLEID spentTxTableId,
             out JET_COLUMNID spentSpentBlockIndexColumnId,
             out JET_COLUMNID spentDataColumnId,
@@ -806,6 +816,7 @@ namespace BitSharp.Esent
                 blockIndexColumnId = Api.GetTableColumnid(jetSession, unspentTxTableId, "BlockIndex");
                 txIndexColumnId = Api.GetTableColumnid(jetSession, unspentTxTableId, "TxIndex");
                 outputStatesColumnId = Api.GetTableColumnid(jetSession, unspentTxTableId, "OutputStates");
+                txBytesColumnId = Api.GetTableColumnid(jetSession, unspentTxTableId, "TxBytes");
 
                 Api.JetOpenTable(jetSession, chainStateDbId, "SpentTx", null, 0, OpenTableGrbit.None, out spentTxTableId);
                 spentSpentBlockIndexColumnId = Api.GetTableColumnid(jetSession, spentTxTableId, "SpentBlockIndex");

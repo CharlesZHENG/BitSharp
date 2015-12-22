@@ -1,17 +1,48 @@
-﻿using BitSharp.Core.Domain;
+﻿using BitSharp.Common.ExtensionMethods;
+using BitSharp.Core.Domain;
+using System;
 using System.Collections.Immutable;
+using System.Linq;
 
 namespace BitSharp.Core.Builders
 {
     internal class LoadingTx
     {
-        public LoadingTx(int txIndex, Transaction transaction, ChainedHeader chainedHeader, ImmutableArray<TxLookupKey> prevOutputTxKeys)
+        public LoadingTx(int txIndex, Transaction transaction, ChainedHeader chainedHeader, ImmutableArray<TxLookupKey> prevOutputTxKeys, ImmutableArray<ImmutableArray<byte>>? inputTxesBytes)
         {
             Transaction = transaction;
             TxIndex = txIndex;
             ChainedHeader = chainedHeader;
             PrevOutputTxKeys = prevOutputTxKeys;
-            InputTxes = new CompletionArray<Transaction>(transaction.Inputs.Length);
+            InputTxesBytes = new CompletionArray<ImmutableArray<byte>>(txIndex != 0 ? transaction.Inputs.Length : 0);
+
+            if (inputTxesBytes != null)
+            {
+                if (txIndex == 0 && inputTxesBytes.Value.Length != 0)
+                    throw new ArgumentException(nameof(inputTxesBytes));
+                else if (txIndex > 0 && inputTxesBytes.Value.Length != transaction.Inputs.Length)
+                    throw new ArgumentException(nameof(inputTxesBytes));
+
+                for (var inputTxIndex = 0; inputTxIndex < inputTxesBytes.Value.Length; inputTxIndex++)
+                {
+                    var inputTxBytes = inputTxesBytes.Value[inputTxIndex];
+                    InputTxesBytes.TryComplete(inputTxIndex, inputTxBytes);
+
+                    //if (inputTx.Hash != transaction.Inputs[inputTxIndex].PreviousTxOutputKey.TxHash)
+                    //    throw new InvalidOperationException();
+
+                    //var prevOutputTxIndex = transaction.Inputs[inputTxIndex].PreviousTxOutputKey.TxOutputIndex.ToIntChecked();
+                    //if (prevOutputTxIndex < 0 || prevOutputTxIndex >= inputTx.Outputs.Length)
+                    //    throw new InvalidOperationException();
+                }
+
+                if (!InputTxesBytes.IsComplete)
+                    throw new InvalidOperationException();
+
+                IsPreLoaded = true;
+            }
+            else
+                IsPreLoaded = false;
         }
 
         public bool IsCoinbase => this.TxIndex == 0;
@@ -24,11 +55,15 @@ namespace BitSharp.Core.Builders
 
         public ImmutableArray<TxLookupKey> PrevOutputTxKeys { get; }
 
-        public CompletionArray<Transaction> InputTxes { get; }
+        public CompletionArray<ImmutableArray<byte>> InputTxesBytes { get; }
+
+        public bool IsPreLoaded { get; }
 
         public LoadedTx ToLoadedTx()
         {
-            return new LoadedTx(this.Transaction, this.TxIndex, this.InputTxes.CompletedArray);
+            var inputTxes = this.InputTxesBytes.CompletedArray.Select(x => DataEncoder.DecodeTransaction(x.ToArray())).ToImmutableArray();
+
+            return new LoadedTx(this.Transaction, this.TxIndex, inputTxes);
         }
     }
 }

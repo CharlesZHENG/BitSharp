@@ -68,7 +68,7 @@ namespace BitSharp.Core.Test.Storage
                 // verify the utxo state before rolling back
                 //TODO verify the UTXO hash hard-coded here is correct
                 //TODO 5500: 0e9da3d53272cda9ecb6037c411ebc3cd0b65b5c16698baba41665edb29b8eaf
-                var expectedLastUtxoHash = UInt256.ParseHex("8e7a5912c6e9e46370841e54c590dab04f37861345ee9946b69e0c8505f602eb");
+                var expectedLastUtxoHash = UInt256.ParseHex("13bcef25c6ef7f43e0641796e4f422e8ad369c8f89aefbd2bd93b2e006d9d49f");
                 Assert.AreEqual(expectedLastUtxoHash, expectedUtxoHashes.Last());
                 expectedUtxoHashes.RemoveAt(expectedUtxoHashes.Count - 1);
 

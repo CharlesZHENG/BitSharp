@@ -91,12 +91,15 @@ namespace BitSharp.Core.Test
 
         public static UnspentTx RandomUnspentTx(RandomDataOptions options = default(RandomDataOptions))
         {
+            options.TxOutputCount = random.NextOrExactly(100, options.TxOutputCount);
+
             return new UnspentTx
             (
                 txHash: random.NextUInt256(),
                 blockIndex: random.Next(),
                 txIndex: random.Next(),
-                outputStates: new OutputStates(random.NextImmutableBitArray(random.NextOrExactly(100, options.TxOutputCount)))
+                outputStates: new OutputStates(options.TxOutputCount.Value, random.NextBool() ? OutputState.Spent : OutputState.Unspent),
+                txBytes: DataEncoder.EncodeTransaction(RandomTransaction(options)).ToImmutableArray()
             );
         }
 

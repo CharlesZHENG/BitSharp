@@ -5,16 +5,22 @@ using System.Threading;
 
 namespace BitSharp.Core.Builders
 {
-    public class CompletionArray<T> where T : class
+    public class CompletionArray<T>
     {
         private readonly ImmutableArray<T>.Builder array;
-        private ImmutableArray<T> completedArray;
+        private ImmutableArray<T>? completedArray;
+        private bool[] completed;
 
         public CompletionArray(int length)
         {
             this.array = ImmutableArray.CreateBuilder<T>(length);
             for (var i = 0; i < length; i++)
-                this.array.Add(null);
+                this.array.Add(default(T));
+
+            this.completed = new bool[length];
+
+            if (length == 0)
+                this.completedArray = this.array.MoveToImmutable();
         }
 
         public ImmutableArray<T> CompletedArray
@@ -24,20 +30,26 @@ namespace BitSharp.Core.Builders
                 if (this.completedArray == null)
                     throw new InvalidOperationException();
 
-                return this.completedArray;
+                return this.completedArray.Value;
             }
         }
 
+        public bool IsComplete => completedArray != null;
+
         public bool TryComplete(int index, T value)
         {
+            if (value == null)
+                throw new ArgumentNullException(nameof(value));
+
             lock (this.array)
             {
-                if (this.completedArray != null || this.array[index] != null)
+                if (this.completedArray != null || this.completed[index])
                     throw new InvalidOperationException();
 
                 this.array[index] = value;
+                this.completed[index] = true;
 
-                var completed = this.array.All(x => x != null);
+                var completed = this.completed.All(x => x);
                 if (completed)
                     this.completedArray = this.array.MoveToImmutable();
 

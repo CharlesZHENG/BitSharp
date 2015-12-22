@@ -1,5 +1,6 @@
 ﻿using BitSharp.Common;
 using System;
+using System.Collections.Immutable;
 using System.Linq;
 
 namespace BitSharp.Core.Domain
@@ -9,22 +10,24 @@ namespace BitSharp.Core.Domain
     /// </summary>
     public class UnspentTx
     {
-        public UnspentTx(UInt256 txHash, int blockIndex, int txIndex, OutputStates outputStates)
+        public UnspentTx(UInt256 txHash, int blockIndex, int txIndex, OutputStates outputStates, ImmutableArray<byte>? txBytes)
         {
             TxHash = txHash;
             BlockIndex = blockIndex;
             TxIndex = txIndex;
             OutputStates = outputStates;
             IsFullySpent = OutputStates.All(x => x == OutputState.Spent);
+            TxBytes = txBytes;
         }
 
-        public UnspentTx(UInt256 txHash, int blockIndex, int txIndex, int length, OutputState state)
+        public UnspentTx(UInt256 txHash, int blockIndex, int txIndex, int length, OutputState state, ImmutableArray<byte>? txBytes)
         {
             TxHash = txHash;
             BlockIndex = blockIndex;
             TxIndex = txIndex;
             OutputStates = new OutputStates(length, state);
             IsFullySpent = state == OutputState.Spent;
+            TxBytes = txBytes;
         }
 
         /// <summary>
@@ -47,6 +50,8 @@ namespace BitSharp.Core.Domain
         /// </summary>
         public OutputStates OutputStates { get; }
 
+        public ImmutableArray<byte>? TxBytes { get; }
+
         /// <summary>
         /// True if all of the transaction's outputs are in the spent state.
         /// </summary>
@@ -54,7 +59,7 @@ namespace BitSharp.Core.Domain
 
         public UnspentTx SetOutputState(int index, OutputState value)
         {
-            return new UnspentTx(this.TxHash, this.BlockIndex, this.TxIndex, this.OutputStates.Set(index, value));
+            return new UnspentTx(this.TxHash, this.BlockIndex, this.TxIndex, this.OutputStates.Set(index, value), this.TxBytes);
         }
 
         /// <summary>

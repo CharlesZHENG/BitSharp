@@ -5,6 +5,7 @@ using BitSharp.Core.Domain;
 using BitSharp.Core.Storage;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
+using System.Collections.Immutable;
 using System.Linq;
 
 namespace BitSharp.Core.Test.Builders
@@ -40,7 +41,8 @@ namespace BitSharp.Core.Test.Builders
 
                     // create a fake unspent tx, with enough outputs for this input
                     var unspentTx = new UnspentTx(input.PreviousTxOutputKey.TxHash, blockIndex: 1, txIndex: txIndex * inputIndex,
-                        outputStates: new OutputStates(input.PreviousTxOutputKey.TxOutputIndex.ToIntChecked() + 1, OutputState.Unspent));
+                        outputStates: new OutputStates(input.PreviousTxOutputKey.TxOutputIndex.ToIntChecked() + 1, OutputState.Unspent),
+                        txBytes: DataEncoder.EncodeTransaction(tx).ToImmutableArray());
 
                     chainState.Setup(x => x.TryGetUnspentTx(unspentTx.TxHash, out unspentTx)).Returns(true);
                 }

@@ -20,7 +20,7 @@ namespace BitSharp.Core.Test.Domain
 
             // prepare unspent output
             var txHash = new UInt256(0);
-            unspentTransactions.Add(txHash, new UnspentTx(txHash, blockIndex: 0, txIndex: 0, length: 1, state: OutputState.Unspent));
+            unspentTransactions.Add(txHash, new UnspentTx(txHash, blockIndex: 0, txIndex: 0, length: 1, state: OutputState.Unspent, txBytes: ImmutableArray.Create<byte>()));
 
             // prepare utxo
             var memoryStorage = new MemoryStorageManager(unspentTransactions: unspentTransactions.ToImmutable());
@@ -49,7 +49,7 @@ namespace BitSharp.Core.Test.Domain
 
             // prepare spent output
             var txHash = new UInt256(0);
-            unspentTransactions.Add(txHash, new UnspentTx(txHash, blockIndex: 0, txIndex: 0, length: 1, state: OutputState.Spent));
+            unspentTransactions.Add(txHash, new UnspentTx(txHash, blockIndex: 0, txIndex: 0, length: 1, state: OutputState.Spent, txBytes: ImmutableArray.Create<byte>()));
 
             // prepare utxo
             var memoryStorage = new MemoryStorageManager(unspentTransactions: unspentTransactions.ToImmutable());
@@ -100,7 +100,7 @@ namespace BitSharp.Core.Test.Domain
 
             // prepare unspent output
             var txHash = new UInt256(0);
-            unspentTransactions.Add(txHash, new UnspentTx(txHash, blockIndex: 0, txIndex: 0, length: 1, state: OutputState.Unspent));
+            unspentTransactions.Add(txHash, new UnspentTx(txHash, blockIndex: 0, txIndex: 0, length: 1, state: OutputState.Unspent, txBytes: ImmutableArray.Create<byte>()));
 
             // prepare utxo
             var memoryStorage = new MemoryStorageManager(unspentTransactions: unspentTransactions.ToImmutable());
@@ -129,7 +129,7 @@ namespace BitSharp.Core.Test.Domain
 
             // prepare unspent output
             var txHash = new UInt256(0);
-            unspentTransactions.Add(txHash, new UnspentTx(txHash, blockIndex: 0, txIndex: 0, length: 1, state: OutputState.Unspent));
+            unspentTransactions.Add(txHash, new UnspentTx(txHash, blockIndex: 0, txIndex: 0, length: 1, state: OutputState.Unspent, txBytes: ImmutableArray.Create<byte>()));
 
             // prepare utxo
             var memoryStorage = new MemoryStorageManager(unspentTransactions: unspentTransactions.ToImmutable());
