@@ -314,11 +314,17 @@ namespace BitSharp.Core.Rules
 
         public virtual void ValidationTransactionScript(ChainedHeader chainedHeader, Transaction tx, int txIndex, TxInput txInput, int txInputIndex, TxOutput prevTxOutput)
         {
-            var scriptEngine = new ScriptEngine(this.IgnoreSignatures);
+            var result = LibConsensus.VerifyScript(
+                DataEncoder.EncodeTransaction(tx).ToImmutableArray(),
+                prevTxOutput.ScriptPublicKey,
+                txInputIndex);
 
-            // create the transaction script from the input and output
-            var script = txInput.ScriptSignature.Concat(prevTxOutput.ScriptPublicKey);
-            if (!scriptEngine.VerifyScript(chainedHeader.Hash, txIndex, prevTxOutput.ScriptPublicKey.ToArray(), tx, txInputIndex, script.ToArray()))
+            //var scriptEngine = new ScriptEngine(this.IgnoreSignatures);
+
+            //// create the transaction script from the input and output
+            //var script = txInput.ScriptSignature.Concat(prevTxOutput.ScriptPublicKey);
+            //if (!scriptEngine.VerifyScript(chainedHeader.Hash, txIndex, prevTxOutput.ScriptPublicKey.ToArray(), tx, txInputIndex, script.ToArray()))
+            if (!result)
             {
                 logger.Debug($"Script did not pass in block: {chainedHeader.Hash}, tx: {txIndex}, {tx.Hash}, input: {txInputIndex}");
                 throw new ValidationException(chainedHeader.Hash);

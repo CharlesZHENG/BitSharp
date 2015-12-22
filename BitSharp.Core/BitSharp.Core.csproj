@@ -142,6 +142,7 @@
     <Compile Include="Exceptions\ChainStateOutOfSyncException.cs" />
     <Compile Include="MerkleStream.cs" />
     <Compile Include="PruningMode.cs" />
+    <Compile Include="Rules\LibConsensus.cs" />
     <Compile Include="StorageType.cs" />
     <Compile Include="Storage\SplitBlockTxesStorage.cs" />
     <Compile Include="Storage\CoreStorage.cs" />
@@ -224,7 +225,14 @@
   <ItemGroup>
     <None Include="Script\Secp256k1.NET.dll" />
   </ItemGroup>
-  <ItemGroup />
+  <ItemGroup>
+    <Content Include="libbitcoin-consensus.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+    <Content Include="secp256k1.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

@@ -45,9 +45,9 @@ namespace BitSharp.Client
                 var connectToPeers = true;
 
                 var bypassPrevTxLoading = false;
-                var ignoreScripts = true;
+                var ignoreScripts = false;
                 var ignoreSignatures = false;
-                var ignoreScriptErrors = true;
+                var ignoreScriptErrors = false;
 
                 var pruningMode = PruningMode.TxIndex | PruningMode.BlockSpentIndex | PruningMode.BlockTxesPreserveMerkle;
                 var enableDummyWallet = true;
