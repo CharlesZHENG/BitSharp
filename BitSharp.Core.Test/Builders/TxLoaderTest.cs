@@ -47,7 +47,7 @@ namespace BitSharp.Core.Test.Builders
                 .With(Inputs: inputs.ToImmutableArray());
             var prevOutputTxKeys = ImmutableArray.CreateRange(
                 Enumerable.Range(0, prevTxCount).Select(x => new TxLookupKey(UInt256.Zero, x)));
-            var loadingTx = new LoadingTx(txIndex, tx, chainedHeader, prevOutputTxKeys, null);
+            var loadingTx = new LoadingTx(txIndex, tx, chainedHeader, prevOutputTxKeys);
 
             // begin queuing transactions to load
             var loadingTxes = new BufferBlock<LoadingTx>();
@@ -108,7 +108,7 @@ namespace BitSharp.Core.Test.Builders
             var tx = RandomData.RandomTransaction(new RandomDataOptions { TxInputCount = 1 });
             var txLookupKey = new TxLookupKey(UInt256.Zero, 0);
             var inputTx = RandomData.RandomTransaction();
-            var loadingTx = new LoadingTx(1, tx, chainedHeader, ImmutableArray.Create(txLookupKey), ImmutableArray.Create(DataEncoder.EncodeTransaction(inputTx).ToImmutableArray()));
+            var loadingTx = new LoadingTx(1, tx, chainedHeader, ImmutableArray.Create(txLookupKey));
 
             var loadingTxes = new BufferBlock<LoadingTx>();
             loadingTxes.Post(loadingTx);

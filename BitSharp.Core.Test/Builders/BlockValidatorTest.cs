@@ -29,31 +29,26 @@ namespace BitSharp.Core.Test.Builders
             var invalidChainedHeader = ChainedHeader.CreateFromPrev(rules.GenesisChainedHeader, block.Header.With(MerkleRoot: UInt256.Zero));
 
             // feed validator loaded txes
-            var loadedTxes = new BufferBlock<LoadedTx>();
+            var validatableTxes = new BufferBlock<ValidatableTx>();
             var txIndex = -1;
             foreach (var tx in block.Transactions)
             {
                 txIndex++;
 
-                var inputTxes = new Transaction[txIndex > 0 ? tx.Inputs.Length : 0];
-                for (var inputIndex = 0; inputIndex < inputTxes.Length; inputIndex++)
+                var prevTxOutputs = new TxOutput[txIndex > 0 ? tx.Inputs.Length : 0];
+                for (var inputIndex = 0; inputIndex < prevTxOutputs.Length; inputIndex++)
                 {
-                    // create a transaction for each input, ensure it has an output available for this input
-                    var inputTx = RandomData.RandomTransaction(new RandomDataOptions
-                    {
-                        TxOutputCount = tx.Inputs[inputIndex].PreviousTxOutputKey.TxOutputIndex.ToIntChecked() + 1
-                    });
-                    inputTxes[inputIndex] = inputTx;
+                    prevTxOutputs[inputIndex] = RandomData.RandomTxOutput();
                 }
 
-                loadedTxes.Post(new LoadedTx(tx, txIndex, inputTxes.ToImmutableArray()));
+                validatableTxes.Post(new ValidatableTx(txIndex, tx, invalidChainedHeader, prevTxOutputs.ToImmutableArray()));
             }
-            loadedTxes.Complete();
+            validatableTxes.Complete();
 
             // validate block
             ValidationException ex;
             AssertMethods.AssertAggregateThrows<ValidationException>(() =>
-                BlockValidator.ValidateBlockAsync(coreStorage, rules, invalidChainedHeader, loadedTxes).Wait(), out ex);
+                BlockValidator.ValidateBlockAsync(coreStorage, rules, invalidChainedHeader, validatableTxes).Wait(), out ex);
             Assert.IsTrue(ex.Message.Contains("Merkle root is invalid"));
         }
     }

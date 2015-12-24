@@ -95,17 +95,14 @@ namespace BitSharp.Core.Builders
                 var warmedBlockTxes = UtxoLookAhead.LookAhead(countBlockTxes, chainStateCursor, cancelToken);
 
                 // begin calculating the utxo updates
-                var loadingTxes = utxoBuilder.CalculateUtxo(chainStateCursor, newChain, warmedBlockTxes, cancelToken);
+                var validatableTxes = utxoBuilder.CalculateUtxo(chainStateCursor, newChain, warmedBlockTxes, cancelToken);
 
                 //TODO remove bypass paramter
                 if (rules.BypassPrevTxLoading)
-                    loadingTxes = DropAll(loadingTxes);
-
-                // begin loading txes
-                var loadedTxes = TxLoader.LoadTxes(coreStorage, loadingTxes, cancelToken);
+                    validatableTxes = DropAll(validatableTxes);
 
                 // begin validating the block
-                var blockValidator = BlockValidator.ValidateBlockAsync(coreStorage, rules, chainedHeader, loadedTxes, cancelToken);
+                var blockValidator = BlockValidator.ValidateBlockAsync(coreStorage, rules, chainedHeader, validatableTxes, cancelToken);
 
                 // wait for block txes to read
                 await blockTxesBuffer.Completion;
@@ -116,7 +113,7 @@ namespace BitSharp.Core.Builders
                 stats.lookAheadDurationMeasure.Tick(stopwatch.Elapsed);
 
                 // wait for utxo calculation
-                await loadingTxes.Completion;
+                await validatableTxes.Completion;
                 stats.calculateUtxoDurationMeasure.Tick(stopwatch.Elapsed);
 
                 // apply the utxo changes, do not yet commit
@@ -124,10 +121,6 @@ namespace BitSharp.Core.Builders
                 chainStateCursor.TryAddHeader(chainedHeader);
                 await chainStateCursor.ApplyChangesAsync();
                 stats.applyUtxoDurationMeasure.Tick(stopwatch.Elapsed);
-
-                // wait for loaded txes to complete
-                await loadedTxes.Completion;
-                stats.loadTxesDurationMeasure.Tick(stopwatch.Elapsed);
 
                 // wait for block validation to complete, any exceptions that ocurred will be thrown
                 await blockValidator;

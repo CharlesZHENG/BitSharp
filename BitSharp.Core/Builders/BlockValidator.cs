@@ -13,14 +13,14 @@ namespace BitSharp.Core.Builders
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        public static async Task ValidateBlockAsync(ICoreStorage coreStorage, IBlockchainRules rules, ChainedHeader chainedHeader, ISourceBlock<LoadedTx> loadedTxes, CancellationToken cancelToken = default(CancellationToken))
+        public static async Task ValidateBlockAsync(ICoreStorage coreStorage, IBlockchainRules rules, ChainedHeader chainedHeader, ISourceBlock<ValidatableTx> validatableTxes, CancellationToken cancelToken = default(CancellationToken))
         {
             // validate merkle root
             var merkleStream = new MerkleStream();
             var merkleValidator = InitMerkleValidator(chainedHeader, merkleStream, cancelToken);
 
             // begin feeding the merkle validator
-            loadedTxes.LinkTo(merkleValidator, new DataflowLinkOptions { PropagateCompletion = true });
+            validatableTxes.LinkTo(merkleValidator, new DataflowLinkOptions { PropagateCompletion = true });
 
             // validate transactions
             var txValidator = InitTxValidator(rules, chainedHeader, cancelToken);
@@ -54,65 +54,65 @@ namespace BitSharp.Core.Builders
             }
         }
 
-        private static TransformBlock<LoadedTx, LoadedTx> InitMerkleValidator(ChainedHeader chainedHeader, MerkleStream merkleStream, CancellationToken cancelToken)
+        private static TransformBlock<ValidatableTx, ValidatableTx> InitMerkleValidator(ChainedHeader chainedHeader, MerkleStream merkleStream, CancellationToken cancelToken)
         {
-            return new TransformBlock<LoadedTx, LoadedTx>(
-                loadedTx =>
+            return new TransformBlock<ValidatableTx, ValidatableTx>(
+                validatableTx =>
                 {
                     try
                     {
-                        merkleStream.AddNode(new MerkleTreeNode(loadedTx.TxIndex, 0, loadedTx.Transaction.Hash, false));
+                        merkleStream.AddNode(new MerkleTreeNode(validatableTx.TxIndex, 0, validatableTx.Transaction.Hash, false));
                     }
                     //TODO
                     catch (InvalidOperationException)
                     {
                         throw CreateMerkleRootException(chainedHeader);
                     }
-                    return loadedTx;
+                    return validatableTx;
                 },
                 new ExecutionDataflowBlockOptions { CancellationToken = cancelToken });
         }
 
-        private static TransformManyBlock<LoadedTx, Tuple<LoadedTx, int>> InitTxValidator(IBlockchainRules rules, ChainedHeader chainedHeader, CancellationToken cancelToken)
+        private static TransformManyBlock<ValidatableTx, Tuple<ValidatableTx, int>> InitTxValidator(IBlockchainRules rules, ChainedHeader chainedHeader, CancellationToken cancelToken)
         {
-            return new TransformManyBlock<LoadedTx, Tuple<LoadedTx, int>>(
-                loadedTx =>
+            return new TransformManyBlock<ValidatableTx, Tuple<ValidatableTx, int>>(
+                validatableTx =>
                 {
-                    rules.ValidateTransaction(chainedHeader, loadedTx);
+                    rules.ValidateTransaction(chainedHeader, validatableTx);
 
-                    if (!rules.IgnoreScripts && !loadedTx.IsCoinbase)
+                    if (!rules.IgnoreScripts && !validatableTx.IsCoinbase)
                     {
-                        var scripts = new Tuple<LoadedTx, int>[loadedTx.Transaction.Inputs.Length];
-                        for (var i = 0; i < loadedTx.Transaction.Inputs.Length; i++)
-                            scripts[i] = Tuple.Create(loadedTx, i);
+                        var scripts = new Tuple<ValidatableTx, int>[validatableTx.Transaction.Inputs.Length];
+                        for (var i = 0; i < validatableTx.Transaction.Inputs.Length; i++)
+                            scripts[i] = Tuple.Create(validatableTx, i);
 
                         return scripts;
                     }
                     else
-                        return new Tuple<LoadedTx, int>[0];
+                        return new Tuple<ValidatableTx, int>[0];
                 },
                 new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, MaxDegreeOfParallelism = Environment.ProcessorCount });
         }
 
-        private static ActionBlock<Tuple<LoadedTx, int>> InitScriptValidator(IBlockchainRules rules, ChainedHeader chainedHeader, CancellationToken cancelToken)
+        private static ActionBlock<Tuple<ValidatableTx, int>> InitScriptValidator(IBlockchainRules rules, ChainedHeader chainedHeader, CancellationToken cancelToken)
         {
-            return new ActionBlock<Tuple<LoadedTx, int>>(
+            return new ActionBlock<Tuple<ValidatableTx, int>>(
                 tuple =>
                 {
-                    var loadedTx = tuple.Item1;
+                    var validatableTx = tuple.Item1;
                     var inputIndex = tuple.Item2;
-                    var txInput = loadedTx.Transaction.Inputs[inputIndex];
-                    var prevTxOutput = loadedTx.GetInputPrevTxOutput(inputIndex);
+                    var txInput = validatableTx.Transaction.Inputs[inputIndex];
+                    var prevTxOutputs = validatableTx.PrevTxOutputs[inputIndex];
 
                     if (!rules.IgnoreScriptErrors)
                     {
-                        rules.ValidationTransactionScript(chainedHeader, loadedTx.Transaction, loadedTx.TxIndex, txInput, inputIndex, prevTxOutput);
+                        rules.ValidationTransactionScript(chainedHeader, validatableTx.Transaction, validatableTx.TxIndex, txInput, inputIndex, prevTxOutputs);
                     }
                     else
                     {
                         try
                         {
-                            rules.ValidationTransactionScript(chainedHeader, loadedTx.Transaction, loadedTx.TxIndex, txInput, inputIndex, prevTxOutput);
+                            rules.ValidationTransactionScript(chainedHeader, validatableTx.Transaction, validatableTx.TxIndex, txInput, inputIndex, prevTxOutputs);
                         }
                         catch (Exception ex)
                         {

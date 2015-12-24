@@ -262,12 +262,12 @@ namespace BitSharp.Core.Rules
         //    // all validation has passed
         //}
 
-        public virtual void ValidateTransaction(ChainedHeader chainedHeader, LoadedTx loadedTx)
+        public virtual void ValidateTransaction(ChainedHeader chainedHeader, ValidatableTx validatableTx)
         {
-            var tx = loadedTx.Transaction;
-            var txIndex = loadedTx.TxIndex;
+            var tx = validatableTx.Transaction;
+            var txIndex = validatableTx.TxIndex;
 
-            if (loadedTx.IsCoinbase)
+            if (validatableTx.IsCoinbase)
             {
                 // TODO coinbase tx validation
             }
@@ -280,7 +280,7 @@ namespace BitSharp.Core.Rules
                 for (var inputIndex = 0; inputIndex < tx.Inputs.Length; inputIndex++)
                 {
                     var input = tx.Inputs[inputIndex];
-                    var prevOutput = loadedTx.GetInputPrevTxOutput(inputIndex);
+                    var prevOutput = validatableTx.PrevTxOutputs[inputIndex];
 
                     // add transactions previous value to unspent amount (used to calculate allowed coinbase reward)
                     txInputValue += prevOutput.Value;

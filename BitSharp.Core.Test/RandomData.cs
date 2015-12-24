@@ -99,7 +99,8 @@ namespace BitSharp.Core.Test
                 blockIndex: random.Next(),
                 txIndex: random.Next(),
                 outputStates: new OutputStates(options.TxOutputCount.Value, random.NextBool() ? OutputState.Spent : OutputState.Unspent),
-                txBytes: DataEncoder.EncodeTransaction(RandomTransaction(options)).ToImmutableArray()
+                txOutputs: Enumerable.Range(0, options.TxOutputCount.Value)
+                    .Select(x => RandomTxOutput()).ToImmutableArray()
             );
         }
 

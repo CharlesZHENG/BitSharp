@@ -2,6 +2,7 @@
 using BitSharp.Core.Domain;
 using BitSharp.Core.Rules;
 using System;
+using System.Collections.Immutable;
 
 namespace BitSharp.Core.Test.Rules
 {
@@ -28,14 +29,14 @@ namespace BitSharp.Core.Test.Rules
 
         public override ChainedHeader GenesisChainedHeader => this._genesisChainedHeader;
 
-        public Action<ChainedHeader, LoadedTx> ValidateTransactionAction { get; set; }
+        public Action<ChainedHeader, ValidatableTx> ValidateTransactionAction { get; set; }
 
-        public override void ValidateTransaction(ChainedHeader chainedHeader, LoadedTx loadedTx)
+        public override void ValidateTransaction(ChainedHeader chainedHeader, ValidatableTx validatableTx)
         {
             if (ValidateTransactionAction == null)
-                base.ValidateTransaction(chainedHeader, loadedTx);
+                base.ValidateTransaction(chainedHeader, validatableTx);
             else
-                ValidateTransactionAction(chainedHeader, loadedTx);
+                ValidateTransactionAction(chainedHeader, validatableTx);
         }
 
         public Action<ChainedHeader, Transaction, int, TxInput, int, TxOutput> ValidationTransactionScriptAction { get; set; }

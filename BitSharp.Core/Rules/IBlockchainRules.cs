@@ -1,5 +1,6 @@
 ﻿using BitSharp.Common;
 using BitSharp.Core.Domain;
+using System.Collections.Immutable;
 
 namespace BitSharp.Core.Rules
 {
@@ -20,7 +21,7 @@ namespace BitSharp.Core.Rules
         //TODO
         //void ValidateBlock(ChainedBlock chainedBlock, ChainStateBuilder chainStateBuilder);
 
-        void ValidateTransaction(ChainedHeader chainedHeader, LoadedTx loadedTx);
+        void ValidateTransaction(ChainedHeader chainedHeader, ValidatableTx loadedTx);
 
         void ValidationTransactionScript(ChainedHeader chainedHeader, Transaction tx, int txIndex, TxInput txInput, int txInputIndex, TxOutput prevTxOutput);
     }

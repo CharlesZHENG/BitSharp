@@ -81,7 +81,7 @@ namespace BitSharp.Core.Test.Workers
                 for (var txIndex = 0; txIndex < block.Transactions.Length; txIndex++)
                 {
                     var tx = block.Transactions[txIndex];
-                    var unspentTx = new UnspentTx(tx.Hash, blockIndex: 0, txIndex: txIndex, outputStates: new OutputStates(1, OutputState.Spent), txBytes: ImmutableArray.Create<byte>());
+                    var unspentTx = new UnspentTx(tx.Hash, blockIndex: 0, txIndex: txIndex, outputStates: new OutputStates(1, OutputState.Spent), txOutputs: ImmutableArray<TxOutput>.Empty);
                     unspentTxes[txIndex] = unspentTx;
                     chainStateCursor.TryAddUnspentTx(unspentTx);
                 }

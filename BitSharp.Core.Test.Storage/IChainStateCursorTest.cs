@@ -252,7 +252,7 @@ namespace BitSharp.Core.Test.Storage
         {
             var fakeHeaders = new FakeHeaders();
             var chainedHeader0 = fakeHeaders.GenesisChained();
-            var unspentTx = new UnspentTx(txHash: UInt256.Zero, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Spent), txBytes: ImmutableArray.Create<byte>());
+            var unspentTx = new UnspentTx(txHash: UInt256.Zero, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Spent), txOutputs: ImmutableArray<TxOutput>.Empty);
             var spentTxes = BlockSpentTxes.CreateRange(new[] { unspentTx.ToSpentTx() });
 
             using (var storageManager = provider.OpenStorageManager())
@@ -307,7 +307,7 @@ namespace BitSharp.Core.Test.Storage
             var chainedHeader1 = fakeHeaders.NextChained();
             var chainedHeader2 = fakeHeaders.NextChained();
 
-            var unspentTx = new UnspentTx(txHash: UInt256.Zero, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Spent), txBytes: ImmutableArray.Create<byte>());
+            var unspentTx = new UnspentTx(txHash: UInt256.Zero, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Spent), txOutputs: ImmutableArray<TxOutput>.Empty);
             var spentTxes = BlockSpentTxes.CreateRange(new[] { unspentTx.ToSpentTx() });
 
             using (var storageManager = provider.OpenStorageManager())
@@ -392,9 +392,9 @@ namespace BitSharp.Core.Test.Storage
 
         private void TestUnspentTxCount(ITestStorageProvider provider)
         {
-            var unspentTx0 = new UnspentTx(txHash: (UInt256)0, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent), txBytes: ImmutableArray.Create<byte>());
-            var unspentTx1 = new UnspentTx(txHash: (UInt256)1, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent), txBytes: ImmutableArray.Create<byte>());
-            var unspentTx2 = new UnspentTx(txHash: (UInt256)2, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent), txBytes: ImmutableArray.Create<byte>());
+            var unspentTx0 = new UnspentTx(txHash: (UInt256)0, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent), txOutputs: ImmutableArray<TxOutput>.Empty);
+            var unspentTx1 = new UnspentTx(txHash: (UInt256)1, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent), txOutputs: ImmutableArray<TxOutput>.Empty);
+            var unspentTx2 = new UnspentTx(txHash: (UInt256)2, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent), txOutputs: ImmutableArray<TxOutput>.Empty);
 
             using (var storageManager = provider.OpenStorageManager())
             using (var handle = storageManager.OpenChainStateCursor())
@@ -524,8 +524,8 @@ namespace BitSharp.Core.Test.Storage
 
         private void TestContainsUnspentTx(ITestStorageProvider provider)
         {
-            var unspentTx0 = new UnspentTx(txHash: (UInt256)0, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent), txBytes: ImmutableArray.Create<byte>());
-            var unspentTx1 = new UnspentTx(txHash: (UInt256)1, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent), txBytes: ImmutableArray.Create<byte>());
+            var unspentTx0 = new UnspentTx(txHash: (UInt256)0, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent), txOutputs: ImmutableArray<TxOutput>.Empty);
+            var unspentTx1 = new UnspentTx(txHash: (UInt256)1, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent), txOutputs: ImmutableArray<TxOutput>.Empty);
 
             using (var storageManager = provider.OpenStorageManager())
             using (var handle = storageManager.OpenChainStateCursor())
@@ -571,8 +571,8 @@ namespace BitSharp.Core.Test.Storage
 
         private void TestTryAddGetRemoveUnspentTx(ITestStorageProvider provider)
         {
-            var unspentTx0 = new UnspentTx(txHash: (UInt256)0, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent), txBytes: ImmutableArray.Create<byte>());
-            var unspentTx1 = new UnspentTx(txHash: (UInt256)1, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent), txBytes: ImmutableArray.Create<byte>());
+            var unspentTx0 = new UnspentTx(txHash: (UInt256)0, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent), txOutputs: ImmutableArray<TxOutput>.Empty);
+            var unspentTx1 = new UnspentTx(txHash: (UInt256)1, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent), txOutputs: ImmutableArray<TxOutput>.Empty);
 
             using (var storageManager = provider.OpenStorageManager())
             using (var handle = storageManager.OpenChainStateCursor())
@@ -623,7 +623,7 @@ namespace BitSharp.Core.Test.Storage
 
         private void TestTryUpdateUnspentTx(ITestStorageProvider provider)
         {
-            var unspentTx = new UnspentTx(txHash: UInt256.Zero, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent), txBytes: ImmutableArray.Create<byte>());
+            var unspentTx = new UnspentTx(txHash: UInt256.Zero, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent), txOutputs: ImmutableArray<TxOutput>.Empty);
             var unspentTxUpdated = unspentTx.SetOutputState(0, OutputState.Spent);
             Assert.AreNotEqual(unspentTx, unspentTxUpdated);
 
@@ -663,9 +663,9 @@ namespace BitSharp.Core.Test.Storage
 
         public void TestReadUnspentTransactions(ITestStorageProvider provider)
         {
-            var unspentTx0 = new UnspentTx(txHash: (UInt256)0, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent), txBytes: ImmutableArray.Create<byte>());
-            var unspentTx1 = new UnspentTx(txHash: (UInt256)1, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent), txBytes: ImmutableArray.Create<byte>());
-            var unspentTx2 = new UnspentTx(txHash: (UInt256)2, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent), txBytes: ImmutableArray.Create<byte>());
+            var unspentTx0 = new UnspentTx(txHash: (UInt256)0, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent), txOutputs: ImmutableArray<TxOutput>.Empty);
+            var unspentTx1 = new UnspentTx(txHash: (UInt256)1, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent), txOutputs: ImmutableArray<TxOutput>.Empty);
+            var unspentTx2 = new UnspentTx(txHash: (UInt256)2, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent), txOutputs: ImmutableArray<TxOutput>.Empty);
 
             using (var storageManager = provider.OpenStorageManager())
             using (var handle = storageManager.OpenChainStateCursor())
@@ -832,26 +832,22 @@ namespace BitSharp.Core.Test.Storage
                     prevOutputTxKeys: ImmutableArray.Create(
                         new TxLookupKey(blockHash: (UInt256)0, txIndex: 0),
                         new TxLookupKey(blockHash: (UInt256)0, txIndex: 1),
-                        new TxLookupKey(blockHash: (UInt256)0, txIndex: 2)),
-                    inputTxesBytes: ImmutableArray.Create(ImmutableArray.Create<byte>(), ImmutableArray.Create<byte>(), ImmutableArray.Create<byte>())),
+                        new TxLookupKey(blockHash: (UInt256)0, txIndex: 2))),
                 new UnmintedTx(txHash: (UInt256)1,
                     prevOutputTxKeys: ImmutableArray.Create(
                         new TxLookupKey(blockHash: (UInt256)0, txIndex: 3),
                         new TxLookupKey(blockHash: (UInt256)0, txIndex: 4),
-                        new TxLookupKey(blockHash: (UInt256)0, txIndex: 5)),
-                    inputTxesBytes: ImmutableArray.Create(ImmutableArray.Create<byte>(), ImmutableArray.Create<byte>(), ImmutableArray.Create<byte>())));
+                        new TxLookupKey(blockHash: (UInt256)0, txIndex: 5))));
 
             var unmintedTxes1 = ImmutableList.Create(
                 new UnmintedTx(txHash: (UInt256)2,
                     prevOutputTxKeys: ImmutableArray.Create(
                         new TxLookupKey(blockHash: (UInt256)1, txIndex: 0),
-                        new TxLookupKey(blockHash: (UInt256)1, txIndex: 1)),
-                    inputTxesBytes: ImmutableArray.Create(ImmutableArray.Create<byte>(), ImmutableArray.Create<byte>())),
+                        new TxLookupKey(blockHash: (UInt256)1, txIndex: 1))),
                 new UnmintedTx(txHash: (UInt256)3,
                     prevOutputTxKeys: ImmutableArray.Create(
                         new TxLookupKey(blockHash: (UInt256)1, txIndex: 2),
-                        new TxLookupKey(blockHash: (UInt256)1, txIndex: 3)),
-                    inputTxesBytes: ImmutableArray.Create(ImmutableArray.Create<byte>(), ImmutableArray.Create<byte>())));
+                        new TxLookupKey(blockHash: (UInt256)1, txIndex: 3))));
 
             using (var storageManager = provider.OpenStorageManager())
             using (var handle = storageManager.OpenChainStateCursor())
@@ -902,26 +898,22 @@ namespace BitSharp.Core.Test.Storage
                     prevOutputTxKeys: ImmutableArray.Create(
                         new TxLookupKey(blockHash: (UInt256)0, txIndex: 0),
                         new TxLookupKey(blockHash: (UInt256)0, txIndex: 1),
-                        new TxLookupKey(blockHash: (UInt256)0, txIndex: 2)),
-                    inputTxesBytes: ImmutableArray.Create(ImmutableArray.Create<byte>(), ImmutableArray.Create<byte>(), ImmutableArray.Create<byte>())),
+                        new TxLookupKey(blockHash: (UInt256)0, txIndex: 2))),
                 new UnmintedTx(txHash: (UInt256)1,
                     prevOutputTxKeys: ImmutableArray.Create(
                         new TxLookupKey(blockHash: (UInt256)0, txIndex: 3),
                         new TxLookupKey(blockHash: (UInt256)0, txIndex: 4),
-                        new TxLookupKey(blockHash: (UInt256)0, txIndex: 5)),
-                    inputTxesBytes: ImmutableArray.Create(ImmutableArray.Create<byte>(), ImmutableArray.Create<byte>(), ImmutableArray.Create<byte>())));
+                        new TxLookupKey(blockHash: (UInt256)0, txIndex: 5))));
 
             var unmintedTxes1 = ImmutableList.Create(
                 new UnmintedTx(txHash: (UInt256)2,
                     prevOutputTxKeys: ImmutableArray.Create(
                         new TxLookupKey(blockHash: (UInt256)1, txIndex: 0),
-                        new TxLookupKey(blockHash: (UInt256)1, txIndex: 1)),
-                    inputTxesBytes: ImmutableArray.Create(ImmutableArray.Create<byte>(), ImmutableArray.Create<byte>())),
+                        new TxLookupKey(blockHash: (UInt256)1, txIndex: 1))),
                 new UnmintedTx(txHash: (UInt256)3,
                     prevOutputTxKeys: ImmutableArray.Create(
                         new TxLookupKey(blockHash: (UInt256)1, txIndex: 2),
-                        new TxLookupKey(blockHash: (UInt256)1, txIndex: 3)),
-                    inputTxesBytes: ImmutableArray.Create(ImmutableArray.Create<byte>(), ImmutableArray.Create<byte>())));
+                        new TxLookupKey(blockHash: (UInt256)1, txIndex: 3))));
 
             using (var storageManager = provider.OpenStorageManager())
             using (var handle = storageManager.OpenChainStateCursor())
@@ -986,7 +978,7 @@ namespace BitSharp.Core.Test.Storage
         /// <param name="provider"></param>
         public void TestOperationOutsideTransaction(ITestStorageProvider provider)
         {
-            var unspentTx = new UnspentTx(txHash: UInt256.Zero, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent), txBytes: ImmutableArray.Create<byte>());
+            var unspentTx = new UnspentTx(txHash: UInt256.Zero, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent), txOutputs: ImmutableArray<TxOutput>.Empty);
 
             using (var storageManager = provider.OpenStorageManager())
             using (var handle = storageManager.OpenChainStateCursor())
@@ -1036,7 +1028,7 @@ namespace BitSharp.Core.Test.Storage
         /// <param name="provider"></param>
         public void TestWriteOperationInReadonlyTransaction(ITestStorageProvider provider)
         {
-            var unspentTx = new UnspentTx(txHash: UInt256.Zero, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent), txBytes: ImmutableArray.Create<byte>());
+            var unspentTx = new UnspentTx(txHash: UInt256.Zero, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent), txOutputs: ImmutableArray<TxOutput>.Empty);
 
             using (var storageManager = provider.OpenStorageManager())
             using (var handle = storageManager.OpenChainStateCursor())
@@ -1071,7 +1063,7 @@ namespace BitSharp.Core.Test.Storage
 
         public void TestAccessAcrossThreads(ITestStorageProvider provider)
         {
-            var unspentTx = new UnspentTx(txHash: UInt256.Zero, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent), txBytes: ImmutableArray.Create<byte>());
+            var unspentTx = new UnspentTx(txHash: UInt256.Zero, blockIndex: 0, txIndex: 0, outputStates: new OutputStates(1, OutputState.Unspent), txOutputs: ImmutableArray<TxOutput>.Empty);
 
             using (var storageManager = provider.OpenStorageManager())
             using (var handle = storageManager.OpenChainStateCursor())

@@ -42,7 +42,7 @@ namespace BitSharp.Core.Test.Builders
                     // create a fake unspent tx, with enough outputs for this input
                     var unspentTx = new UnspentTx(input.PreviousTxOutputKey.TxHash, blockIndex: 1, txIndex: txIndex * inputIndex,
                         outputStates: new OutputStates(input.PreviousTxOutputKey.TxOutputIndex.ToIntChecked() + 1, OutputState.Unspent),
-                        txBytes: DataEncoder.EncodeTransaction(tx).ToImmutableArray());
+                        txOutputs: tx.Outputs);
 
                     chainState.Setup(x => x.TryGetUnspentTx(unspentTx.TxHash, out unspentTx)).Returns(true);
                 }
