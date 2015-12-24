@@ -47,7 +47,7 @@ namespace BitSharp.Core.Test
             {
                 // disable execution of rules validation
                 ValidateTransactionAction = (_, __) => { },
-                ValidationTransactionScriptAction = (_, __, ___, ____, _____, ______) => { }
+                ValidationTransactionScriptAction = (_, __, ___, ____, _____) => { }
             };
             rules.SetGenesisBlock(genesisBlock);
 

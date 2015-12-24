@@ -264,10 +264,10 @@ namespace BitSharp.Core.Rules
 
         public virtual void ValidateTransaction(ChainedHeader chainedHeader, ValidatableTx validatableTx)
         {
-            var tx = validatableTx.Transaction;
-            var txIndex = validatableTx.TxIndex;
+            var tx = validatableTx.Transaction.Decode();
+            var txIndex = validatableTx.Transaction.Index;
 
-            if (validatableTx.IsCoinbase)
+            if (validatableTx.Transaction.IsCoinbase)
             {
                 // TODO coinbase tx validation
             }
@@ -312,10 +312,10 @@ namespace BitSharp.Core.Rules
             // all validation has passed
         }
 
-        public virtual void ValidationTransactionScript(ChainedHeader chainedHeader, Transaction tx, int txIndex, TxInput txInput, int txInputIndex, TxOutput prevTxOutput)
+        public virtual void ValidationTransactionScript(ChainedHeader chainedHeader, BlockTx tx, TxInput txInput, int txInputIndex, TxOutput prevTxOutput)
         {
             var result = LibConsensus.VerifyScript(
-                DataEncoder.EncodeTransaction(tx).ToImmutableArray(),
+                tx.TxBytes.Value,
                 prevTxOutput.ScriptPublicKey,
                 txInputIndex);
 
@@ -326,7 +326,7 @@ namespace BitSharp.Core.Rules
             //if (!scriptEngine.VerifyScript(chainedHeader.Hash, txIndex, prevTxOutput.ScriptPublicKey.ToArray(), tx, txInputIndex, script.ToArray()))
             if (!result)
             {
-                logger.Debug($"Script did not pass in block: {chainedHeader.Hash}, tx: {txIndex}, {tx.Hash}, input: {txInputIndex}");
+                logger.Debug($"Script did not pass in block: {chainedHeader.Hash}, tx: {tx.Index}, {tx.Hash}, input: {txInputIndex}");
                 throw new ValidationException(chainedHeader.Hash);
             }
         }

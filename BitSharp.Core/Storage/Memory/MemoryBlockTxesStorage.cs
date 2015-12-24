@@ -42,20 +42,21 @@ namespace BitSharp.Core.Storage.Memory
                         new KeyValuePair<int, BlockTx>(txIndex, new BlockTx(txIndex, 0, tx.Hash, false, tx)))));
         }
 
-        public bool TryGetTransaction(UInt256 blockHash, int txIndex, out Transaction transaction)
+        public bool TryGetTransaction(UInt256 blockHash, int txIndex, out BlockTx transaction)
         {
             ImmutableSortedDictionary<int, BlockTx> blockTxes;
             BlockTx blockTx;
 
             if (this.allBlockTxes.TryGetValue(blockHash, out blockTxes)
-                && blockTxes.TryGetValue(txIndex, out blockTx))
+                && blockTxes.TryGetValue(txIndex, out blockTx)
+                && !blockTx.Pruned)
             {
-                transaction = blockTx.Transaction;
+                transaction = blockTx;
                 return true;
             }
             else
             {
-                transaction = default(Transaction);
+                transaction = null;
                 return false;
             }
         }

@@ -54,7 +54,7 @@ namespace BitSharp.Core.Builders
 
         private static TransformManyBlock<Tuple<LoadingTx, int>, LoadedTx> InitLoadTxInputAndReturnLoadedTx(ICoreStorage coreStorage, CancellationToken cancelToken)
         {
-            var txCache = new ConcurrentDictionary<TxLookupKey, Lazy<Transaction>>();
+            var txCache = new ConcurrentDictionary<TxLookupKey, Lazy<BlockTx>>();
             return new TransformManyBlock<Tuple<LoadingTx, int>, LoadedTx>(
                 tuple =>
                 {
@@ -70,7 +70,7 @@ namespace BitSharp.Core.Builders
                 new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, MaxDegreeOfParallelism = Environment.ProcessorCount });
         }
 
-        private static LoadedTx LoadTxInput(ICoreStorage coreStorage, ConcurrentDictionary<TxLookupKey, Lazy<Transaction>> txCache, LoadingTx loadingTx, int inputIndex)
+        private static LoadedTx LoadTxInput(ICoreStorage coreStorage, ConcurrentDictionary<TxLookupKey, Lazy<BlockTx>> txCache, LoadingTx loadingTx, int inputIndex)
         {
             var txIndex = loadingTx.TxIndex;
             var transaction = loadingTx.Transaction;
@@ -84,9 +84,9 @@ namespace BitSharp.Core.Builders
                 var input = transaction.Inputs[inputIndex];
                 var inputPrevTxHash = input.PreviousTxOutputKey.TxHash;
 
-                var inputPrevTx = txCache.GetOrAdd(prevOutputTxKey, new Lazy<Transaction>(() =>
+                var inputPrevTx = txCache.GetOrAdd(prevOutputTxKey, new Lazy<BlockTx>(() =>
                     {
-                        Transaction tx;
+                        BlockTx tx;
                         if (coreStorage.TryGetTransaction(prevOutputTxKey.BlockHash, prevOutputTxKey.TxIndex, out tx))
                             return tx;
                         else
@@ -96,7 +96,7 @@ namespace BitSharp.Core.Builders
                 if (input.PreviousTxOutputKey.TxHash != inputPrevTx.Hash)
                     throw new Exception("TODO");
 
-                if (loadingTx.InputTxesBytes.TryComplete(inputIndex, DataEncoder.EncodeTransaction(inputPrevTx).ToImmutableArray()))
+                if (loadingTx.InputTxesBytes.TryComplete(inputIndex, inputPrevTx.TxBytes.Value))
                     return loadingTx.ToLoadedTx();
                 else
                     return null;

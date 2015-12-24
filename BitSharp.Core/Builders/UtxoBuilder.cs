@@ -70,7 +70,7 @@ namespace BitSharp.Core.Builders
                         chainStateCursor.TotalOutputCount += tx.Outputs.Length;
                     }
 
-                    return new ValidatableTx(txIndex, tx, chainedHeader, prevTxOutputs.MoveToImmutable());
+                    return new ValidatableTx(blockTx, chainedHeader, prevTxOutputs.MoveToImmutable());
                 },
                 new ExecutionDataflowBlockOptions { CancellationToken = cancelToken });
 

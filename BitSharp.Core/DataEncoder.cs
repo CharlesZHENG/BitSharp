@@ -1,4 +1,5 @@
 using BitSharp.Common;
+using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Domain;
 using BitSharp.Core.ExtensionMethods;
 using NLog;
@@ -571,7 +572,7 @@ namespace BitSharp.Core
             }
         }
 
-        public static BlockTx DecodeBlockTx(BinaryReader reader, bool skipTx = false)
+        public static BlockTx DecodeBlockTx(MemoryStream stream, BinaryReader reader, bool skipTx = false)
         {
             var index = reader.ReadInt32();
             var depth = reader.ReadInt32();
@@ -580,11 +581,13 @@ namespace BitSharp.Core
 
             if (!pruned && !skipTx)
             {
-                var tx = DecodeTransaction(reader, hash);
-                return new BlockTx(index, depth, hash, pruned, tx);
+                var bytesRemaining = (stream.Length - stream.Position).ToIntChecked();
+                var txBytes = reader.ReadBytes(bytesRemaining).ToImmutableArray();
+
+                return new BlockTx(index, depth, hash, pruned, txBytes);
             }
             else
-                return new BlockTx(index, depth, hash, pruned, null);
+                return new BlockTx(index, depth, hash, pruned, (ImmutableArray<byte>?)null);
         }
 
         public static BlockTx DecodeBlockTx(byte[] bytes, bool skipTx = false)
@@ -592,20 +595,18 @@ namespace BitSharp.Core
             using (var stream = new MemoryStream(bytes))
             using (var reader = new BinaryReader(stream))
             {
-                return DecodeBlockTx(reader, skipTx);
+                return DecodeBlockTx(stream, reader, skipTx);
             }
         }
 
         public static void EncodeBlockTx(BinaryWriter writer, BlockTx blockTx)
         {
-            var txBytes = blockTx.Transaction != null ? EncodeTransaction(blockTx.Transaction) : new byte[0];
-
             writer.WriteInt32(blockTx.Index);
             writer.WriteInt32(blockTx.Depth);
             writer.WriteUInt256(blockTx.Hash);
             writer.WriteBool(blockTx.Pruned);
             if (!blockTx.Pruned)
-                EncodeTransaction(writer, blockTx.Transaction);
+                writer.WriteBytes(blockTx.TxBytes.Value.ToArray());
         }
 
         public static byte[] EncodeBlockTx(BlockTx blockTx)

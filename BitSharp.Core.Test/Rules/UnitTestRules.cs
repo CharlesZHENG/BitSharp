@@ -39,14 +39,14 @@ namespace BitSharp.Core.Test.Rules
                 ValidateTransactionAction(chainedHeader, validatableTx);
         }
 
-        public Action<ChainedHeader, Transaction, int, TxInput, int, TxOutput> ValidationTransactionScriptAction { get; set; }
+        public Action<ChainedHeader, BlockTx, TxInput, int, TxOutput> ValidationTransactionScriptAction { get; set; }
 
-        public override void ValidationTransactionScript(ChainedHeader chainedHeader, Transaction tx, int txIndex, TxInput txInput, int txInputIndex, TxOutput prevTxOutput)
+        public override void ValidationTransactionScript(ChainedHeader chainedHeader, BlockTx tx, TxInput txInput, int txInputIndex, TxOutput prevTxOutput)
         {
             if (ValidationTransactionScriptAction == null)
-                base.ValidationTransactionScript(chainedHeader, tx, txIndex, txInput, txInputIndex, prevTxOutput);
+                base.ValidationTransactionScript(chainedHeader, tx, txInput, txInputIndex, prevTxOutput);
             else
-                ValidationTransactionScriptAction(chainedHeader, tx, txIndex, txInput, txInputIndex, prevTxOutput);
+                ValidationTransactionScriptAction(chainedHeader, tx, txInput, txInputIndex, prevTxOutput);
         }
 
         public void SetGenesisBlock(Block genesisBlock)

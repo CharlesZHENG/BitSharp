@@ -1,6 +1,7 @@
 ﻿using BitSharp.Core.Domain;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 
 namespace BitSharp.Core.Storage.Memory
@@ -12,7 +13,7 @@ namespace BitSharp.Core.Storage.Memory
 
         public MemoryMerkleTreePruningCursor(IEnumerable<MerkleTreeNode> nodes)
         {
-            this.nodes = new List<BlockTx>(nodes.Select(x => new BlockTx(x.Index, x.Depth, x.Hash, x.Pruned, null)));
+            this.nodes = new List<BlockTx>(nodes.Select(x => new BlockTx(x.Index, x.Depth, x.Hash, x.Pruned, (ImmutableArray<byte>?)null)));
             this.index = -2;
         }
 
@@ -97,7 +98,7 @@ namespace BitSharp.Core.Storage.Memory
             if (this.index < 0 || this.index >= this.nodes.Count)
                 throw new InvalidOperationException();
 
-            this.nodes[this.index] = new BlockTx(node.Index, node.Depth, node.Hash, node.Pruned, null);
+            this.nodes[this.index] = new BlockTx(node.Index, node.Depth, node.Hash, node.Pruned, (ImmutableArray<byte>?)null);
         }
 
         public void DeleteNode()

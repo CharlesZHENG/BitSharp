@@ -78,7 +78,7 @@ namespace BitSharp.Core.Storage
             return GetStorage(blockHash).TryAddBlockTransactions(blockHash, blockTxes);
         }
 
-        public bool TryGetTransaction(UInt256 blockHash, int txIndex, out Transaction transaction)
+        public bool TryGetTransaction(UInt256 blockHash, int txIndex, out BlockTx transaction)
         {
             return GetStorage(blockHash).TryGetTransaction(blockHash, txIndex, out transaction);
         }

@@ -11,6 +11,7 @@ using Microsoft.Isam.Esent.Interop.Windows81;
 using NLog;
 using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.IO;
 using Transaction = BitSharp.Core.Domain.Transaction;
 
@@ -222,7 +223,7 @@ namespace BitSharp.Esent
             }
         }
 
-        public bool TryGetTransaction(UInt256 blockHash, int txIndex, out Transaction transaction)
+        public bool TryGetTransaction(UInt256 blockHash, int txIndex, out BlockTx transaction)
         {
             using (var handle = this.cursorCache.TakeItem())
             {
@@ -233,7 +234,7 @@ namespace BitSharp.Esent
                     int blockIndex;
                     if (!TryGetBlockIndex(cursor, blockHash, out blockIndex))
                     {
-                        transaction = default(Transaction);
+                        transaction = null;
                         return false;
                     }
 
@@ -246,23 +247,21 @@ namespace BitSharp.Esent
                         var blockTxBytesColumn = new BytesColumnValue { Columnid = cursor.blockTxBytesColumnId };
                         Api.RetrieveColumns(cursor.jetSession, cursor.blocksTableId, blockTxHashColumn, blockTxBytesColumn);
 
-                        var txBytes = blockTxBytesColumn.Value;
-                        if (txBytes != null)
+                        if (blockTxBytesColumn.Value != null)
                         {
                             var txHash = DbEncoder.DecodeUInt256(blockTxHashColumn.Value);
-
-                            transaction = DataEncoder.DecodeTransaction(txBytes, txHash);
+                            transaction = new BlockTx(txIndex, 0, txHash, false, blockTxBytesColumn.Value.ToImmutableArray());
                             return true;
                         }
                         else
                         {
-                            transaction = default(Transaction);
+                            transaction = null;
                             return false;
                         }
                     }
                     else
                     {
-                        transaction = default(Transaction);
+                        transaction = null;
                         return false;
                     }
                 }

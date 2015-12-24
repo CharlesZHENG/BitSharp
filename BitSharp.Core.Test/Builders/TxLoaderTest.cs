@@ -35,11 +35,13 @@ namespace BitSharp.Core.Test.Builders
             for (var i = 0; i < prevTxCount; i++)
             {
                 var prevTx = RandomData.RandomTransaction();
+                var prevBlockTx = new BlockTx(i, 0, prevTx.Hash, false, prevTx);
+
                 prevTxes[i] = prevTx;
                 inputs[i] = new TxInput(new TxOutputKey(prevTx.Hash, 0), ImmutableArray.Create<byte>(), 0);
 
                 // mock retrieval of the previous transaction
-                coreStorageMock.Setup(coreStorage => coreStorage.TryGetTransaction(UInt256.Zero, i, out prevTx)).Returns(true);
+                coreStorageMock.Setup(coreStorage => coreStorage.TryGetTransaction(UInt256.Zero, i, out prevBlockTx)).Returns(true);
             }
 
             // create a loading tx with the 4 inputs referencing block hash 0
@@ -115,7 +117,7 @@ namespace BitSharp.Core.Test.Builders
             loadingTxes.Complete();
 
             // throw expected exception when the input transaction is looked up
-            Transaction outputTx = null;
+            BlockTx outputTx = null;
             coreStorage.Setup(x => x.TryGetTransaction(txLookupKey.BlockHash, txLookupKey.TxIndex, out outputTx)).Throws(expectedException);
 
             var loadedTxes = TxLoader.LoadTxes(coreStorage.Object, loadingTxes);

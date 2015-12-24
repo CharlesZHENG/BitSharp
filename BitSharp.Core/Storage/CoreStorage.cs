@@ -260,7 +260,7 @@ namespace BitSharp.Core.Storage
             }
         }
 
-        public bool TryGetTransaction(UInt256 blockHash, int txIndex, out Transaction transaction)
+        public bool TryGetTransaction(UInt256 blockHash, int txIndex, out BlockTx transaction)
         {
             return this.blockTxesStorage.Value.TryGetTransaction(blockHash, txIndex, out transaction);
         }

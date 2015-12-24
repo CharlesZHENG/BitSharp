@@ -3,6 +3,7 @@ using BitSharp.Core;
 using BitSharp.Core.Domain;
 using LightningDB;
 using System;
+using System.Collections.Immutable;
 
 namespace BitSharp.Lmdb
 {
@@ -85,7 +86,7 @@ namespace BitSharp.Lmdb
                 throw new InvalidOperationException();
 
             var key = DbEncoder.EncodeBlockHashTxIndex(blockHash, node.Index);
-            var blockTx = new BlockTx(node.Index, node.Depth, node.Hash, node.Pruned, null);
+            var blockTx = new BlockTx(node.Index, node.Depth, node.Hash, node.Pruned, (ImmutableArray<byte>?)null);
             cursor.Put(key, DataEncoder.EncodeBlockTx(blockTx), CursorPutOptions.Current);
         }
 

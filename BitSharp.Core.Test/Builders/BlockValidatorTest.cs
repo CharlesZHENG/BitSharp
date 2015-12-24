@@ -41,7 +41,8 @@ namespace BitSharp.Core.Test.Builders
                     prevTxOutputs[inputIndex] = RandomData.RandomTxOutput();
                 }
 
-                validatableTxes.Post(new ValidatableTx(txIndex, tx, invalidChainedHeader, prevTxOutputs.ToImmutableArray()));
+                var blockTx = new BlockTx(txIndex, tx);
+                validatableTxes.Post(new ValidatableTx(blockTx, invalidChainedHeader, prevTxOutputs.ToImmutableArray()));
             }
             validatableTxes.Complete();
 

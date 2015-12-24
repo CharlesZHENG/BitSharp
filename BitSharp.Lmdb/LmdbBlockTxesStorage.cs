@@ -157,7 +157,7 @@ namespace BitSharp.Lmdb
             }
         }
 
-        public bool TryGetTransaction(UInt256 blockHash, int txIndex, out Transaction transaction)
+        public bool TryGetTransaction(UInt256 blockHash, int txIndex, out BlockTx transaction)
         {
             using (var txn = this.jetInstance.BeginTransaction(TransactionBeginFlags.ReadOnly))
             {
@@ -165,13 +165,20 @@ namespace BitSharp.Lmdb
                 if (txn.TryGet(blocksTableId, DbEncoder.EncodeBlockHashTxIndex(blockHash, txIndex), out blockTxBytes))
                 {
                     var blockTx = DataEncoder.DecodeBlockTx(blockTxBytes);
-
-                    transaction = blockTx.Transaction;
-                    return transaction != null;
+                    if (!blockTx.Pruned)
+                    {
+                        transaction = blockTx;
+                        return true;
+                    }
+                    else
+                    {
+                        transaction = null;
+                        return false;
+                    }
                 }
                 else
                 {
-                    transaction = default(Transaction);
+                    transaction = null;
                     return false;
                 }
             }

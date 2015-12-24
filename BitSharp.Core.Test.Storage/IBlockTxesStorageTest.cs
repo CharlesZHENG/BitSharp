@@ -185,7 +185,7 @@ namespace BitSharp.Core.Test.Storage
                 blockTxesStorage.TryAddBlockTransactions(block.Hash, block.Transactions);
 
                 // verify missing transactions
-                Transaction transaction;
+                BlockTx transaction;
                 Assert.IsFalse(blockTxesStorage.TryGetTransaction(UInt256.Zero, 0, out transaction));
                 Assert.IsFalse(blockTxesStorage.TryGetTransaction(block.Hash, -1, out transaction));
                 Assert.IsFalse(blockTxesStorage.TryGetTransaction(block.Hash, block.Transactions.Length, out transaction));
@@ -195,7 +195,7 @@ namespace BitSharp.Core.Test.Storage
                 {
                     Assert.IsTrue(blockTxesStorage.TryGetTransaction(block.Hash, txIndex, out transaction));
                     Assert.AreEqual(block.Transactions[txIndex].Hash, transaction.Hash);
-                    Assert.AreEqual(transaction.Hash, DataCalculator.CalculateTransactionHash(transaction));
+                    Assert.AreEqual(transaction.Hash, DataCalculator.CalculateTransactionHash(transaction.Decode()));
                 }
             }
         }

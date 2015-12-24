@@ -34,7 +34,7 @@ namespace BitSharp.Core.Storage
         /// <param name="txIndex">The transaction index of the transaction inside the block.</param>
         /// <param name="transaction">Contains the retrieved transaction when successful; otherwise, null.</param>
         /// <returns>true if the transaction was retrieved; otherwise, false</returns>
-        bool TryGetTransaction(UInt256 blockHash, int txIndex, out Transaction transaction);
+        bool TryGetTransaction(UInt256 blockHash, int txIndex, out BlockTx transaction);
 
         /// <summary>
         /// Remove all transaction data for a block.
