@@ -291,16 +291,10 @@ namespace BitSharp.Core
             var lockTime = Bits.ToUInt32(txBytes, startIndex);
             startIndex += 4;
 
+            // resize raw tx bytes to final size
             Array.Resize(ref txBytes, startIndex);
 
             var tx = new Transaction(version, inputs.MoveToImmutable(), outputs.MoveToImmutable(), lockTime, txHash);
-
-            if (new UInt256(SHA256Static.ComputeDoubleHash(txBytes))
-                != DataCalculator.CalculateTransactionHash(tx.Version, tx.Inputs, tx.Outputs, tx.LockTime))
-            {
-                throw new InvalidOperationException();
-            }
-
             return new EncodedTx(txBytes.ToImmutableArray(), tx);
         }
 
