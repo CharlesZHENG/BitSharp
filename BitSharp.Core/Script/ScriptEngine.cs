@@ -15,6 +15,7 @@ using BitSharp.Core.Domain;
 
 namespace BitSharp.Core.Script
 {
+    [Obsolete("DEFUNCT: LibbitcoinConsensus is now used")]
     public class ScriptEngine
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();

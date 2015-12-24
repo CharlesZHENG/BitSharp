@@ -10,7 +10,7 @@ namespace BitSharp.Core.Rules
 {
     // See: https://github.com/libbitcoin/libbitcoin-consensus/
 
-    public class LibConsensus
+    public class LibbitcoinConsensus
     {
         [DllImport("libbitcoin-consensus.dll",
             EntryPoint = "?verify_script@consensus@libbitcoin@@YA?AW4verify_result_type@12@PEBE_K01II@Z",

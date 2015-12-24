@@ -144,7 +144,7 @@
     <Compile Include="Exceptions\ChainStateOutOfSyncException.cs" />
     <Compile Include="MerkleStream.cs" />
     <Compile Include="PruningMode.cs" />
-    <Compile Include="Rules\LibConsensus.cs" />
+    <Compile Include="Rules\LibbitcoinConsensus.cs" />
     <Compile Include="StorageType.cs" />
     <Compile Include="Storage\SplitBlockTxesStorage.cs" />
     <Compile Include="Storage\CoreStorage.cs" />
