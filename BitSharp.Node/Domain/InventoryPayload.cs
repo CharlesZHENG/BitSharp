@@ -10,13 +10,5 @@ namespace BitSharp.Node.Domain
         {
             this.InventoryVectors = InventoryVectors;
         }
-
-        public InventoryPayload With(ImmutableArray<InventoryVector>? InventoryVectors = null)
-        {
-            return new InventoryPayload
-            (
-                InventoryVectors ?? this.InventoryVectors
-            );
-        }
     }
 }

@@ -17,15 +17,6 @@ namespace BitSharp.Core.Domain
 
         public ImmutableArray<byte> ScriptPublicKey { get; }
 
-        public TxOutput With(UInt64? Value = null, ImmutableArray<byte>? ScriptPublicKey = null)
-        {
-            return new TxOutput
-            (
-                Value ?? this.Value,
-                ScriptPublicKey ?? this.ScriptPublicKey
-            );
-        }
-
         public override bool Equals(object obj)
         {
             if (!(obj is TxOutput))

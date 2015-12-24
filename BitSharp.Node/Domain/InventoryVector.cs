@@ -17,15 +17,5 @@ namespace BitSharp.Node.Domain
             this.Type = Type;
             this.Hash = Hash;
         }
-
-        public InventoryVector With(UInt32? Type = null, UInt256 Hash = null)
-        {
-            return new InventoryVector
-            (
-                Type ?? this.Type,
-                Hash ?? this.Hash
-            );
-        }
-
     }
 }

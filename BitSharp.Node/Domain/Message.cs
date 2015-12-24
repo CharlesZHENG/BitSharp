@@ -19,17 +19,5 @@ namespace BitSharp.Node.Domain
             this.PayloadChecksum = PayloadChecksum;
             this.Payload = Payload;
         }
-
-        public Message With(UInt32? Magic = null, string Command = null, UInt32? PayloadSize = null, UInt32? PayloadChecksum = null, ImmutableArray<byte>? Payload = null)
-        {
-            return new Message
-            (
-                Magic ?? this.Magic,
-                Command ?? this.Command,
-                PayloadSize ?? this.PayloadSize,
-                PayloadChecksum ?? this.PayloadChecksum,
-                Payload ?? this.Payload
-            );
-        }
     }
 }

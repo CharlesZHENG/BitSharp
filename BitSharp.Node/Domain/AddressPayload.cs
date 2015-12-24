@@ -10,13 +10,5 @@ namespace BitSharp.Node.Domain
         {
             this.NetworkAddresses = NetworkAddresses;
         }
-
-        public AddressPayload With(ImmutableArray<NetworkAddressWithTime>? NetworkAddresses = null)
-        {
-            return new AddressPayload
-            (
-                NetworkAddresses ?? this.NetworkAddresses
-            );
-        }
     }
 }

@@ -11,14 +11,5 @@ namespace BitSharp.Node.Domain
             this.Payload = Payload;
             this.Signature = Signature;
         }
-
-        public AlertPayload With(string Payload = null, string Signature = null)
-        {
-            return new AlertPayload
-            (
-                Payload ?? this.Payload,
-                Signature ?? this.Signature
-            );
-        }
     }
 }

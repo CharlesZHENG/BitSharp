@@ -15,15 +15,5 @@ namespace BitSharp.Node.Domain
             this.IPv6Address = IPv6Address;
             this.Port = Port;
         }
-
-        public NetworkAddress With(UInt64? Services = null, ImmutableArray<byte>? IPv6Address = null, UInt16? Port = null)
-        {
-            return new NetworkAddress
-            (
-                Services ?? this.Services,
-                IPv6Address ?? this.IPv6Address,
-                Port ?? this.Port
-            );
-        }
     }
 }
