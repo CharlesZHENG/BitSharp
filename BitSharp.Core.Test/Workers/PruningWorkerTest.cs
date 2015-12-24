@@ -39,7 +39,7 @@ namespace BitSharp.Core.Test.Workers
 
             // create memory storage with the block
             var storageManager = new MemoryStorageManager();
-            storageManager.BlockTxesStorage.TryAddBlockTransactions(block.Hash, block.Transactions);
+            storageManager.BlockTxesStorage.TryAddBlockTransactions(block.Hash, block.EncodedTxes);
 
             // initialize the pruning worker
             var workerConfig = new WorkerConfig(initialNotify: false, minIdleTime: TimeSpan.Zero, maxIdleTime: TimeSpan.MaxValue);

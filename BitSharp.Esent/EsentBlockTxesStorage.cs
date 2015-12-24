@@ -13,6 +13,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
+using System.Linq;
 using Transaction = BitSharp.Core.Domain.Transaction;
 
 namespace BitSharp.Esent
@@ -438,7 +439,7 @@ namespace BitSharp.Esent
 
         public string Name => "Blocks";
 
-        public bool TryAddBlockTransactions(UInt256 blockHash, IEnumerable<Transaction> blockTxes)
+        public bool TryAddBlockTransactions(UInt256 blockHash, IEnumerable<EncodedTx> blockTxes)
         {
             if (this.ContainsBlock(blockHash))
                 return false;
@@ -456,7 +457,7 @@ namespace BitSharp.Esent
                         var txIndex = 0;
                         foreach (var tx in blockTxes)
                         {
-                            AddTransaction(blockIndex, txIndex, tx.Hash, DataEncoder.EncodeTransaction(tx), cursor);
+                            AddTransaction(blockIndex, txIndex, tx.Hash, tx.TxBytes.ToArray(), cursor);
                             txIndex++;
                         }
 

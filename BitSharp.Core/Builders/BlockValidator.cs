@@ -61,7 +61,7 @@ namespace BitSharp.Core.Builders
                 {
                     try
                     {
-                        merkleStream.AddNode(new MerkleTreeNode(validatableTx.Transaction.Index, 0, validatableTx.Transaction.Hash, false));
+                        merkleStream.AddNode(new MerkleTreeNode(validatableTx.BlockTx.Index, 0, validatableTx.BlockTx.Hash, false));
                     }
                     //TODO
                     catch (InvalidOperationException)
@@ -80,10 +80,10 @@ namespace BitSharp.Core.Builders
                 {
                     rules.ValidateTransaction(chainedHeader, validatableTx);
 
-                    if (!rules.IgnoreScripts && !validatableTx.Transaction.IsCoinbase)
+                    if (!rules.IgnoreScripts && !validatableTx.BlockTx.IsCoinbase)
                     {
-                        var scripts = new Tuple<ValidatableTx, int>[validatableTx.Transaction.Transaction.Inputs.Length];
-                        for (var i = 0; i < validatableTx.Transaction.Transaction.Inputs.Length; i++)
+                        var scripts = new Tuple<ValidatableTx, int>[validatableTx.BlockTx.Transaction.Inputs.Length];
+                        for (var i = 0; i < validatableTx.BlockTx.Transaction.Inputs.Length; i++)
                             scripts[i] = Tuple.Create(validatableTx, i);
 
                         return scripts;
@@ -101,18 +101,18 @@ namespace BitSharp.Core.Builders
                 {
                     var validatableTx = tuple.Item1;
                     var inputIndex = tuple.Item2;
-                    var txInput = validatableTx.Transaction.Transaction.Inputs[inputIndex];
+                    var txInput = validatableTx.BlockTx.Transaction.Inputs[inputIndex];
                     var prevTxOutputs = validatableTx.PrevTxOutputs[inputIndex];
 
                     if (!rules.IgnoreScriptErrors)
                     {
-                        rules.ValidationTransactionScript(chainedHeader, validatableTx.Transaction, txInput, inputIndex, prevTxOutputs);
+                        rules.ValidationTransactionScript(chainedHeader, validatableTx.BlockTx, txInput, inputIndex, prevTxOutputs);
                     }
                     else
                     {
                         try
                         {
-                            rules.ValidationTransactionScript(chainedHeader, validatableTx.Transaction, txInput, inputIndex, prevTxOutputs);
+                            rules.ValidationTransactionScript(chainedHeader, validatableTx.BlockTx, txInput, inputIndex, prevTxOutputs);
                         }
                         catch (Exception ex)
                         {

@@ -50,7 +50,7 @@ namespace BitSharp.Core
             return new Block
             (
                 header: DecodeBlockHeader(reader, blockHash),
-                transactions: reader.ReadList(() => DecodeTransaction(reader))
+                encodedTxes: reader.ReadList(() => DecodeTransaction(reader))
             );
         }
 
@@ -66,7 +66,7 @@ namespace BitSharp.Core
         public static void EncodeBlock(BinaryWriter writer, Block block)
         {
             EncodeBlockHeader(writer, block.Header);
-            writer.WriteList(block.Transactions, tx => EncodeTransaction(writer, tx));
+            writer.WriteList(block.EncodedTxes, tx => writer.WriteBytes(tx.TxBytes.ToArray()));
         }
 
         public static byte[] EncodeBlock(Block block)
@@ -220,19 +220,97 @@ namespace BitSharp.Core
             }
         }
 
-        public static Transaction DecodeTransaction(BinaryReader reader, UInt256 txHash = null)
+        public static EncodedTx DecodeTransaction(BinaryReader reader, UInt256 txHash = null)
         {
-            return new Transaction
-            (
-                version: reader.ReadUInt32(),
-                inputs: reader.ReadList(() => DecodeTxInput(reader)),
-                outputs: reader.ReadList(() => DecodeTxOutput(reader)),
-                lockTime: reader.ReadUInt32(),
-                hash: txHash
-            );
+            var txBytes = new byte[1024];
+            var startIndex = 0;
+
+            // read version
+            reader.Read(txBytes, startIndex, 4);
+            var version = Bits.ToUInt32(txBytes, startIndex);
+            startIndex += 4;
+
+            // read inputs
+            var inputCount = reader.ReadVarInt(ref txBytes, ref startIndex).ToIntChecked();
+            var inputs = ImmutableArray.CreateBuilder<TxInput>(inputCount);
+            for (var i = 0; i < inputCount; i++)
+            {
+                // read prevTxHash and prevTxOutputIndex
+                SizeAtLeast(ref txBytes, startIndex + 36);
+                reader.Read(txBytes, startIndex, 36);
+                var prevTxHash = Bits.ToUInt256(txBytes, startIndex);
+                var prevTxOutputIndex = Bits.ToUInt32(txBytes, startIndex + 32);
+                startIndex += 36;
+
+                // read scriptSignatureLength
+                var scriptSignatureLength = reader.ReadVarInt(ref txBytes, ref startIndex).ToIntChecked();
+
+                // read scriptSignature
+                SizeAtLeast(ref txBytes, startIndex + scriptSignatureLength);
+                reader.Read(txBytes, startIndex, scriptSignatureLength);
+                var scriptSignature = ImmutableArray.Create(txBytes, startIndex, scriptSignatureLength);
+                startIndex += scriptSignatureLength;
+
+                // read sequence
+                SizeAtLeast(ref txBytes, startIndex + 4);
+                reader.Read(txBytes, startIndex, 4);
+                var sequence = Bits.ToUInt32(txBytes, startIndex);
+                startIndex += 4;
+
+                var intput = new TxInput(new TxOutputKey(prevTxHash, prevTxOutputIndex), scriptSignature, sequence);
+                inputs.Add(intput);
+            }
+
+            // read outputs
+            var outputCount = reader.ReadVarInt(ref txBytes, ref startIndex).ToIntChecked();
+            var outputs = ImmutableArray.CreateBuilder<TxOutput>(outputCount);
+            for (var i = 0; i < outputCount; i++)
+            {
+                // read value
+                SizeAtLeast(ref txBytes, startIndex + 8);
+                reader.Read(txBytes, startIndex, 8);
+                var value = Bits.ToUInt64(txBytes, startIndex);
+                startIndex += 8;
+
+                // read scriptPublicKeyLength
+                var scriptPublicKeyLength = reader.ReadVarInt(ref txBytes, ref startIndex).ToIntChecked();
+
+                // read scriptPublicKey
+                SizeAtLeast(ref txBytes, startIndex + scriptPublicKeyLength);
+                reader.Read(txBytes, startIndex, scriptPublicKeyLength);
+                var scriptPublicKey = ImmutableArray.Create(txBytes, startIndex, scriptPublicKeyLength);
+                startIndex += scriptPublicKeyLength;
+
+                var output = new TxOutput(value, scriptPublicKey);
+                outputs.Add(output);
+            }
+
+            // read lockTime
+            SizeAtLeast(ref txBytes, startIndex + 4);
+            reader.Read(txBytes, startIndex, 4);
+            var lockTime = Bits.ToUInt32(txBytes, startIndex);
+            startIndex += 4;
+
+            Array.Resize(ref txBytes, startIndex);
+
+            var tx = new Transaction(version, inputs.MoveToImmutable(), outputs.MoveToImmutable(), lockTime, txHash);
+
+            if (new UInt256(SHA256Static.ComputeDoubleHash(txBytes))
+                != DataCalculator.CalculateTransactionHash(tx.Version, tx.Inputs, tx.Outputs, tx.LockTime))
+            {
+                throw new InvalidOperationException();
+            }
+
+            return new EncodedTx(txBytes.ToImmutableArray(), tx);
         }
 
-        public static Transaction DecodeTransaction(byte[] bytes, UInt256 txHash = null)
+        internal static void SizeAtLeast(ref byte[] bytes, int minLength)
+        {
+            if (bytes.Length < minLength)
+                Array.Resize(ref bytes, ((minLength + 1023) / 1024) * 1024);
+        }
+
+        public static EncodedTx DecodeTransaction(byte[] bytes, UInt256 txHash = null)
         {
             using (var stream = new MemoryStream(bytes))
             using (var reader = new BinaryReader(stream))
@@ -606,7 +684,7 @@ namespace BitSharp.Core
             writer.WriteUInt256(blockTx.Hash);
             writer.WriteBool(blockTx.Pruned);
             if (!blockTx.Pruned)
-                writer.WriteBytes(blockTx.TxBytes.Value.ToArray());
+                writer.WriteBytes(blockTx.EncodedTx.TxBytes.ToArray());
         }
 
         public static byte[] EncodeBlockTx(BlockTx blockTx)

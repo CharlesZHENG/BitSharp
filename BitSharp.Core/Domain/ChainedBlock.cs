@@ -24,6 +24,8 @@ namespace BitSharp.Core.Domain
 
         public BlockHeader Header => this.Block.Header;
 
+        public ImmutableArray<EncodedTx> EncodedTxes => this.Block.EncodedTxes;
+
         public ImmutableArray<Transaction> Transactions => this.Block.Transactions;
 
         public static implicit operator Block(ChainedBlock chainedBlock)

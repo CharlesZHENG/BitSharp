@@ -7,21 +7,31 @@ namespace BitSharp.Core.Domain
 {
     public class BlockTx : MerkleTreeNode
     {
-        private readonly Lazy<Transaction> lazyTx;
-
         public BlockTx(int index, int depth, UInt256 hash, bool pruned, ImmutableArray<byte>? txBytes)
             : base(index, depth, hash, pruned)
         {
-            TxBytes = txBytes;
-            lazyTx = new Lazy<Transaction>(() => txBytes != null ? DataEncoder.DecodeTransaction(txBytes.Value.ToArray()) : null);
+            EncodedTx = txBytes != null ? new EncodedTx(hash, txBytes.Value) : null;
+        }
+
+        public BlockTx(int index, int depth, UInt256 hash, bool pruned, EncodedTx rawTx)
+            : base(index, depth, hash, pruned)
+        {
+            EncodedTx = rawTx;
         }
 
         [Obsolete]
         public BlockTx(int index, int depth, UInt256 hash, bool pruned, Transaction transaction)
             : base(index, depth, hash, pruned)
         {
-            TxBytes = transaction != null ? (ImmutableArray<byte>?)DataEncoder.EncodeTransaction(transaction).ToImmutableArray() : null;
-            lazyTx = new Lazy<Transaction>(() => transaction).Force();
+            if (transaction != null)
+            {
+                var txBytes = DataEncoder.EncodeTransaction(transaction).ToImmutableArray();
+                EncodedTx = new EncodedTx(txBytes, transaction);
+            }
+            else
+            {
+                EncodedTx = null;
+            }
         }
 
         //TODO only used by tests
@@ -32,14 +42,14 @@ namespace BitSharp.Core.Domain
 
         public bool IsCoinbase => this.Index == 0;
 
-        public ImmutableArray<byte>? TxBytes { get; }
+        public EncodedTx EncodedTx { get; }
 
         [Obsolete]
         public Transaction Transaction => Decode();
 
         public Transaction Decode()
         {
-            return lazyTx.Value;
+            return EncodedTx?.Decode();
         }
     }
 }

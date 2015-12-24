@@ -34,7 +34,7 @@ namespace BitSharp.Core.Storage.Memory
             return this.allBlockTxes.ContainsKey(blockHash);
         }
 
-        public bool TryAddBlockTransactions(UInt256 blockHash, IEnumerable<Transaction> blockTxes)
+        public bool TryAddBlockTransactions(UInt256 blockHash, IEnumerable<EncodedTx> blockTxes)
         {
             return this.allBlockTxes.TryAdd(blockHash,
                 ImmutableSortedDictionary.CreateRange<int, BlockTx>(

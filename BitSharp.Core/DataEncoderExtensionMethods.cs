@@ -43,6 +43,45 @@ namespace BitSharp.Core.ExtensionMethods
                 throw new Exception();
         }
 
+        public static UInt64 ReadVarInt(this BinaryReader reader, ref byte[] bytes, ref int startIndex)
+        {
+            DataEncoder.SizeAtLeast(ref bytes, startIndex + 1);
+            reader.Read(bytes, startIndex, 1);
+            UInt64 value = bytes[startIndex];
+            startIndex += 1;
+
+            if (value < 0xFD)
+            {
+                return value;
+            }
+            else if (value == 0xFD)
+            {
+                DataEncoder.SizeAtLeast(ref bytes, startIndex + 2);
+                reader.Read(bytes, startIndex, 2);
+                value = Bits.ToUInt16(bytes, startIndex);
+                startIndex += 2;
+                return value;
+            }
+            else if (value == 0xFE)
+            {
+                DataEncoder.SizeAtLeast(ref bytes, startIndex + 4);
+                reader.Read(bytes, startIndex, 4);
+                value = Bits.ToUInt32(bytes, startIndex);
+                startIndex += 4;
+                return value;
+            }
+            else if (value == 0xFF)
+            {
+                DataEncoder.SizeAtLeast(ref bytes, startIndex + 8);
+                reader.Read(bytes, startIndex, 8);
+                value = Bits.ToUInt64(bytes, startIndex);
+                startIndex += 8;
+                return value;
+            }
+            else
+                throw new Exception();
+        }
+
         public static byte[] ReadVarBytes(this BinaryReader reader)
         {
             var length = reader.ReadVarInt().ToIntChecked();

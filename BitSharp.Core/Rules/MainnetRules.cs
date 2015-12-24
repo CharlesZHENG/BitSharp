@@ -264,10 +264,10 @@ namespace BitSharp.Core.Rules
 
         public virtual void ValidateTransaction(ChainedHeader chainedHeader, ValidatableTx validatableTx)
         {
-            var tx = validatableTx.Transaction.Decode();
-            var txIndex = validatableTx.Transaction.Index;
+            var tx = validatableTx.BlockTx.Decode();
+            var txIndex = validatableTx.BlockTx.Index;
 
-            if (validatableTx.Transaction.IsCoinbase)
+            if (validatableTx.BlockTx.IsCoinbase)
             {
                 // TODO coinbase tx validation
             }
@@ -315,7 +315,7 @@ namespace BitSharp.Core.Rules
         public virtual void ValidationTransactionScript(ChainedHeader chainedHeader, BlockTx tx, TxInput txInput, int txInputIndex, TxOutput prevTxOutput)
         {
             var result = LibConsensus.VerifyScript(
-                tx.TxBytes.Value,
+                tx.EncodedTx.TxBytes,
                 prevTxOutput.ScriptPublicKey,
                 txInputIndex);
 

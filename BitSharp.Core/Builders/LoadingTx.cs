@@ -14,7 +14,7 @@ namespace BitSharp.Core.Builders
             TxIndex = txIndex;
             ChainedHeader = chainedHeader;
             PrevOutputTxKeys = prevOutputTxKeys;
-            InputTxesBytes = new CompletionArray<ImmutableArray<byte>>(txIndex != 0 ? transaction.Inputs.Length : 0);
+            InputTxes = new CompletionArray<EncodedTx>(txIndex != 0 ? transaction.Inputs.Length : 0);
         }
 
         public bool IsCoinbase => this.TxIndex == 0;
@@ -27,13 +27,11 @@ namespace BitSharp.Core.Builders
 
         public ImmutableArray<TxLookupKey> PrevOutputTxKeys { get; }
 
-        public CompletionArray<ImmutableArray<byte>> InputTxesBytes { get; }
+        public CompletionArray<EncodedTx> InputTxes { get; }
 
         public LoadedTx ToLoadedTx()
         {
-            var inputTxes = this.InputTxesBytes.CompletedArray.Select(x => DataEncoder.DecodeTransaction(x.ToArray())).ToImmutableArray();
-
-            return new LoadedTx(this.Transaction, this.TxIndex, inputTxes);
+            return new LoadedTx(this.Transaction, this.TxIndex, this.InputTxes.CompletedArray);
         }
     }
 }

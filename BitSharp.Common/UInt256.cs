@@ -34,6 +34,17 @@ namespace BitSharp.Common
             this.hashCode = this.part1.GetHashCode() ^ this.part2.GetHashCode() ^ this.part3.GetHashCode() ^ this.part4.GetHashCode();
         }
 
+        public UInt256(byte[] value, int startIndex)
+        {
+            // convert parts and store
+            this.part1 = Bits.ToUInt64(value, startIndex + 24);
+            this.part2 = Bits.ToUInt64(value, startIndex + 16);
+            this.part3 = Bits.ToUInt64(value, startIndex + 8);
+            this.part4 = Bits.ToUInt64(value, startIndex + 0);
+
+            this.hashCode = this.part1.GetHashCode() ^ this.part2.GetHashCode() ^ this.part3.GetHashCode() ^ this.part4.GetHashCode();
+        }
+
         private UInt256(UInt64 part1, UInt64 part2, UInt64 part3, UInt64 part4)
         {
             this.part1 = part1;
@@ -346,7 +357,7 @@ namespace BitSharp.Common
             return result;
         }
 
-        public static explicit operator double (UInt256 value)
+        public static explicit operator double(UInt256 value)
         {
             return (double)value.ToBigInteger();
         }

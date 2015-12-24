@@ -25,7 +25,7 @@ namespace BitSharp.Core.Storage
         /// <param name="blockHash">The block's hash.</param>
         /// <param name="transactions">An enumerable of the block's transactions.</param>
         /// <returns>true if the transaction data was added; otherwise, false</returns>
-        bool TryAddBlockTransactions(UInt256 blockHash, IEnumerable<Transaction> transactions);
+        bool TryAddBlockTransactions(UInt256 blockHash, IEnumerable<EncodedTx> transactions);
 
         /// <summary>
         /// Retrieve a transaction from a block.

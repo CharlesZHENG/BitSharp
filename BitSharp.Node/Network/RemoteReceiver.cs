@@ -260,7 +260,7 @@ namespace BitSharp.Node.Network
 
                 case "tx":
                     {
-                        var tx = DataEncoder.DecodeTransaction(payload);
+                        var tx = DataEncoder.DecodeTransaction(payload).Decode();
 
                         this.OnTransaction?.Invoke(tx);
                     }

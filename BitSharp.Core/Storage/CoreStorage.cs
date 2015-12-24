@@ -219,7 +219,7 @@ namespace BitSharp.Core.Storage
                 ChainedHeader chainedHeader;
                 if (TryGetChainedHeader(block.Hash, out chainedHeader) || TryChainHeader(block.Header, out chainedHeader))
                 {
-                    if (this.blockTxesStorage.Value.TryAddBlockTransactions(block.Hash, block.Transactions))
+                    if (this.blockTxesStorage.Value.TryAddBlockTransactions(block.Hash, block.EncodedTxes))
                     {
                         this.presentBlockTxes[block.Hash] = true;
                         RaiseBlockTxesAdded(chainedHeader);
@@ -249,7 +249,7 @@ namespace BitSharp.Core.Storage
             IEnumerator<BlockTx> blockTxes;
             if (TryReadBlockTransactions(chainedHeader.Hash, /*requireTransactions:*/true, out blockTxes))
             {
-                var transactions = ImmutableArray.CreateRange(blockTxes.UsingAsEnumerable().Select(x => x.Transaction));
+                var transactions = ImmutableArray.CreateRange(blockTxes.UsingAsEnumerable().Select(x => x.EncodedTx));
                 block = new Block(chainedHeader.BlockHeader, transactions);
                 return true;
             }

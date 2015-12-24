@@ -67,9 +67,9 @@ namespace BitSharp.Common
             return BitConverter.ToUInt64(Order(value), startIndex);
         }
 
-        public static UInt256 ToUInt256(byte[] value)
+        public static UInt256 ToUInt256(byte[] value, int startIndex = 0)
         {
-            return new UInt256(value);
+            return new UInt256(value, startIndex);
         }
 
         public static byte[] Order(byte[] value)
