@@ -37,6 +37,7 @@ namespace BitSharp.IntegrationTest
             using (var kernel = new StandardKernel())
             {
                 var tempFile = Path.Combine(tempFolder, "BitcoindComparisonTool");
+                var jarFile = Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), "pull-tests.jar");
 
                 // add logging module
                 kernel.Load(new ConsoleLoggingModule(LogLevel.Info));
@@ -78,7 +79,7 @@ namespace BitSharp.IntegrationTest
                         var javaProcessInfo = new ProcessStartInfo
                         {
                             FileName = javaPath,
-                            Arguments = $"-jar pull-tests.jar {tempFile} {runLargeReorgs} {port}",
+                            Arguments = $"-jar \"{jarFile}\" \"{tempFile}\" {runLargeReorgs} {port}",
                             UseShellExecute = false,
                             RedirectStandardOutput = true,
                             RedirectStandardError = true
