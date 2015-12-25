@@ -21,33 +21,14 @@ namespace BitSharp.Core
             return reader.ReadUInt256();
         }
 
-        public static UInt256 DecodeUInt256(byte[] bytes)
-        {
-            using (var stream = new MemoryStream(bytes))
-            using (var reader = new BinaryReader(stream))
-            {
-                return DecodeUInt256(reader);
-            }
-        }
-
         public static void EncodeUInt256(BinaryWriter writer, UInt256 value)
         {
             writer.WriteUInt256(value);
         }
 
-        public static byte[] EncodeUInt256(UInt256 value)
+        public static Block DecodeBlock(BinaryReader reader)
         {
-            using (var stream = new MemoryStream())
-            using (var writer = new BinaryWriter(stream))
-            {
-                EncodeUInt256(writer, value);
-                return stream.ToArray();
-            }
-        }
-
-        public static Block DecodeBlock(BinaryReader reader, UInt256 blockHash = null)
-        {
-            var header = DecodeBlockHeader(reader, blockHash);
+            var header = DecodeBlockHeader(reader);
 
             var blockTxesCount = reader.ReadVarInt().ToIntChecked();
             var blockTxes = ImmutableArray.CreateBuilder<BlockTx>(blockTxesCount);
