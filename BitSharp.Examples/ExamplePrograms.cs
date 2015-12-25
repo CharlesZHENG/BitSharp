@@ -202,7 +202,7 @@ namespace BitSharp.Examples
                                     for (var inputIndex = 0; inputIndex < tx.Inputs.Length; inputIndex++)
                                     {
                                         var input = tx.Inputs[inputIndex];
-                                        var inputPrevTx = inputTxes[inputIndex].Decode();
+                                        var inputPrevTx = inputTxes[inputIndex].Transaction;
                                         var inputPrevTxOutput = inputPrevTx.Outputs[(int)input.PreviousTxOutputKey.TxOutputIndex];
 
                                         // check if the input's previous transaction output is of interest

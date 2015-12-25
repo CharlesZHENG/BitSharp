@@ -7,41 +7,44 @@ namespace BitSharp.Core.Domain
 {
     public class Block
     {
-        private readonly Lazy<ImmutableArray<BlockTx>> lazyBlockTxes;
         private readonly Lazy<ImmutableArray<Transaction>> lazyTransactions;
 
         public Block(BlockHeader header, ImmutableArray<BlockTx> blockTxes)
         {
             Header = header;
 
+            BlockTxes = blockTxes;
+
             lazyTransactions = new Lazy<ImmutableArray<Transaction>>(() =>
-                ImmutableArray.CreateRange(blockTxes.Select(x => x.Decode())));
-
-            lazyBlockTxes = new Lazy<ImmutableArray<BlockTx>>(() => blockTxes).Force();
-        }
-
-        [Obsolete]
-        public Block(BlockHeader header, ImmutableArray<Transaction> transactions)
-        {
-            Header = header;
-
-            lazyTransactions = new Lazy<ImmutableArray<Transaction>>(() => transactions).Force();
-
-            lazyBlockTxes = new Lazy<ImmutableArray<BlockTx>>(() =>
-                ImmutableArray.CreateRange(transactions.Select((tx, txIndex) =>
-                    new BlockTx(txIndex, 0, tx.Hash, false,
-                        new EncodedTx(DataEncoder.EncodeTransaction(tx).ToImmutableArray(), tx)))));
+                ImmutableArray.CreateRange(blockTxes.Select(x => x.Decode().Transaction)));
         }
 
         public UInt256 Hash => this.Header.Hash;
 
         public BlockHeader Header { get; }
 
-        public ImmutableArray<BlockTx> BlockTxes => lazyBlockTxes.Value;
+        public ImmutableArray<BlockTx> BlockTxes { get; }
 
         public ImmutableArray<Transaction> Transactions => lazyTransactions.Value;
 
-        public Block With(BlockHeader Header = null, ImmutableArray<Transaction>? Transactions = null)
+        public Block With(BlockHeader Header = null, ImmutableArray<BlockTx>? BlockTxes = null)
+        {
+            return new Block
+            (
+                Header ?? this.Header,
+                BlockTxes ?? this.BlockTxes
+            );
+        }
+
+        public static Block Create(BlockHeader header, ImmutableArray<Transaction> transactions)
+        {
+            var blockTxes = ImmutableArray.CreateRange(transactions.Select((tx, txIndex) =>
+                (BlockTx)BlockTx.Create(txIndex, tx)));
+
+            return new Block(header, blockTxes);
+        }
+
+        public Block CreateWith(BlockHeader Header = null, ImmutableArray<Transaction>? Transactions = null)
         {
             if (Transactions == null)
             {
@@ -53,11 +56,7 @@ namespace BitSharp.Core.Domain
             }
             else
             {
-                return new Block
-                (
-                    Header ?? this.Header,
-                    Transactions.Value
-                );
+                return Create(Header ?? this.Header, Transactions.Value);
             }
         }
     }

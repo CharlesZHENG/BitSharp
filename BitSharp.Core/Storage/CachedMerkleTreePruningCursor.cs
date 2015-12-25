@@ -9,24 +9,25 @@ namespace BitSharp.Core.Storage
     /// <summary>
     /// A pruning cursor which caches reads and movements to a parent pruning cursor.
     /// </summary>
-    public class CachedMerkleTreePruningCursor : IMerkleTreePruningCursor
+    public class CachedMerkleTreePruningCursor<T> : IMerkleTreePruningCursor<T>
+        where T : class, IMerkleTreeNode<T>
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly ParentCursor parentCursor;
 
-        private readonly Dictionary<int, MerkleTreeNode> cachedNodes;
+        private readonly Dictionary<int, T> cachedNodes;
 
         private readonly Dictionary<int, int?> indicesToLeft;
         private readonly Dictionary<int, int?> indicesToRight;
 
         private int currentIndex;
 
-        public CachedMerkleTreePruningCursor(IMerkleTreePruningCursor parentCursor)
+        public CachedMerkleTreePruningCursor(IMerkleTreePruningCursor<T> parentCursor)
         {
             this.parentCursor = new ParentCursor(parentCursor);
 
-            cachedNodes = new Dictionary<int, MerkleTreeNode>();
+            cachedNodes = new Dictionary<int, T>();
             indicesToLeft = new Dictionary<int, int?>();
             indicesToRight = new Dictionary<int, int?>();
 
@@ -35,7 +36,7 @@ namespace BitSharp.Core.Storage
 
         public bool TryMoveToIndex(int index)
         {
-            MerkleTreeNode node;
+            T node;
             if (cachedNodes.TryGetValue(index, out node))
             {
                 currentIndex = index;
@@ -72,7 +73,7 @@ namespace BitSharp.Core.Storage
             {
                 parentCursor.MoveToIndex(currentIndex, indicesToLeft, indicesToRight);
 
-                MerkleTreeNode leftNode;
+                T leftNode;
                 if (parentCursor.TryMoveLeft(out leftNode))
                 {
                     indicesToLeft[currentIndex] = leftNode.Index;
@@ -106,7 +107,7 @@ namespace BitSharp.Core.Storage
             {
                 parentCursor.MoveToIndex(currentIndex, indicesToLeft, indicesToRight);
 
-                MerkleTreeNode rightNode;
+                T rightNode;
                 if (parentCursor.TryMoveRight(out rightNode))
                 {
                     indicesToRight[currentIndex] = rightNode.Index;
@@ -124,19 +125,19 @@ namespace BitSharp.Core.Storage
             }
         }
 
-        public MerkleTreeNode ReadNode()
+        public T ReadNode()
         {
             if (currentIndex == -1)
                 throw new InvalidOperationException();
 
-            MerkleTreeNode node;
+            T node;
             if (!cachedNodes.TryGetValue(currentIndex, out node) || node == null)
                 throw new InvalidOperationException();
 
             return node;
         }
 
-        public void WriteNode(MerkleTreeNode node)
+        public void WriteNode(T node)
         {
             if (currentIndex == -1)
                 throw new InvalidOperationException();
@@ -192,16 +193,16 @@ namespace BitSharp.Core.Storage
 
         private sealed class ParentCursor
         {
-            private readonly IMerkleTreePruningCursor pruningCursor;
+            private readonly IMerkleTreePruningCursor<T> pruningCursor;
             private int currentIndex;
 
-            public ParentCursor(IMerkleTreePruningCursor pruningCursor)
+            public ParentCursor(IMerkleTreePruningCursor<T> pruningCursor)
             {
                 this.pruningCursor = pruningCursor;
                 currentIndex = -1;
             }
 
-            public MerkleTreeNode ReadNode(int expectedIndex)
+            public T ReadNode(int expectedIndex)
             {
                 if (expectedIndex != currentIndex)
                     throw new InvalidOperationException();
@@ -274,7 +275,7 @@ namespace BitSharp.Core.Storage
                 Debug.Assert(pruningCursor.ReadNode().Index == index);
             }
 
-            public bool TryMoveLeft(out MerkleTreeNode leftNode)
+            public bool TryMoveLeft(out T leftNode)
             {
                 if (pruningCursor.TryMoveLeft())
                 {
@@ -289,7 +290,7 @@ namespace BitSharp.Core.Storage
                 }
             }
 
-            public bool TryMoveRight(out MerkleTreeNode rightNode)
+            public bool TryMoveRight(out T rightNode)
             {
                 if (pruningCursor.TryMoveRight())
                 {
@@ -304,7 +305,7 @@ namespace BitSharp.Core.Storage
                 }
             }
 
-            public void WriteNode(MerkleTreeNode node)
+            public void WriteNode(T node)
             {
                 if (node.Index != currentIndex)
                     throw new InvalidOperationException();

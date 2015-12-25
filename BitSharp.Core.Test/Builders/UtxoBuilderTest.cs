@@ -22,9 +22,9 @@ namespace BitSharp.Core.Test.Builders
             var chainedHeader2 = fakeHeaders.NextChained();
             var chainedHeader3 = fakeHeaders.NextChained();
             var chain = Chain.CreateForGenesisBlock(chainedHeader0).ToBuilder();
-            var emptyCoinbaseTx0 = new BlockTx(0, new Transaction(0, ImmutableArray.Create<TxInput>(), ImmutableArray.Create<TxOutput>(), 0));
-            var emptyCoinbaseTx1 = new BlockTx(1, new Transaction(1, ImmutableArray.Create<TxInput>(), ImmutableArray.Create<TxOutput>(), 0));
-            var emptyCoinbaseTx2 = new BlockTx(2, new Transaction(2, ImmutableArray.Create<TxInput>(), ImmutableArray.Create<TxOutput>(), 0));
+            var emptyCoinbaseTx0 = BlockTx.Create(0, new Transaction(0, ImmutableArray.Create<TxInput>(), ImmutableArray.Create<TxOutput>(), 0));
+            var emptyCoinbaseTx1 = BlockTx.Create(1, new Transaction(1, ImmutableArray.Create<TxInput>(), ImmutableArray.Create<TxOutput>(), 0));
+            var emptyCoinbaseTx2 = BlockTx.Create(2, new Transaction(2, ImmutableArray.Create<TxInput>(), ImmutableArray.Create<TxOutput>(), 0));
 
             // initialize memory utxo builder storage
             var memoryStorage = new MemoryStorageManager();
@@ -47,7 +47,7 @@ namespace BitSharp.Core.Test.Builders
 
             // create an input to spend the unspent transaction's first output
             var input0 = new TxInput(new TxOutputKey(txHash, txOutputIndex: 0), ImmutableArray.Create<byte>(), 0);
-            var tx0 = new BlockTx(1, new Transaction(0, ImmutableArray.Create(input0), ImmutableArray.Create<TxOutput>(), 0));
+            var tx0 = BlockTx.Create(1, new Transaction(0, ImmutableArray.Create(input0), ImmutableArray.Create<TxOutput>(), 0));
 
             // spend the input
             chain.AddBlock(chainedHeader1);
@@ -63,7 +63,7 @@ namespace BitSharp.Core.Test.Builders
 
             // create an input to spend the unspent transaction's second output
             var input1 = new TxInput(new TxOutputKey(txHash, txOutputIndex: 1), ImmutableArray.Create<byte>(), 0);
-            var tx1 = new BlockTx(1, new Transaction(0, ImmutableArray.Create(input1), ImmutableArray.Create<TxOutput>(), 0));
+            var tx1 = BlockTx.Create(1, new Transaction(0, ImmutableArray.Create(input1), ImmutableArray.Create<TxOutput>(), 0));
 
             // spend the input
             chain.AddBlock(chainedHeader2);
@@ -78,7 +78,7 @@ namespace BitSharp.Core.Test.Builders
 
             // create an input to spend the unspent transaction's third output
             var input2 = new TxInput(new TxOutputKey(txHash, txOutputIndex: 2), ImmutableArray.Create<byte>(), 0);
-            var tx2 = new BlockTx(2, new Transaction(0, ImmutableArray.Create(input2), ImmutableArray.Create<TxOutput>(), 0));
+            var tx2 = BlockTx.Create(2, new Transaction(0, ImmutableArray.Create(input2), ImmutableArray.Create<TxOutput>(), 0));
 
             // spend the input
             chain.AddBlock(chainedHeader3);
@@ -98,8 +98,8 @@ namespace BitSharp.Core.Test.Builders
             var chainedHeader1 = fakeHeaders.NextChained();
             var chainedHeader2 = fakeHeaders.NextChained();
             var chain = Chain.CreateForGenesisBlock(chainedHeader0).ToBuilder();
-            var emptyCoinbaseTx0 = new BlockTx(0, new Transaction(0, ImmutableArray.Create<TxInput>(), ImmutableArray.Create<TxOutput>(), 0));
-            var emptyCoinbaseTx1 = new BlockTx(0, new Transaction(1, ImmutableArray.Create<TxInput>(), ImmutableArray.Create<TxOutput>(), 0));
+            var emptyCoinbaseTx0 = BlockTx.Create(0, new Transaction(0, ImmutableArray.Create<TxInput>(), ImmutableArray.Create<TxOutput>(), 0));
+            var emptyCoinbaseTx1 = BlockTx.Create(0, new Transaction(1, ImmutableArray.Create<TxInput>(), ImmutableArray.Create<TxOutput>(), 0));
 
             // initialize memory utxo builder storage
             var memoryStorage = new MemoryStorageManager();
@@ -118,7 +118,7 @@ namespace BitSharp.Core.Test.Builders
 
             // create an input to spend the unspent transaction
             var input = new TxInput(new TxOutputKey(txHash, txOutputIndex: 0), ImmutableArray.Create<byte>(), 0);
-            var tx = new BlockTx(1, new Transaction(0, ImmutableArray.Create(input), ImmutableArray.Create<TxOutput>(), 0));
+            var tx = BlockTx.Create(1, new Transaction(0, ImmutableArray.Create(input), ImmutableArray.Create<TxOutput>(), 0));
 
             // spend the input
             chain.AddBlock(chainedHeader1);

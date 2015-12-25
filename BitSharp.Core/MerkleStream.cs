@@ -5,12 +5,13 @@ using System.Linq;
 
 namespace BitSharp.Core
 {
-    public class MerkleStream
+    public class MerkleStream<T>
+        where T : IMerkleTreeNode<T>
     {
-        private readonly List<MerkleTreeNode> leftNodes = new List<MerkleTreeNode>();
+        private readonly List<T> leftNodes = new List<T>();
         private int expectedIndex = 0;
 
-        public MerkleTreeNode RootNode
+        public IMerkleTreeNode<T> RootNode
         {
             get
             {
@@ -21,7 +22,7 @@ namespace BitSharp.Core
             }
         }
 
-        public void AddNode(MerkleTreeNode newNode)
+        public void AddNode(T newNode)
         {
             // verify index is as expected
             if (newNode.Index != this.expectedIndex)
@@ -66,7 +67,7 @@ namespace BitSharp.Core
             while (this.leftNodes.Count > 1)
             {
                 var leftNode = this.leftNodes.Last();
-                var rightNode = new MerkleTreeNode(leftNode.Index + (1 << leftNode.Depth), leftNode.Depth, leftNode.Hash, pruned: true);
+                var rightNode = leftNode.AsPruned(leftNode.Index + (1 << leftNode.Depth), leftNode.Depth, leftNode.Hash);
                 AddNode(rightNode);
             }
         }

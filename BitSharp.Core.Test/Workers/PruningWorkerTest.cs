@@ -89,7 +89,7 @@ namespace BitSharp.Core.Test.Workers
                 chainStateCursor.CommitTransaction();
 
                 // create a memory pruning cursor to verify expected pruning results
-                var pruneCursor = new MemoryMerkleTreePruningCursor(block.BlockTxes);
+                var pruneCursor = new MemoryMerkleTreePruningCursor<BlockTxNode>(block.BlockTxes.Select(x => (BlockTxNode)x));
 
                 // prune each transaction in random order
                 var pruneHeight = -1;
@@ -126,11 +126,11 @@ namespace BitSharp.Core.Test.Workers
                     var expectedPrunedTxes = pruneCursor.ReadNodes().ToList();
 
                     // retrieve the actual transaction after pruning
-                    IEnumerator<BlockTx> actualPrunedTxes;
-                    Assert.IsTrue(storageManager.BlockTxesStorage.TryReadBlockTransactions(block.Hash, out actualPrunedTxes));
+                    IEnumerator<BlockTxNode> actualPrunedTxNodes;
+                    Assert.IsTrue(storageManager.BlockTxesStorage.TryReadBlockTxNodes(block.Hash, out actualPrunedTxNodes));
 
                     // verify the actual pruned transactions match the expected results
-                    CollectionAssert.AreEqual(expectedPrunedTxes, actualPrunedTxes.UsingAsEnumerable().ToList());
+                    CollectionAssert.AreEqual(expectedPrunedTxes, actualPrunedTxNodes.UsingAsEnumerable().ToList());
                 }
 
                 // verify all unspent txes were removed
@@ -139,9 +139,9 @@ namespace BitSharp.Core.Test.Workers
                 chainStateCursor.CommitTransaction();
 
                 // verify final block with all transactions pruned
-                IEnumerator<BlockTx> finalPrunedTxes;
-                Assert.IsTrue(storageManager.BlockTxesStorage.TryReadBlockTransactions(block.Hash, out finalPrunedTxes));
-                var finalPrunedTxesList = finalPrunedTxes.UsingAsEnumerable().ToList();
+                IEnumerator<BlockTxNode> finalPrunedTxNodes;
+                Assert.IsTrue(storageManager.BlockTxesStorage.TryReadBlockTxNodes(block.Hash, out finalPrunedTxNodes));
+                var finalPrunedTxesList = finalPrunedTxNodes.UsingAsEnumerable().ToList();
                 Assert.AreEqual(1, finalPrunedTxesList.Count);
                 Assert.AreEqual(block.Header.MerkleRoot, finalPrunedTxesList.Single().Hash);
 
@@ -155,7 +155,7 @@ namespace BitSharp.Core.Test.Workers
         {
             var transactions = Enumerable.Range(0, txCount).Select(x => RandomData.RandomTransaction()).ToImmutableArray();
             var blockHeader = RandomData.RandomBlockHeader().With(MerkleRoot: MerkleTree.CalculateMerkleRoot(transactions), Bits: DataCalculator.TargetToBits(UnitTestRules.Target0));
-            var block = new Block(blockHeader, transactions);
+            var block = Block.Create(blockHeader, transactions);
 
             return block;
         }

@@ -93,6 +93,11 @@ namespace BitSharp.Core.Storage
             return GetStorage(blockHash).TryReadBlockTransactions(blockHash, out blockTxes);
         }
 
+        public bool TryReadBlockTxNodes(UInt256 blockHash, out IEnumerator<BlockTxNode> blockTxNodes)
+        {
+            return GetStorage(blockHash).TryReadBlockTxNodes(blockHash, out blockTxNodes);
+        }
+
         public void PruneElements(IEnumerable<KeyValuePair<UInt256, IEnumerable<int>>> blockTxIndices)
         {
             foreach (var keyPair in blockTxIndices)

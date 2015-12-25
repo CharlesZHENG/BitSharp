@@ -5,7 +5,7 @@ using System;
 
 namespace BitSharp.Esent
 {
-    internal class MerkleTreePruningCursor : IMerkleTreePruningCursor
+    internal class MerkleTreePruningCursor : IMerkleTreePruningCursor<BlockTxNode>
     {
         private readonly int blockIndex;
         private readonly EsentBlockTxesCursor cursor;
@@ -61,7 +61,7 @@ namespace BitSharp.Esent
             }
         }
 
-        public MerkleTreeNode ReadNode()
+        public BlockTxNode ReadNode()
         {
             var blockIndexColumn = new Int32ColumnValue { Columnid = cursor.blockIndexColumnId };
             var txIndexColumn = new Int32ColumnValue { Columnid = cursor.txIndexColumnId };
@@ -79,10 +79,10 @@ namespace BitSharp.Esent
             var pruned = depth >= 0;
             depth = Math.Max(0, depth);
 
-            return new MerkleTreeNode(txIndex, depth, txHash, pruned);
+            return new BlockTxNode(txIndex, depth, txHash, pruned, encodedTx: null);
         }
 
-        public void WriteNode(MerkleTreeNode node)
+        public void WriteNode(BlockTxNode node)
         {
             if (!node.Pruned)
                 throw new ArgumentException();

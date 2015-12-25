@@ -20,15 +20,15 @@ namespace BitSharp.Core.Builders
 
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        public ISourceBlock<ValidatableTx> CalculateUtxo(IChainStateCursor chainStateCursor, Chain chain, ISourceBlock<BlockTx> blockTxes, CancellationToken cancelToken = default(CancellationToken))
+        public ISourceBlock<ValidatableTx> CalculateUtxo(IChainStateCursor chainStateCursor, Chain chain, ISourceBlock<DecodedBlockTx> blockTxes, CancellationToken cancelToken = default(CancellationToken))
         {
             var chainedHeader = chain.LastBlock;
             var blockSpentTxes = new BlockSpentTxesBuilder();
 
-            var utxoCalculator = new TransformBlock<BlockTx, ValidatableTx>(
+            var utxoCalculator = new TransformBlock<DecodedBlockTx, ValidatableTx>(
                 blockTx =>
                 {
-                    var tx = blockTx.Decode();
+                    var tx = blockTx.Transaction;
                     var txIndex = blockTx.Index;
 
                     var prevTxOutputs = ImmutableArray.CreateBuilder<TxOutput>(!blockTx.IsCoinbase ? tx.Inputs.Length : 0);
@@ -147,7 +147,7 @@ namespace BitSharp.Core.Builders
             //TODO don't reverse here, storage should be read in reverse
             foreach (var blockTx in blockTxes.Reverse())
             {
-                var tx = blockTx.Decode();
+                var tx = blockTx.Decode().Transaction;
                 var txIndex = blockTx.Index;
 
                 // remove transaction outputs

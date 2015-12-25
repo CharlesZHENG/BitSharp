@@ -25,7 +25,7 @@ namespace BitSharp.Core.Test
 
         public static Block RandomBlock(RandomDataOptions options = default(RandomDataOptions))
         {
-            return new Block
+            return Block.Create
             (
                 header: RandomBlockHeader(),
                 transactions: Enumerable.Range(0, random.NextOrExactly(100, options.TransactionCount)).Select(x => RandomTransaction()).ToImmutableArray()

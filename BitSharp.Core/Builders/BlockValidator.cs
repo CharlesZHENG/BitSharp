@@ -16,7 +16,7 @@ namespace BitSharp.Core.Builders
         public static async Task ValidateBlockAsync(ICoreStorage coreStorage, IBlockchainRules rules, ChainedHeader chainedHeader, ISourceBlock<ValidatableTx> validatableTxes, CancellationToken cancelToken = default(CancellationToken))
         {
             // validate merkle root
-            var merkleStream = new MerkleStream();
+            var merkleStream = new MerkleStream<BlockTxNode>();
             var merkleValidator = InitMerkleValidator(chainedHeader, merkleStream, cancelToken);
 
             // begin feeding the merkle validator
@@ -54,14 +54,14 @@ namespace BitSharp.Core.Builders
             }
         }
 
-        private static TransformBlock<ValidatableTx, ValidatableTx> InitMerkleValidator(ChainedHeader chainedHeader, MerkleStream merkleStream, CancellationToken cancelToken)
+        private static TransformBlock<ValidatableTx, ValidatableTx> InitMerkleValidator(ChainedHeader chainedHeader, MerkleStream<BlockTxNode> merkleStream, CancellationToken cancelToken)
         {
             return new TransformBlock<ValidatableTx, ValidatableTx>(
                 validatableTx =>
                 {
                     try
                     {
-                        merkleStream.AddNode(new MerkleTreeNode(validatableTx.BlockTx.Index, 0, validatableTx.BlockTx.Hash, false));
+                        merkleStream.AddNode(validatableTx.BlockTx);
                     }
                     //TODO
                     catch (InvalidOperationException)
@@ -82,7 +82,7 @@ namespace BitSharp.Core.Builders
 
                     if (!rules.IgnoreScripts && !validatableTx.BlockTx.IsCoinbase)
                     {
-                        var tx = validatableTx.BlockTx.Decode();
+                        var tx = validatableTx.BlockTx.Transaction;
 
                         var scripts = new Tuple<ValidatableTx, int>[tx.Inputs.Length];
                         for (var i = 0; i < tx.Inputs.Length; i++)
@@ -103,7 +103,7 @@ namespace BitSharp.Core.Builders
                 {
                     var validatableTx = tuple.Item1;
                     var inputIndex = tuple.Item2;
-                    var tx = validatableTx.BlockTx.Decode();
+                    var tx = validatableTx.BlockTx.Transaction;
                     var txInput = tx.Inputs[inputIndex];
                     var prevTxOutputs = validatableTx.PrevTxOutputs[inputIndex];
 

@@ -72,7 +72,7 @@ namespace BitSharp.Core.Test
         [TestMethod]
         public void TestWireDecodeTransaction()
         {
-            var actual = DataEncoder.EncodeTransaction(DataEncoder.DecodeTransaction(TRANSACTION_1_BYTES.ToArray()).Decode());
+            var actual = DataEncoder.EncodeTransaction(DataEncoder.DecodeTransaction(TRANSACTION_1_BYTES.ToArray()).Transaction);
             CollectionAssert.AreEqual(TRANSACTION_1_BYTES.ToList(), actual.ToList());
         }
     }

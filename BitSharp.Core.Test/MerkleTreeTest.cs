@@ -34,7 +34,7 @@ namespace BitSharp.Core.Test
 
             var nodes = new List<MerkleTreeNode> { node1, node2, node3, node4, node5, node6, node7 };
 
-            var cursor = new MemoryMerkleTreePruningCursor(nodes);
+            var cursor = new MemoryMerkleTreePruningCursor<MerkleTreeNode>(nodes);
 
             //////////////////////////////////////////////////
 
@@ -130,7 +130,7 @@ namespace BitSharp.Core.Test
 
             var merkleRoot = MerkleTree.PairHashes(depth1Hash1, depth1Hash2);
 
-            var nodes = new List<MerkleTreeNode> { 
+            var nodes = new List<MerkleTreeNode> {
                 new MerkleTreeNode(index: 0, depth: 0, hash: depth0Hash1, pruned: false),
                 new MerkleTreeNode(index: 1, depth: 0, hash: depth0Hash2, pruned: false),
                 new MerkleTreeNode(index: 2, depth: 0, hash: depth0Hash3, pruned: false),
@@ -179,7 +179,7 @@ namespace BitSharp.Core.Test
 
             var merkleRoot = MerkleTree.PairHashes(depth3Hash1, depth3Hash2);
 
-            var nodes = new List<MerkleTreeNode> { 
+            var nodes = new List<MerkleTreeNode> {
                 new MerkleTreeNode(index: 0, depth: 0, hash: depth0Hash1, pruned: false),
                 new MerkleTreeNode(index: 1, depth: 0, hash: depth0Hash2, pruned: false),
                 new MerkleTreeNode(index: 2, depth: 0, hash: depth0Hash3, pruned: false),
@@ -211,7 +211,7 @@ namespace BitSharp.Core.Test
 
             var merkleRoot = MerkleTree.PairHashes(depth1Hash1, depth1Hash2);
 
-            var nodes = new List<MerkleTreeNode> { 
+            var nodes = new List<MerkleTreeNode> {
                 new MerkleTreeNode(index: 0, depth: 0, hash: depth0Hash1, pruned: false),
                 new MerkleTreeNode(index: 1, depth: 0, hash: depth0Hash2, pruned: false),
                 new MerkleTreeNode(index: 2, depth: 1, hash: depth0Hash3, pruned: true),
@@ -235,7 +235,7 @@ namespace BitSharp.Core.Test
 
             var merkleRoot = MerkleTree.PairHashes(depth1Hash1, depth1Hash2);
 
-            var nodes = new List<MerkleTreeNode> { 
+            var nodes = new List<MerkleTreeNode> {
                 new MerkleTreeNode(index: 0, depth: 0, hash: depth0Hash1, pruned: false),
                 new MerkleTreeNode(index: 1, depth: 0, hash: depth0Hash2, pruned: false),
                 new MerkleTreeNode(index: 3, depth: 0, hash: depth0Hash3, pruned: false),

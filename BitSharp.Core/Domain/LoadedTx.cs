@@ -15,7 +15,7 @@ namespace BitSharp.Core.Domain
         /// <param name="transaction">The transaction.</param>
         /// <param name="txIndex">The index of the transaction.</param>
         /// <param name="inputTxes">The array of transactions corresponding to each input's previous transaction.</param>
-        public LoadedTx(Transaction transaction, int txIndex, ImmutableArray<EncodedTx> inputTxes)
+        public LoadedTx(Transaction transaction, int txIndex, ImmutableArray<DecodedTx> inputTxes)
         {
             Transaction = transaction;
             TxIndex = txIndex;
@@ -50,7 +50,7 @@ namespace BitSharp.Core.Domain
         /// <summary>
         /// Gets array of transactions corresponding to each input's previous transaction.
         /// </summary>
-        public ImmutableArray<EncodedTx> InputTxes { get; }
+        public ImmutableArray<DecodedTx> InputTxes { get; }
 
         /// <summary>
         /// Get the previous transaction output for the specified input.
@@ -64,7 +64,7 @@ namespace BitSharp.Core.Domain
             else if (inputIndex >= Transaction.Inputs.Length)
                 throw new ArgumentException($"{nameof(inputIndex)} of {inputIndex} is >= {Transaction.Inputs.Length}");
 
-            var inputTx = this.InputTxes[inputIndex].Decode();
+            var inputTx = this.InputTxes[inputIndex].Transaction;
 
             var prevTxOutputsLength = inputTx.Outputs.Length;
             var prevTxOutputIndex = this.Transaction.Inputs[inputIndex].PreviousTxOutputKey.TxOutputIndex.ToIntChecked();

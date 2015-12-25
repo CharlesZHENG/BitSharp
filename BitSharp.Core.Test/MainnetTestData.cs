@@ -14,7 +14,7 @@ namespace BitSharp.Core.Test
 
         public static readonly UInt256 GENESIS_BLOCK_HASH = UInt256.ParseHex(GENESIS_BLOCK_HASH_STRING);
 
-        public static readonly Block GENESIS_BLOCK = new Block
+        public static readonly Block GENESIS_BLOCK = Block.Create
         (
             header: new BlockHeader
             (

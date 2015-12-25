@@ -9,10 +9,10 @@ namespace BitSharp.Core.Test
         public static Block WithAddedTransactions(this Block block, params Transaction[] transactions)
         {
             // update transactions
-            block = block.With(Transactions: block.Transactions.AddRange(transactions));
+            block = block.CreateWith(Transactions: block.Transactions.AddRange(transactions));
 
             // update merkle root
-            block = block.With(block.Header.With(MerkleRoot: MerkleTree.CalculateMerkleRoot(block.Transactions)));
+            block = block.CreateWith(block.Header.With(MerkleRoot: MerkleTree.CalculateMerkleRoot(block.Transactions)));
 
             return block;
         }

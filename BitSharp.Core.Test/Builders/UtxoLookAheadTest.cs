@@ -17,7 +17,7 @@ namespace BitSharp.Core.Test.Builders
         [TestMethod]
         public void TestEmptyUtxoLookAhead()
         {
-            var blockTxes = new BufferBlock<BlockTx>();
+            var blockTxes = new BufferBlock<DecodedBlockTx>();
             blockTxes.Complete();
 
             var deferredCursor = new Mock<IDeferredChainStateCursor>();
@@ -32,7 +32,7 @@ namespace BitSharp.Core.Test.Builders
         [TestMethod]
         public void TestUtxoLookAheadCompletion()
         {
-            var blockTxes = new BufferBlock<BlockTx>();
+            var blockTxes = new BufferBlock<DecodedBlockTx>();
 
             var deferredCursor = new Mock<IDeferredChainStateCursor>();
             deferredCursor.Setup(x => x.CursorCount).Returns(4);
@@ -51,7 +51,7 @@ namespace BitSharp.Core.Test.Builders
         [TestMethod]
         public void TestUtxoLookAheadCoinbaseOnly()
         {
-            var blockTxes = new BufferBlock<BlockTx>();
+            var blockTxes = new BufferBlock<DecodedBlockTx>();
 
             var deferredCursor = new Mock<IDeferredChainStateCursor>();
             deferredCursor.Setup(x => x.CursorCount).Returns(4);
@@ -59,14 +59,14 @@ namespace BitSharp.Core.Test.Builders
             var lookAhead = UtxoLookAhead.LookAhead(blockTxes, deferredCursor.Object);
 
             // post a coinbase transaction, the inputs should not be looked up
-            var blockTx = new BlockTx(0, RandomData.RandomTransaction(new RandomDataOptions { TxInputCount = 2 }));
+            var blockTx = BlockTx.Create(0, RandomData.RandomTransaction(new RandomDataOptions { TxInputCount = 2 }));
             blockTxes.Post(blockTx);
             blockTxes.Complete();
 
             // verify coinbase tx was forarded, with no inputs used from the chain state (no inputs were mocked)
             var warmedTxes = lookAhead.ReceiveAllAsync().Result;
             Assert.AreEqual(1, warmedTxes.Count);
-            Assert.AreEqual(warmedTxes[0].Transaction.Hash, blockTx.Transaction.Hash);
+            Assert.AreEqual(warmedTxes[0].Hash, blockTx.Hash);
 
             Assert.IsTrue(lookAhead.Completion.Wait(2000));
         }
@@ -77,13 +77,13 @@ namespace BitSharp.Core.Test.Builders
             var deferredCursor = new Mock<IDeferredChainStateCursor>();
             deferredCursor.Setup(x => x.CursorCount).Returns(4);
 
-            var blockTxes = new BufferBlock<BlockTx>();
+            var blockTxes = new BufferBlock<DecodedBlockTx>();
 
             var lookAhead = UtxoLookAhead.LookAhead(blockTxes, deferredCursor.Object);
 
-            var blockTx0 = new BlockTx(0, RandomData.RandomTransaction(new RandomDataOptions { TxInputCount = 2 }));
-            var blockTx1 = new BlockTx(1, RandomData.RandomTransaction(new RandomDataOptions { TxInputCount = 2 }));
-            var blockTx2 = new BlockTx(2, RandomData.RandomTransaction(new RandomDataOptions { TxInputCount = 2 }));
+            var blockTx0 = BlockTx.Create(0, RandomData.RandomTransaction(new RandomDataOptions { TxInputCount = 2 }));
+            var blockTx1 = BlockTx.Create(1, RandomData.RandomTransaction(new RandomDataOptions { TxInputCount = 2 }));
+            var blockTx2 = BlockTx.Create(2, RandomData.RandomTransaction(new RandomDataOptions { TxInputCount = 2 }));
 
             blockTxes.Post(blockTx0);
             blockTxes.Post(blockTx1);
@@ -94,7 +94,7 @@ namespace BitSharp.Core.Test.Builders
             var expectedBlockTxes = new[] { blockTx0, blockTx1, blockTx2 };
             var warmedTxes = lookAhead.ReceiveAllAsync().Result;
             Assert.AreEqual(3, warmedTxes.Count);
-            CollectionAssert.AreEqual(expectedBlockTxes.Select(x => x.Transaction.Hash).ToList(), warmedTxes.Select(x => x.Transaction.Hash).ToList());
+            CollectionAssert.AreEqual(expectedBlockTxes.Select(x => x.Hash).ToList(), warmedTxes.Select(x => x.Hash).ToList());
 
             // verify each non-coinbase input transaction was warmed up
             var expectedLookups = expectedBlockTxes.Skip(1).SelectMany(x => x.Transaction.Inputs.Select(input => input.PreviousTxOutputKey.TxHash));
@@ -110,14 +110,14 @@ namespace BitSharp.Core.Test.Builders
             var deferredCursor = new Mock<IDeferredChainStateCursor>();
             deferredCursor.Setup(x => x.CursorCount).Returns(4);
 
-            var blockTxes = new BufferBlock<BlockTx>();
+            var blockTxes = new BufferBlock<DecodedBlockTx>();
 
             var lookAhead = UtxoLookAhead.LookAhead(blockTxes, deferredCursor.Object);
 
-            var blockTx0 = new BlockTx(0, RandomData.RandomTransaction(new RandomDataOptions { TxInputCount = 2 }));
-            var blockTx1 = new BlockTx(1, RandomData.RandomTransaction(new RandomDataOptions { TxInputCount = 2 }));
-            var blockTx2 = new BlockTx(2, RandomData.RandomTransaction(new RandomDataOptions { TxInputCount = 2 }));
-            var blockTx3 = new BlockTx(3, RandomData.RandomTransaction(new RandomDataOptions { TxInputCount = 2 }));
+            var blockTx0 = BlockTx.Create(0, RandomData.RandomTransaction(new RandomDataOptions { TxInputCount = 2 }));
+            var blockTx1 = BlockTx.Create(1, RandomData.RandomTransaction(new RandomDataOptions { TxInputCount = 2 }));
+            var blockTx2 = BlockTx.Create(2, RandomData.RandomTransaction(new RandomDataOptions { TxInputCount = 2 }));
+            var blockTx3 = BlockTx.Create(3, RandomData.RandomTransaction(new RandomDataOptions { TxInputCount = 2 }));
 
             // setup events so that transactions finish in 0, 3, 1, 2 order
             using (var blockTx1ReadEvent = new ManualResetEventSlim())
@@ -155,7 +155,7 @@ namespace BitSharp.Core.Test.Builders
                 var expectedBlockTxes = new[] { blockTx0, blockTx1, blockTx2, blockTx3 };
                 var warmedTxes = lookAhead.ReceiveAllAsync().Result;
                 Assert.AreEqual(4, warmedTxes.Count);
-                CollectionAssert.AreEqual(expectedBlockTxes.Select(x => x.Transaction.Hash).ToList(), warmedTxes.Select(x => x.Transaction.Hash).ToList());
+                CollectionAssert.AreEqual(expectedBlockTxes.Select(x => x.Hash).ToList(), warmedTxes.Select(x => x.Hash).ToList());
             }
 
             Assert.IsTrue(lookAhead.Completion.Wait(2000));
@@ -167,12 +167,12 @@ namespace BitSharp.Core.Test.Builders
             var deferredCursor = new Mock<IDeferredChainStateCursor>();
             deferredCursor.Setup(x => x.CursorCount).Returns(4);
 
-            var blockTxes = new BufferBlock<BlockTx>();
+            var blockTxes = new BufferBlock<DecodedBlockTx>();
 
             var lookAhead = UtxoLookAhead.LookAhead(blockTxes, deferredCursor.Object);
 
-            var blockTx0 = new BlockTx(0, RandomData.RandomTransaction(new RandomDataOptions { TxInputCount = 2 }));
-            var blockTx1 = new BlockTx(1, RandomData.RandomTransaction(new RandomDataOptions { TxInputCount = 2 }));
+            var blockTx0 = BlockTx.Create(0, RandomData.RandomTransaction(new RandomDataOptions { TxInputCount = 2 }));
+            var blockTx1 = BlockTx.Create(1, RandomData.RandomTransaction(new RandomDataOptions { TxInputCount = 2 }));
 
             var expectedException = new InvalidOperationException();
             deferredCursor.Setup(x => x.WarmUnspentTx(blockTx1.Transaction.Inputs[0].PreviousTxOutputKey.TxHash)).Throws(expectedException);

@@ -15,7 +15,7 @@ namespace BitSharp.Core.Rules
         public Testnet2Rules()
         {
             this._genesisBlock =
-                new Block
+                Block.Create
                 (
                     header: new BlockHeader
                     (

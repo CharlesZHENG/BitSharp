@@ -44,10 +44,10 @@ namespace BitSharp.Core.Builders
                 var unmintedTxes = ImmutableDictionary.CreateRange(
                     unmintedTxesList.Select(x => new KeyValuePair<UInt256, UnmintedTx>(x.TxHash, x)));
 
-                var lookupLoadingTx = new TransformBlock<BlockTx, LoadingTx>(
+                var lookupLoadingTx = new TransformBlock<DecodedBlockTx, LoadingTx>(
                     blockTx =>
                     {
-                        var tx = blockTx.Decode();
+                        var tx = blockTx.Transaction;
                         var txIndex = blockTx.Index;
                         var prevOutputTxKeys = ImmutableArray.CreateBuilder<TxLookupKey>(!blockTx.IsCoinbase ? tx.Inputs.Length : 0);
 
@@ -64,15 +64,15 @@ namespace BitSharp.Core.Builders
                     });
 
                 IEnumerator<BlockTx> blockTxes;
-                if (!coreStorage.TryReadBlockTransactions(replayBlock.Hash, /*requireTransaction:*/true, out blockTxes))
+                if (!coreStorage.TryReadBlockTransactions(replayBlock.Hash, out blockTxes))
                 {
                     throw new MissingDataException(replayBlock.Hash);
                 }
 
-                var blockTxesBuffer = new BufferBlock<BlockTx>();
+                var blockTxesBuffer = new BufferBlock<DecodedBlockTx>();
                 blockTxesBuffer.LinkTo(lookupLoadingTx, new DataflowLinkOptions { PropagateCompletion = true });
 
-                blockTxesBuffer.SendAndCompleteAsync(blockTxes.UsingAsEnumerable().Reverse(), cancelToken).Forget();
+                blockTxesBuffer.SendAndCompleteAsync(blockTxes.UsingAsEnumerable().Select(x => x.Decode()).Reverse(), cancelToken).Forget();
 
                 return lookupLoadingTx;
             }
@@ -84,19 +84,19 @@ namespace BitSharp.Core.Builders
             //TODO also check that the block hasn't been pruned (that information isn't stored yet)
 
             IEnumerator<BlockTx> blockTxes;
-            if (!coreStorage.TryReadBlockTransactions(replayBlock.Hash, /*requireTransaction:*/true, out blockTxes))
+            if (!coreStorage.TryReadBlockTransactions(replayBlock.Hash, out blockTxes))
             {
                 throw new MissingDataException(replayBlock.Hash);
             }
 
-            var blockTxesBuffer = new BufferBlock<BlockTx>();
+            var blockTxesBuffer = new BufferBlock<DecodedBlockTx>();
             if (replayForward)
-                blockTxesBuffer.SendAndCompleteAsync(blockTxes.UsingAsEnumerable(), cancelToken).Forget();
+                blockTxesBuffer.SendAndCompleteAsync(blockTxes.UsingAsEnumerable().Select(x => x.Decode()), cancelToken).Forget();
             else
-                blockTxesBuffer.SendAndCompleteAsync(blockTxes.UsingAsEnumerable().Reverse(), cancelToken).Forget();
+                blockTxesBuffer.SendAndCompleteAsync(blockTxes.UsingAsEnumerable().Select(x => x.Decode()).Reverse(), cancelToken).Forget();
 
             // capture the original block txes order
-            var orderedBlockTxes = OrderingBlock.CaptureOrder<BlockTx, LoadingTx, UInt256>(
+            var orderedBlockTxes = OrderingBlock.CaptureOrder<DecodedBlockTx, LoadingTx, UInt256>(
                 blockTxesBuffer, blockTx => blockTx.Hash, cancelToken);
 
             // begin looking up txes
@@ -108,12 +108,12 @@ namespace BitSharp.Core.Builders
         }
 
         //TODO this should lookup in parallel and then get sorted, like TxLoader, etc.
-        private static TransformBlock<BlockTx, LoadingTx> InitLookupLoadingTx(IChainState chainState, ChainedHeader replayBlock, CancellationToken cancelToken)
+        private static TransformBlock<DecodedBlockTx, LoadingTx> InitLookupLoadingTx(IChainState chainState, ChainedHeader replayBlock, CancellationToken cancelToken)
         {
-            return new TransformBlock<BlockTx, LoadingTx>(
+            return new TransformBlock<DecodedBlockTx, LoadingTx>(
                 blockTx =>
                 {
-                    var tx = blockTx.Decode();
+                    var tx = blockTx.Transaction;
                     var txIndex = blockTx.Index;
 
                     var prevOutputTxKeys = ImmutableArray.CreateBuilder<TxLookupKey>(!blockTx.IsCoinbase ? tx.Inputs.Length : 0);

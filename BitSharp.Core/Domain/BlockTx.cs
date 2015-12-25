@@ -5,51 +5,52 @@ using System.Linq;
 
 namespace BitSharp.Core.Domain
 {
-    public class BlockTx : MerkleTreeNode
+    public class BlockTx
     {
-        public BlockTx(int index, int depth, UInt256 hash, bool pruned, ImmutableArray<byte>? txBytes)
-            : base(index, depth, hash, pruned)
+        public BlockTx(int index, UInt256 hash, ImmutableArray<byte> txBytes)
         {
-            EncodedTx = txBytes != null ? new EncodedTx(hash, txBytes.Value) : null;
+            Hash = hash;
+            Index = index;
+            EncodedTx = new EncodedTx(hash, txBytes);
         }
 
-        public BlockTx(int index, int depth, UInt256 hash, bool pruned, EncodedTx rawTx)
-            : base(index, depth, hash, pruned)
+        public BlockTx(int index, EncodedTx encodedTx)
         {
-            EncodedTx = rawTx;
+            if (encodedTx == null)
+                throw new ArgumentNullException(nameof(encodedTx));
+
+            Hash = encodedTx.Hash;
+            Index = index;
+            EncodedTx = encodedTx;
         }
 
-        [Obsolete]
-        public BlockTx(int index, int depth, UInt256 hash, bool pruned, Transaction transaction)
-            : base(index, depth, hash, pruned)
-        {
-            if (transaction != null)
-            {
-                var txBytes = DataEncoder.EncodeTransaction(transaction).ToImmutableArray();
-                EncodedTx = new EncodedTx(txBytes, transaction);
-            }
-            else
-            {
-                EncodedTx = null;
-            }
-        }
+        public UInt256 Hash { get; }
 
-        //TODO only used by tests
-        [Obsolete]
-        public BlockTx(int txIndex, Transaction tx)
-            : this(txIndex, 0, tx.Hash, false, tx)
-        { }
+        public int Index { get; }
 
         public bool IsCoinbase => this.Index == 0;
 
         public EncodedTx EncodedTx { get; }
 
-        [Obsolete]
-        public Transaction Transaction => Decode();
-
-        public Transaction Decode()
+        public DecodedBlockTx Decode()
         {
-            return EncodedTx?.Decode();
+            return new DecodedBlockTx(Index, EncodedTx.Decode());
+        }
+
+        public static DecodedBlockTx Create(int txIndex, Transaction tx)
+        {
+            if (tx == null)
+                throw new ArgumentNullException(nameof(tx));
+
+            var txBytes = DataEncoder.EncodeTransaction(tx).ToImmutableArray();
+            var decodedTx = new DecodedTx(txBytes, tx);
+
+            return new DecodedBlockTx(txIndex, decodedTx);
+        }
+
+        public static implicit operator BlockTxNode(BlockTx tx)
+        {
+            return new BlockTxNode(tx.Index, 0, tx.Hash, false, tx.EncodedTx);
         }
     }
 }

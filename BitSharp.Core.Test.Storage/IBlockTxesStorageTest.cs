@@ -196,7 +196,7 @@ namespace BitSharp.Core.Test.Storage
                 {
                     Assert.IsTrue(blockTxesStorage.TryGetTransaction(block.Hash, txIndex, out transaction));
                     Assert.AreEqual(block.Transactions[txIndex].Hash, transaction.Hash);
-                    Assert.AreEqual(transaction.Hash, DataCalculator.CalculateTransactionHash(transaction.Decode()));
+                    Assert.AreEqual(transaction.Hash, DataCalculator.CalculateTransactionHash(transaction.Decode().Transaction));
                 }
             }
         }
@@ -219,10 +219,10 @@ namespace BitSharp.Core.Test.Storage
                 IEnumerator<BlockTx> rawActualBlockTxes;
                 Assert.IsTrue(blockTxesStorage.TryReadBlockTransactions(expectedBlock.Hash, out rawActualBlockTxes));
                 var actualBlockTxes = rawActualBlockTxes.UsingAsEnumerable().ToList();
-                var actualBlockTxHashes = actualBlockTxes.Select(x => x.Transaction.Hash).ToList();
+                var actualBlockTxHashes = actualBlockTxes.Select(x => x.Hash).ToList();
 
                 // verify all retrieved transactions match their hashes
-                Assert.IsTrue(actualBlockTxes.All(x => x.Hash == DataCalculator.CalculateTransactionHash(x.Transaction)));
+                Assert.IsTrue(actualBlockTxes.All(x => x.Hash == DataCalculator.CalculateTransactionHash(x.Decode().Transaction)));
 
                 // verify retrieved block transactions match stored block transactions
                 CollectionAssert.AreEqual(expectedBlockTxHashes, actualBlockTxHashes);
@@ -251,7 +251,7 @@ namespace BitSharp.Core.Test.Storage
 
                     // determine expected merkle root node when fully pruned
                     var expectedFinalDepth = (int)Math.Ceiling(Math.Log(txCount, 2));
-                    var expectedFinalElement = new BlockTx(index: 0, depth: expectedFinalDepth, hash: block.Header.MerkleRoot, pruned: true, rawTx: null);
+                    var expectedFinalElement = new BlockTxNode(index: 0, depth: expectedFinalDepth, hash: block.Header.MerkleRoot, pruned: true, encodedTx: null);
 
                     // pick a random pruning order
                     var random = new Random();
@@ -286,36 +286,36 @@ namespace BitSharp.Core.Test.Storage
                         blockTxesStorage.PruneElements(new[] { new KeyValuePair<UInt256, IEnumerable<int>>(block.Hash, new[] { pruneIndex }) });
 
                         // read block transactions
-                        IEnumerator<BlockTx> blockTxes;
-                        Assert.IsTrue(blockTxesStorage.TryReadBlockTransactions(block.Hash, out blockTxes));
+                        IEnumerator<BlockTxNode> blockTxNodes;
+                        Assert.IsTrue(blockTxesStorage.TryReadBlockTxNodes(block.Hash, out blockTxNodes));
 
                         // verify block transactions, exception will be fired if invalid
-                        MerkleTree.ReadMerkleTreeNodes(block.Header.MerkleRoot, blockTxes.UsingAsEnumerable()).Count();
+                        MerkleTree.ReadMerkleTreeNodes(block.Header.MerkleRoot, blockTxNodes.UsingAsEnumerable()).Count();
                     }
 
                     // read fully pruned block and verify
-                    IEnumerator<BlockTx> finalBlockTxes;
-                    Assert.IsTrue(blockTxesStorage.TryReadBlockTransactions(block.Hash, out finalBlockTxes));
-                    var finalNodes = MerkleTree.ReadMerkleTreeNodes(block.Header.MerkleRoot, finalBlockTxes.UsingAsEnumerable()).ToList();
+                    IEnumerator<BlockTxNode> finalBlockTxNodes;
+                    Assert.IsTrue(blockTxesStorage.TryReadBlockTxNodes(block.Hash, out finalBlockTxNodes));
+                    var finalNodes = MerkleTree.ReadMerkleTreeNodes(block.Header.MerkleRoot, finalBlockTxNodes.UsingAsEnumerable()).ToList();
                     Assert.AreEqual(1, finalNodes.Count);
                     Assert.AreEqual(expectedFinalElement, finalNodes[0]);
 
                     // verify preceding block was not affected
                     if (iteration == 1 || iteration == 3)
                     {
-                        Assert.IsTrue(blockTxesStorage.TryReadBlockTransactions(new UInt256(block.Hash.ToBigInteger() - 1), out finalBlockTxes));
+                        Assert.IsTrue(blockTxesStorage.TryReadBlockTxNodes(new UInt256(block.Hash.ToBigInteger() - 1), out finalBlockTxNodes));
 
                         // verify block transactions, exception will be fired if invalid
-                        Assert.AreEqual(block.Transactions.Length, MerkleTree.ReadMerkleTreeNodes(block.Header.MerkleRoot, finalBlockTxes.UsingAsEnumerable()).Count());
+                        Assert.AreEqual(block.Transactions.Length, MerkleTree.ReadMerkleTreeNodes(block.Header.MerkleRoot, finalBlockTxNodes.UsingAsEnumerable()).Count());
                     }
 
                     // verify proceeding block was not affected
                     if (iteration == 2 || iteration == 3)
                     {
-                        Assert.IsTrue(blockTxesStorage.TryReadBlockTransactions(new UInt256(block.Hash.ToBigInteger() + 1), out finalBlockTxes));
+                        Assert.IsTrue(blockTxesStorage.TryReadBlockTxNodes(new UInt256(block.Hash.ToBigInteger() + 1), out finalBlockTxNodes));
 
                         // verify block transactions, exception will be fired if invalid
-                        Assert.AreEqual(block.Transactions.Length, MerkleTree.ReadMerkleTreeNodes(block.Header.MerkleRoot, finalBlockTxes.UsingAsEnumerable()).Count());
+                        Assert.AreEqual(block.Transactions.Length, MerkleTree.ReadMerkleTreeNodes(block.Header.MerkleRoot, finalBlockTxNodes.UsingAsEnumerable()).Count());
                     }
                 }
             }
@@ -348,7 +348,7 @@ namespace BitSharp.Core.Test.Storage
             var txCount = 100;
             var transactions = Enumerable.Range(0, txCount).Select(x => RandomData.RandomTransaction()).ToImmutableArray();
             var blockHeader = RandomData.RandomBlockHeader().With(MerkleRoot: MerkleTree.CalculateMerkleRoot(transactions), Bits: DataCalculator.TargetToBits(UnitTestRules.Target0));
-            var block = new Block(blockHeader, transactions);
+            var block = Block.Create(blockHeader, transactions);
 
             return block;
         }

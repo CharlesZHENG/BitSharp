@@ -8,14 +8,14 @@ namespace BitSharp.Core.Domain
 {
     public class ValidatableTx
     {
-        public ValidatableTx(BlockTx blockTx, ChainedHeader chainedHeader, ImmutableArray<TxOutput> prevTxOutputs)
+        public ValidatableTx(DecodedBlockTx blockTx, ChainedHeader chainedHeader, ImmutableArray<TxOutput> prevTxOutputs)
         {
             BlockTx = blockTx;
             ChainedHeader = chainedHeader;
             PrevTxOutputs = prevTxOutputs;
         }
 
-        public BlockTx BlockTx { get; }
+        public DecodedBlockTx BlockTx { get; }
 
         public ChainedHeader ChainedHeader { get; }
 

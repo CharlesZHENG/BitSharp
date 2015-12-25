@@ -9,7 +9,8 @@ namespace BitSharp.Core
     //TODO organize and name properly
     public static class MerkleTree
     {
-        public static void PruneNode(IMerkleTreePruningCursor cursor, int index)
+        public static void PruneNode<T>(IMerkleTreePruningCursor<T> cursor, int index)
+            where T : IMerkleTreeNode<T>
         {
             if (!cursor.TryMoveToIndex(index))
                 return;
@@ -30,7 +31,7 @@ namespace BitSharp.Core
             {
                 didWork = false;
 
-                if (node.IsLeft)
+                if (node.IsLeft())
                 {
                     if (cursor.TryMoveRight())
                     {
@@ -89,7 +90,7 @@ namespace BitSharp.Core
 
         public static UInt256 CalculateMerkleRoot(IEnumerable<UInt256> hashes)
         {
-            var merkleStream = new MerkleStream();
+            var merkleStream = new MerkleStream<MerkleTreeNode>();
 
             var index = 0;
             foreach (var hash in hashes)
@@ -105,9 +106,9 @@ namespace BitSharp.Core
         }
 
         public static UInt256 CalculateMerkleRoot<T>(IEnumerable<T> merkleTreeNodes)
-            where T : MerkleTreeNode
+            where T : IMerkleTreeNode<T>
         {
-            var merkleStream = new MerkleStream();
+            var merkleStream = new MerkleStream<T>();
 
             foreach (var node in merkleTreeNodes)
             {
@@ -120,9 +121,9 @@ namespace BitSharp.Core
         }
 
         public static IEnumerable<T> ReadMerkleTreeNodes<T>(UInt256 merkleRoot, IEnumerable<T> merkleTreeNodes)
-            where T : MerkleTreeNode
+            where T : IMerkleTreeNode<T>
         {
-            var merkleStream = new MerkleStream();
+            var merkleStream = new MerkleStream<T>();
 
             foreach (var node in merkleTreeNodes)
             {

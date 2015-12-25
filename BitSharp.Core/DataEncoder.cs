@@ -35,7 +35,7 @@ namespace BitSharp.Core
             for (var i = 0; i < blockTxesCount; i++)
             {
                 var encodedTx = DecodeTransaction(reader);
-                var blockTx = new BlockTx(i, 0, encodedTx.Hash, false, encodedTx);
+                var blockTx = new BlockTx(i, encodedTx);
                 blockTxes.Add(blockTx);
 
             }
@@ -209,7 +209,7 @@ namespace BitSharp.Core
             }
         }
 
-        public static EncodedTx DecodeTransaction(BinaryReader reader, UInt256 txHash = null)
+        public static DecodedTx DecodeTransaction(BinaryReader reader, UInt256 txHash = null)
         {
             var txBytes = new byte[1024];
             var startIndex = 0;
@@ -284,7 +284,7 @@ namespace BitSharp.Core
             Array.Resize(ref txBytes, startIndex);
 
             var tx = new Transaction(version, inputs.MoveToImmutable(), outputs.MoveToImmutable(), lockTime, txHash);
-            return new EncodedTx(txBytes.ToImmutableArray(), tx);
+            return new DecodedTx(txBytes.ToImmutableArray(), tx);
         }
 
         internal static void SizeAtLeast(ref byte[] bytes, int minLength)
@@ -293,7 +293,7 @@ namespace BitSharp.Core
                 Array.Resize(ref bytes, ((minLength + 1023) / 1024) * 1024);
         }
 
-        public static EncodedTx DecodeTransaction(byte[] bytes, UInt256 txHash = null)
+        public static DecodedTx DecodeTransaction(byte[] bytes, UInt256 txHash = null)
         {
             using (var stream = new MemoryStream(bytes))
             using (var reader = new BinaryReader(stream))
@@ -633,34 +633,35 @@ namespace BitSharp.Core
             }
         }
 
-        public static BlockTx DecodeBlockTx(MemoryStream stream, BinaryReader reader, bool skipTx = false)
+        public static BlockTxNode DecodeBlockTxNode(MemoryStream stream, BinaryReader reader, bool skipTxBytes = false)
         {
             var index = reader.ReadInt32();
             var depth = reader.ReadInt32();
             var hash = reader.ReadUInt256();
             var pruned = reader.ReadBool();
 
-            if (!pruned && !skipTx)
+            ImmutableArray<byte>? txBytes;
+            if (!skipTxBytes)
             {
                 var bytesRemaining = (stream.Length - stream.Position).ToIntChecked();
-                var txBytes = reader.ReadBytes(bytesRemaining).ToImmutableArray();
-
-                return new BlockTx(index, depth, hash, pruned, txBytes);
+                txBytes = reader.ReadBytes(bytesRemaining).ToImmutableArray();
             }
             else
-                return new BlockTx(index, depth, hash, pruned, (ImmutableArray<byte>?)null);
+                txBytes = null;
+
+            return new BlockTxNode(index, depth, hash, pruned, txBytes);
         }
 
-        public static BlockTx DecodeBlockTx(byte[] bytes, bool skipTx = false)
+        public static BlockTxNode DecodeBlockTxNode(byte[] bytes, bool skipTxBytes = false)
         {
             using (var stream = new MemoryStream(bytes))
             using (var reader = new BinaryReader(stream))
             {
-                return DecodeBlockTx(stream, reader, skipTx);
+                return DecodeBlockTxNode(stream, reader, skipTxBytes);
             }
         }
 
-        public static void EncodeBlockTx(BinaryWriter writer, BlockTx blockTx)
+        public static void EncodeBlockTxNode(BinaryWriter writer, BlockTxNode blockTx)
         {
             writer.WriteInt32(blockTx.Index);
             writer.WriteInt32(blockTx.Depth);
@@ -670,12 +671,12 @@ namespace BitSharp.Core
                 writer.WriteBytes(blockTx.EncodedTx.TxBytes.ToArray());
         }
 
-        public static byte[] EncodeBlockTx(BlockTx blockTx)
+        public static byte[] EncodeBlockTxNode(BlockTxNode blockTx)
         {
             using (var stream = new MemoryStream())
             using (var writer = new BinaryWriter(stream))
             {
-                EncodeBlockTx(writer, blockTx);
+                EncodeBlockTxNode(writer, blockTx);
                 return stream.ToArray();
             }
         }

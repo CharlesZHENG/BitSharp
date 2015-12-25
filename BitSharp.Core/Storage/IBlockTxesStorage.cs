@@ -52,6 +52,8 @@ namespace BitSharp.Core.Storage
         /// <returns>true if the block's transactions were retrieved; otherwise, false</returns>
         bool TryReadBlockTransactions(UInt256 blockHash, out IEnumerator<BlockTx> blockTxes);
 
+        bool TryReadBlockTxNodes(UInt256 blockHash, out IEnumerator<BlockTxNode> blockTxNodes);
+
         void PruneElements(IEnumerable<KeyValuePair<UInt256, IEnumerable<int>>> blockTxIndices);
 
         void DeleteElements(IEnumerable<KeyValuePair<UInt256, IEnumerable<int>>> blockTxIndices);

@@ -143,7 +143,7 @@ namespace BitSharp.Core.Test
 
             var merkleRoot = MerkleTree.CalculateMerkleRoot(transactions);
 
-            var block = new Block
+            var block = Block.Create
             (
                 header: new BlockHeader
                 (

@@ -14,7 +14,7 @@ namespace BitSharp.Core.Domain
         {
             Hash = hash;
             TxBytes = txBytes;
-            lazyTx = new Lazy<Transaction>(() => DataEncoder.DecodeTransaction(txBytes.ToArray()).Decode());
+            lazyTx = new Lazy<Transaction>(() => DataEncoder.DecodeTransaction(txBytes.ToArray()).Transaction);
         }
 
         public EncodedTx(ImmutableArray<byte> txBytes, Transaction transaction)
@@ -28,6 +28,6 @@ namespace BitSharp.Core.Domain
 
         public ImmutableArray<byte> TxBytes { get; }
 
-        public Transaction Decode() => lazyTx.Value;
+        public DecodedTx Decode() => new DecodedTx(TxBytes, lazyTx.Value);
     }
 }

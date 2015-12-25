@@ -10,11 +10,11 @@ namespace BitSharp.Core.Storage.Memory
 {
     public class MemoryBlockTxesStorage : IBlockTxesStorage
     {
-        private readonly ConcurrentDictionary<UInt256, ImmutableSortedDictionary<int, BlockTx>> allBlockTxes;
+        private readonly ConcurrentDictionary<UInt256, ImmutableSortedDictionary<int, BlockTxNode>> allBlockTxNodes;
 
         public MemoryBlockTxesStorage()
         {
-            this.allBlockTxes = new ConcurrentDictionary<UInt256, ImmutableSortedDictionary<int, BlockTx>>();
+            this.allBlockTxNodes = new ConcurrentDictionary<UInt256, ImmutableSortedDictionary<int, BlockTxNode>>();
         }
 
         public void Dispose()
@@ -27,31 +27,31 @@ namespace BitSharp.Core.Storage.Memory
         {
         }
 
-        public int BlockCount => this.allBlockTxes.Count;
+        public int BlockCount => this.allBlockTxNodes.Count;
 
         public bool ContainsBlock(UInt256 blockHash)
         {
-            return this.allBlockTxes.ContainsKey(blockHash);
+            return this.allBlockTxNodes.ContainsKey(blockHash);
         }
 
         public bool TryAddBlockTransactions(UInt256 blockHash, IEnumerable<EncodedTx> blockTxes)
         {
-            return this.allBlockTxes.TryAdd(blockHash,
-                ImmutableSortedDictionary.CreateRange<int, BlockTx>(
+            return this.allBlockTxNodes.TryAdd(blockHash,
+                ImmutableSortedDictionary.CreateRange<int, BlockTxNode>(
                     blockTxes.Select((tx, txIndex) =>
-                        new KeyValuePair<int, BlockTx>(txIndex, new BlockTx(txIndex, 0, tx.Hash, false, tx)))));
+                        new KeyValuePair<int, BlockTxNode>(txIndex, new BlockTx(txIndex, tx)))));
         }
 
         public bool TryGetTransaction(UInt256 blockHash, int txIndex, out BlockTx transaction)
         {
-            ImmutableSortedDictionary<int, BlockTx> blockTxes;
-            BlockTx blockTx;
+            ImmutableSortedDictionary<int, BlockTxNode> blockTxes;
+            BlockTxNode blockTxNode;
 
-            if (this.allBlockTxes.TryGetValue(blockHash, out blockTxes)
-                && blockTxes.TryGetValue(txIndex, out blockTx)
-                && !blockTx.Pruned)
+            if (this.allBlockTxNodes.TryGetValue(blockHash, out blockTxes)
+                && blockTxes.TryGetValue(txIndex, out blockTxNode)
+                && !blockTxNode.Pruned)
             {
-                transaction = blockTx;
+                transaction = blockTxNode.ToBlockTx();
                 return true;
             }
             else
@@ -63,21 +63,42 @@ namespace BitSharp.Core.Storage.Memory
 
         public bool TryRemoveBlockTransactions(UInt256 blockHash)
         {
-            ImmutableSortedDictionary<int, BlockTx> blockTxes;
-            return this.allBlockTxes.TryRemove(blockHash, out blockTxes);
+            ImmutableSortedDictionary<int, BlockTxNode> rawBlockTxNodes;
+            return this.allBlockTxNodes.TryRemove(blockHash, out rawBlockTxNodes);
         }
 
         public bool TryReadBlockTransactions(UInt256 blockHash, out IEnumerator<BlockTx> blockTxes)
         {
-            ImmutableSortedDictionary<int, BlockTx> rawBlockTxes;
-            if (this.allBlockTxes.TryGetValue(blockHash, out rawBlockTxes))
+            ImmutableSortedDictionary<int, BlockTxNode> rawBlockTxNodes;
+            if (this.allBlockTxNodes.TryGetValue(blockHash, out rawBlockTxNodes))
             {
-                blockTxes = rawBlockTxes.Values.GetEnumerator();
+                blockTxes = rawBlockTxNodes.Values.Select(x =>
+                {
+                    if (!x.Pruned)
+                        return x.ToBlockTx();
+                    else
+                        throw new MissingDataException(blockHash);
+                }).GetEnumerator();
                 return true;
             }
             else
             {
                 blockTxes = null;
+                return false;
+            }
+        }
+
+        public bool TryReadBlockTxNodes(UInt256 blockHash, out IEnumerator<BlockTxNode> blockTxNodes)
+        {
+            ImmutableSortedDictionary<int, BlockTxNode> rawBlockTxNodes;
+            if (this.allBlockTxNodes.TryGetValue(blockHash, out rawBlockTxNodes))
+            {
+                blockTxNodes = rawBlockTxNodes.Values.GetEnumerator();
+                return true;
+            }
+            else
+            {
+                blockTxNodes = null;
                 return false;
             }
         }
@@ -89,19 +110,19 @@ namespace BitSharp.Core.Storage.Memory
                 var blockHash = keyPair.Key;
                 var txIndices = keyPair.Value;
 
-                ImmutableSortedDictionary<int, BlockTx> blockTxes;
-                if (this.allBlockTxes.TryGetValue(blockHash, out blockTxes))
+                ImmutableSortedDictionary<int, BlockTxNode> blockTxNodes;
+                if (this.allBlockTxNodes.TryGetValue(blockHash, out blockTxNodes))
                 {
-                    var pruningCursor = new MemoryMerkleTreePruningCursor(blockTxes.Values);
+                    var pruningCursor = new MemoryMerkleTreePruningCursor<BlockTxNode>(blockTxNodes.Values);
                     foreach (var index in txIndices)
                         MerkleTree.PruneNode(pruningCursor, index);
 
                     var prunedBlockTxes =
-                        ImmutableSortedDictionary.CreateRange<int, BlockTx>(
+                        ImmutableSortedDictionary.CreateRange<int, BlockTxNode>(
                             pruningCursor.ReadNodes().Select(blockTx =>
-                                new KeyValuePair<int, BlockTx>(blockTx.Index, blockTx)));
+                                new KeyValuePair<int, BlockTxNode>(blockTx.Index, blockTx)));
 
-                    this.allBlockTxes[blockHash] = prunedBlockTxes;
+                    this.allBlockTxNodes[blockHash] = prunedBlockTxes;
                 }
             }
         }
@@ -113,14 +134,14 @@ namespace BitSharp.Core.Storage.Memory
                 var blockHash = keyPair.Key;
                 var txIndices = keyPair.Value;
 
-                ImmutableSortedDictionary<int, BlockTx> blockTxes;
-                if (this.allBlockTxes.TryGetValue(blockHash, out blockTxes))
+                ImmutableSortedDictionary<int, BlockTxNode> blockTxNodes;
+                if (this.allBlockTxNodes.TryGetValue(blockHash, out blockTxNodes))
                 {
-                    var prunedBlockTxes = blockTxes.ToBuilder();
+                    var prunedBlockTxes = blockTxNodes.ToBuilder();
                     foreach (var index in txIndices)
                         prunedBlockTxes.Remove(index);
 
-                    this.allBlockTxes[blockHash] = prunedBlockTxes.ToImmutable();
+                    this.allBlockTxNodes[blockHash] = prunedBlockTxes.ToImmutable();
                 }
             }
         }

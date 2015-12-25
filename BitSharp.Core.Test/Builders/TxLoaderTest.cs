@@ -35,7 +35,7 @@ namespace BitSharp.Core.Test.Builders
             for (var i = 0; i < prevTxCount; i++)
             {
                 var prevTx = RandomData.RandomTransaction();
-                var prevBlockTx = new BlockTx(i, 0, prevTx.Hash, false, prevTx);
+                var prevBlockTx = (BlockTx)BlockTx.Create(i, prevTx);
 
                 prevTxes[i] = prevTx;
                 inputs[i] = new TxInput(new TxOutputKey(prevTx.Hash, 0), ImmutableArray.Create<byte>(), 0);

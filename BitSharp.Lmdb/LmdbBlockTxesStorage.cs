@@ -8,6 +8,7 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 
 namespace BitSharp.Lmdb
@@ -86,7 +87,7 @@ namespace BitSharp.Lmdb
                 using (var cursor = txn.CreateCursor(blocksTableId))
                 {
                     var pruningCursor = new MerkleTreePruningCursor(blockHash, txn, blocksTableId, cursor);
-                    var cachedCursor = new CachedMerkleTreePruningCursor(pruningCursor);
+                    var cachedCursor = new CachedMerkleTreePruningCursor<BlockTxNode>(pruningCursor);
 
                     // prune the transactions
                     foreach (var index in txIndices)
@@ -124,7 +125,8 @@ namespace BitSharp.Lmdb
         {
             if (this.ContainsBlock(blockHash))
             {
-                blockTxes = ReadBlockTransactions(blockHash);
+                blockTxes = ReadBlockTransactions(blockHash, requireTx: true)
+                    .UsingAsEnumerable().Select(x => x.ToBlockTx()).GetEnumerator();
                 return true;
             }
             else
@@ -134,7 +136,21 @@ namespace BitSharp.Lmdb
             }
         }
 
-        private IEnumerator<BlockTx> ReadBlockTransactions(UInt256 blockHash)
+        public bool TryReadBlockTxNodes(UInt256 blockHash, out IEnumerator<BlockTxNode> blockTxNodes)
+        {
+            if (this.ContainsBlock(blockHash))
+            {
+                blockTxNodes = ReadBlockTransactions(blockHash, requireTx: false);
+                return true;
+            }
+            else
+            {
+                blockTxNodes = null;
+                return false;
+            }
+        }
+
+        private IEnumerator<BlockTxNode> ReadBlockTransactions(UInt256 blockHash, bool requireTx)
         {
             using (var txn = this.jetInstance.BeginTransaction(TransactionBeginFlags.ReadOnly))
             using (var cursor = txn.CreateCursor(blocksTableId))
@@ -151,7 +167,12 @@ namespace BitSharp.Lmdb
                     if (blockHash != recordBlockHash)
                         yield break;
 
-                    yield return DataEncoder.DecodeBlockTx(kvPair.Value.Value);
+                    var blockTx = DataEncoder.DecodeBlockTxNode(kvPair.Value.Value);
+
+                    if (requireTx && blockTx.Pruned)
+                        throw new MissingDataException(blockHash);
+
+                    yield return blockTx;
                 }
                 while ((kvPair = cursor.MoveNext()) != null);
             }
@@ -164,10 +185,10 @@ namespace BitSharp.Lmdb
                 byte[] blockTxBytes;
                 if (txn.TryGet(blocksTableId, DbEncoder.EncodeBlockHashTxIndex(blockHash, txIndex), out blockTxBytes))
                 {
-                    var blockTx = DataEncoder.DecodeBlockTx(blockTxBytes);
-                    if (!blockTx.Pruned)
+                    var blockTxNode = DataEncoder.DecodeBlockTxNode(blockTxBytes);
+                    if (!blockTxNode.Pruned)
                     {
-                        transaction = blockTx;
+                        transaction = blockTxNode.ToBlockTx();
                         return true;
                     }
                     else
@@ -209,10 +230,10 @@ namespace BitSharp.Lmdb
                     var txIndex = 0;
                     foreach (var tx in blockTxes)
                     {
-                        var blockTx = new BlockTx(txIndex, 0, tx.Hash, false, tx);
+                        var blockTx = new BlockTx(txIndex, tx);
 
                         var key = DbEncoder.EncodeBlockHashTxIndex(blockHash, txIndex);
-                        var value = DataEncoder.EncodeBlockTx(blockTx);
+                        var value = DataEncoder.EncodeBlockTxNode(blockTx);
 
                         txn.Put(blocksTableId, key, value);
                         txIndex++;

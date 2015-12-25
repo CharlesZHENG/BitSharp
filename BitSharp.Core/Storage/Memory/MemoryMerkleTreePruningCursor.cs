@@ -6,20 +6,15 @@ using System.Linq;
 
 namespace BitSharp.Core.Storage.Memory
 {
-    public class MemoryMerkleTreePruningCursor : IMerkleTreePruningCursor
+    public class MemoryMerkleTreePruningCursor<T> : IMerkleTreePruningCursor<T>
+        where T : IMerkleTreeNode<T>
     {
-        private readonly List<BlockTx> nodes;
+        private readonly List<T> nodes;
         private int index;
 
-        public MemoryMerkleTreePruningCursor(IEnumerable<MerkleTreeNode> nodes)
+        public MemoryMerkleTreePruningCursor(IEnumerable<T> nodes)
         {
-            this.nodes = new List<BlockTx>(nodes.Select(x => new BlockTx(x.Index, x.Depth, x.Hash, x.Pruned, (ImmutableArray<byte>?)null)));
-            this.index = -2;
-        }
-
-        public MemoryMerkleTreePruningCursor(IEnumerable<BlockTx> nodes)
-        {
-            this.nodes = new List<BlockTx>(nodes);
+            this.nodes = new List<T>(nodes);
             this.index = -2;
         }
 
@@ -76,7 +71,7 @@ namespace BitSharp.Core.Storage.Memory
             }
         }
 
-        public MerkleTreeNode ReadNode()
+        public T ReadNode()
         {
             if (this.index < 0 || this.index >= this.nodes.Count)
                 throw new InvalidOperationException();
@@ -84,14 +79,14 @@ namespace BitSharp.Core.Storage.Memory
             return this.nodes[this.index];
         }
 
-        public void WriteNode(MerkleTreeNode node)
+        public void WriteNode(T node)
         {
             if (!node.Pruned)
                 throw new InvalidOperationException();
             if (this.index < 0 || this.index >= this.nodes.Count)
                 throw new InvalidOperationException();
 
-            this.nodes[this.index] = new BlockTx(node.Index, node.Depth, node.Hash, node.Pruned, (ImmutableArray<byte>?)null);
+            this.nodes[this.index] = node;
         }
 
         public void DeleteNode()
@@ -103,7 +98,7 @@ namespace BitSharp.Core.Storage.Memory
             this.index--;
         }
 
-        public IEnumerable<BlockTx> ReadNodes()
+        public IEnumerable<T> ReadNodes()
         {
             return this.nodes;
         }

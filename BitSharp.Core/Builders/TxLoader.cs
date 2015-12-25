@@ -96,7 +96,7 @@ namespace BitSharp.Core.Builders
                 if (input.PreviousTxOutputKey.TxHash != inputPrevTx.Hash)
                     throw new Exception("TODO");
 
-                if (loadingTx.InputTxes.TryComplete(inputIndex, inputPrevTx.EncodedTx))
+                if (loadingTx.InputTxes.TryComplete(inputIndex, inputPrevTx.Decode().DecodedTx))
                     return loadingTx.ToLoadedTx();
                 else
                     return null;
@@ -104,7 +104,7 @@ namespace BitSharp.Core.Builders
             else
             {
                 Debug.Assert(inputIndex == -1);
-                return new LoadedTx(transaction, txIndex, ImmutableArray.Create<EncodedTx>());
+                return new LoadedTx(transaction, txIndex, ImmutableArray.Create<DecodedTx>());
             }
         }
     }

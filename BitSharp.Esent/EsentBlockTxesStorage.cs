@@ -113,7 +113,7 @@ namespace BitSharp.Esent
                         // prune the transactions
                         foreach (var index in txIndices)
                         {
-                            var cachedCursor = new CachedMerkleTreePruningCursor(pruningCursor);
+                            var cachedCursor = new CachedMerkleTreePruningCursor<BlockTxNode>(pruningCursor);
                             MerkleTree.PruneNode(cachedCursor, index);
                         }
 
@@ -162,7 +162,8 @@ namespace BitSharp.Esent
         {
             if (this.ContainsBlock(blockHash))
             {
-                blockTxes = ReadBlockTransactions(blockHash);
+                blockTxes = ReadBlockTransactions(blockHash, requireTx: true)
+                    .UsingAsEnumerable().Select(x => x.ToBlockTx()).GetEnumerator();
                 return true;
             }
             else
@@ -172,7 +173,21 @@ namespace BitSharp.Esent
             }
         }
 
-        private IEnumerator<BlockTx> ReadBlockTransactions(UInt256 blockHash)
+        public bool TryReadBlockTxNodes(UInt256 blockHash, out IEnumerator<BlockTxNode> blockTxNodes)
+        {
+            if (this.ContainsBlock(blockHash))
+            {
+                blockTxNodes = ReadBlockTransactions(blockHash, requireTx: false);
+                return true;
+            }
+            else
+            {
+                blockTxNodes = null;
+                return false;
+            }
+        }
+
+        private IEnumerator<BlockTxNode> ReadBlockTransactions(UInt256 blockHash, bool requireTx)
         {
             using (var handle = this.cursorCache.TakeItem())
             {
@@ -213,11 +228,13 @@ namespace BitSharp.Esent
                         var pruned = depth >= 0;
                         depth = Math.Max(0, depth);
 
+                        if (pruned && requireTx)
+                            throw new MissingDataException(blockHash);
+
                         var tx = !pruned ? DataEncoder.DecodeTransaction(txBytes, txHash) : null;
+                        var blockTxNode = new BlockTxNode(txIndex, depth, txHash, pruned, tx);
 
-                        var blockTx = new BlockTx(txIndex, depth, txHash, pruned, tx);
-
-                        yield return blockTx;
+                        yield return blockTxNode;
                     }
                     while (Api.TryMoveNext(cursor.jetSession, cursor.blocksTableId));
                 }
@@ -251,7 +268,7 @@ namespace BitSharp.Esent
                         if (blockTxBytesColumn.Value != null)
                         {
                             var txHash = DbEncoder.DecodeUInt256(blockTxHashColumn.Value);
-                            transaction = new BlockTx(txIndex, 0, txHash, false, blockTxBytesColumn.Value.ToImmutableArray());
+                            transaction = new BlockTx(txIndex, txHash, blockTxBytesColumn.Value.ToImmutableArray());
                             return true;
                         }
                         else

@@ -247,7 +247,7 @@ namespace BitSharp.Core.Storage
             }
 
             IEnumerator<BlockTx> blockTxes;
-            if (TryReadBlockTransactions(chainedHeader.Hash, /*requireTransactions:*/true, out blockTxes))
+            if (TryReadBlockTransactions(chainedHeader.Hash, out blockTxes))
             {
                 block = new Block(chainedHeader.BlockHeader, blockTxes.UsingAsEnumerable().ToImmutableArray());
                 return true;
@@ -264,12 +264,12 @@ namespace BitSharp.Core.Storage
             return this.blockTxesStorage.Value.TryGetTransaction(blockHash, txIndex, out transaction);
         }
 
-        public bool TryReadBlockTransactions(UInt256 blockHash, bool requireTransactions, out IEnumerator<BlockTx> blockTxes)
+        public bool TryReadBlockTransactions(UInt256 blockHash, out IEnumerator<BlockTx> blockTxes)
         {
             IEnumerator<BlockTx> rawBlockTxes;
             if (this.blockTxesStorage.Value.TryReadBlockTransactions(blockHash, out rawBlockTxes))
             {
-                blockTxes = ReadBlockTransactions(blockHash, requireTransactions, rawBlockTxes);
+                blockTxes = ReadBlockTransactions(blockHash, rawBlockTxes);
                 return true;
             }
             else
@@ -279,7 +279,7 @@ namespace BitSharp.Core.Storage
             }
         }
 
-        private IEnumerator<BlockTx> ReadBlockTransactions(UInt256 blockHash, bool requireTransactions, IEnumerator<BlockTx> blockTxes)
+        private IEnumerator<BlockTx> ReadBlockTransactions(UInt256 blockHash, IEnumerator<BlockTx> blockTxes)
         {
             using (blockTxes)
             {
@@ -301,20 +301,9 @@ namespace BitSharp.Core.Storage
                     }
 
                     if (read)
-                    {
-                        var blockTx = blockTxes.Current;
-                        if (requireTransactions && blockTx.Pruned)
-                        {
-                            //TODO distinguish different kinds of missing: pruned and missing entirely
-                            throw new MissingDataException(blockHash);
-                        }
-
-                        yield return blockTx;
-                    }
+                        yield return blockTxes.Current;
                     else
-                    {
                         yield break;
-                    }
                 }
             }
         }

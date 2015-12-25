@@ -8,6 +8,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
@@ -71,12 +72,12 @@ namespace BitSharp.Core.Builders
 
                 var newChain = chain.Value.ToBuilder().AddBlock(chainedHeader).ToImmutable();
 
-                // begin reading block txes into the buffer
-                var blockTxesBuffer = new BufferBlock<BlockTx>();
-                var sendBlockTxes = blockTxesBuffer.SendAndCompleteAsync(blockTxes, cancelToken);
+                // begin reading and decoding block txes into the buffer
+                var blockTxesBuffer = new BufferBlock<DecodedBlockTx>();
+                var sendBlockTxes = blockTxesBuffer.SendAndCompleteAsync(blockTxes.Select(x => x.Decode()), cancelToken);
 
                 // track tx/input stats
-                var countBlockTxes = new TransformBlock<BlockTx, BlockTx>(
+                var countBlockTxes = new TransformBlock<DecodedBlockTx, DecodedBlockTx>(
                     blockTx =>
                     {
                         txCount++;

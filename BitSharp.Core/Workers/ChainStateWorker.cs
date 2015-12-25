@@ -114,7 +114,7 @@ namespace BitSharp.Core.Workers
                         var direction = pathElement.Item1;
                         var chainedHeader = pathElement.Item2;
                         IEnumerator<BlockTx> blockTxes;
-                        if (!this.coreStorage.TryReadBlockTransactions(chainedHeader.Hash, /*requireTransaction:*/true, out blockTxes))
+                        if (!this.coreStorage.TryReadBlockTransactions(chainedHeader.Hash, out blockTxes))
                         {
                             RaiseBlockMissed(chainedHeader.Hash);
                             break;

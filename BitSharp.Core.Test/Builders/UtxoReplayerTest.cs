@@ -28,8 +28,8 @@ namespace BitSharp.Core.Test.Builders
             chainState.Setup(x => x.Chain).Returns(() => testBlocks.Chain);
 
             // mock block txes read
-            var blockTxes = block.Transactions.Select((tx, txIndex) => new BlockTx(txIndex, tx)).GetEnumerator();
-            coreStorage.Setup(x => x.TryReadBlockTransactions(chainedHeader.Hash, true, out blockTxes)).Returns(true);
+            var blockTxes = block.Transactions.Select((tx, txIndex) => (BlockTx)BlockTx.Create(txIndex, tx)).GetEnumerator();
+            coreStorage.Setup(x => x.TryReadBlockTransactions(chainedHeader.Hash, out blockTxes)).Returns(true);
 
             // mock unspent tx lookup
             for (var txIndex = 0; txIndex < block.Transactions.Length; txIndex++)

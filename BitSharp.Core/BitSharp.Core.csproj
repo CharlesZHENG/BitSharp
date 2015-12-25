@@ -122,7 +122,11 @@
     <Compile Include="BlockProvider.cs" />
     <Compile Include="BlockReplayer.cs" />
     <Compile Include="Builders\ChainStateBuilderStats.cs" />
+    <Compile Include="Domain\DecodedBlockTx.cs" />
+    <Compile Include="Domain\BlockTxNode.cs" />
+    <Compile Include="Domain\DecodedTx.cs" />
     <Compile Include="Domain\EncodedTx.cs" />
+    <Compile Include="Domain\IMerkleTreeNode.cs" />
     <Compile Include="Domain\ValidatableTx.cs" />
     <Compile Include="Builders\WorkQueueDictionary.cs" />
     <Compile Include="Builders\IDeferredChainStateCursor.cs" />

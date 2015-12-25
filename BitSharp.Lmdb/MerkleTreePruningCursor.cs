@@ -7,7 +7,7 @@ using System.Collections.Immutable;
 
 namespace BitSharp.Lmdb
 {
-    internal class MerkleTreePruningCursor : IMerkleTreePruningCursor
+    internal class MerkleTreePruningCursor : IMerkleTreePruningCursor<BlockTxNode>
     {
         private readonly UInt256 blockHash;
         private readonly LightningTransaction txn;
@@ -57,7 +57,7 @@ namespace BitSharp.Lmdb
                 return false;
         }
 
-        public MerkleTreeNode ReadNode()
+        public BlockTxNode ReadNode()
         {
             var kvPair = cursor.GetCurrent().Value;
 
@@ -66,11 +66,10 @@ namespace BitSharp.Lmdb
             if (this.blockHash != recordBlockHash)
                 throw new InvalidOperationException();
 
-            var blockTx = DataEncoder.DecodeBlockTx(kvPair.Value, skipTx: true);
-            return blockTx;
+            return DataEncoder.DecodeBlockTxNode(kvPair.Value, skipTxBytes: true);
         }
 
-        public void WriteNode(MerkleTreeNode node)
+        public void WriteNode(BlockTxNode node)
         {
             if (!node.Pruned)
                 throw new ArgumentException();
@@ -86,8 +85,8 @@ namespace BitSharp.Lmdb
                 throw new InvalidOperationException();
 
             var key = DbEncoder.EncodeBlockHashTxIndex(blockHash, node.Index);
-            var blockTx = new BlockTx(node.Index, node.Depth, node.Hash, node.Pruned, (ImmutableArray<byte>?)null);
-            cursor.Put(key, DataEncoder.EncodeBlockTx(blockTx), CursorPutOptions.Current);
+            var blockTxNode = new BlockTxNode(node.Index, node.Depth, node.Hash, node.Pruned, (ImmutableArray<byte>?)null);
+            cursor.Put(key, DataEncoder.EncodeBlockTxNode(blockTxNode), CursorPutOptions.Current);
         }
 
         public void DeleteNode()

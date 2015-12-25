@@ -27,7 +27,7 @@ namespace BitSharp.Core.Rules
             this.highestTarget = UInt256.ParseHex("00000000FFFF0000000000000000000000000000000000000000000000000000");
 
             this.genesisBlock =
-                new Block
+                Block.Create
                 (
                     header: new BlockHeader
                     (
@@ -264,7 +264,7 @@ namespace BitSharp.Core.Rules
 
         public virtual void ValidateTransaction(ChainedHeader chainedHeader, ValidatableTx validatableTx)
         {
-            var tx = validatableTx.BlockTx.Decode();
+            var tx = validatableTx.BlockTx.Transaction;
             var txIndex = validatableTx.BlockTx.Index;
 
             if (validatableTx.BlockTx.IsCoinbase)
