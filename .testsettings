@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<TestSettings name="Default" id="eec3e316-3630-47db-af10-b31741ea183a" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Description>These are default test settings for a local test run.</Description>
+  <Deployment enabled="false" />
+  <Execution hostProcessPlatform="MSIL">
+    <Timeouts runTimeout="1800000" testTimeout="60000" />
+    <TestTypeSpecific>
+      <UnitTestRunConfig testTypeId="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b">
+        <AssemblyResolution>
+          <TestDirectory useLoadContext="true" />
+        </AssemblyResolution>
+      </UnitTestRunConfig>
+    </TestTypeSpecific>
+    <AgentRule name="Execution Agents">
+    </AgentRule>
+  </Execution>
+  <Properties />
+</TestSettings>

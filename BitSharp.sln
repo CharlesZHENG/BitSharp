@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 14
-VisualStudioVersion = 14.0.23107.0
+VisualStudioVersion = 14.0.24720.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BitSharp.Client", "BitSharp.Client\BitSharp.Client.csproj", "{0EE7A0E7-573E-4CE7-B4C2-2BAAEE4E4E9F}"
 EndProject
@@ -38,6 +38,10 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BitSharp.Lmdb.Test", "BitSharp.Lmdb.Test\BitSharp.Lmdb.Test.csproj", "{0D4F870A-A895-44ED-A56A-63BF242AD7CE}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{CF768D98-BE1E-4B29-A8B1-75562AD2E632}"
+	ProjectSection(SolutionItems) = preProject
+		.runsettings = .runsettings
+		.testsettings = .testsettings
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BitSharp.Examples", "BitSharp.Examples\BitSharp.Examples.csproj", "{0FAA5A72-6D04-4153-9DCF-574511DB960B}"
 EndProject
