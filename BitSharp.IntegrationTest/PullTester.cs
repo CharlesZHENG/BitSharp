@@ -14,6 +14,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
 using System.Threading;
 
 namespace BitSharp.IntegrationTest
@@ -88,10 +89,19 @@ namespace BitSharp.IntegrationTest
                         {
                             try
                             {
+                                var standardOutput = new StringBuilder();
+                                var errorOutput = new StringBuilder();
+
                                 javaProcess.OutputDataReceived += (sender, e) =>
+                                {
                                     logger.Info("[Pull Tester]:  " + e.Data);
+                                    standardOutput.AppendLine(e.Data);
+                                };
                                 javaProcess.ErrorDataReceived += (sender, e) =>
+                                {
                                     logger.Error("[Pull Tester]: " + e.Data);
+                                    errorOutput.AppendLine(e.Data);
+                                };
 
                                 javaProcess.BeginOutputReadLine();
                                 javaProcess.BeginErrorReadLine();
@@ -100,6 +110,11 @@ namespace BitSharp.IntegrationTest
 
                                 logger.Info($"Pull Tester Result: {javaProcess.ExitCode}");
 
+                                // verify pull tester successfully connected
+                                Assert.IsTrue(errorOutput.ToString().Contains(
+                                    $"NioClientManager.handleKey: Successfully connected to localhost/127.0.0.1:{port}"));
+
+                                // don't validate pull tester result, consensus is not implemented and it will always fail
                                 Assert.Inconclusive("TODO");
                                 Assert.AreEqual(0, javaProcess.ExitCode);
                             }
