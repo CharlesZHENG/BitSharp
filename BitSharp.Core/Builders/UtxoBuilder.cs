@@ -28,7 +28,7 @@ namespace BitSharp.Core.Builders
             var utxoCalculator = new TransformBlock<BlockTx, ValidatableTx>(
                 blockTx =>
                 {
-                    var tx = blockTx.Transaction;
+                    var tx = blockTx.Decode();
                     var txIndex = blockTx.Index;
 
                     var prevTxOutputs = ImmutableArray.CreateBuilder<TxOutput>(!blockTx.IsCoinbase ? tx.Inputs.Length : 0);
@@ -147,7 +147,7 @@ namespace BitSharp.Core.Builders
             //TODO don't reverse here, storage should be read in reverse
             foreach (var blockTx in blockTxes.Reverse())
             {
-                var tx = blockTx.Transaction;
+                var tx = blockTx.Decode();
                 var txIndex = blockTx.Index;
 
                 // remove transaction outputs

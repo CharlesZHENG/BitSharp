@@ -24,7 +24,7 @@ namespace BitSharp.Core.Domain
 
         public BlockHeader Header => this.Block.Header;
 
-        public ImmutableArray<EncodedTx> EncodedTxes => this.Block.EncodedTxes;
+        public ImmutableArray<BlockTx> BlockTxes => this.Block.BlockTxes;
 
         public ImmutableArray<Transaction> Transactions => this.Block.Transactions;
 

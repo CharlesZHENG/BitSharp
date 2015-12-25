@@ -47,11 +47,19 @@ namespace BitSharp.Core
 
         public static Block DecodeBlock(BinaryReader reader, UInt256 blockHash = null)
         {
-            return new Block
-            (
-                header: DecodeBlockHeader(reader, blockHash),
-                encodedTxes: reader.ReadList(() => DecodeTransaction(reader))
-            );
+            var header = DecodeBlockHeader(reader, blockHash);
+
+            var blockTxesCount = reader.ReadVarInt().ToIntChecked();
+            var blockTxes = ImmutableArray.CreateBuilder<BlockTx>(blockTxesCount);
+            for (var i = 0; i < blockTxesCount; i++)
+            {
+                var encodedTx = DecodeTransaction(reader);
+                var blockTx = new BlockTx(i, 0, encodedTx.Hash, false, encodedTx);
+                blockTxes.Add(blockTx);
+
+            }
+
+            return new Block(header, blockTxes.MoveToImmutable());
         }
 
         public static Block DecodeBlock(byte[] bytes)
@@ -66,7 +74,7 @@ namespace BitSharp.Core
         public static void EncodeBlock(BinaryWriter writer, Block block)
         {
             EncodeBlockHeader(writer, block.Header);
-            writer.WriteList(block.EncodedTxes, tx => writer.WriteBytes(tx.TxBytes.ToArray()));
+            writer.WriteList(block.BlockTxes, tx => writer.WriteBytes(tx.EncodedTx.TxBytes.ToArray()));
         }
 
         public static byte[] EncodeBlock(Block block)

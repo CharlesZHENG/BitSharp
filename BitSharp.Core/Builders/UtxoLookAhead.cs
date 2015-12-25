@@ -34,7 +34,8 @@ namespace BitSharp.Core.Builders
             return new TransformManyBlock<BlockTx, Tuple<UInt256, CompletionCount, BlockTx>>(
                 blockTx =>
                 {
-                    var inputCount = !blockTx.IsCoinbase ? blockTx.Transaction.Inputs.Length : 0;
+                    var tx = blockTx.Decode();
+                    var inputCount = !blockTx.IsCoinbase ? tx.Inputs.Length : 0;
                     var completionCount = new CompletionCount(inputCount + 1);
 
                     var txHashes = new Tuple<UInt256, CompletionCount, BlockTx>[inputCount + 1];
@@ -43,9 +44,9 @@ namespace BitSharp.Core.Builders
 
                     if (!blockTx.IsCoinbase)
                     {
-                        for (var inputIndex = 0; inputIndex < blockTx.Transaction.Inputs.Length; inputIndex++)
+                        for (var inputIndex = 0; inputIndex < tx.Inputs.Length; inputIndex++)
                         {
-                            var txHash = blockTx.Transaction.Inputs[inputIndex].PreviousTxOutputKey.TxHash;
+                            var txHash = tx.Inputs[inputIndex].PreviousTxOutputKey.TxHash;
                             txHashes[inputIndex + 1] = Tuple.Create(txHash, completionCount, blockTx);
                         }
                     }

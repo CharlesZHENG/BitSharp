@@ -82,8 +82,10 @@ namespace BitSharp.Core.Builders
 
                     if (!rules.IgnoreScripts && !validatableTx.BlockTx.IsCoinbase)
                     {
-                        var scripts = new Tuple<ValidatableTx, int>[validatableTx.BlockTx.Transaction.Inputs.Length];
-                        for (var i = 0; i < validatableTx.BlockTx.Transaction.Inputs.Length; i++)
+                        var tx = validatableTx.BlockTx.Decode();
+
+                        var scripts = new Tuple<ValidatableTx, int>[tx.Inputs.Length];
+                        for (var i = 0; i < tx.Inputs.Length; i++)
                             scripts[i] = Tuple.Create(validatableTx, i);
 
                         return scripts;
@@ -101,7 +103,8 @@ namespace BitSharp.Core.Builders
                 {
                     var validatableTx = tuple.Item1;
                     var inputIndex = tuple.Item2;
-                    var txInput = validatableTx.BlockTx.Transaction.Inputs[inputIndex];
+                    var tx = validatableTx.BlockTx.Decode();
+                    var txInput = tx.Inputs[inputIndex];
                     var prevTxOutputs = validatableTx.PrevTxOutputs[inputIndex];
 
                     if (!rules.IgnoreScriptErrors)

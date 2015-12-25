@@ -47,7 +47,7 @@ namespace BitSharp.Core.Builders
                 var lookupLoadingTx = new TransformBlock<BlockTx, LoadingTx>(
                     blockTx =>
                     {
-                        var tx = blockTx.Transaction;
+                        var tx = blockTx.Decode();
                         var txIndex = blockTx.Index;
                         var prevOutputTxKeys = ImmutableArray.CreateBuilder<TxLookupKey>(!blockTx.IsCoinbase ? tx.Inputs.Length : 0);
 
@@ -97,7 +97,7 @@ namespace BitSharp.Core.Builders
 
             // capture the original block txes order
             var orderedBlockTxes = OrderingBlock.CaptureOrder<BlockTx, LoadingTx, UInt256>(
-                blockTxesBuffer, blockTx => blockTx.Transaction.Hash, cancelToken);
+                blockTxesBuffer, blockTx => blockTx.Hash, cancelToken);
 
             // begin looking up txes
             var lookupLoadingTx = InitLookupLoadingTx(chainState, replayBlock, cancelToken);
@@ -113,7 +113,7 @@ namespace BitSharp.Core.Builders
             return new TransformBlock<BlockTx, LoadingTx>(
                 blockTx =>
                 {
-                    var tx = blockTx.Transaction;
+                    var tx = blockTx.Decode();
                     var txIndex = blockTx.Index;
 
                     var prevOutputTxKeys = ImmutableArray.CreateBuilder<TxLookupKey>(!blockTx.IsCoinbase ? tx.Inputs.Length : 0);

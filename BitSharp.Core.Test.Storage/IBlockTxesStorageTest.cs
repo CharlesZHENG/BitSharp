@@ -1,6 +1,7 @@
 ﻿using BitSharp.Common;
 using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Domain;
+using BitSharp.Core.Storage;
 using BitSharp.Core.Test.Rules;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Ninject;
@@ -82,15 +83,15 @@ namespace BitSharp.Core.Test.Storage
                 // add blocks and verify count
 
                 // 0
-                blockTxesStorage.TryAddBlockTransactions(fakeBlock0.Hash, fakeBlock0.EncodedTxes);
+                blockTxesStorage.TryAddBlockTransactions(fakeBlock0.Hash, fakeBlock0.BlockTxes);
                 Assert.AreEqual(1, blockTxesStorage.BlockCount);
 
                 // 1
-                blockTxesStorage.TryAddBlockTransactions(fakeBlock1.Hash, fakeBlock1.EncodedTxes);
+                blockTxesStorage.TryAddBlockTransactions(fakeBlock1.Hash, fakeBlock1.BlockTxes);
                 Assert.AreEqual(2, blockTxesStorage.BlockCount);
 
                 // 2
-                blockTxesStorage.TryAddBlockTransactions(fakeBlock2.Hash, fakeBlock2.EncodedTxes);
+                blockTxesStorage.TryAddBlockTransactions(fakeBlock2.Hash, fakeBlock2.BlockTxes);
                 Assert.AreEqual(3, blockTxesStorage.BlockCount);
 
                 // remove blocks and verify count
@@ -123,7 +124,7 @@ namespace BitSharp.Core.Test.Storage
                 Assert.IsFalse(blockTxesStorage.ContainsBlock(block.Hash));
 
                 // add the block
-                blockTxesStorage.TryAddBlockTransactions(block.Hash, block.EncodedTxes);
+                blockTxesStorage.TryAddBlockTransactions(block.Hash, block.BlockTxes);
 
                 // block should be present
                 Assert.IsTrue(blockTxesStorage.ContainsBlock(block.Hash)); ;
@@ -148,11 +149,11 @@ namespace BitSharp.Core.Test.Storage
                 var block = CreateFakeBlock();
 
                 // verify block can be added
-                Assert.IsTrue(blockTxesStorage.TryAddBlockTransactions(block.Hash, block.EncodedTxes));
+                Assert.IsTrue(blockTxesStorage.TryAddBlockTransactions(block.Hash, block.BlockTxes));
                 Assert.IsTrue(blockTxesStorage.ContainsBlock(block.Hash));
 
                 // verify block cannot be added again
-                Assert.IsFalse(blockTxesStorage.TryAddBlockTransactions(block.Hash, block.EncodedTxes));
+                Assert.IsFalse(blockTxesStorage.TryAddBlockTransactions(block.Hash, block.BlockTxes));
 
                 // remove the block
                 Assert.IsTrue(blockTxesStorage.TryRemoveBlockTransactions(block.Hash));
@@ -162,7 +163,7 @@ namespace BitSharp.Core.Test.Storage
                 Assert.IsFalse(blockTxesStorage.TryRemoveBlockTransactions(block.Hash));
 
                 // verify block can be added again, after being removed
-                Assert.IsTrue(blockTxesStorage.TryAddBlockTransactions(block.Hash, block.EncodedTxes));
+                Assert.IsTrue(blockTxesStorage.TryAddBlockTransactions(block.Hash, block.BlockTxes));
                 Assert.IsTrue(blockTxesStorage.ContainsBlock(block.Hash));
 
                 // verify block can be removed again, after being added again
@@ -182,7 +183,7 @@ namespace BitSharp.Core.Test.Storage
                 var block = CreateFakeBlock();
 
                 // add block transactions
-                blockTxesStorage.TryAddBlockTransactions(block.Hash, block.EncodedTxes);
+                blockTxesStorage.TryAddBlockTransactions(block.Hash, block.BlockTxes);
 
                 // verify missing transactions
                 BlockTx transaction;
@@ -212,7 +213,7 @@ namespace BitSharp.Core.Test.Storage
                 var expectedBlockTxHashes = expectedBlock.Transactions.Select(x => x.Hash).ToList();
 
                 // add block transactions
-                blockTxesStorage.TryAddBlockTransactions(expectedBlock.Hash, expectedBlock.EncodedTxes);
+                blockTxesStorage.TryAddBlockTransactions(expectedBlock.Hash, expectedBlock.BlockTxes);
 
                 // retrieve block transactions
                 IEnumerator<BlockTx> rawActualBlockTxes;
@@ -266,14 +267,14 @@ namespace BitSharp.Core.Test.Storage
 
                     // add preceding block
                     if (iteration == 1 || iteration == 3)
-                        blockTxesStorage.TryAddBlockTransactions(new UInt256(block.Hash.ToBigInteger() - 1), block.EncodedTxes);
+                        blockTxesStorage.TryAddBlockTransactions(new UInt256(block.Hash.ToBigInteger() - 1), block.BlockTxes);
 
                     // add the block to be pruned
-                    blockTxesStorage.TryAddBlockTransactions(block.Hash, block.EncodedTxes);
+                    blockTxesStorage.TryAddBlockTransactions(block.Hash, block.BlockTxes);
 
                     // add proceeding block
                     if (iteration == 2 || iteration == 3)
-                        blockTxesStorage.TryAddBlockTransactions(new UInt256(block.Hash.ToBigInteger() + 1), block.EncodedTxes);
+                        blockTxesStorage.TryAddBlockTransactions(new UInt256(block.Hash.ToBigInteger() + 1), block.BlockTxes);
 
                     // prune the block
                     var count = 0;

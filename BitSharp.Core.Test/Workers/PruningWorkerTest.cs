@@ -2,6 +2,7 @@
 using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Builders;
 using BitSharp.Core.Domain;
+using BitSharp.Core.Storage;
 using BitSharp.Core.Storage.Memory;
 using BitSharp.Core.Test.Rules;
 using BitSharp.Core.Workers;
@@ -39,7 +40,7 @@ namespace BitSharp.Core.Test.Workers
 
             // create memory storage with the block
             var storageManager = new MemoryStorageManager();
-            storageManager.BlockTxesStorage.TryAddBlockTransactions(block.Hash, block.EncodedTxes);
+            storageManager.BlockTxesStorage.TryAddBlockTransactions(block.Hash, block.BlockTxes);
 
             // initialize the pruning worker
             var workerConfig = new WorkerConfig(initialNotify: false, minIdleTime: TimeSpan.Zero, maxIdleTime: TimeSpan.MaxValue);
@@ -88,7 +89,7 @@ namespace BitSharp.Core.Test.Workers
                 chainStateCursor.CommitTransaction();
 
                 // create a memory pruning cursor to verify expected pruning results
-                var pruneCursor = new MemoryMerkleTreePruningCursor(block.Transactions);
+                var pruneCursor = new MemoryMerkleTreePruningCursor(block.BlockTxes);
 
                 // prune each transaction in random order
                 var pruneHeight = -1;

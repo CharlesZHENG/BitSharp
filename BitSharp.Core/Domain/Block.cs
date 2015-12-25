@@ -7,17 +7,17 @@ namespace BitSharp.Core.Domain
 {
     public class Block
     {
-        private readonly Lazy<ImmutableArray<EncodedTx>> lazyEncodedTxes;
+        private readonly Lazy<ImmutableArray<BlockTx>> lazyBlockTxes;
         private readonly Lazy<ImmutableArray<Transaction>> lazyTransactions;
 
-        public Block(BlockHeader header, ImmutableArray<EncodedTx> encodedTxes)
+        public Block(BlockHeader header, ImmutableArray<BlockTx> blockTxes)
         {
             Header = header;
 
             lazyTransactions = new Lazy<ImmutableArray<Transaction>>(() =>
-                ImmutableArray.CreateRange(encodedTxes.Select(x => x.Decode())));
+                ImmutableArray.CreateRange(blockTxes.Select(x => x.Decode())));
 
-            lazyEncodedTxes = new Lazy<ImmutableArray<EncodedTx>>(() => encodedTxes).Force();
+            lazyBlockTxes = new Lazy<ImmutableArray<BlockTx>>(() => blockTxes).Force();
         }
 
         [Obsolete]
@@ -27,16 +27,17 @@ namespace BitSharp.Core.Domain
 
             lazyTransactions = new Lazy<ImmutableArray<Transaction>>(() => transactions).Force();
 
-            lazyEncodedTxes = new Lazy<ImmutableArray<EncodedTx>>(() =>
-                ImmutableArray.CreateRange(transactions.Select(x =>
-                    new EncodedTx(DataEncoder.EncodeTransaction(x).ToImmutableArray(), x))));
+            lazyBlockTxes = new Lazy<ImmutableArray<BlockTx>>(() =>
+                ImmutableArray.CreateRange(transactions.Select((tx, txIndex) =>
+                    new BlockTx(txIndex, 0, tx.Hash, false,
+                        new EncodedTx(DataEncoder.EncodeTransaction(tx).ToImmutableArray(), tx)))));
         }
 
         public UInt256 Hash => this.Header.Hash;
 
         public BlockHeader Header { get; }
 
-        public ImmutableArray<EncodedTx> EncodedTxes => lazyEncodedTxes.Value;
+        public ImmutableArray<BlockTx> BlockTxes => lazyBlockTxes.Value;
 
         public ImmutableArray<Transaction> Transactions => lazyTransactions.Value;
 
@@ -47,7 +48,7 @@ namespace BitSharp.Core.Domain
                 return new Block
                 (
                     Header ?? this.Header,
-                    this.EncodedTxes
+                    this.BlockTxes
                 );
             }
             else

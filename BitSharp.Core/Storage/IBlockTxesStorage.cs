@@ -2,6 +2,7 @@
 using BitSharp.Core.Domain;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace BitSharp.Core.Storage
 {
@@ -62,5 +63,13 @@ namespace BitSharp.Core.Storage
 
         //TODO keep this here? IStorageManager?
         void Defragment();
+    }
+
+    public static class IBlockTxesStorage_ExtensionMethods
+    {
+        public static bool TryAddBlockTransactions(this IBlockTxesStorage storage, UInt256 blockHash, IEnumerable<BlockTx> transactions)
+        {
+            return storage.TryAddBlockTransactions(blockHash, transactions.Select(x => x.EncodedTx));
+        }
     }
 }
