@@ -150,6 +150,8 @@
     <Compile Include="PruningMode.cs" />
     <Compile Include="Rules\LibbitcoinConsensus.cs" />
     <Compile Include="StorageType.cs" />
+    <Compile Include="Storage\Memory\UncommittedRecord.cs" />
+    <Compile Include="Storage\Memory\CommittedRecord.cs" />
     <Compile Include="Storage\SplitBlockTxesStorage.cs" />
     <Compile Include="Storage\CoreStorage.cs" />
     <Compile Include="Domain\TxLookupKey.cs" />
