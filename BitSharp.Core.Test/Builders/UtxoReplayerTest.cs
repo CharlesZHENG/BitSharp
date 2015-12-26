@@ -48,38 +48,38 @@ namespace BitSharp.Core.Test.Builders
                 }
             }
 
+            var validatableTxes = UtxoReplayer.ReplayCalculateUtxo(coreStorage.Object, chainState.Object, chainedHeader).ToEnumerable().ToList();
+
+            // verify correct number of transactions were replayed
+            Assert.AreEqual(validatableTxes.Count, block.Transactions.Length);
+
+            var expectedValue = 50UL * (ulong)100.MILLION();
+
+            foreach (var validatableTx in validatableTxes)
             {
-                var loadingTxes = UtxoReplayer.ReplayCalculateUtxo(coreStorage.Object, chainState.Object, chainedHeader);
-                var txIndex = -1;
-                foreach (var loadingTx in loadingTxes.ToEnumerable())
+                // verify validatable tx matches original block tx
+                Assert.AreEqual(block.Transactions[validatableTx.Index].Hash, validatableTx.Transaction.Hash);
+
+                // if coinbase, verify no tx outputs for coinbase inputs
+                if (validatableTx.IsCoinbase)
                 {
-                    txIndex++;
+                    Assert.AreEqual(0, validatableTx.PrevTxOutputs.Length);
+                }
+                else
+                {
+                    // verify there is a tx output for each input
+                    Assert.AreEqual(block.Transactions[validatableTx.Index].Inputs.Length, validatableTx.PrevTxOutputs.Length);
 
-                    // verify loading tx matches original block tx
-                    Assert.AreEqual(block.Transactions[txIndex].Hash, loadingTx.Transaction.Hash);
-
-                    // if coinbase, verify no lookup keys for coinbase inputs
-                    if (txIndex == 0)
+                    // verify each tx output matches the mocked data
+                    for (var inputIndex = 0; inputIndex < validatableTx.Transaction.Inputs.Length; inputIndex++)
                     {
-                        Assert.AreEqual(0, loadingTx.PrevOutputTxKeys.Length);
-                    }
-                    else
-                    {
-                        // verify there is a lookup key for each input
-                        Assert.AreEqual(block.Transactions[txIndex].Inputs.Length, loadingTx.PrevOutputTxKeys.Length);
+                        var prevTxOutput = validatableTx.PrevTxOutputs[inputIndex];
 
-                        // verify each lookup key matches the mocked data
-                        for (var inputIndex = 0; inputIndex < loadingTx.Transaction.Inputs.Length; inputIndex++)
-                        {
-                            var prevOutputTxKey = loadingTx.PrevOutputTxKeys[inputIndex];
-                            Assert.AreEqual(prevOutputTxKey.BlockHash, block.Hash);
-                            Assert.AreEqual(prevOutputTxKey.TxIndex, txIndex * inputIndex);
-                        }
+                        expectedValue -= 1;
+                        Assert.AreEqual(expectedValue, prevTxOutput.Value);
+                        CollectionAssert.AreEqual(block.Transactions[0].Outputs[0].ScriptPublicKey, prevTxOutput.ScriptPublicKey);
                     }
                 }
-
-                // verify correct number of transactions were replayed
-                Assert.AreEqual(txIndex + 1, block.Transactions.Length);
             }
         }
     }

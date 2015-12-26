@@ -187,23 +187,22 @@ namespace BitSharp.Examples
                         var replayTxes = BlockReplayer.ReplayBlock(coreDaemon.CoreStorage, chainState, replayBlock.Hash, replayForward);
 
                         // prepare the tx scanner
-                        var txScanner = new ActionBlock<LoadedTx>(
-                            loadedTx =>
+                        var txScanner = new ActionBlock<ValidatableTx>(
+                            validatableTx =>
                             {
                                 // the transaction being replayed
-                                var tx = loadedTx.Transaction;
+                                var tx = validatableTx.Transaction;
 
-                                // the previous transactions for each of the replay transaction's inputs
-                                var inputTxes = loadedTx.InputTxes;
+                                // the previous tx outputs for each of the replay transaction's inputs
+                                var prevTxOutputs = validatableTx.PrevTxOutputs;
 
                                 // scan the replay transaction's inputs
-                                if (!loadedTx.IsCoinbase)
+                                if (!validatableTx.IsCoinbase)
                                 {
                                     for (var inputIndex = 0; inputIndex < tx.Inputs.Length; inputIndex++)
                                     {
                                         var input = tx.Inputs[inputIndex];
-                                        var inputPrevTx = inputTxes[inputIndex].Transaction;
-                                        var inputPrevTxOutput = inputPrevTx.Outputs[(int)input.PreviousTxOutputKey.TxOutputIndex];
+                                        var inputPrevTxOutput = validatableTx.PrevTxOutputs[inputIndex];
 
                                         // check if the input's previous transaction output is of interest
                                         var inputPrevTxOutputPublicScriptHash = new UInt256(SHA256Static.ComputeHash(inputPrevTxOutput.ScriptPublicKey));

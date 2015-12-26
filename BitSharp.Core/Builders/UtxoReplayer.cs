@@ -16,12 +16,12 @@ namespace BitSharp.Core.Builders
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        public static ISourceBlock<LoadingTx> ReplayCalculateUtxo(ICoreStorage coreStorage, IChainState chainState, ChainedHeader replayBlock, CancellationToken cancelToken = default(CancellationToken))
+        public static ISourceBlock<ValidatableTx> ReplayCalculateUtxo(ICoreStorage coreStorage, IChainState chainState, ChainedHeader replayBlock, CancellationToken cancelToken = default(CancellationToken))
         {
             return ReplayFromTxIndex(coreStorage, chainState, replayBlock, replayForward: true, cancelToken: cancelToken);
         }
 
-        public static ISourceBlock<LoadingTx> ReplayRollbackUtxo(ICoreStorage coreStorage, IChainState chainState, ChainedHeader replayBlock, CancellationToken cancelToken = default(CancellationToken))
+        public static ISourceBlock<ValidatableTx> ReplayRollbackUtxo(ICoreStorage coreStorage, IChainState chainState, ChainedHeader replayBlock, CancellationToken cancelToken = default(CancellationToken))
         {
             // replaying rollback of an on-chain block, use the chainstate tx index for replay, same as replaying forward
             if (chainState.Chain.BlocksByHash.ContainsKey(replayBlock.Hash))
@@ -44,12 +44,12 @@ namespace BitSharp.Core.Builders
                 var unmintedTxes = ImmutableDictionary.CreateRange(
                     unmintedTxesList.Select(x => new KeyValuePair<UInt256, UnmintedTx>(x.TxHash, x)));
 
-                var lookupLoadingTx = new TransformBlock<DecodedBlockTx, LoadingTx>(
+                var lookupLoadingTx = new TransformBlock<DecodedBlockTx, ValidatableTx>(
                     blockTx =>
                     {
                         var tx = blockTx.Transaction;
                         var txIndex = blockTx.Index;
-                        var prevOutputTxKeys = ImmutableArray.CreateBuilder<TxLookupKey>(!blockTx.IsCoinbase ? tx.Inputs.Length : 0);
+                        var prevTxOutputs = ImmutableArray.CreateBuilder<TxOutput>(!blockTx.IsCoinbase ? tx.Inputs.Length : 0);
 
                         if (!blockTx.IsCoinbase)
                         {
@@ -57,10 +57,10 @@ namespace BitSharp.Core.Builders
                             if (!unmintedTxes.TryGetValue(tx.Hash, out unmintedTx))
                                 throw new MissingDataException(replayBlock.Hash);
 
-                            prevOutputTxKeys.AddRange(unmintedTx.PrevOutputTxKeys);
+                            prevTxOutputs.AddRange(unmintedTx.PrevTxOutputs);
                         }
 
-                        return new LoadingTx(txIndex, tx, replayBlock, prevOutputTxKeys.MoveToImmutable());
+                        return new ValidatableTx(blockTx, replayBlock, prevTxOutputs.MoveToImmutable());
                     });
 
                 IEnumerator<BlockTx> blockTxes;
@@ -78,7 +78,7 @@ namespace BitSharp.Core.Builders
             }
         }
 
-        private static ISourceBlock<LoadingTx> ReplayFromTxIndex(ICoreStorage coreStorage, IChainState chainState, ChainedHeader replayBlock, bool replayForward, CancellationToken cancelToken = default(CancellationToken))
+        private static ISourceBlock<ValidatableTx> ReplayFromTxIndex(ICoreStorage coreStorage, IChainState chainState, ChainedHeader replayBlock, bool replayForward, CancellationToken cancelToken = default(CancellationToken))
         {
             //TODO use replayForward to retrieve blocks in reverse order
             //TODO also check that the block hasn't been pruned (that information isn't stored yet)
@@ -95,28 +95,23 @@ namespace BitSharp.Core.Builders
             else
                 blockTxesBuffer.SendAndCompleteAsync(blockTxes.UsingAsEnumerable().Select(x => x.Decode()).Reverse(), cancelToken).Forget();
 
-            // capture the original block txes order
-            var orderedBlockTxes = OrderingBlock.CaptureOrder<DecodedBlockTx, LoadingTx, UInt256>(
-                blockTxesBuffer, blockTx => blockTx.Hash, cancelToken);
-
             // begin looking up txes
-            var lookupLoadingTx = InitLookupLoadingTx(chainState, replayBlock, cancelToken);
-            orderedBlockTxes.LinkTo(lookupLoadingTx, new DataflowLinkOptions { PropagateCompletion = true });
+            var lookupValidatableTx = InitLookupValidatableTx(chainState, replayBlock, cancelToken);
+            blockTxesBuffer.LinkTo(lookupValidatableTx, new DataflowLinkOptions { PropagateCompletion = true });
 
-            // return the loading txes in original order
-            return orderedBlockTxes.ApplyOrder(lookupLoadingTx, loadingTx => loadingTx.Transaction.Hash, cancelToken); ;
+            return lookupValidatableTx;
         }
 
         //TODO this should lookup in parallel and then get sorted, like TxLoader, etc.
-        private static TransformBlock<DecodedBlockTx, LoadingTx> InitLookupLoadingTx(IChainState chainState, ChainedHeader replayBlock, CancellationToken cancelToken)
+        private static TransformBlock<DecodedBlockTx, ValidatableTx> InitLookupValidatableTx(IChainState chainState, ChainedHeader replayBlock, CancellationToken cancelToken)
         {
-            return new TransformBlock<DecodedBlockTx, LoadingTx>(
+            return new TransformBlock<DecodedBlockTx, ValidatableTx>(
                 blockTx =>
                 {
                     var tx = blockTx.Transaction;
                     var txIndex = blockTx.Index;
 
-                    var prevOutputTxKeys = ImmutableArray.CreateBuilder<TxLookupKey>(!blockTx.IsCoinbase ? tx.Inputs.Length : 0);
+                    var prevTxOutputs = ImmutableArray.CreateBuilder<TxOutput>(!blockTx.IsCoinbase ? tx.Inputs.Length : 0);
 
                     if (!blockTx.IsCoinbase)
                     {
@@ -128,14 +123,11 @@ namespace BitSharp.Core.Builders
                             if (!chainState.TryGetUnspentTx(input.PreviousTxOutputKey.TxHash, out unspentTx))
                                 throw new MissingDataException(replayBlock.Hash);
 
-                            var prevOutputBlockHash = chainState.Chain.Blocks[unspentTx.BlockIndex].Hash;
-                            var prevOutputTxIndex = unspentTx.TxIndex;
-
-                            prevOutputTxKeys.Add(new TxLookupKey(prevOutputBlockHash, prevOutputTxIndex));
+                            prevTxOutputs.Add(unspentTx.TxOutputs[(int)input.PreviousTxOutputKey.TxOutputIndex]);
                         }
                     }
 
-                    return new LoadingTx(txIndex, tx, replayBlock, prevOutputTxKeys.MoveToImmutable());
+                    return new ValidatableTx(blockTx, replayBlock, prevTxOutputs.MoveToImmutable());
                 },
                 new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, MaxDegreeOfParallelism = Math.Min(Environment.ProcessorCount, chainState.CursorCount) });
         }

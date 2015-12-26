@@ -11,28 +11,20 @@ namespace BitSharp.Core.Builders
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        public static ISourceBlock<LoadedTx> ReplayBlock(ICoreStorage coreStorage, IChainState chainState, UInt256 blockHash, bool replayForward, CancellationToken cancelToken = default(CancellationToken))
+        public static ISourceBlock<ValidatableTx> ReplayBlock(ICoreStorage coreStorage, IChainState chainState, UInt256 blockHash, bool replayForward, CancellationToken cancelToken = default(CancellationToken))
         {
             ChainedHeader replayBlock;
             if (!coreStorage.TryGetChainedHeader(blockHash, out replayBlock))
                 throw new MissingDataException(blockHash);
 
-            // replay the loading txes for this block, in reverse order for a rollback
-            ISourceBlock<LoadingTx> loadingTxes;
+            // replay the validatable txes for this block, in reverse order for a rollback
+            ISourceBlock<ValidatableTx> validatableTxes;
             if (replayForward)
-                loadingTxes = UtxoReplayer.ReplayCalculateUtxo(coreStorage, chainState, replayBlock, cancelToken);
+                validatableTxes = UtxoReplayer.ReplayCalculateUtxo(coreStorage, chainState, replayBlock, cancelToken);
             else
-                loadingTxes = UtxoReplayer.ReplayRollbackUtxo(coreStorage, chainState, replayBlock, cancelToken);
+                validatableTxes = UtxoReplayer.ReplayRollbackUtxo(coreStorage, chainState, replayBlock, cancelToken);
 
-            // capture the original loading txes order
-            var orderedLoadingTxes = OrderingBlock.CaptureOrder<LoadingTx, LoadedTx, UInt256>(
-                loadingTxes, loadingTx => loadingTx.Transaction.Hash, cancelToken);
-
-            // begin loading txes
-            var loadedTxes = TxLoader.LoadTxes(coreStorage, orderedLoadingTxes, cancelToken);
-
-            // return the loaded txes in original order
-            return orderedLoadingTxes.ApplyOrder(loadedTxes, loadedTx => loadedTx.Transaction.Hash, cancelToken);
+            return validatableTxes;
         }
     }
 }

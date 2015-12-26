@@ -829,25 +829,25 @@ namespace BitSharp.Core.Test.Storage
         {
             var unmintedTxes0 = ImmutableList.Create(
                 new UnmintedTx(txHash: (UInt256)0,
-                    prevOutputTxKeys: ImmutableArray.Create(
-                        new TxLookupKey(blockHash: (UInt256)0, txIndex: 0),
-                        new TxLookupKey(blockHash: (UInt256)0, txIndex: 1),
-                        new TxLookupKey(blockHash: (UInt256)0, txIndex: 2))),
+                    prevTxOutputs: ImmutableArray.Create(
+                        new TxOutput(0, ImmutableArray<byte>.Empty),
+                        new TxOutput(1, ImmutableArray<byte>.Empty),
+                        new TxOutput(2, ImmutableArray<byte>.Empty))),
                 new UnmintedTx(txHash: (UInt256)1,
-                    prevOutputTxKeys: ImmutableArray.Create(
-                        new TxLookupKey(blockHash: (UInt256)0, txIndex: 3),
-                        new TxLookupKey(blockHash: (UInt256)0, txIndex: 4),
-                        new TxLookupKey(blockHash: (UInt256)0, txIndex: 5))));
+                    prevTxOutputs: ImmutableArray.Create(
+                        new TxOutput(3, ImmutableArray<byte>.Empty),
+                        new TxOutput(4, ImmutableArray<byte>.Empty),
+                        new TxOutput(5, ImmutableArray<byte>.Empty))));
 
             var unmintedTxes1 = ImmutableList.Create(
                 new UnmintedTx(txHash: (UInt256)2,
-                    prevOutputTxKeys: ImmutableArray.Create(
-                        new TxLookupKey(blockHash: (UInt256)1, txIndex: 0),
-                        new TxLookupKey(blockHash: (UInt256)1, txIndex: 1))),
+                    prevTxOutputs: ImmutableArray.Create(
+                        new TxOutput(6, ImmutableArray<byte>.Empty),
+                        new TxOutput(7, ImmutableArray<byte>.Empty))),
                 new UnmintedTx(txHash: (UInt256)3,
-                    prevOutputTxKeys: ImmutableArray.Create(
-                        new TxLookupKey(blockHash: (UInt256)1, txIndex: 2),
-                        new TxLookupKey(blockHash: (UInt256)1, txIndex: 3))));
+                    prevTxOutputs: ImmutableArray.Create(
+                        new TxOutput(8, ImmutableArray<byte>.Empty),
+                        new TxOutput(9, ImmutableArray<byte>.Empty))));
 
             using (var storageManager = provider.OpenStorageManager())
             using (var handle = storageManager.OpenChainStateCursor())
@@ -895,25 +895,25 @@ namespace BitSharp.Core.Test.Storage
         {
             var unmintedTxes0 = ImmutableList.Create(
                 new UnmintedTx(txHash: (UInt256)0,
-                    prevOutputTxKeys: ImmutableArray.Create(
-                        new TxLookupKey(blockHash: (UInt256)0, txIndex: 0),
-                        new TxLookupKey(blockHash: (UInt256)0, txIndex: 1),
-                        new TxLookupKey(blockHash: (UInt256)0, txIndex: 2))),
+                    prevTxOutputs: ImmutableArray.Create(
+                        new TxOutput(0, ImmutableArray<byte>.Empty),
+                        new TxOutput(1, ImmutableArray<byte>.Empty),
+                        new TxOutput(2, ImmutableArray<byte>.Empty))),
                 new UnmintedTx(txHash: (UInt256)1,
-                    prevOutputTxKeys: ImmutableArray.Create(
-                        new TxLookupKey(blockHash: (UInt256)0, txIndex: 3),
-                        new TxLookupKey(blockHash: (UInt256)0, txIndex: 4),
-                        new TxLookupKey(blockHash: (UInt256)0, txIndex: 5))));
+                    prevTxOutputs: ImmutableArray.Create(
+                        new TxOutput(3, ImmutableArray<byte>.Empty),
+                        new TxOutput(4, ImmutableArray<byte>.Empty),
+                        new TxOutput(5, ImmutableArray<byte>.Empty))));
 
             var unmintedTxes1 = ImmutableList.Create(
                 new UnmintedTx(txHash: (UInt256)2,
-                    prevOutputTxKeys: ImmutableArray.Create(
-                        new TxLookupKey(blockHash: (UInt256)1, txIndex: 0),
-                        new TxLookupKey(blockHash: (UInt256)1, txIndex: 1))),
+                    prevTxOutputs: ImmutableArray.Create(
+                        new TxOutput(6, ImmutableArray<byte>.Empty),
+                        new TxOutput(7, ImmutableArray<byte>.Empty))),
                 new UnmintedTx(txHash: (UInt256)3,
-                    prevOutputTxKeys: ImmutableArray.Create(
-                        new TxLookupKey(blockHash: (UInt256)1, txIndex: 2),
-                        new TxLookupKey(blockHash: (UInt256)1, txIndex: 3))));
+                    prevTxOutputs: ImmutableArray.Create(
+                        new TxOutput(8, ImmutableArray<byte>.Empty),
+                        new TxOutput(9, ImmutableArray<byte>.Empty))));
 
             using (var storageManager = provider.OpenStorageManager())
             using (var handle = storageManager.OpenChainStateCursor())

@@ -558,9 +558,9 @@ namespace BitSharp.Core
         public static UnmintedTx DecodeUnmintedTx(BinaryReader reader)
         {
             var txHash = reader.ReadUInt256();
-            var prevOutputTxKeys = reader.ReadList(() => DecodeTxLookupKey(reader));
+            var prevTxOutputs = DecodeTxOutputList(reader);
 
-            return new UnmintedTx(txHash, prevOutputTxKeys);
+            return new UnmintedTx(txHash, prevTxOutputs);
         }
 
         public static UnmintedTx DecodeUnmintedTx(byte[] bytes)
@@ -575,7 +575,7 @@ namespace BitSharp.Core
         public static void EncodeUnmintedTx(BinaryWriter writer, UnmintedTx unmintedTx)
         {
             writer.WriteUInt256(unmintedTx.TxHash);
-            writer.WriteList(unmintedTx.PrevOutputTxKeys, x => EncodeTxLookupKey(writer, x));
+            EncodeTxOutputList(writer, unmintedTx.PrevTxOutputs);
         }
 
         public static byte[] EncodeUnmintedTx(UnmintedTx unmintedTx)

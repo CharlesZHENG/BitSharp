@@ -163,18 +163,18 @@ namespace BitSharp.Wallet
         {
             var replayTxes = BlockReplayer.ReplayBlock(coreStorage, chainState, scanBlock.Hash, forward, cancelToken);
 
-            var txScanner = new ActionBlock<LoadedTx>(
-                loadedTx =>
+            var txScanner = new ActionBlock<ValidatableTx>(
+                validatableTx =>
                 {
-                    var tx = loadedTx.Transaction;
-                    var txIndex = loadedTx.TxIndex;
+                    var tx = validatableTx.Transaction;
+                    var txIndex = validatableTx.Index;
 
-                    if (!loadedTx.IsCoinbase)
+                    if (!validatableTx.IsCoinbase)
                     {
                         for (var inputIndex = 0; inputIndex < tx.Inputs.Length; inputIndex++)
                         {
                             var input = tx.Inputs[inputIndex];
-                            var prevOutput = loadedTx.GetInputPrevTxOutput(inputIndex);
+                            var prevOutput = validatableTx.PrevTxOutputs[inputIndex];
                             var prevOutputScriptHash = new UInt256(SHA256Static.ComputeHash(prevOutput.ScriptPublicKey));
 
                             var chainPosition = ChainPosition.Fake();
@@ -191,7 +191,7 @@ namespace BitSharp.Wallet
 
                         var chainPosition = ChainPosition.Fake();
                         var entryType =
-                            loadedTx.IsCoinbase ?
+                            validatableTx.IsCoinbase ?
                                 (forward ? EnumWalletEntryType.Mine : EnumWalletEntryType.UnMine)
                                 : (forward ? EnumWalletEntryType.Receive : EnumWalletEntryType.UnReceieve);
 

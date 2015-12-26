@@ -163,7 +163,7 @@ namespace BitSharp.Core.Builders
                 chainStateCursor.TotalInputCount -= tx.Inputs.Length;
                 chainStateCursor.TotalOutputCount -= tx.Outputs.Length;
 
-                var prevOutputTxKeys = ImmutableArray.CreateBuilder<TxLookupKey>(!blockTx.IsCoinbase ? tx.Inputs.Length : 0);
+                var prevTxOutputs = ImmutableArray.CreateBuilder<TxOutput>(!blockTx.IsCoinbase ? tx.Inputs.Length : 0);
 
                 if (!blockTx.IsCoinbase)
                 {
@@ -174,16 +174,15 @@ namespace BitSharp.Core.Builders
                         var unspentTx = this.Unspend(chainStateCursor, input, chainedHeader);
 
                         // store rollback replay information
-                        var unspentTxBlockHash = chain.Blocks[unspentTx.BlockIndex].Hash;
-                        prevOutputTxKeys.Add(new TxLookupKey(unspentTxBlockHash, unspentTx.TxIndex));
+                        prevTxOutputs.Add(unspentTx.TxOutputs[(int)input.PreviousTxOutputKey.TxOutputIndex]);
                     }
                 }
 
                 // reverse output keys to match original input order, as the inputs were read in reverse here
-                prevOutputTxKeys.Reverse();
+                prevTxOutputs.Reverse();
 
                 // store rollback replay information
-                unmintedTxes.Add(new UnmintedTx(tx.Hash, prevOutputTxKeys.MoveToImmutable()));
+                unmintedTxes.Add(new UnmintedTx(tx.Hash, prevTxOutputs.MoveToImmutable()));
             }
         }
 
