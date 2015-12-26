@@ -19,7 +19,7 @@ namespace BitSharp.Core.Test.Script
             var privateKey = keyPair.Item1;
             var publicKey = keyPair.Item2;
 
-            var coinbaseTx = txManager.CreateCoinbaseTransaction(publicKey, Encoding.ASCII.GetBytes("coinbase text!"));
+            var coinbaseTx = txManager.CreateCoinbaseTransaction(publicKey, Encoding.ASCII.GetBytes("coinbase text!")).Transaction;
 
             var publicKeyScript = txManager.CreatePublicKeyScript(publicKey);
             var privateKeyScript = txManager.CreatePrivateKeyScript(coinbaseTx, 0, (byte)ScriptHashType.SIGHASH_ALL, privateKey, publicKey);

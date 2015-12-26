@@ -21,16 +21,6 @@ namespace BitSharp.Core
             return new UInt256(SHA256Static.ComputeDoubleHash(DataEncoder.EncodeBlockHeader(Version, PreviousBlock, MerkleRoot, Time, Bits, Nonce)));
         }
 
-        public static UInt256 CalculateTransactionHash(Transaction tx)
-        {
-            return new UInt256(SHA256Static.ComputeDoubleHash(DataEncoder.EncodeTransaction(tx)));
-        }
-
-        public static UInt256 CalculateTransactionHash(UInt32 Version, ImmutableArray<TxInput> Inputs, ImmutableArray<TxOutput> Outputs, UInt32 LockTime)
-        {
-            return new UInt256(SHA256Static.ComputeDoubleHash(DataEncoder.EncodeTransaction(Version, Inputs, Outputs, LockTime)));
-        }
-
         //TDOO name...
         private static readonly BigInteger Max256BitTarget = BigInteger.Pow(2, 256);
         public static BigInteger CalculateWork(BlockHeader blockHeader)

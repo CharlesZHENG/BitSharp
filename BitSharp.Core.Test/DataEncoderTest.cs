@@ -65,14 +65,14 @@ namespace BitSharp.Core.Test
         [TestMethod]
         public void TestWireEncodeTransaction()
         {
-            var actual = DataEncoder.EncodeTransaction(TRANSACTION_1);
+            var actual = DataEncoder.EncodeTransaction(TRANSACTION_1).TxBytes;
             CollectionAssert.AreEqual(TRANSACTION_1_BYTES.ToList(), actual.ToList());
         }
 
         [TestMethod]
         public void TestWireDecodeTransaction()
         {
-            var actual = DataEncoder.EncodeTransaction(DataEncoder.DecodeTransaction(TRANSACTION_1_BYTES.ToArray()).Transaction);
+            var actual = DataEncoder.EncodeTransaction(DataEncoder.DecodeTransaction(TRANSACTION_1_BYTES.ToArray()).Transaction).TxBytes;
             CollectionAssert.AreEqual(TRANSACTION_1_BYTES.ToList(), actual.ToList());
         }
     }

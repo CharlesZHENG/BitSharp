@@ -87,7 +87,7 @@ namespace BitSharp.Core.Test
 
         public Block CreateBlock(UInt256 previousBlockHash, int txCount, UInt256 target = null)
         {
-            var coinbaseTx = new Transaction
+            var coinbaseTx = Transaction.Create
             (
                 version: 0,
                 inputs: ImmutableArray.Create
@@ -112,7 +112,7 @@ namespace BitSharp.Core.Test
                     )
                 ),
                 lockTime: 0
-            );
+            ).Transaction;
 
 
             var transactionsBuilder = ImmutableArray.CreateBuilder<Transaction>(txCount + 1);
@@ -129,11 +129,11 @@ namespace BitSharp.Core.Test
                     :
                     ImmutableArray.Create(new TxOutput(prevTx.Outputs[0].Value - 1, coinbaseTx.Outputs[0].ScriptPublicKey));
 
-                var tx = new Transaction(
+                var tx = Transaction.Create(
                     version: 0,
                     inputs: ImmutableArray.Create(new TxInput(new TxOutputKey(prevTx.Hash, 0), new byte[100].ToImmutableArray(), 0)),
                     outputs: outputs,
-                    lockTime: 0);
+                    lockTime: 0).Transaction;
 
                 transactionsBuilder.Add(tx);
                 prevTx = tx;

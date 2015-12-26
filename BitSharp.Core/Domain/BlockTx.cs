@@ -32,6 +32,8 @@ namespace BitSharp.Core.Domain
 
         public EncodedTx EncodedTx { get; }
 
+        public ImmutableArray<byte> TxBytes => EncodedTx.TxBytes;
+
         public DecodedBlockTx Decode()
         {
             return new DecodedBlockTx(Index, EncodedTx.Decode());
@@ -42,10 +44,17 @@ namespace BitSharp.Core.Domain
             if (tx == null)
                 throw new ArgumentNullException(nameof(tx));
 
-            var txBytes = DataEncoder.EncodeTransaction(tx).ToImmutableArray();
-            var decodedTx = new DecodedTx(txBytes, tx);
+            var decodedTx = DataEncoder.EncodeTransaction(tx);
 
             return new DecodedBlockTx(txIndex, decodedTx);
+        }
+
+        public static DecodedBlockTx Create(int txIndex, DecodedTx tx)
+        {
+            if (tx == null)
+                throw new ArgumentNullException(nameof(tx));
+
+            return new DecodedBlockTx(txIndex, tx);
         }
 
         public static implicit operator BlockTxNode(BlockTx tx)

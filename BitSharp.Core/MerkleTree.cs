@@ -88,6 +88,16 @@ namespace BitSharp.Core
             return CalculateMerkleRoot(transactions.Select(x => x.Hash));
         }
 
+        public static UInt256 CalculateMerkleRoot(IEnumerable<EncodedTx> transactions)
+        {
+            return CalculateMerkleRoot(transactions.Select(x => x.Hash));
+        }
+
+        public static UInt256 CalculateMerkleRoot(IEnumerable<BlockTx> transactions)
+        {
+            return CalculateMerkleRoot(transactions.Select(x => x.Hash));
+        }
+
         public static UInt256 CalculateMerkleRoot(IEnumerable<UInt256> hashes)
         {
             var merkleStream = new MerkleStream<MerkleTreeNode>();

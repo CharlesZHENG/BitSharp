@@ -68,7 +68,7 @@ namespace BitSharp.Core.Test
                 // attempt to spend block 2's coinbase in block 3
                 var spendTx = daemon.TxManager.CreateSpendTransaction(block2.Transactions[0], 0, (byte)ScriptHashType.SIGHASH_ALL, 50 * SATOSHI_PER_BTC, daemon.CoinbasePrivateKey, daemon.CoinbasePublicKey, toPublicKey);
                 var block3Unmined = daemon.CreateEmptyBlock(block2.Hash)
-                    .WithAddedTransactions(spendTx);
+                    .CreateWithAddedTransactions(spendTx);
                 var block3 = daemon.MineAndAddBlock(block3Unmined);
 
                 // check
@@ -110,7 +110,7 @@ namespace BitSharp.Core.Test
                 // spend block 2's coinbase in block 3
                 var spendTx = daemon.TxManager.CreateSpendTransaction(block2.Transactions[0], 0, (byte)ScriptHashType.SIGHASH_ALL, 50 * SATOSHI_PER_BTC, daemon.CoinbasePrivateKey, daemon.CoinbasePublicKey, toPublicKey);
                 var block3Unmined = daemon.CreateEmptyBlock(block2.Hash)
-                    .WithAddedTransactions(spendTx);
+                    .CreateWithAddedTransactions(spendTx);
                 var block3 = daemon.MineAndAddBlock(block3Unmined);
 
                 // check
@@ -120,7 +120,7 @@ namespace BitSharp.Core.Test
                 // attempt to spend block 2's coinbase again in block 4
                 var doubleSpendTx = daemon.TxManager.CreateSpendTransaction(block2.Transactions[0], 0, (byte)ScriptHashType.SIGHASH_ALL, 50 * SATOSHI_PER_BTC, daemon.CoinbasePrivateKey, daemon.CoinbasePublicKey, toPublicKeyBad);
                 var block4BadUmined = daemon.CreateEmptyBlock(block3.Hash)
-                    .WithAddedTransactions(doubleSpendTx);
+                    .CreateWithAddedTransactions(doubleSpendTx);
                 var block4Bad = daemon.MineAndAddBlock(block4BadUmined);
 
                 // check that bad block wasn't added
@@ -158,7 +158,7 @@ namespace BitSharp.Core.Test
                 // attempt to spend block 2's coinbase in block 3, using twice its value
                 var spendTx = daemon.TxManager.CreateSpendTransaction(block2.Transactions[0], 0, (byte)ScriptHashType.SIGHASH_ALL, 100 * SATOSHI_PER_BTC, daemon.CoinbasePrivateKey, daemon.CoinbasePublicKey, toPublicKey);
                 var block3BadUnmined = daemon.CreateEmptyBlock(block2.Hash)
-                    .WithAddedTransactions(spendTx);
+                    .CreateWithAddedTransactions(spendTx);
                 var block3Bad = daemon.MineAndAddBlock(block3BadUnmined);
 
                 // check that bad block wasn't added

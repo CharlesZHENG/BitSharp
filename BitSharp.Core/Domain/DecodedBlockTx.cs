@@ -17,5 +17,10 @@ namespace BitSharp.Core.Domain
         public DecodedTx DecodedTx { get; }
 
         public Transaction Transaction { get; }
+
+        public static implicit operator BlockTxNode(DecodedBlockTx tx)
+        {
+            return new BlockTxNode(tx.Index, 0, tx.Hash, false, tx.EncodedTx);
+        }
     }
 }

@@ -55,7 +55,7 @@ namespace BitSharp.Core
         public static void EncodeBlock(BinaryWriter writer, Block block)
         {
             EncodeBlockHeader(writer, block.Header);
-            writer.WriteList(block.BlockTxes, tx => writer.WriteBytes(tx.EncodedTx.TxBytes.ToArray()));
+            writer.WriteList(block.BlockTxes, tx => writer.WriteBytes(tx.TxBytes.ToArray()));
         }
 
         public static byte[] EncodeBlock(Block block)
@@ -283,6 +283,8 @@ namespace BitSharp.Core
             // resize raw tx bytes to final size
             Array.Resize(ref txBytes, startIndex);
 
+            txHash = txHash ?? new UInt256(SHA256Static.ComputeDoubleHash(txBytes));
+
             var tx = new Transaction(version, inputs.MoveToImmutable(), outputs.MoveToImmutable(), lockTime, txHash);
             return new DecodedTx(txBytes.ToImmutableArray(), tx);
         }
@@ -310,7 +312,7 @@ namespace BitSharp.Core
             writer.WriteUInt32(tx.LockTime);
         }
 
-        public static byte[] EncodeTransaction(UInt32 Version, ImmutableArray<TxInput> Inputs, ImmutableArray<TxOutput> Outputs, UInt32 LockTime)
+        public static DecodedTx EncodeTransaction(UInt32 Version, ImmutableArray<TxInput> Inputs, ImmutableArray<TxOutput> Outputs, UInt32 LockTime)
         {
             using (var stream = new MemoryStream())
             using (var writer = new BinaryWriter(stream))
@@ -320,17 +322,24 @@ namespace BitSharp.Core
                 writer.WriteList(Outputs, output => EncodeTxOutput(writer, output));
                 writer.WriteUInt32(LockTime);
 
-                return stream.ToArray();
+                var txBytes = stream.ToArray();
+                var txHash = new UInt256(SHA256Static.ComputeDoubleHash(txBytes));
+                var tx = new Transaction(Version, Inputs, Outputs, LockTime, txHash);
+
+                return new DecodedTx(txBytes.ToImmutableArray(), tx);
             }
         }
 
-        public static byte[] EncodeTransaction(Transaction tx)
+        public static DecodedTx EncodeTransaction(Transaction tx)
         {
             using (var stream = new MemoryStream())
             using (var writer = new BinaryWriter(stream))
             {
                 EncodeTransaction(writer, tx);
-                return stream.ToArray();
+
+                var txBytes = stream.ToArray();
+
+                return new DecodedTx(txBytes.ToImmutableArray(), tx);
             }
         }
 
@@ -668,7 +677,7 @@ namespace BitSharp.Core
             writer.WriteUInt256(blockTx.Hash);
             writer.WriteBool(blockTx.Pruned);
             if (!blockTx.Pruned)
-                writer.WriteBytes(blockTx.EncodedTx.TxBytes.ToArray());
+                writer.WriteBytes(blockTx.TxBytes.ToArray());
         }
 
         public static byte[] EncodeBlockTxNode(BlockTxNode blockTx)

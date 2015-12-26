@@ -47,13 +47,13 @@ namespace BitSharp.Core.Test
 
         public static Transaction RandomTransaction(RandomDataOptions options = default(RandomDataOptions))
         {
-            return new Transaction
+            return Transaction.Create
             (
                 version: random.NextUInt32(),
                 inputs: Enumerable.Range(0, random.NextOrExactly(10, options.TxInputCount)).Select(x => RandomTxInput()).ToImmutableArray(),
                 outputs: Enumerable.Range(0, random.NextOrExactly(10, options.TxOutputCount)).Select(x => RandomTxOutput()).ToImmutableArray(),
                 lockTime: random.NextUInt32()
-            );
+            ).Transaction;
         }
 
         public static TxInput RandomTxInput(RandomDataOptions options = default(RandomDataOptions))

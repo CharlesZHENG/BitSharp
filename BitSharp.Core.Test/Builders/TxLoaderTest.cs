@@ -46,7 +46,7 @@ namespace BitSharp.Core.Test.Builders
 
             // create a loading tx with the 4 inputs referencing block hash 0
             var tx = RandomData.RandomTransaction(new RandomDataOptions { TxOutputCount = 1 })
-                .With(Inputs: inputs.ToImmutableArray());
+                .CreateWith(Inputs: inputs.ToImmutableArray()).Transaction;
             var prevOutputTxKeys = ImmutableArray.CreateRange(
                 Enumerable.Range(0, prevTxCount).Select(x => new TxLookupKey(UInt256.Zero, x)));
             var loadingTx = new LoadingTx(txIndex, tx, chainedHeader, prevOutputTxKeys);

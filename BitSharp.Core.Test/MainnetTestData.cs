@@ -27,7 +27,7 @@ namespace BitSharp.Core.Test
             ),
             transactions: ImmutableArray.Create
             (
-                new Transaction
+                Transaction.Create
                 (
                     version: 1,
                     inputs: ImmutableArray.Create

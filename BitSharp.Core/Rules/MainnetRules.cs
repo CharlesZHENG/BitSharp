@@ -40,7 +40,7 @@ namespace BitSharp.Core.Rules
                     ),
                     transactions: ImmutableArray.Create
                     (
-                        new Transaction
+                        Transaction.Create
                         (
                             version: 1,
                             inputs: ImmutableArray.Create
@@ -315,7 +315,7 @@ namespace BitSharp.Core.Rules
         public virtual void ValidationTransactionScript(ChainedHeader chainedHeader, BlockTx tx, TxInput txInput, int txInputIndex, TxOutput prevTxOutput)
         {
             var result = LibbitcoinConsensus.VerifyScript(
-                tx.EncodedTx.TxBytes,
+                tx.TxBytes,
                 prevTxOutput.ScriptPublicKey,
                 txInputIndex);
 

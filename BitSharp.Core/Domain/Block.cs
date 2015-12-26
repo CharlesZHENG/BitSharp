@@ -44,6 +44,14 @@ namespace BitSharp.Core.Domain
             return new Block(header, blockTxes);
         }
 
+        public static Block Create(BlockHeader header, ImmutableArray<DecodedTx> transactions)
+        {
+            var blockTxes = ImmutableArray.CreateRange(transactions.Select((tx, txIndex) =>
+                new BlockTx(txIndex, tx)));
+
+            return new Block(header, blockTxes);
+        }
+
         public Block CreateWith(BlockHeader Header = null, ImmutableArray<Transaction>? Transactions = null)
         {
             if (Transactions == null)

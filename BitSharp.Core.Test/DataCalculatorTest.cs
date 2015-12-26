@@ -70,7 +70,7 @@ namespace BitSharp.Core.Test
         public void TestCalculateTransactionHash()
         {
             var expectedHash = UInt256.ParseHex("4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b");
-            var tx = new Transaction
+            var tx = Transaction.Create
             (
                 version: 1,
                 inputs: ImmutableArray.Create(
@@ -87,10 +87,9 @@ namespace BitSharp.Core.Test
                         scriptPublicKey: "4104678afdb0fe5548271967f1a67130b7105cd6a828e03909a67962e0ea1f61deb649f6bc3f4cef38c4f35504e51ec112de5c384df7ba0b8d578a4c702b6bf11d5fac".HexToByteArray().ToImmutableArray()
                     )),
                 lockTime: 0
-            );
+            ).Transaction;
 
-            Assert.AreEqual(expectedHash, DataCalculator.CalculateTransactionHash(tx));
-            Assert.AreEqual(expectedHash, DataCalculator.CalculateTransactionHash(tx.Version, tx.Inputs, tx.Outputs, tx.LockTime));
+            Assert.AreEqual(expectedHash, tx.Hash);
         }
     }
 }

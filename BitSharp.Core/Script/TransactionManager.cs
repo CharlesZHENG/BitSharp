@@ -116,9 +116,9 @@ namespace BitSharp.Core.Script
             }
         }
 
-        public Transaction CreateCoinbaseTransaction(ECPublicKeyParameters publicKey, byte[] coinbase)
+        public DecodedTx CreateCoinbaseTransaction(ECPublicKeyParameters publicKey, byte[] coinbase)
         {
-            var tx = new Transaction
+            var tx = Transaction.Create
             (
                 version: 1,
                 inputs: ImmutableArray.Create
@@ -148,9 +148,9 @@ namespace BitSharp.Core.Script
             return tx;
         }
 
-        public Transaction CreateSpendTransaction(Transaction prevTx, int prevInputIndex, byte hashType, UInt64 value, ECPrivateKeyParameters fromPrivateKey, ECPublicKeyParameters fromPublicKey, ECPublicKeyParameters toPublicKey)
+        public DecodedTx CreateSpendTransaction(Transaction prevTx, int prevInputIndex, byte hashType, UInt64 value, ECPrivateKeyParameters fromPrivateKey, ECPublicKeyParameters fromPublicKey, ECPublicKeyParameters toPublicKey)
         {
-            var tx = new Transaction
+            var tx = Transaction.Create
             (
                 version: 1,
                 inputs: ImmutableArray.Create
@@ -178,10 +178,10 @@ namespace BitSharp.Core.Script
             );
 
             // sign the transaction
-            var scriptSignature = CreatePrivateKeyScript(tx, 0, hashType, fromPrivateKey, fromPublicKey).ToImmutableArray();
+            var scriptSignature = CreatePrivateKeyScript(tx.Transaction, 0, hashType, fromPrivateKey, fromPublicKey).ToImmutableArray();
 
             // add the signature script to the transaction
-            tx = tx.With(Inputs: ImmutableArray.Create(tx.Inputs[0].With(scriptSignature: scriptSignature)));
+            tx = tx.Transaction.CreateWith(Inputs: ImmutableArray.Create(tx.Transaction.Inputs[0].With(scriptSignature: scriptSignature)));
 
             return tx;
         }

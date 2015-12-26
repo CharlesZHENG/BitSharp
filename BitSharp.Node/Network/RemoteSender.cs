@@ -38,7 +38,7 @@ namespace BitSharp.Node.Network
             Dispose(true);
             GC.SuppressFinalize(this);
         }
-        
+
         protected virtual void Dispose(bool disposing)
         {
             if (!isDisposed && disposing)
@@ -136,11 +136,11 @@ namespace BitSharp.Node.Network
             await SendMessageAsync(invMessage);
         }
 
-        public async Task SendTransaction(Transaction transaction)
+        public async Task SendTransaction(EncodedTx transaction)
         {
             await Task.Yield();
 
-            var sendTxMessage = Messaging.ConstructMessage("tx", DataEncoder.EncodeTransaction(transaction));
+            var sendTxMessage = Messaging.ConstructMessage("tx", transaction.TxBytes.ToArray());
 
             await SendMessageAsync(sendTxMessage);
         }

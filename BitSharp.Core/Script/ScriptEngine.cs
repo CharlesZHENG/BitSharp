@@ -361,13 +361,13 @@ Verifying script for block {0}, transaction {1}, input {2}
             //}
 
             // create simplified transaction
-            var newTx = tx.With(Inputs: newInputs.ToImmutable());
+            var newTx = tx.CreateWith(Inputs: newInputs.ToImmutable());
 
             // return wire-encoded simplified transaction with the 4-byte hashType tacked onto the end
             using (var stream = new MemoryStream())
             using (var writer = new BinaryWriter(stream))
             {
-                writer.WriteBytes(DataEncoder.EncodeTransaction(newTx));
+                writer.WriteBytes(newTx.TxBytes.ToArray());
                 writer.WriteUInt32(hashType);
 
                 return stream.ToArray();

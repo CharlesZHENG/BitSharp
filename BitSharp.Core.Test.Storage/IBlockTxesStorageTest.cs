@@ -196,7 +196,7 @@ namespace BitSharp.Core.Test.Storage
                 {
                     Assert.IsTrue(blockTxesStorage.TryGetTransaction(block.Hash, txIndex, out transaction));
                     Assert.AreEqual(block.Transactions[txIndex].Hash, transaction.Hash);
-                    Assert.AreEqual(transaction.Hash, DataCalculator.CalculateTransactionHash(transaction.Decode().Transaction));
+                    Assert.AreEqual(transaction.Hash, new UInt256(SHA256Static.ComputeDoubleHash(transaction.TxBytes.ToArray())));
                 }
             }
         }
@@ -222,7 +222,7 @@ namespace BitSharp.Core.Test.Storage
                 var actualBlockTxHashes = actualBlockTxes.Select(x => x.Hash).ToList();
 
                 // verify all retrieved transactions match their hashes
-                Assert.IsTrue(actualBlockTxes.All(x => x.Hash == DataCalculator.CalculateTransactionHash(x.Decode().Transaction)));
+                Assert.IsTrue(actualBlockTxes.All(x => x.Hash == new UInt256(SHA256Static.ComputeDoubleHash(x.TxBytes.ToArray()))));
 
                 // verify retrieved block transactions match stored block transactions
                 CollectionAssert.AreEqual(expectedBlockTxHashes, actualBlockTxHashes);

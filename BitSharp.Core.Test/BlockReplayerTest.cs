@@ -68,13 +68,13 @@ namespace BitSharp.Core.Test
                 // add block 2, spending from block 1
                 var spendTx1 = daemon.TxManager.CreateSpendTransaction(block1.Transactions[0], 0, (byte)ScriptHashType.SIGHASH_ALL, block1.Transactions[0].OutputValue(), daemon.CoinbasePrivateKey, daemon.CoinbasePublicKey, toPublicKey);
                 var block2Unmined = daemon.CreateEmptyBlock(block1.Hash)
-                    .WithAddedTransactions(spendTx1);
+                    .CreateWithAddedTransactions(spendTx1);
                 var block2 = daemon.MineAndAddBlock(block2Unmined);
 
                 // add block 3, spending from block 2
                 var spendTx2 = daemon.TxManager.CreateSpendTransaction(block2.Transactions[1], 0, (byte)ScriptHashType.SIGHASH_ALL, block2.Transactions[1].OutputValue(), toPrivateKey, toPublicKey, toPublicKey);
                 var block3Unmined = daemon.CreateEmptyBlock(block2.Hash)
-                    .WithAddedTransactions(spendTx2);
+                    .CreateWithAddedTransactions(spendTx2);
                 var block3 = daemon.MineAndAddBlock(block3Unmined);
 
                 // replay all blocks up to block 3

@@ -1,20 +1,22 @@
 ﻿using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Domain;
 using System;
+using System.Linq;
 
 namespace BitSharp.Core.Test
 {
     public static class ExtensionMethods
     {
-        public static Block WithAddedTransactions(this Block block, params Transaction[] transactions)
+        public static Block CreateWithAddedTransactions(this Block block, params EncodedTx[] transactions)
         {
             // update transactions
-            block = block.CreateWith(Transactions: block.Transactions.AddRange(transactions));
+            var updatedTxes = block.BlockTxes.AddRange(transactions.Select((tx, txIndex) =>
+                new BlockTx(block.BlockTxes.Length + txIndex, tx)));
 
             // update merkle root
-            block = block.CreateWith(block.Header.With(MerkleRoot: MerkleTree.CalculateMerkleRoot(block.Transactions)));
+            var updatedHeader = block.Header.With(MerkleRoot: MerkleTree.CalculateMerkleRoot(updatedTxes));
 
-            return block;
+            return new Block(updatedHeader, updatedTxes);
         }
 
         public static UInt64 OutputValue(this Transaction transaction)

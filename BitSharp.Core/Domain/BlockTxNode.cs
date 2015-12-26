@@ -37,6 +37,8 @@ namespace BitSharp.Core.Domain
 
         public EncodedTx EncodedTx { get; }
 
+        public ImmutableArray<byte> TxBytes => EncodedTx.TxBytes;
+
         public BlockTx ToBlockTx()
         {
             // verify this is a valid BlockTx (cannot be pruned)
