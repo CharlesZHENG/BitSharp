@@ -112,7 +112,7 @@ namespace BitSharp.IntegrationTest
 
                                 // verify pull tester successfully connected
                                 Assert.IsTrue(errorOutput.ToString().Contains(
-                                    $"NioClientManager.handleKey: Successfully connected to localhost/127.0.0.1:{port}"));
+                                    $"NioClientManager.handleKey: Successfully connected to /127.0.0.1:{port}"));
 
                                 // don't validate pull tester result, consensus is not implemented and it will always fail
                                 Assert.Inconclusive("TODO");

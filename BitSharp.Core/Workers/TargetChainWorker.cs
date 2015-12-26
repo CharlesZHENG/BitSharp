@@ -67,6 +67,18 @@ namespace BitSharp.Core.Workers
             return this.updatedTracker.WaitForUpdate(timeout);
         }
 
+        public void ForceUpdate()
+        {
+            updatedTracker.MarkStale();
+            ForceWork();
+        }
+
+        public void ForceUpdateAndWait()
+        {
+            ForceUpdate();
+            WaitForUpdate();
+        }
+
         protected override Task WorkAction()
         {
             UpdateTargetBlock();

@@ -234,6 +234,18 @@ namespace BitSharp.Core
             this.chainStateWorker.WaitForUpdate();
         }
 
+        public void ForceUpdate()
+        {
+            this.targetChainWorker.ForceUpdate();
+            this.chainStateWorker.ForceUpdate();
+        }
+
+        public void ForceUpdateAndWait()
+        {
+            this.targetChainWorker.ForceUpdateAndWait();
+            this.chainStateWorker.ForceUpdateAndWait();
+        }
+
         //TODO need to implement functionality to prevent pruning from removing block data that is being used by chain state snapshots
         //TODO i.e. don't prune past height X
         public IChainState GetChainState()

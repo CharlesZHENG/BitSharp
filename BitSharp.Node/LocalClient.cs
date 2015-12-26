@@ -49,6 +49,11 @@ namespace BitSharp.Node
 
         private bool isDisposed;
 
+        //TODO properly organize comparison tool code
+        private readonly ConcurrentSet<UInt256> requestedComparisonBlocks = new ConcurrentSet<UInt256>();
+        private readonly AutoResetEvent comparisonBlockAddedEvent = new AutoResetEvent(false);
+        private readonly ManualResetEvent comparisonHeadersSentEvent = new ManualResetEvent(true);
+
         public LocalClient(RulesEnum type, IKernel kernel, IBlockchainRules rules, CoreDaemon coreDaemon, INetworkPeerStorage networkPeerStorage)
         {
             this.shutdownToken = new CancellationTokenSource();
@@ -81,6 +86,8 @@ namespace BitSharp.Node
             this.peerWorker.PeerConnected += HandlePeerConnected;
             this.peerWorker.PeerDisconnected += HandlePeerDisconnected;
 
+            this.blockRequestWorker.OnBlockAdded += HandleBlockAdded;
+
             switch (this.Type)
             {
                 case RulesEnum.MainNet:
@@ -107,9 +114,8 @@ namespace BitSharp.Node
         public void Start(bool connectToPeers = true)
         {
             if (this.Type != RulesEnum.ComparisonToolTestNet)
-            {
                 this.headersRequestWorker.Start();
-            }
+
             this.blockRequestWorker.Start();
 
             this.statsWorker.Start();
@@ -148,6 +154,8 @@ namespace BitSharp.Node
                 this.peerWorker.PeerConnected -= HandlePeerConnected;
                 this.peerWorker.PeerDisconnected -= HandlePeerDisconnected;
 
+                this.blockRequestWorker.OnBlockAdded -= HandleBlockAdded;
+
                 this.messageRateMeasure.Dispose();
                 this.statsWorker.Dispose();
                 this.headersRequestWorker.Dispose();
@@ -155,6 +163,9 @@ namespace BitSharp.Node
                 this.peerWorker.Dispose();
                 this.listenWorker.Dispose();
                 this.shutdownToken.Dispose();
+
+                this.comparisonBlockAddedEvent.Dispose();
+                this.comparisonHeadersSentEvent.Dispose();
 
                 isDisposed = true;
             }
@@ -270,6 +281,17 @@ namespace BitSharp.Node
             this.blockRequestWorker.NotifyWork();
         }
 
+        private void HandleBlockAdded(Object sender, UInt256 blockHash)
+        {
+            if (type == RulesEnum.ComparisonToolTestNet)
+            {
+                this.coreDaemon.ForceUpdateAndWait();
+
+                requestedComparisonBlocks.Remove(blockHash);
+                comparisonBlockAddedEvent.Set();
+            }
+        }
+
         private void WirePeerEvents(Peer peer)
         {
             peer.Receiver.OnMessage += OnMessage;
@@ -319,10 +341,12 @@ namespace BitSharp.Node
                         && !this.coreStorage.ContainsBlockTxes(invVector.Hash))
                     {
                         responseInvVectors.Add(invVector);
+                        requestedComparisonBlocks.Add(invVector.Hash);
                     }
                 }
 
-                connectedPeersLocal.Single().Sender.SendGetData(responseInvVectors.ToImmutable()).Forget();
+                if (responseInvVectors.Count > 0)
+                    connectedPeersLocal.Single().Sender.SendGetData(responseInvVectors.ToImmutable()).Wait();
             }
         }
 
@@ -410,11 +434,14 @@ namespace BitSharp.Node
         {
             if (this.Type == RulesEnum.ComparisonToolTestNet)
             {
+                // don't send headers until all blocks requested from the comparison tool have been downloaded and processed
+                while (this.requestedComparisonBlocks.Count > 0 && comparisonBlockAddedEvent.WaitOne(1000))
+                { }
                 this.coreDaemon.WaitForUpdate();
             }
 
-            var targetChainLocal = this.coreDaemon.TargetChain;
-            if (targetChainLocal == null)
+            var currentChainLocal = this.coreDaemon.CurrentChain;
+            if (currentChainLocal == null)
                 return;
 
             ChainedHeader matchingChainedHeader = null;
@@ -423,8 +450,8 @@ namespace BitSharp.Node
                 ChainedHeader chainedHeader;
                 if (this.coreStorage.TryGetChainedHeader(blockHash, out chainedHeader))
                 {
-                    if (chainedHeader.Height < targetChainLocal.Blocks.Count
-                        && chainedHeader.Hash == targetChainLocal.Blocks[chainedHeader.Height].Hash)
+                    if (chainedHeader.Height < currentChainLocal.Blocks.Count
+                        && chainedHeader.Hash == currentChainLocal.Blocks[chainedHeader.Height].Hash)
                     {
                         matchingChainedHeader = chainedHeader;
                         break;
@@ -439,9 +466,9 @@ namespace BitSharp.Node
 
             var limit = 500;
             var blockHeaders = ImmutableArray.CreateBuilder<BlockHeader>(limit);
-            for (var i = matchingChainedHeader.Height; i < targetChainLocal.Blocks.Count && blockHeaders.Count < limit; i++)
+            for (var i = matchingChainedHeader.Height; i < currentChainLocal.Blocks.Count && blockHeaders.Count < limit; i++)
             {
-                var chainedHeader = targetChainLocal.Blocks[i];
+                var chainedHeader = currentChainLocal.Blocks[i];
 
                 blockHeaders.Add(chainedHeader.BlockHeader);
 
@@ -449,7 +476,12 @@ namespace BitSharp.Node
                     break;
             }
 
-            peer.Sender.SendHeaders(blockHeaders.ToImmutable()).Forget();
+            comparisonHeadersSentEvent.Reset();
+            var sendTask = peer.Sender.SendHeaders(blockHeaders.ToImmutable())
+                .ContinueWith(_ => comparisonHeadersSentEvent.Set());
+
+            if (type == RulesEnum.ComparisonToolTestNet)
+                sendTask.Wait();
         }
 
         private void OnGetData(Peer peer, InventoryPayload payload)
@@ -475,6 +507,16 @@ namespace BitSharp.Node
 
         private void OnPing(Peer peer, ImmutableArray<byte> payload)
         {
+            if (this.Type == RulesEnum.ComparisonToolTestNet)
+            {
+                // don't pong back until:
+                // - all blocks requested from the comparison tool have been downloaded and processed
+                // - current header inventory has been sent to the comparison tool
+                while (comparisonHeadersSentEvent.WaitOne(1000)
+                    && this.requestedComparisonBlocks.Count > 0 && comparisonBlockAddedEvent.WaitOne(1000))
+                { }
+            }
+
             peer.Sender.SendMessageAsync(Messaging.ConstructMessage("pong", payload.ToArray())).Wait();
         }
 

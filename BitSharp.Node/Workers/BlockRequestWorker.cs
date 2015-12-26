@@ -19,6 +19,8 @@ namespace BitSharp.Node.Workers
 {
     public class BlockRequestWorker : Worker
     {
+        public event EventHandler<UInt256> OnBlockAdded;
+
         //TODO
         public static string SecondaryBlockFolder;
 
@@ -357,7 +359,10 @@ namespace BitSharp.Node.Workers
                     StoreBlock(block);
 
                     if (this.coreStorage.TryAddBlock(block))
+                    {
                         this.blockDownloadRateMeasure.Tick();
+                        OnBlockAdded?.Invoke(this, block.Hash);
+                    }
                     else
                         this.duplicateBlockDownloadCountMeasure.Tick();
                 }

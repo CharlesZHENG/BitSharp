@@ -84,6 +84,18 @@ namespace BitSharp.Core.Workers
             return this.updatedTracker.WaitForUpdate(timeout);
         }
 
+        public void ForceUpdate()
+        {
+            updatedTracker.MarkStale();
+            ForceWork();
+        }
+
+        public void ForceUpdateAndWait()
+        {
+            ForceUpdate();
+            WaitForUpdate();
+        }
+
         protected override void SubDispose()
         {
             this.coreStorage.BlockInvalidated -= HandleChanged;
@@ -177,6 +189,18 @@ namespace BitSharp.Core.Workers
                 {
                     // mark block as invalid
                     this.coreStorage.MarkBlockInvalid(validationException.BlockHash);
+
+                    // mark any blocks further in the target chain as invalid
+                    var targetChainLocal = this.targetChainWorker.TargetChain;
+                    ChainedHeader invalidBlock;
+                    if (targetChainLocal.BlocksByHash.TryGetValue(validationException.BlockHash, out invalidBlock))
+                    {
+                        for (var height = invalidBlock.Height; height <= targetChainLocal.Height; height++)
+                            this.coreStorage.MarkBlockInvalid(targetChainLocal.Blocks[height].Hash);
+                    }
+
+                    targetChainWorker.ForceUpdateAndWait();
+
                     updatedTracker.MarkStale();
                 }
             }
