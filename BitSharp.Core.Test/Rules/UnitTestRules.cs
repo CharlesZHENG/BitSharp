@@ -29,6 +29,26 @@ namespace BitSharp.Core.Test.Rules
 
         public override ChainedHeader GenesisChainedHeader => this._genesisChainedHeader;
 
+        public Action<Chain, ChainedHeader> PreValidateBlockAction { get; set; }
+
+        public override void PreValidateBlock(Chain chain, ChainedHeader chainedHeader)
+        {
+            if (PreValidateBlockAction == null)
+                base.PreValidateBlock(chain, chainedHeader);
+            else
+                PreValidateBlockAction(chain, chainedHeader);
+        }
+
+        public Action<Chain, ChainedHeader, Transaction, ulong, ulong> PostValidateBlockAction { get; set; }
+
+        public override void PostValidateBlock(Chain chain, ChainedHeader chainedHeader, Transaction coinbaseTx, ulong totalTxInputValue, ulong totalTxOutputValue)
+        {
+            if (PreValidateBlockAction == null)
+                base.PostValidateBlock(chain, chainedHeader, coinbaseTx, totalTxInputValue, totalTxOutputValue);
+            else
+                PostValidateBlockAction(chain, chainedHeader, coinbaseTx, totalTxInputValue, totalTxOutputValue);
+        }
+
         public Action<ChainedHeader, ValidatableTx> ValidateTransactionAction { get; set; }
 
         public override void ValidateTransaction(ChainedHeader chainedHeader, ValidatableTx validatableTx)

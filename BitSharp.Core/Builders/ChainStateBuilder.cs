@@ -103,7 +103,7 @@ namespace BitSharp.Core.Builders
                     validatableTxes = DropAll(validatableTxes);
 
                 // begin validating the block
-                var blockValidator = BlockValidator.ValidateBlockAsync(coreStorage, rules, chainedHeader, validatableTxes, cancelToken);
+                var blockValidator = BlockValidator.ValidateBlockAsync(coreStorage, rules, newChain, chainedHeader, validatableTxes, cancelToken);
 
                 // wait for block txes to read
                 await blockTxesBuffer.Completion;

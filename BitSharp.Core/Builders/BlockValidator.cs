@@ -1,8 +1,10 @@
-﻿using BitSharp.Core.Domain;
+﻿using BitSharp.Common.ExtensionMethods;
+using BitSharp.Core.Domain;
 using BitSharp.Core.Rules;
 using BitSharp.Core.Storage;
 using NLog;
 using System;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
@@ -13,8 +15,11 @@ namespace BitSharp.Core.Builders
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        public static async Task ValidateBlockAsync(ICoreStorage coreStorage, IBlockchainRules rules, ChainedHeader chainedHeader, ISourceBlock<ValidatableTx> validatableTxes, CancellationToken cancelToken = default(CancellationToken))
+        public static async Task ValidateBlockAsync(ICoreStorage coreStorage, IBlockchainRules rules, Chain chain, ChainedHeader chainedHeader, ISourceBlock<ValidatableTx> validatableTxes, CancellationToken cancelToken = default(CancellationToken))
         {
+            // pre-validate block before doing any more work
+            rules.PreValidateBlock(chain, chainedHeader);
+
             // validate merkle root
             var merkleStream = new MerkleStream<BlockTxNode>();
             var merkleValidator = InitMerkleValidator(chainedHeader, merkleStream, cancelToken);
@@ -22,11 +27,32 @@ namespace BitSharp.Core.Builders
             // begin feeding the merkle validator
             validatableTxes.LinkTo(merkleValidator, new DataflowLinkOptions { PropagateCompletion = true });
 
+            // capture fees
+            Transaction coinbaseTx = null;
+            var totalTxInputValue = 0UL;
+            var totalTxOutputValue = 0UL;
+            var feeCapturer = new TransformBlock<ValidatableTx, ValidatableTx>(
+                validatableTx =>
+                {
+                    if (validatableTx.IsCoinbase)
+                    {
+                        coinbaseTx = validatableTx.Transaction;
+                    }
+                    else
+                    {
+                        totalTxInputValue += validatableTx.PrevTxOutputs.Sum(x => x.Value);
+                        totalTxOutputValue += validatableTx.Transaction.Outputs.Sum(x => x.Value);
+                    }
+
+                    return validatableTx;
+                });
+            merkleValidator.LinkTo(feeCapturer, new DataflowLinkOptions { PropagateCompletion = true });
+
             // validate transactions
             var txValidator = InitTxValidator(rules, chainedHeader, cancelToken);
 
             // begin feeding the tx validator
-            merkleValidator.LinkTo(txValidator, new DataflowLinkOptions { PropagateCompletion = true });
+            feeCapturer.LinkTo(txValidator, new DataflowLinkOptions { PropagateCompletion = true });
 
             // validate scripts
             var scriptValidator = InitScriptValidator(rules, chainedHeader, cancelToken);
@@ -35,8 +61,12 @@ namespace BitSharp.Core.Builders
             txValidator.LinkTo(scriptValidator, new DataflowLinkOptions { PropagateCompletion = true });
 
             await merkleValidator.Completion;
+            await feeCapturer.Completion;
             await txValidator.Completion;
             await scriptValidator.Completion;
+
+            // validate overall block
+            rules.PostValidateBlock(chain, chainedHeader, coinbaseTx, totalTxInputValue, totalTxOutputValue);
 
             if (!rules.BypassPrevTxLoading)
             {

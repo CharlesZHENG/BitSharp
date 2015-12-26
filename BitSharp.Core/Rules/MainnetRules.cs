@@ -187,80 +187,62 @@ namespace BitSharp.Core.Rules
             }
         }
 
-        //TODO
-        //public virtual void ValidateBlock(ChainedBlock chainedBlock, ChainStateBuilder chainStateBuilder)
-        //{
-        //    //TODO
-        //    if (BypassValidation)
-        //        return;
+        public virtual void PreValidateBlock(Chain chain, ChainedHeader chainedHeader)
+        {
+            // calculate the next required target
+            var requiredTarget = GetRequiredNextTarget(chain);
 
-        //    // calculate the next required target
-        //    var requiredTarget = GetRequiredNextTarget(chainStateBuilder.Chain);
+            // validate block's target against the required target
+            var blockTarget = chainedHeader.BlockHeader.CalculateTarget();
+            if (blockTarget > requiredTarget)
+            {
+                throw new ValidationException(chainedHeader.Hash,
+                    $"Failing block {chainedHeader.Hash} at height {chainedHeader.Height}: Block target {blockTarget} did not match required target of {requiredTarget}");
+            }
 
-        //    // validate block's target against the required target
-        //    var blockTarget = chainedBlock.Header.CalculateTarget();
-        //    if (blockTarget > requiredTarget)
-        //    {
-        //        throw new ValidationException(chainedBlock.Hash, "Failing block {0} at height {1}: Block target {2} did not match required target of {3}".Format2(chainedBlock.Hash.ToHexNumberString(), chainedBlock.Height, blockTarget.ToHexNumberString(), requiredTarget.ToHexNumberString()));
-        //    }
+            // validate block's proof of work against its stated target
+            if (chainedHeader.Hash > blockTarget || chainedHeader.Hash > requiredTarget)
+            {
+                throw new ValidationException(chainedHeader.Hash,
+                    $"Failing block {chainedHeader.Hash} at height {chainedHeader.Height}: Block did not match its own target of {blockTarget}");
+            }
+        }
 
-        //    // validate block's proof of work against its stated target
-        //    if (chainedBlock.Hash > blockTarget || chainedBlock.Hash > requiredTarget)
-        //    {
-        //        throw new ValidationException(chainedBlock.Hash, "Failing block {0} at height {1}: Block did not match its own target of {2}".Format2(chainedBlock.Hash.ToHexNumberString(), chainedBlock.Height, blockTarget.ToHexNumberString()));
-        //    }
+        public virtual void PostValidateBlock(Chain chain, ChainedHeader chainedHeader, Transaction coinbaseTx, ulong totalTxInputValue, ulong totalTxOutputValue)
+        {
+            // ensure there is at least 1 transaction
+            if (coinbaseTx == null)
+            {
+                throw new ValidationException(chainedHeader.Hash,
+                    $"Failing block {chainedHeader.Hash} at height {chainedHeader.Height}: Zero transactions present");
+            }
 
-        //    // ensure there is at least 1 transaction
-        //    if (chainedBlock.Transactions.Length == 0)
-        //    {
-        //        throw new ValidationException(chainedBlock.Hash, "Failing block {0} at height {1}: Zero transactions present".Format2(chainedBlock.Hash.ToHexNumberString(), chainedBlock.Height));
-        //    }
+            // check that coinbase has only one input
+            if (coinbaseTx.Inputs.Length != 1)
+            {
+                throw new ValidationException(chainedHeader.Hash,
+                    $"Failing block {chainedHeader.Hash} at height {chainedHeader.Height}: Coinbase transaction does not have exactly one input");
+            }
 
-        //    //TODO apply real coinbase rule
-        //    // https://github.com/bitcoin/bitcoin/blob/481d89979457d69da07edd99fba451fd42a47f5c/src/core.h#L219
-        //    var coinbaseTx = chainedBlock.Transactions[0];
+            // validate transactions
+            var blockUnspentValue = totalTxInputValue - totalTxOutputValue;
 
-        //    // check that coinbase has only one input
-        //    if (coinbaseTx.Inputs.Length != 1)
-        //    {
-        //        throw new ValidationException(chainedBlock.Hash, "Failing block {0} at height {1}: Coinbase transaction does not have exactly one input".Format2(chainedBlock.Hash.ToHexNumberString(), chainedBlock.Height));
-        //    }
+            // calculate the expected reward in coinbase
+            var expectedReward = (ulong)(50 * SATOSHI_PER_BTC);
+            if (chainedHeader.Height / 210000 <= 32)
+                expectedReward /= (ulong)Math.Pow(2, chainedHeader.Height / 210000);
+            expectedReward += blockUnspentValue;
 
-        //    var blockTxIndices = new Dictionary<UInt256, int>();
-        //    for (var i = 0; i < chainedBlock.Transactions.Length; i++)
-        //        blockTxIndices.Add(chainedBlock.Transactions[i].Hash, i);
+            // calculate the actual reward in coinbase
+            var actualReward = coinbaseTx.Outputs.Sum(x => x.Value);
 
-        //    // validate transactions
-        //    long blockUnspentValue = 0L;
-        //    for (var txIndex = 1; txIndex < chainedBlock.Transactions.Length; txIndex++)
-        //    {
-        //        var tx = chainedBlock.Transactions[txIndex];
-
-        //        long txUnspentValue;
-        //        ValidateTransaction(chainedBlock, tx, txIndex, chainStateBuilder, out txUnspentValue, blockTxIndices);
-
-        //        blockUnspentValue += txUnspentValue;
-        //    }
-
-        //    // calculate the expected reward in coinbase
-        //    var expectedReward = (long)(50 * SATOSHI_PER_BTC);
-        //    if (chainedBlock.Height / 210000 <= 32)
-        //        expectedReward /= (long)Math.Pow(2, chainedBlock.Height / 210000);
-        //    expectedReward += blockUnspentValue;
-
-        //    // calculate the actual reward in coinbase
-        //    var actualReward = 0L;
-        //    foreach (var txOutput in coinbaseTx.Outputs)
-        //        actualReward += (long)txOutput.Value;
-
-        //    // ensure coinbase has correct reward
-        //    if (actualReward > expectedReward)
-        //    {
-        //        throw new ValidationException(chainedBlock.Hash, "Failing block {0} at height {1}: Coinbase value is greater than reward + fees".Format2(chainedBlock.Hash.ToHexNumberString(), chainedBlock.Height));
-        //    }
-
-        //    // all validation has passed
-        //}
+            // ensure coinbase has correct reward
+            if (actualReward > expectedReward)
+            {
+                throw new ValidationException(chainedHeader.Hash,
+                    $"Failing block {chainedHeader.Hash} at height {chainedHeader.Height}: Coinbase value is greater than reward + fees");
+            }
+        }
 
         public virtual void ValidateTransaction(ChainedHeader chainedHeader, ValidatableTx validatableTx)
         {

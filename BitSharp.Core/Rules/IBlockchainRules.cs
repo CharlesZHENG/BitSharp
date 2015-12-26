@@ -18,8 +18,9 @@ namespace BitSharp.Core.Rules
 
         ChainedHeader GenesisChainedHeader { get; }
 
-        //TODO
-        //void ValidateBlock(ChainedBlock chainedBlock, ChainStateBuilder chainStateBuilder);
+        void PreValidateBlock(Chain chain, ChainedHeader chainedHeader);
+
+        void PostValidateBlock(Chain chain, ChainedHeader chainedHeader, Transaction coinbaseTx, ulong totalTxInputValue, ulong totalTxOutputValue);
 
         void ValidateTransaction(ChainedHeader chainedHeader, ValidatableTx loadedTx);
 
