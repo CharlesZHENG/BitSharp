@@ -370,23 +370,30 @@ namespace BitSharp.Core.Test.Storage
             {
                 var chainStateCursor = handle.Item;
 
-                // begin transaction
-                chainStateCursor.BeginTransaction();
-
                 // verify initial tip
+                chainStateCursor.BeginTransaction();
                 Assert.IsNull(chainStateCursor.ChainTip);
+                chainStateCursor.CommitTransaction();
 
                 // set tip
+                chainStateCursor.BeginTransaction();
                 chainStateCursor.ChainTip = chainedHeader0;
+                chainStateCursor.CommitTransaction();
 
                 // verify tip
+                chainStateCursor.BeginTransaction();
                 Assert.AreEqual(chainedHeader0, chainStateCursor.ChainTip);
+                chainStateCursor.CommitTransaction();
 
-                // set tip
-                chainStateCursor.ChainTip = chainedHeader1;
+                // set tip to null
+                chainStateCursor.BeginTransaction();
+                chainStateCursor.ChainTip = null;
+                chainStateCursor.CommitTransaction();
 
                 // verify tip
-                Assert.AreEqual(chainedHeader1, chainStateCursor.ChainTip);
+                chainStateCursor.BeginTransaction();
+                Assert.IsNull(chainStateCursor.ChainTip);
+                chainStateCursor.CommitTransaction();
             }
         }
 
