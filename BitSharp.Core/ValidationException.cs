@@ -7,7 +7,7 @@ namespace BitSharp.Core
     {
         //[Obsolete]
         public ValidationException(UInt256 blockHash)
-            : base()
+            : base($"Invalid block: {blockHash}")
         {
             BlockHash = blockHash;
         }
