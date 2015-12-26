@@ -136,7 +136,7 @@ namespace BitSharp.Core.Builders
                 commitLock.DoWrite(() =>
                 {
                     chainStateCursor.CommitTransaction();
-                    chain = new Lazy<Chain>(() => newChain);
+                    chain = new Lazy<Chain>(() => newChain).Force();
                 });
                 stats.commitUtxoDurationMeasure.Tick(stopwatch.Elapsed);
 
@@ -199,7 +199,7 @@ namespace BitSharp.Core.Builders
                 commitLock.DoWrite(() =>
                 {
                     chainStateCursor.CommitTransaction();
-                    chain = new Lazy<Chain>(() => newChain);
+                    chain = new Lazy<Chain>(() => newChain).Force();
                 });
             }
         }

@@ -49,8 +49,12 @@ namespace BitSharp.Core.Test.Storage
                 foreach (var block in blocks)
                     coreStorage.TryAddBlock(block);
 
-                // calculate utxo forward and store its state at each step along the way
+                // store empty utxo hash
                 var expectedUtxoHashes = new List<UInt256>();
+                using (var chainState = chainStateBuilder.ToImmutable())
+                    expectedUtxoHashes.Add(UtxoCommitment.ComputeHash(chainState));
+
+                // calculate utxo forward and store its state at each step along the way
                 for (var blockIndex = 0; blockIndex < blocks.Count; blockIndex++)
                 {
                     Debug.WriteLine($"Adding: {blockIndex:N0}");
@@ -73,7 +77,7 @@ namespace BitSharp.Core.Test.Storage
                 expectedUtxoHashes.RemoveAt(expectedUtxoHashes.Count - 1);
 
                 // roll utxo backwards and validate its state at each step along the way
-                for (var blockIndex = blocks.Count - 1; blockIndex >= 1; blockIndex--)
+                for (var blockIndex = blocks.Count - 1; blockIndex >= 0; blockIndex--)
                 {
                     Debug.WriteLine($"Rolling back: {blockIndex:N0}");
 
@@ -89,6 +93,26 @@ namespace BitSharp.Core.Test.Storage
                     using (var chainState = chainStateBuilder.ToImmutable())
                         Assert.AreEqual(expectedUtxoHash, UtxoCommitment.ComputeHash(chainState));
                 }
+
+                // verify chain state was rolled all the way back
+                Assert.AreEqual(-1, chainStateBuilder.Chain.Height);
+                Assert.AreEqual(0, expectedUtxoHashes.Count);
+
+                // calculate utxo forward again
+                for (var blockIndex = 0; blockIndex < blocks.Count; blockIndex++)
+                {
+                    Debug.WriteLine($"Adding: {blockIndex:N0}");
+
+                    var block = blocks[blockIndex];
+                    var chainedHeader = new ChainedHeader(block.Header, blockIndex, 0);
+
+                    chainStateBuilder.AddBlockAsync(chainedHeader, block.Transactions.Select(
+                        (tx, txIndex) => BlockTx.Create(txIndex, tx))).Wait();
+                }
+
+                // verify final utxo state again
+                using (var chainState = chainStateBuilder.ToImmutable())
+                    Assert.AreEqual(expectedLastUtxoHash, UtxoCommitment.ComputeHash(chainState));
             }
         }
     }

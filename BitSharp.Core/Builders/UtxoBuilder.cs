@@ -50,8 +50,7 @@ namespace BitSharp.Core.Builders
                     // there exist two duplicate coinbases in the blockchain, which the design assumes to be impossible
                     // ignore the first occurrences of these duplicates so that they do not need to later be deleted from the utxo, an unsupported operation
                     // no other duplicates will occur again, it is now disallowed
-                    var isDupeCoinbase = ((chainedHeader.Height == DUPE_COINBASE_1_HEIGHT && tx.Hash == DUPE_COINBASE_1_HASH)
-                        || (chainedHeader.Height == DUPE_COINBASE_2_HEIGHT && tx.Hash == DUPE_COINBASE_2_HASH));
+                    var isDupeCoinbase = IsDupeCoinbase(chainedHeader, tx);
 
                     // add transaction's outputs to utxo, except for the genesis block and the duplicate coinbases
                     if (chainedHeader.Height > 0 && !isDupeCoinbase)
@@ -150,18 +149,22 @@ namespace BitSharp.Core.Builders
                 var tx = blockTx.Decode().Transaction;
                 var txIndex = blockTx.Index;
 
-                // remove transaction outputs
-                this.Unmint(chainStateCursor, tx, chainedHeader, isCoinbase: true);
+                // remove transaction's outputs from utxo, except for the genesis block and the duplicate coinbases
+                var isDupeCoinbase = IsDupeCoinbase(chainedHeader, tx);
+                if (chainedHeader.Height > 0 && !isDupeCoinbase)
+                {
+                    this.Unmint(chainStateCursor, tx, chainedHeader, isCoinbase: true);
 
-                // decrease unspent output count
-                chainStateCursor.UnspentOutputCount -= tx.Outputs.Length;
+                    // decrease unspent output count
+                    chainStateCursor.UnspentOutputCount -= tx.Outputs.Length;
 
-                // decrement unspent tx count
-                chainStateCursor.UnspentTxCount--;
+                    // decrement unspent tx count
+                    chainStateCursor.UnspentTxCount--;
 
-                chainStateCursor.TotalTxCount--;
-                chainStateCursor.TotalInputCount -= tx.Inputs.Length;
-                chainStateCursor.TotalOutputCount -= tx.Outputs.Length;
+                    chainStateCursor.TotalTxCount--;
+                    chainStateCursor.TotalInputCount -= tx.Inputs.Length;
+                    chainStateCursor.TotalOutputCount -= tx.Outputs.Length;
+                }
 
                 var prevTxOutputs = ImmutableArray.CreateBuilder<TxOutput>(!blockTx.IsCoinbase ? tx.Inputs.Length : 0);
 
@@ -269,6 +272,12 @@ namespace BitSharp.Core.Builders
             }
 
             return unspentTx;
+        }
+
+        private bool IsDupeCoinbase(ChainedHeader chainedHeader, Transaction tx)
+        {
+            return ((chainedHeader.Height == DUPE_COINBASE_1_HEIGHT && tx.Hash == DUPE_COINBASE_1_HASH)
+               || (chainedHeader.Height == DUPE_COINBASE_2_HEIGHT && tx.Hash == DUPE_COINBASE_2_HASH));
         }
     }
 }
