@@ -89,19 +89,25 @@ namespace BitSharp.IntegrationTest
                         {
                             try
                             {
-                                var standardOutput = new StringBuilder();
-                                var errorOutput = new StringBuilder();
+                                var acceptanceError = false;
+                                var output = new StringBuilder();
 
-                                javaProcess.OutputDataReceived += (sender, e) =>
-                                {
-                                    logger.Info("[Pull Tester]:  " + e.Data);
-                                    standardOutput.AppendLine(e.Data);
-                                };
-                                javaProcess.ErrorDataReceived += (sender, e) =>
-                                {
-                                    logger.Error("[Pull Tester]: " + e.Data);
-                                    errorOutput.AppendLine(e.Data);
-                                };
+                                var onOutput = new DataReceivedEventHandler(
+                                    (sender, e) =>
+                                    {
+                                        if (e.Data.Contains("bitcoind and bitcoinj acceptance differs"))
+                                            acceptanceError = true;
+
+                                        if (!acceptanceError)
+                                            logger.Info("[Pull Tester]:  " + e.Data);
+                                        else
+                                            logger.Error("[Pull Tester]:  " + e.Data);
+
+                                        output.AppendLine(e.Data);
+                                    });
+
+                                javaProcess.OutputDataReceived += onOutput;
+                                javaProcess.ErrorDataReceived += onOutput;
 
                                 javaProcess.BeginOutputReadLine();
                                 javaProcess.BeginErrorReadLine();
@@ -111,7 +117,7 @@ namespace BitSharp.IntegrationTest
                                 logger.Info($"Pull Tester Result: {javaProcess.ExitCode}");
 
                                 // verify pull tester successfully connected
-                                Assert.IsTrue(errorOutput.ToString().Contains(
+                                Assert.IsTrue(output.ToString().Contains(
                                     $"NioClientManager.handleKey: Successfully connected to /127.0.0.1:{port}"));
 
                                 // don't validate pull tester result, consensus is not implemented and it will always fail
