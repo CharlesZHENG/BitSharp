@@ -12,6 +12,7 @@ using BitSharp.Node.Workers;
 using Ninject;
 using NLog;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
@@ -51,6 +52,8 @@ namespace BitSharp.Node
 
         //TODO properly organize comparison tool code
         private readonly ConcurrentSet<UInt256> requestedComparisonBlocks = new ConcurrentSet<UInt256>();
+        private readonly ConcurrentDictionary<UInt256, Block> comparisonUnchainedBlocks = new ConcurrentDictionary<UInt256, Block>();
+
         private readonly AutoResetEvent comparisonBlockAddedEvent = new AutoResetEvent(false);
         private readonly ManualResetEvent comparisonHeadersSentEvent = new ManualResetEvent(true);
 
@@ -86,7 +89,7 @@ namespace BitSharp.Node
             this.peerWorker.PeerConnected += HandlePeerConnected;
             this.peerWorker.PeerDisconnected += HandlePeerDisconnected;
 
-            this.blockRequestWorker.OnBlockAdded += HandleBlockAdded;
+            this.blockRequestWorker.OnBlockFlushed += HandleBlockFlushed;
 
             switch (this.Type)
             {
@@ -154,7 +157,7 @@ namespace BitSharp.Node
                 this.peerWorker.PeerConnected -= HandlePeerConnected;
                 this.peerWorker.PeerDisconnected -= HandlePeerDisconnected;
 
-                this.blockRequestWorker.OnBlockAdded -= HandleBlockAdded;
+                this.blockRequestWorker.OnBlockFlushed -= HandleBlockFlushed;
 
                 this.messageRateMeasure.Dispose();
                 this.statsWorker.Dispose();
@@ -281,13 +284,35 @@ namespace BitSharp.Node
             this.blockRequestWorker.NotifyWork();
         }
 
-        private void HandleBlockAdded(Object sender, UInt256 blockHash)
+        private void HandleBlockFlushed(Object sender, Block block)
         {
             if (type == RulesEnum.ComparisonToolTestNet)
             {
+                // the block won't have been added if it doesn't chain onto another block, hold onto it to try again later
+                if (!coreStorage.ContainsBlockTxes(block.Hash))
+                {
+                    comparisonUnchainedBlocks.TryAdd(block.Hash, block);
+                }
+                // now that a block has been added, try any unchained blocks again
+                else
+                {
+                    foreach (var unchainedBlock in comparisonUnchainedBlocks.Values.ToList())
+                    {
+                        Block ignore;
+                        if (coreStorage.TryAddBlock(unchainedBlock))
+                        {
+                            comparisonUnchainedBlocks.TryRemove(unchainedBlock.Hash, out ignore);
+
+                            //TODO this should be handled better elsewhere
+                            if (coreStorage.IsBlockInvalid(block.Header.PreviousBlock))
+                                coreStorage.MarkBlockInvalid(block.Hash);
+                        }
+                    }
+                }
+
                 this.coreDaemon.ForceUpdateAndWait();
 
-                requestedComparisonBlocks.Remove(blockHash);
+                requestedComparisonBlocks.Remove(block.Hash);
                 comparisonBlockAddedEvent.Set();
             }
         }
@@ -338,8 +363,12 @@ namespace BitSharp.Node
                 foreach (var invVector in invVectors)
                 {
                     if (invVector.Type == InventoryVector.TYPE_MESSAGE_BLOCK
+                        && !requestedComparisonBlocks.Contains(invVector.Hash)
+                        && !comparisonUnchainedBlocks.ContainsKey(invVector.Hash)
                         && !this.coreStorage.ContainsBlockTxes(invVector.Hash))
                     {
+                        logger.Info($"requesting: {invVector.Hash}");
+
                         responseInvVectors.Add(invVector);
                         requestedComparisonBlocks.Add(invVector.Hash);
                     }

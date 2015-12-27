@@ -2,6 +2,7 @@
 using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core;
 using BitSharp.Core.Domain;
+using BitSharp.Core.Rules;
 using BitSharp.Core.Storage;
 using BitSharp.Node.Domain;
 using BitSharp.Node.Network;
@@ -19,7 +20,7 @@ namespace BitSharp.Node.Workers
 {
     public class BlockRequestWorker : Worker
     {
-        public event EventHandler<UInt256> OnBlockAdded;
+        public event EventHandler<Block> OnBlockFlushed;
 
         //TODO
         public static string SecondaryBlockFolder;
@@ -126,6 +127,10 @@ namespace BitSharp.Node.Workers
 
         protected override async Task WorkAction()
         {
+            // blocks will be requested on-demand in LocalClient for comparison tool
+            if (localClient.Type == RulesEnum.ComparisonToolTestNet)
+                return;
+
             // update rates
             new MethodTimer(false).Time("UpdateLookAhead", () =>
                 UpdateLookAhead());
@@ -359,12 +364,11 @@ namespace BitSharp.Node.Workers
                     StoreBlock(block);
 
                     if (this.coreStorage.TryAddBlock(block))
-                    {
                         this.blockDownloadRateMeasure.Tick();
-                        OnBlockAdded?.Invoke(this, block.Hash);
-                    }
                     else
                         this.duplicateBlockDownloadCountMeasure.Tick();
+
+                    OnBlockFlushed?.Invoke(this, block);
                 }
                 finally
                 {
