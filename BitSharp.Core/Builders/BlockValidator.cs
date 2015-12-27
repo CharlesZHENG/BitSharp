@@ -1,9 +1,12 @@
 ﻿using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Domain;
 using BitSharp.Core.Rules;
+using BitSharp.Core.Script;
 using BitSharp.Core.Storage;
 using NLog;
 using System;
+using System.Collections.Immutable;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -31,6 +34,7 @@ namespace BitSharp.Core.Builders
             Transaction coinbaseTx = null;
             var totalTxInputValue = 0UL;
             var totalTxOutputValue = 0UL;
+            var totalSigOpCount = 0;
             var feeCapturer = new TransformBlock<ValidatableTx, ValidatableTx>(
                 validatableTx =>
                 {
@@ -43,6 +47,14 @@ namespace BitSharp.Core.Builders
                         totalTxInputValue += validatableTx.PrevTxOutputs.Sum(x => x.Value);
                         totalTxOutputValue += validatableTx.Transaction.Outputs.Sum(x => x.Value);
                     }
+
+                    totalSigOpCount += validatableTx.Transaction.Inputs.Sum(x => CountSigOps(x.ScriptSignature));
+                    totalSigOpCount += validatableTx.Transaction.Outputs.Sum(x => CountSigOps(x.ScriptPublicKey));
+
+                    //TODO
+                    var MAX_BLOCK_SIGOPS = 20.THOUSAND();
+                    if (totalSigOpCount > MAX_BLOCK_SIGOPS)
+                        throw new ValidationException(chainedHeader.Hash);
 
                     return validatableTx;
                 });
@@ -160,6 +172,74 @@ namespace BitSharp.Core.Builders
         private static ValidationException CreateMerkleRootException(ChainedHeader chainedHeader)
         {
             return new ValidationException(chainedHeader.Hash, $"Failing block {chainedHeader.Hash} at height {chainedHeader.Height}: Merkle root is invalid");
+        }
+
+        //TODO - hasn't been checked for correctness, should also be moved
+        private static int CountSigOps(ImmutableArray<byte> script)
+        {
+            var sigOpCount = 0;
+
+            var index = 0;
+            while (index < script.Length)
+            {
+                var opByte = script[index++];
+                var op = (ScriptOp)Enum.ToObject(typeof(ScriptOp), opByte);
+
+                switch (op)
+                {
+                    case ScriptOp.OP_CHECKSIG:
+                    case ScriptOp.OP_CHECKSIGVERIFY:
+                        sigOpCount++;
+                        break;
+
+                    case ScriptOp.OP_CHECKMULTISIG:
+                    case ScriptOp.OP_CHECKMULTISIGVERIFY:
+                        //TODO
+                        var MAX_PUBKEYS_PER_MULTISIG = 20;
+                        var prevOpCode = script[index - 2];
+                        if (prevOpCode >= (byte)ScriptOp.OP_1 && prevOpCode <= (byte)ScriptOp.OP_16)
+                            sigOpCount += prevOpCode;
+                        else
+                            sigOpCount += MAX_PUBKEYS_PER_MULTISIG;
+
+                        break;
+                }
+
+                if (op <= ScriptOp.OP_PUSHDATA4)
+                {
+                    //OP_PUSHBYTES1-75
+                    if (op < ScriptOp.OP_PUSHDATA1)
+                    {
+                        index += opByte;
+                    }
+                    else if (op == ScriptOp.OP_PUSHDATA1)
+                    {
+                        if (index + 1 > script.Length)
+                            break;
+
+                        var length = script[index++];
+                        index += length;
+                    }
+                    else if (op == ScriptOp.OP_PUSHDATA2)
+                    {
+                        if (index + 2 > script.Length)
+                            break;
+
+                        var length = (ushort)script[index++] + ((ushort)script[index++] << 8);
+                        index += length;
+                    }
+                    else if (op == ScriptOp.OP_PUSHDATA4)
+                    {
+                        if (index + 4 > script.Length)
+                            break;
+
+                        var length = (uint)script[index++] + ((uint)script[index++] << 8) + ((uint)script[index++] << 16) + ((uint)script[index++] << 24);
+                        index += length.ToIntChecked();
+                    }
+                }
+            }
+
+            return sigOpCount;
         }
     }
 }
