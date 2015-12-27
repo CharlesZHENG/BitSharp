@@ -43,30 +43,55 @@ namespace BitSharp.Core.Builders
 
             //TODO
             var MAX_BLOCK_SIZE = 1.MILLION(); // :(
+            var MAX_MONEY = (ulong)21.MILLION() * (ulong)100.MILLION();
 
             var feeCapturer = new TransformBlock<ValidatableTx, ValidatableTx>(
                 validatableTx =>
                 {
+                    var tx = validatableTx.Transaction;
+
                     // first transaction must be coinbase
-                    if (txCount == 0 && !validatableTx.IsCoinbase)
+                    if (txCount == 0 && !tx.IsCoinbase)
                         throw new ValidationException(chainedHeader.Hash);
                     // all other transactions must not be coinbase
-                    else if (txCount > 0 && validatableTx.IsCoinbase)
+                    else if (txCount > 0 && tx.IsCoinbase)
+                        throw new ValidationException(chainedHeader.Hash);
+
+                    // must have inputs
+                    if (tx.Inputs.Length == 0)
+                        throw new ValidationException(chainedHeader.Hash);
+                    // must have outputs
+                    else if (tx.Outputs.Length == 0)
+                        throw new ValidationException(chainedHeader.Hash);
+                    // must not have any negative money value outputs
+                    else if (tx.Outputs.Any(x => unchecked((long)x.Value) < 0))
+                        throw new ValidationException(chainedHeader.Hash);
+                    // must not have any outputs with a value greater than max money
+                    else if (tx.Outputs.Any(x => x.Value > MAX_MONEY))
+                        throw new ValidationException(chainedHeader.Hash);
+                    // must not have a total output value greater than max money
+                    else if (tx.Outputs.Sum(x => x.Value) > MAX_MONEY)
+                        throw new ValidationException(chainedHeader.Hash);
+                    // coinbase scriptSignature length must be >= 2 && <= 100
+                    else if (tx.IsCoinbase && (tx.Inputs[0].ScriptSignature.Length < 2 || tx.Inputs[0].ScriptSignature.Length > 100))
+                        throw new ValidationException(chainedHeader.Hash);
+                    // non-coinbase txes must not have coinbase prev tx output key (txHash: 0, outputIndex: -1)
+                    else if (!tx.IsCoinbase && tx.Inputs.Any(x => x.PreviousTxOutputKey.TxOutputIndex == uint.MaxValue && x.PreviousTxOutputKey.TxHash == UInt256.Zero))
                         throw new ValidationException(chainedHeader.Hash);
 
                     txCount++;
-                    if (validatableTx.IsCoinbase)
+                    if (tx.IsCoinbase)
                     {
-                        coinbaseTx = validatableTx.Transaction;
+                        coinbaseTx = tx;
                     }
                     else
                     {
                         totalTxInputValue += validatableTx.PrevTxOutputs.Sum(x => x.Value);
-                        totalTxOutputValue += validatableTx.Transaction.Outputs.Sum(x => x.Value);
+                        totalTxOutputValue += tx.Outputs.Sum(x => x.Value);
                     }
 
-                    totalSigOpCount += validatableTx.Transaction.Inputs.Sum(x => CountSigOps(x.ScriptSignature));
-                    totalSigOpCount += validatableTx.Transaction.Outputs.Sum(x => CountSigOps(x.ScriptPublicKey));
+                    totalSigOpCount += tx.Inputs.Sum(x => CountSigOps(x.ScriptSignature));
+                    totalSigOpCount += tx.Outputs.Sum(x => CountSigOps(x.ScriptPublicKey));
                     //TODO should be optimal encoding length
                     blockSize += validatableTx.TxBytes.Length;
 

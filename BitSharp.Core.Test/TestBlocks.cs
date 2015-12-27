@@ -99,7 +99,8 @@ namespace BitSharp.Core.Test
                             txHash: UInt256.Zero,
                             txOutputIndex: uint.MaxValue
                         ),
-                        scriptSignature: previousBlockHash.ToByteArray().Concat(random.NextBytes(100)).ToImmutableArray(),
+                        // coinbase scriptSignature must be 2-100 bytes long
+                        scriptSignature: random.NextBytes(2 + random.Next(99)).ToImmutableArray(),
                         sequence: 0
                     )
                 ),
