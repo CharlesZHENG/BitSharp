@@ -305,7 +305,7 @@ namespace BitSharp.Node
 
                             //TODO this should be handled better elsewhere
                             if (coreStorage.IsBlockInvalid(block.Header.PreviousBlock))
-                                coreStorage.MarkBlockInvalid(block.Hash);
+                                coreStorage.MarkBlockInvalid(block.Hash, coreDaemon.TargetChain);
                         }
                     }
                 }

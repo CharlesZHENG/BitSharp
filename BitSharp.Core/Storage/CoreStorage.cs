@@ -314,10 +314,31 @@ namespace BitSharp.Core.Storage
         }
 
         //TODO this should mark any blocks chained on top as invalid
-        public void MarkBlockInvalid(UInt256 blockHash)
+        public void MarkBlockInvalid(UInt256 blockHash, Chain targetChain)
         {
-            this.blockStorage.Value.MarkBlockInvalid(blockHash);
-            RaiseBlockInvalidated(blockHash);
+            var invalidatedBlocks = new List<UInt256>();
+            try
+            {
+                this.blockStorage.Value.MarkBlockInvalid(blockHash);
+                invalidatedBlocks.Add(blockHash);
+
+                // mark any blocks further in the target chain as invalid
+                ChainedHeader invalidBlock;
+                if (targetChain.BlocksByHash.TryGetValue(blockHash, out invalidBlock))
+                {
+                    for (var height = invalidBlock.Height; height <= targetChain.Height; height++)
+                    {
+                        invalidBlock = targetChain.Blocks[height];
+                        this.blockStorage.Value.MarkBlockInvalid(invalidBlock.Hash);
+                        invalidatedBlocks.Add(blockHash);
+                    }
+                }
+            }
+            finally
+            {
+                foreach (var invalidatedBlock in invalidatedBlocks)
+                    BlockInvalidated?.Invoke(invalidatedBlock);
+            }
         }
 
         private void RaiseChainedHeaderAdded(ChainedHeader chainedHeader)
@@ -333,11 +354,6 @@ namespace BitSharp.Core.Storage
         private void RaiseBlockTxesRemoved(ChainedHeader chainedHeader)
         {
             this.BlockTxesRemoved?.Invoke(chainedHeader);
-        }
-
-        private void RaiseBlockInvalidated(UInt256 blockHash)
-        {
-            this.BlockInvalidated?.Invoke(blockHash);
         }
 
         private object GetBlockLock(UInt256 blockHash)

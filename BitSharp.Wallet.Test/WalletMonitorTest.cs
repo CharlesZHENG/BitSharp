@@ -91,8 +91,7 @@ namespace BitSharp.Wallet.Test
                 Assert.AreEqual(536.52M, actualSpentBtc);
 
                 // mark chain as invalid back to genesis
-                for (var height = simulator.CoreDaemon.CurrentChain.Height; height > 0; height--)
-                    simulator.CoreDaemon.CoreStorage.MarkBlockInvalid(simulator.BlockProvider.GetBlock(height).Hash);
+                simulator.CoreDaemon.CoreStorage.MarkBlockInvalid(simulator.BlockProvider.GetBlock(1).Hash, simulator.CoreDaemon.TargetChain);
 
                 // verify chain state reset to genesis
                 simulator.WaitForUpdate();

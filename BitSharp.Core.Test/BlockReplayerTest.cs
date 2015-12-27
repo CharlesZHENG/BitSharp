@@ -65,15 +65,24 @@ namespace BitSharp.Core.Test
                 var block0 = daemon.GenesisBlock;
                 var block1 = daemon.MineAndAddEmptyBlock();
 
+                // add some blocks so coinbase is mature to spend
+                Block lastBlock = null;
+                for (var i = 0; i < 100; i++)
+                    lastBlock = daemon.MineAndAddEmptyBlock();
+
                 // add block 2, spending from block 1
                 var spendTx1 = daemon.TxManager.CreateSpendTransaction(block1.Transactions[0], 0, (byte)ScriptHashType.SIGHASH_ALL, block1.Transactions[0].OutputValue(), daemon.CoinbasePrivateKey, daemon.CoinbasePublicKey, toPublicKey);
-                var block2Unmined = daemon.CreateEmptyBlock(block1.Hash)
+                var block2Unmined = daemon.CreateEmptyBlock(lastBlock.Hash)
                     .CreateWithAddedTransactions(spendTx1);
                 var block2 = daemon.MineAndAddBlock(block2Unmined);
 
+                // add some blocks so coinbase is mature to spend
+                for (var i = 0; i < 100; i++)
+                    lastBlock = daemon.MineAndAddEmptyBlock();
+
                 // add block 3, spending from block 2
                 var spendTx2 = daemon.TxManager.CreateSpendTransaction(block2.Transactions[1], 0, (byte)ScriptHashType.SIGHASH_ALL, block2.Transactions[1].OutputValue(), toPrivateKey, toPublicKey, toPublicKey);
-                var block3Unmined = daemon.CreateEmptyBlock(block2.Hash)
+                var block3Unmined = daemon.CreateEmptyBlock(lastBlock.Hash)
                     .CreateWithAddedTransactions(spendTx2);
                 var block3 = daemon.MineAndAddBlock(block3Unmined);
 
@@ -81,7 +90,7 @@ namespace BitSharp.Core.Test
                 daemon.WaitForUpdate();
                 using (var chainState = daemon.CoreDaemon.GetChainState())
                 {
-                    Assert.AreEqual(3, chainState.Chain.Height);
+                    Assert.AreEqual(203, chainState.Chain.Height);
 
                     var replayTransactions = new List<ValidatableTx>();
                     foreach (var blockHash in chainState.Chain.Blocks.Select(x => x.Hash))
@@ -91,24 +100,23 @@ namespace BitSharp.Core.Test
                     }
 
                     // verify all transactions were replayed
-                    Assert.AreEqual(6, replayTransactions.Count);
+                    Assert.AreEqual(206, replayTransactions.Count);
                     Assert.AreEqual(block0.Transactions[0].Hash, replayTransactions[0].Transaction.Hash);
                     Assert.AreEqual(block1.Transactions[0].Hash, replayTransactions[1].Transaction.Hash);
-                    Assert.AreEqual(block2.Transactions[0].Hash, replayTransactions[2].Transaction.Hash);
-                    Assert.AreEqual(block2.Transactions[1].Hash, replayTransactions[3].Transaction.Hash);
-                    Assert.AreEqual(block3.Transactions[0].Hash, replayTransactions[4].Transaction.Hash);
-                    Assert.AreEqual(block3.Transactions[1].Hash, replayTransactions[5].Transaction.Hash);
+                    Assert.AreEqual(block2.Transactions[0].Hash, replayTransactions[102].Transaction.Hash);
+                    Assert.AreEqual(block2.Transactions[1].Hash, replayTransactions[103].Transaction.Hash);
+                    Assert.AreEqual(block3.Transactions[0].Hash, replayTransactions[204].Transaction.Hash);
+                    Assert.AreEqual(block3.Transactions[1].Hash, replayTransactions[205].Transaction.Hash);
                 }
 
-                // mark blocks 2-3 invalid, they will be rolled back
-                daemon.CoreStorage.MarkBlockInvalid(block3.Hash);
-                daemon.CoreStorage.MarkBlockInvalid(block2.Hash);
+                // mark block 2 invalid, it will be rolled back
+                daemon.CoreStorage.MarkBlockInvalid(block2.Hash, daemon.CoreDaemon.TargetChain);
                 daemon.WaitForUpdate();
 
                 // replay rollback of block 3
                 using (var chainState = daemon.CoreDaemon.GetChainState())
                 {
-                    Assert.AreEqual(1, chainState.Chain.Height);
+                    Assert.AreEqual(101, chainState.Chain.Height);
 
                     var replayTransactions = new List<ValidatableTx>(
                         BlockReplayer.ReplayBlock(daemon.CoreStorage, chainState, block3.Hash, replayForward: false)
@@ -130,7 +138,7 @@ namespace BitSharp.Core.Test
                 // replay rollback of block 2
                 using (var chainState = daemon.CoreDaemon.GetChainState())
                 {
-                    Assert.AreEqual(1, chainState.Chain.Height);
+                    Assert.AreEqual(101, chainState.Chain.Height);
 
                     var replayTransactions = new List<ValidatableTx>(
                         BlockReplayer.ReplayBlock(daemon.CoreStorage, chainState, block2.Hash, replayForward: false)

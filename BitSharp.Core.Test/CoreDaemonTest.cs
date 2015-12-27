@@ -1,4 +1,5 @@
 ﻿using BitSharp.Common.ExtensionMethods;
+using BitSharp.Core.Domain;
 using BitSharp.Core.Script;
 using BitSharp.Core.Test.Rules;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -61,26 +62,31 @@ namespace BitSharp.Core.Test
                 var block1 = daemon.MineAndAddEmptyBlock();
                 var block2 = daemon.MineAndAddEmptyBlock();
 
+                // add some blocks so coinbase is mature to spend
+                Block lastBlock = null;
+                for (var i = 0; i < 100; i++)
+                    lastBlock = daemon.MineAndAddEmptyBlock();
+
                 // check
                 daemon.WaitForUpdate();
-                daemon.AssertAtBlock(2, block2.Hash);
+                daemon.AssertAtBlock(102, lastBlock.Hash);
 
                 // attempt to spend block 2's coinbase in block 3
                 var spendTx = daemon.TxManager.CreateSpendTransaction(block2.Transactions[0], 0, (byte)ScriptHashType.SIGHASH_ALL, 50 * SATOSHI_PER_BTC, daemon.CoinbasePrivateKey, daemon.CoinbasePublicKey, toPublicKey);
-                var block3Unmined = daemon.CreateEmptyBlock(block2.Hash)
+                var block3Unmined = daemon.CreateEmptyBlock(lastBlock.Hash)
                     .CreateWithAddedTransactions(spendTx);
                 var block3 = daemon.MineAndAddBlock(block3Unmined);
 
                 // check
                 daemon.WaitForUpdate();
-                daemon.AssertAtBlock(3, block3.Hash);
+                daemon.AssertAtBlock(103, block3.Hash);
 
                 // add a simple block
                 var block4 = daemon.MineAndAddEmptyBlock();
 
                 // check
                 daemon.WaitForUpdate();
-                daemon.AssertAtBlock(4, block4.Hash);
+                daemon.AssertAtBlock(104, block4.Hash);
             }
         }
 
@@ -103,19 +109,24 @@ namespace BitSharp.Core.Test
                 var block1 = daemon.MineAndAddEmptyBlock();
                 var block2 = daemon.MineAndAddEmptyBlock();
 
+                // add some blocks so coinbase is mature to spend
+                Block lastBlock = null;
+                for (var i = 0; i < 100; i++)
+                    lastBlock = daemon.MineAndAddEmptyBlock();
+
                 // check
                 daemon.WaitForUpdate();
-                daemon.AssertAtBlock(2, block2.Hash);
+                daemon.AssertAtBlock(102, lastBlock.Hash);
 
                 // spend block 2's coinbase in block 3
                 var spendTx = daemon.TxManager.CreateSpendTransaction(block2.Transactions[0], 0, (byte)ScriptHashType.SIGHASH_ALL, 50 * SATOSHI_PER_BTC, daemon.CoinbasePrivateKey, daemon.CoinbasePublicKey, toPublicKey);
-                var block3Unmined = daemon.CreateEmptyBlock(block2.Hash)
+                var block3Unmined = daemon.CreateEmptyBlock(lastBlock.Hash)
                     .CreateWithAddedTransactions(spendTx);
                 var block3 = daemon.MineAndAddBlock(block3Unmined);
 
                 // check
                 daemon.WaitForUpdate();
-                daemon.AssertAtBlock(3, block3.Hash);
+                daemon.AssertAtBlock(103, block3.Hash);
 
                 // attempt to spend block 2's coinbase again in block 4
                 var doubleSpendTx = daemon.TxManager.CreateSpendTransaction(block2.Transactions[0], 0, (byte)ScriptHashType.SIGHASH_ALL, 50 * SATOSHI_PER_BTC, daemon.CoinbasePrivateKey, daemon.CoinbasePublicKey, toPublicKeyBad);
@@ -125,7 +136,7 @@ namespace BitSharp.Core.Test
 
                 // check that bad block wasn't added
                 daemon.WaitForUpdate();
-                daemon.AssertAtBlock(3, block3.Hash);
+                daemon.AssertAtBlock(103, block3.Hash);
 
                 // add a simple block
                 daemon.TestBlocks.Rollback(1);
@@ -133,7 +144,7 @@ namespace BitSharp.Core.Test
 
                 // check
                 daemon.WaitForUpdate();
-                daemon.AssertAtBlock(4, block4Good.Hash);
+                daemon.AssertAtBlock(104, block4Good.Hash);
             }
         }
 

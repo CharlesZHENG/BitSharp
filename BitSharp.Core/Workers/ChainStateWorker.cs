@@ -188,16 +188,7 @@ namespace BitSharp.Core.Workers
                 if (validationException != null)
                 {
                     // mark block as invalid
-                    this.coreStorage.MarkBlockInvalid(validationException.BlockHash);
-
-                    // mark any blocks further in the target chain as invalid
-                    var targetChainLocal = this.targetChainWorker.TargetChain;
-                    ChainedHeader invalidBlock;
-                    if (targetChainLocal.BlocksByHash.TryGetValue(validationException.BlockHash, out invalidBlock))
-                    {
-                        for (var height = invalidBlock.Height; height <= targetChainLocal.Height; height++)
-                            this.coreStorage.MarkBlockInvalid(targetChainLocal.Blocks[height].Hash);
-                    }
+                    this.coreStorage.MarkBlockInvalid(validationException.BlockHash, targetChainWorker.TargetChain);
 
                     targetChainWorker.ForceUpdateAndWait();
 
