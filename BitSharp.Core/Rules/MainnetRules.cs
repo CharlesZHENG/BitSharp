@@ -294,7 +294,7 @@ namespace BitSharp.Core.Rules
             // all validation has passed
         }
 
-        public virtual void ValidationTransactionScript(ChainedHeader chainedHeader, BlockTx tx, TxInput txInput, int txInputIndex, TxOutput prevTxOutput)
+        public virtual void ValidationTransactionScript(ChainedHeader chainedHeader, BlockTx tx, TxInput txInput, int txInputIndex, PrevTxOutput prevTxOutput)
         {
             var result = LibbitcoinConsensus.VerifyScript(
                 tx.TxBytes,

@@ -79,6 +79,17 @@ namespace BitSharp.Core.Test
             );
         }
 
+        public static PrevTxOutput RandomPrevTxOutput(RandomDataOptions options = default(RandomDataOptions))
+        {
+            return new PrevTxOutput
+            (
+                RandomTxOutput(),
+                random.Next(),
+                random.Next(),
+                random.NextUInt32()
+            );
+        }
+
         public static ChainedHeader RandomChainedHeader(RandomDataOptions options = default(RandomDataOptions))
         {
             return new ChainedHeader
@@ -98,6 +109,7 @@ namespace BitSharp.Core.Test
                 txHash: random.NextUInt256(),
                 blockIndex: random.Next(),
                 txIndex: random.Next(),
+                txVersion: random.NextUInt32(),
                 outputStates: new OutputStates(options.TxOutputCount.Value, random.NextBool() ? OutputState.Spent : OutputState.Unspent),
                 txOutputs: Enumerable.Range(0, options.TxOutputCount.Value)
                     .Select(x => RandomTxOutput()).ToImmutableArray()

@@ -53,6 +53,7 @@ namespace BitSharp.Esent
         public readonly JET_COLUMNID txHashColumnId;
         public readonly JET_COLUMNID blockIndexColumnId;
         public readonly JET_COLUMNID txIndexColumnId;
+        public readonly JET_COLUMNID txVersionColumnId;
         public readonly JET_COLUMNID outputStatesColumnId;
         public readonly JET_COLUMNID txOutputBytesColumnId;
 
@@ -93,6 +94,7 @@ namespace BitSharp.Esent
                     out this.txHashColumnId,
                     out this.blockIndexColumnId,
                     out this.txIndexColumnId,
+                    out this.txVersionColumnId,
                     out this.outputStatesColumnId,
                     out this.txOutputBytesColumnId,
                 out spentTxTableId,
@@ -358,16 +360,18 @@ namespace BitSharp.Esent
                 {
                     var blockIndexColumn = new Int32ColumnValue { Columnid = this.blockIndexColumnId };
                     var txIndexColumn = new Int32ColumnValue { Columnid = this.txIndexColumnId };
+                    var txVersionColumn = new UInt32ColumnValue { Columnid = this.txVersionColumnId };
                     var outputStatesColumn = new BytesColumnValue { Columnid = this.outputStatesColumnId };
                     var txOutputBytesColumn = new BytesColumnValue { Columnid = this.txOutputBytesColumnId };
-                    Api.RetrieveColumns(this.jetSession, this.unspentTxTableId, blockIndexColumn, txIndexColumn, outputStatesColumn, txOutputBytesColumn);
+                    Api.RetrieveColumns(this.jetSession, this.unspentTxTableId, blockIndexColumn, txIndexColumn, txVersionColumn, outputStatesColumn, txOutputBytesColumn);
 
                     var blockIndex = blockIndexColumn.Value.Value;
                     var txIndex = txIndexColumn.Value.Value;
+                    var txVersion = txVersionColumn.Value.Value;
                     var outputStates = DataEncoder.DecodeOutputStates(outputStatesColumn.Value);
                     var txOutputs = DataEncoder.DecodeTxOutputList(txOutputBytesColumn.Value);
 
-                    unspentTx = new UnspentTx(txHash, blockIndex, txIndex, outputStates, txOutputs);
+                    unspentTx = new UnspentTx(txHash, blockIndex, txIndex, txVersion, outputStates, txOutputs);
                     return true;
                 }
 
@@ -390,6 +394,7 @@ namespace BitSharp.Esent
                             new BytesColumnValue { Columnid = this.txHashColumnId, Value = DbEncoder.EncodeUInt256(unspentTx.TxHash) },
                             new Int32ColumnValue { Columnid = this.blockIndexColumnId, Value = unspentTx.BlockIndex },
                             new Int32ColumnValue { Columnid = this.txIndexColumnId, Value = unspentTx.TxIndex },
+                            new UInt32ColumnValue { Columnid = this.txVersionColumnId, Value = unspentTx.TxVersion },
                             new BytesColumnValue { Columnid = this.outputStatesColumnId, Value = DataEncoder.EncodeOutputStates(unspentTx.OutputStates) },
                             new BytesColumnValue { Columnid = this.txOutputBytesColumnId, Value = DataEncoder.EncodeTxOutputList(unspentTx.TxOutputs) });
 
@@ -472,17 +477,19 @@ namespace BitSharp.Esent
                         var txHashColumn = new BytesColumnValue { Columnid = this.txHashColumnId };
                         var blockIndexColumn = new Int32ColumnValue { Columnid = this.blockIndexColumnId };
                         var txIndexColumn = new Int32ColumnValue { Columnid = this.txIndexColumnId };
+                        var txVersionColumn = new UInt32ColumnValue { Columnid = this.txVersionColumnId };
                         var outputStatesColumn = new BytesColumnValue { Columnid = this.outputStatesColumnId };
                         var txOutputBytesColumn = new BytesColumnValue { Columnid = this.txOutputBytesColumnId };
-                        Api.RetrieveColumns(this.jetSession, this.unspentTxTableId, txHashColumn, blockIndexColumn, txIndexColumn, outputStatesColumn, txOutputBytesColumn);
+                        Api.RetrieveColumns(this.jetSession, this.unspentTxTableId, txHashColumn, blockIndexColumn, txIndexColumn, txVersionColumn, outputStatesColumn, txOutputBytesColumn);
 
                         var txHash = DbEncoder.DecodeUInt256(txHashColumn.Value);
                         var blockIndex = blockIndexColumn.Value.Value;
                         var txIndex = txIndexColumn.Value.Value;
+                        var txVersion = txVersionColumn.Value.Value;
                         var outputStates = DataEncoder.DecodeOutputStates(outputStatesColumn.Value);
                         var txOutputs = DataEncoder.DecodeTxOutputList(txOutputBytesColumn.Value);
 
-                        yield return new UnspentTx(txHash, blockIndex, txIndex, outputStates, txOutputs);
+                        yield return new UnspentTx(txHash, blockIndex, txIndex, txVersion, outputStates, txOutputs);
                     }
                     while (Api.TryMoveNext(this.jetSession, this.unspentTxTableId));
                 }
@@ -775,6 +782,7 @@ namespace BitSharp.Esent
             out JET_COLUMNID txHashColumnId,
             out JET_COLUMNID blockIndexColumnId,
             out JET_COLUMNID txIndexColumnId,
+            out JET_COLUMNID txVersionColumnId,
             out JET_COLUMNID outputStatesColumnId,
             out JET_COLUMNID txOutputBytesColumnId,
             out JET_TABLEID spentTxTableId,
@@ -815,6 +823,7 @@ namespace BitSharp.Esent
                 txHashColumnId = Api.GetTableColumnid(jetSession, unspentTxTableId, "TxHash");
                 blockIndexColumnId = Api.GetTableColumnid(jetSession, unspentTxTableId, "BlockIndex");
                 txIndexColumnId = Api.GetTableColumnid(jetSession, unspentTxTableId, "TxIndex");
+                txVersionColumnId = Api.GetTableColumnid(jetSession, unspentTxTableId, "TxVersion");
                 outputStatesColumnId = Api.GetTableColumnid(jetSession, unspentTxTableId, "OutputStates");
                 txOutputBytesColumnId = Api.GetTableColumnid(jetSession, unspentTxTableId, "TxOutputBytes");
 

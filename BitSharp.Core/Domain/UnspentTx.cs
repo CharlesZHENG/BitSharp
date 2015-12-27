@@ -10,21 +10,23 @@ namespace BitSharp.Core.Domain
     /// </summary>
     public class UnspentTx
     {
-        public UnspentTx(UInt256 txHash, int blockIndex, int txIndex, OutputStates outputStates, ImmutableArray<TxOutput> txOutputs)
+        public UnspentTx(UInt256 txHash, int blockIndex, int txIndex, uint txVersion, OutputStates outputStates, ImmutableArray<TxOutput> txOutputs)
         {
             TxHash = txHash;
             BlockIndex = blockIndex;
             TxIndex = txIndex;
+            TxVersion = txVersion;
             OutputStates = outputStates;
             IsFullySpent = OutputStates.All(x => x == OutputState.Spent);
             TxOutputs = txOutputs;
         }
 
-        public UnspentTx(UInt256 txHash, int blockIndex, int txIndex, int length, OutputState state, ImmutableArray<TxOutput> txOutputs)
+        public UnspentTx(UInt256 txHash, int blockIndex, int txIndex, uint txVersion, int length, OutputState state, ImmutableArray<TxOutput> txOutputs)
         {
             TxHash = txHash;
             BlockIndex = blockIndex;
             TxIndex = txIndex;
+            TxVersion = txVersion;
             OutputStates = new OutputStates(length, state);
             IsFullySpent = state == OutputState.Spent;
             TxOutputs = txOutputs;
@@ -45,6 +47,8 @@ namespace BitSharp.Core.Domain
         /// </summary>
         public int TxIndex { get; }
 
+        public uint TxVersion { get; }
+
         /// <summary>
         /// The spent/unspent state of each of the transaction's outputs.
         /// </summary>
@@ -59,7 +63,7 @@ namespace BitSharp.Core.Domain
 
         public UnspentTx SetOutputState(int index, OutputState value)
         {
-            return new UnspentTx(this.TxHash, this.BlockIndex, this.TxIndex, this.OutputStates.Set(index, value), this.TxOutputs);
+            return new UnspentTx(this.TxHash, this.BlockIndex, this.TxIndex, this.TxVersion, this.OutputStates.Set(index, value), this.TxOutputs);
         }
 
         /// <summary>
@@ -74,18 +78,31 @@ namespace BitSharp.Core.Domain
             return new SpentTx(this.TxHash, this.BlockIndex, this.TxIndex);
         }
 
+        public PrevTxOutput GetPrevTxOutput(TxOutputKey txOutputKey)
+        {
+            if (txOutputKey.TxHash != this.TxHash)
+                throw new InvalidOperationException();
+
+            var outputIndex = unchecked((int)txOutputKey.TxOutputIndex);
+            if (outputIndex < 0 || outputIndex >= TxOutputs.Length)
+                throw new InvalidOperationException();
+
+            return new PrevTxOutput(TxOutputs[outputIndex], BlockIndex, TxIndex, TxVersion);
+        }
+
+        //TODO only exists for tests
         public override bool Equals(object obj)
         {
             if (!(obj is UnspentTx))
                 return false;
 
             var other = (UnspentTx)obj;
-            return other.BlockIndex == this.BlockIndex && other.TxIndex == this.TxIndex && other.OutputStates.Equals(this.OutputStates);
+            return other.TxHash == this.TxHash && other.BlockIndex == this.BlockIndex && other.TxIndex == this.TxIndex && other.TxVersion == this.TxVersion && other.OutputStates.Equals(this.OutputStates) && other.TxOutputs.SequenceEqual(this.TxOutputs);
         }
 
         public override int GetHashCode()
         {
-            return this.BlockIndex.GetHashCode() ^ this.TxIndex.GetHashCode() ^ this.OutputStates.GetHashCode();
+            return this.TxHash.GetHashCode() ^ this.BlockIndex.GetHashCode() ^ this.TxIndex.GetHashCode() ^ this.TxVersion.GetHashCode() ^ this.OutputStates.GetHashCode();
         }
     }
 }

@@ -31,7 +31,7 @@ namespace BitSharp.Core.Builders
                     var tx = blockTx.Transaction;
                     var txIndex = blockTx.Index;
 
-                    var prevTxOutputs = ImmutableArray.CreateBuilder<TxOutput>(!blockTx.IsCoinbase ? tx.Inputs.Length : 0);
+                    var prevTxOutputs = ImmutableArray.CreateBuilder<PrevTxOutput>(!blockTx.IsCoinbase ? tx.Inputs.Length : 0);
 
                     //TODO apply real coinbase rule
                     // https://github.com/bitcoin/bitcoin/blob/481d89979457d69da07edd99fba451fd42a47f5c/src/core.h#L219
@@ -43,7 +43,7 @@ namespace BitSharp.Core.Builders
                             var input = tx.Inputs[inputIndex];
                             var unspentTx = this.Spend(chainStateCursor, txIndex, tx, inputIndex, input, chainedHeader, blockSpentTxes);
 
-                            prevTxOutputs.Add(unspentTx.TxOutputs[(int)input.PreviousTxOutputKey.TxOutputIndex]);
+                            prevTxOutputs.Add(unspentTx.GetPrevTxOutput(input.PreviousTxOutputKey));
                         }
                     }
 
@@ -85,7 +85,7 @@ namespace BitSharp.Core.Builders
         private void Mint(IChainStateCursor chainStateCursor, Transaction tx, int txIndex, ChainedHeader chainedHeader)
         {
             // add transaction to the utxo
-            var unspentTx = new UnspentTx(tx.Hash, chainedHeader.Height, txIndex, tx.Outputs.Length, OutputState.Unspent, tx.Outputs);
+            var unspentTx = new UnspentTx(tx.Hash, chainedHeader.Height, txIndex, tx.Version, tx.Outputs.Length, OutputState.Unspent, tx.Outputs);
             if (!chainStateCursor.TryAddUnspentTx(unspentTx))
             {
                 // duplicate transaction
@@ -166,7 +166,7 @@ namespace BitSharp.Core.Builders
                     chainStateCursor.TotalOutputCount -= tx.Outputs.Length;
                 }
 
-                var prevTxOutputs = ImmutableArray.CreateBuilder<TxOutput>(!blockTx.IsCoinbase ? tx.Inputs.Length : 0);
+                var prevTxOutputs = ImmutableArray.CreateBuilder<PrevTxOutput>(!blockTx.IsCoinbase ? tx.Inputs.Length : 0);
 
                 if (!blockTx.IsCoinbase)
                 {
@@ -177,7 +177,7 @@ namespace BitSharp.Core.Builders
                         var unspentTx = this.Unspend(chainStateCursor, input, chainedHeader);
 
                         // store rollback replay information
-                        prevTxOutputs.Add(unspentTx.TxOutputs[(int)input.PreviousTxOutputKey.TxOutputIndex]);
+                        prevTxOutputs.Add(unspentTx.GetPrevTxOutput(input.PreviousTxOutputKey));
                     }
                 }
 

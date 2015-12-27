@@ -24,6 +24,6 @@ namespace BitSharp.Core.Rules
 
         void ValidateTransaction(ChainedHeader chainedHeader, ValidatableTx loadedTx);
 
-        void ValidationTransactionScript(ChainedHeader chainedHeader, BlockTx tx, TxInput txInput, int txInputIndex, TxOutput prevTxOutput);
+        void ValidationTransactionScript(ChainedHeader chainedHeader, BlockTx tx, TxInput txInput, int txInputIndex, PrevTxOutput prevTxOutput);
     }
 }

@@ -35,10 +35,10 @@ namespace BitSharp.Core.Test.Builders
             {
                 txIndex++;
 
-                var prevTxOutputs = new TxOutput[txIndex > 0 ? tx.Inputs.Length : 0];
+                var prevTxOutputs = new PrevTxOutput[txIndex > 0 ? tx.Inputs.Length : 0];
                 for (var inputIndex = 0; inputIndex < prevTxOutputs.Length; inputIndex++)
                 {
-                    prevTxOutputs[inputIndex] = RandomData.RandomTxOutput();
+                    prevTxOutputs[inputIndex] = RandomData.RandomPrevTxOutput();
                 }
 
                 var blockTx = BlockTx.Create(txIndex, tx);

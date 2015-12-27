@@ -49,7 +49,7 @@ namespace BitSharp.Core.Builders
                     {
                         var tx = blockTx.Transaction;
                         var txIndex = blockTx.Index;
-                        var prevTxOutputs = ImmutableArray.CreateBuilder<TxOutput>(!blockTx.IsCoinbase ? tx.Inputs.Length : 0);
+                        var prevTxOutputs = ImmutableArray.CreateBuilder<PrevTxOutput>(!blockTx.IsCoinbase ? tx.Inputs.Length : 0);
 
                         if (!blockTx.IsCoinbase)
                         {
@@ -111,7 +111,7 @@ namespace BitSharp.Core.Builders
                     var tx = blockTx.Transaction;
                     var txIndex = blockTx.Index;
 
-                    var prevTxOutputs = ImmutableArray.CreateBuilder<TxOutput>(!blockTx.IsCoinbase ? tx.Inputs.Length : 0);
+                    var prevTxOutputs = ImmutableArray.CreateBuilder<PrevTxOutput>(!blockTx.IsCoinbase ? tx.Inputs.Length : 0);
 
                     if (!blockTx.IsCoinbase)
                     {
@@ -123,7 +123,7 @@ namespace BitSharp.Core.Builders
                             if (!chainState.TryGetUnspentTx(input.PreviousTxOutputKey.TxHash, out unspentTx))
                                 throw new MissingDataException(replayBlock.Hash);
 
-                            prevTxOutputs.Add(unspentTx.TxOutputs[(int)input.PreviousTxOutputKey.TxOutputIndex]);
+                            prevTxOutputs.Add(unspentTx.GetPrevTxOutput(input.PreviousTxOutputKey));
                         }
                     }
 

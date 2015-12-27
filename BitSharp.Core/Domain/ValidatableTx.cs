@@ -9,7 +9,7 @@ namespace BitSharp.Core.Domain
 {
     public class ValidatableTx
     {
-        public ValidatableTx(DecodedBlockTx blockTx, ChainedHeader chainedHeader, ImmutableArray<TxOutput> prevTxOutputs)
+        public ValidatableTx(DecodedBlockTx blockTx, ChainedHeader chainedHeader, ImmutableArray<PrevTxOutput> prevTxOutputs)
         {
             if (blockTx == null)
                 throw new ArgumentNullException(nameof(blockTx));
@@ -25,7 +25,7 @@ namespace BitSharp.Core.Domain
 
         public ChainedHeader ChainedHeader { get; }
 
-        public ImmutableArray<TxOutput> PrevTxOutputs { get; }
+        public ImmutableArray<PrevTxOutput> PrevTxOutputs { get; }
 
         public Transaction Transaction => BlockTx.Transaction;
 

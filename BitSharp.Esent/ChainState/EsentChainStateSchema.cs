@@ -1,4 +1,5 @@
 ﻿using Microsoft.Isam.Esent.Interop;
+using Microsoft.Isam.Esent.Interop.Vista;
 using Microsoft.Isam.Esent.Interop.Windows7;
 using System;
 
@@ -113,6 +114,7 @@ namespace BitSharp.Esent.ChainState
             JET_COLUMNID txHashColumnId;
             JET_COLUMNID blockIndexColumnId;
             JET_COLUMNID txIndexColumnId;
+            JET_COLUMNID txVersionColumnId;
             JET_COLUMNID outputStatesColumnId;
             JET_COLUMNID txOutputBytesColumnId;
 
@@ -120,6 +122,7 @@ namespace BitSharp.Esent.ChainState
             Api.JetAddColumn(jetSession, unspentTxTableId, "TxHash", new JET_COLUMNDEF { coltyp = JET_coltyp.Binary, cbMax = 32, grbit = ColumndefGrbit.ColumnNotNULL | ColumndefGrbit.ColumnFixed }, null, 0, out txHashColumnId);
             Api.JetAddColumn(jetSession, unspentTxTableId, "BlockIndex", new JET_COLUMNDEF { coltyp = JET_coltyp.Long, grbit = ColumndefGrbit.ColumnNotNULL }, null, 0, out blockIndexColumnId);
             Api.JetAddColumn(jetSession, unspentTxTableId, "TxIndex", new JET_COLUMNDEF { coltyp = JET_coltyp.Long, grbit = ColumndefGrbit.ColumnNotNULL }, null, 0, out txIndexColumnId);
+            Api.JetAddColumn(jetSession, unspentTxTableId, "TxVersion", new JET_COLUMNDEF { coltyp = VistaColtyp.UnsignedLong, grbit = ColumndefGrbit.ColumnNotNULL }, null, 0, out txVersionColumnId);
             Api.JetAddColumn(jetSession, unspentTxTableId, "OutputStates", new JET_COLUMNDEF { coltyp = JET_coltyp.LongBinary, grbit = ColumndefGrbit.ColumnNotNULL }, null, 0, out outputStatesColumnId);
             Api.JetAddColumn(jetSession, unspentTxTableId, "TxOutputBytes", new JET_COLUMNDEF { coltyp = JET_coltyp.LongBinary }, null, 0, out txOutputBytesColumnId);
 

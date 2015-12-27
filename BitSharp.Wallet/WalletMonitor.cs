@@ -180,7 +180,7 @@ namespace BitSharp.Wallet
                             var chainPosition = ChainPosition.Fake();
                             var entryType = forward ? EnumWalletEntryType.Spend : EnumWalletEntryType.UnSpend;
 
-                            ScanForEntry(chainPosition, entryType, prevOutput, prevOutputScriptHash);
+                            ScanForEntry(chainPosition, entryType, (TxOutput)prevOutput, prevOutputScriptHash);
                         }
                     }
 

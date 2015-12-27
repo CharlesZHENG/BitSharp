@@ -59,9 +59,9 @@ namespace BitSharp.Core.Test.Rules
                 ValidateTransactionAction(chainedHeader, validatableTx);
         }
 
-        public Action<ChainedHeader, BlockTx, TxInput, int, TxOutput> ValidationTransactionScriptAction { get; set; }
+        public Action<ChainedHeader, BlockTx, TxInput, int, PrevTxOutput> ValidationTransactionScriptAction { get; set; }
 
-        public override void ValidationTransactionScript(ChainedHeader chainedHeader, BlockTx tx, TxInput txInput, int txInputIndex, TxOutput prevTxOutput)
+        public override void ValidationTransactionScript(ChainedHeader chainedHeader, BlockTx tx, TxInput txInput, int txInputIndex, PrevTxOutput prevTxOutput)
         {
             if (ValidationTransactionScriptAction == null)
                 base.ValidationTransactionScript(chainedHeader, tx, txInput, txInputIndex, prevTxOutput);

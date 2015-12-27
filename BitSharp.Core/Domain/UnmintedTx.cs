@@ -6,7 +6,7 @@ namespace BitSharp.Core.Domain
 {
     public class UnmintedTx
     {
-        public UnmintedTx(UInt256 txHash, ImmutableArray<TxOutput> prevTxOutputs)
+        public UnmintedTx(UInt256 txHash, ImmutableArray<PrevTxOutput> prevTxOutputs)
         {
             TxHash = txHash;
             PrevTxOutputs = prevTxOutputs;
@@ -14,7 +14,7 @@ namespace BitSharp.Core.Domain
 
         public UInt256 TxHash { get; }
 
-        public ImmutableArray<TxOutput> PrevTxOutputs { get; }
+        public ImmutableArray<PrevTxOutput> PrevTxOutputs { get; }
 
         public override bool Equals(object obj)
         {
