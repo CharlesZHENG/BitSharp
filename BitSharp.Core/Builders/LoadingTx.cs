@@ -17,7 +17,7 @@ namespace BitSharp.Core.Builders
             InputTxes = new CompletionArray<DecodedTx>(txIndex != 0 ? transaction.Inputs.Length : 0);
         }
 
-        public bool IsCoinbase => this.TxIndex == 0;
+        public bool IsCoinbase => Transaction.IsCoinbase;
 
         public Transaction Transaction { get; }
 

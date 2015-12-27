@@ -457,7 +457,8 @@ namespace BitSharp.Core
                 scriptPublicKey: reader.ReadVarBytes().ToImmutableArray(),
                 blockHeight: reader.ReadInt32(),
                 txIndex: reader.ReadInt32(),
-                txVersion: reader.ReadUInt32()
+                txVersion: reader.ReadUInt32(),
+                isCoinbase: reader.ReadBool()
             );
         }
 
@@ -477,6 +478,7 @@ namespace BitSharp.Core
             writer.WriteInt32(txOutput.BlockHeight);
             writer.WriteInt32(txOutput.TxIndex);
             writer.WriteUInt32(txOutput.TxVersion);
+            writer.WriteBool(txOutput.IsCoinbase);
         }
 
         public static byte[] EncodePrevTxOutput(PrevTxOutput txOutput)
@@ -524,10 +526,11 @@ namespace BitSharp.Core
             var blockIndex = reader.ReadInt32();
             var index = reader.ReadInt32();
             var txVersion = reader.ReadUInt32();
+            var isCoinbase = reader.ReadBool();
             var outputStates = new OutputStates(bytes: reader.ReadVarBytes(), length: reader.ReadInt32());
             var txOutputs = DecodeTxOutputList(reader);
 
-            return new UnspentTx(txHash, blockIndex, index, txVersion, outputStates, txOutputs);
+            return new UnspentTx(txHash, blockIndex, index, txVersion, isCoinbase, outputStates, txOutputs);
         }
 
         public static UnspentTx DecodeUnspentTx(byte[] bytes)
@@ -545,6 +548,7 @@ namespace BitSharp.Core
             writer.WriteInt32(unspentTx.BlockIndex);
             writer.WriteInt32(unspentTx.TxIndex);
             writer.WriteUInt32(unspentTx.TxVersion);
+            writer.WriteBool(unspentTx.IsCoinbase);
             writer.WriteVarBytes(unspentTx.OutputStates.ToByteArray());
             writer.WriteInt32(unspentTx.OutputStates.Length);
             EncodeTxOutputList(writer, unspentTx.TxOutputs);

@@ -28,8 +28,6 @@ namespace BitSharp.Core.Domain
 
         public int Index { get; }
 
-        public bool IsCoinbase => this.Index == 0;
-
         public EncodedTx EncodedTx { get; }
 
         public ImmutableArray<byte> TxBytes => EncodedTx.TxBytes;

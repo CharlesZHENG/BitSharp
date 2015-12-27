@@ -7,17 +7,18 @@ namespace BitSharp.Core.Domain
 {
     public class PrevTxOutput
     {
-        public PrevTxOutput(TxOutput txOutput, int blockHeight, int txIndex, uint txVersion)
-            : this(txOutput.Value, txOutput.ScriptPublicKey, blockHeight, txIndex, txVersion)
+        public PrevTxOutput(TxOutput txOutput, int blockHeight, int txIndex, uint txVersion, bool isCoinbase)
+            : this(txOutput.Value, txOutput.ScriptPublicKey, blockHeight, txIndex, txVersion, isCoinbase)
         { }
 
-        public PrevTxOutput(UInt64 value, ImmutableArray<byte> scriptPublicKey, int blockHeight, int txIndex, uint txVersion)
+        public PrevTxOutput(UInt64 value, ImmutableArray<byte> scriptPublicKey, int blockHeight, int txIndex, uint txVersion, bool isCoinbase)
         {
             Value = value;
             ScriptPublicKey = scriptPublicKey;
             BlockHeight = blockHeight;
             TxIndex = txIndex;
             TxVersion = txVersion;
+            IsCoinbase = isCoinbase;
         }
 
         public UInt64 Value { get; }
@@ -30,7 +31,7 @@ namespace BitSharp.Core.Domain
 
         public uint TxVersion { get; }
 
-        public bool IsCoinbase => TxIndex == 0;
+        public bool IsCoinbase { get; }
 
         public override bool Equals(object obj)
         {

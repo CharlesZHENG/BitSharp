@@ -18,6 +18,8 @@ namespace BitSharp.Core.Domain
 
         public Transaction Transaction { get; }
 
+        public bool IsCoinbase => Transaction.IsCoinbase;
+
         public static implicit operator BlockTxNode(DecodedBlockTx tx)
         {
             return new BlockTxNode(tx.Index, 0, tx.Hash, false, tx.EncodedTx);

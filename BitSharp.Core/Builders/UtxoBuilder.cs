@@ -85,7 +85,7 @@ namespace BitSharp.Core.Builders
         private void Mint(IChainStateCursor chainStateCursor, Transaction tx, int txIndex, ChainedHeader chainedHeader)
         {
             // add transaction to the utxo
-            var unspentTx = new UnspentTx(tx.Hash, chainedHeader.Height, txIndex, tx.Version, tx.Outputs.Length, OutputState.Unspent, tx.Outputs);
+            var unspentTx = new UnspentTx(tx.Hash, chainedHeader.Height, txIndex, tx.Version, tx.IsCoinbase, tx.Outputs.Length, OutputState.Unspent, tx.Outputs);
             if (!chainStateCursor.TryAddUnspentTx(unspentTx))
             {
                 // duplicate transaction
@@ -153,7 +153,7 @@ namespace BitSharp.Core.Builders
                 var isDupeCoinbase = IsDupeCoinbase(chainedHeader, tx);
                 if (chainedHeader.Height > 0 && !isDupeCoinbase)
                 {
-                    this.Unmint(chainStateCursor, tx, chainedHeader, isCoinbase: true);
+                    this.Unmint(chainStateCursor, tx, chainedHeader);
 
                     // decrease unspent output count
                     chainStateCursor.UnspentOutputCount -= tx.Outputs.Length;
@@ -166,9 +166,9 @@ namespace BitSharp.Core.Builders
                     chainStateCursor.TotalOutputCount -= tx.Outputs.Length;
                 }
 
-                var prevTxOutputs = ImmutableArray.CreateBuilder<PrevTxOutput>(!blockTx.IsCoinbase ? tx.Inputs.Length : 0);
+                var prevTxOutputs = ImmutableArray.CreateBuilder<PrevTxOutput>(!tx.IsCoinbase ? tx.Inputs.Length : 0);
 
-                if (!blockTx.IsCoinbase)
+                if (!tx.IsCoinbase)
                 {
                     // remove inputs in reverse order
                     for (var inputIndex = tx.Inputs.Length - 1; inputIndex >= 0; inputIndex--)
@@ -189,7 +189,7 @@ namespace BitSharp.Core.Builders
             }
         }
 
-        private void Unmint(IChainStateCursor chainStateCursor, Transaction tx, ChainedHeader chainedHeader, bool isCoinbase)
+        private void Unmint(IChainStateCursor chainStateCursor, Transaction tx, ChainedHeader chainedHeader)
         {
             // check that transaction exists
             UnspentTx unspentTx;
@@ -256,8 +256,8 @@ namespace BitSharp.Core.Builders
 
         private bool IsDupeCoinbase(ChainedHeader chainedHeader, Transaction tx)
         {
-            return ((chainedHeader.Height == DUPE_COINBASE_1_HEIGHT && tx.Hash == DUPE_COINBASE_1_HASH)
-               || (chainedHeader.Height == DUPE_COINBASE_2_HEIGHT && tx.Hash == DUPE_COINBASE_2_HASH));
+            return ((tx.IsCoinbase && chainedHeader.Height == DUPE_COINBASE_1_HEIGHT && tx.Hash == DUPE_COINBASE_1_HASH)
+               || (tx.IsCoinbase && chainedHeader.Height == DUPE_COINBASE_2_HEIGHT && tx.Hash == DUPE_COINBASE_2_HASH));
         }
     }
 }

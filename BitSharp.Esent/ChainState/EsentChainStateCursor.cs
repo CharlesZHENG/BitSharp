@@ -54,6 +54,7 @@ namespace BitSharp.Esent
         public readonly JET_COLUMNID blockIndexColumnId;
         public readonly JET_COLUMNID txIndexColumnId;
         public readonly JET_COLUMNID txVersionColumnId;
+        public readonly JET_COLUMNID isCoinbaseColumnId;
         public readonly JET_COLUMNID outputStatesColumnId;
         public readonly JET_COLUMNID txOutputBytesColumnId;
 
@@ -95,6 +96,7 @@ namespace BitSharp.Esent
                     out this.blockIndexColumnId,
                     out this.txIndexColumnId,
                     out this.txVersionColumnId,
+                    out this.isCoinbaseColumnId,
                     out this.outputStatesColumnId,
                     out this.txOutputBytesColumnId,
                 out spentTxTableId,
@@ -361,17 +363,19 @@ namespace BitSharp.Esent
                     var blockIndexColumn = new Int32ColumnValue { Columnid = this.blockIndexColumnId };
                     var txIndexColumn = new Int32ColumnValue { Columnid = this.txIndexColumnId };
                     var txVersionColumn = new UInt32ColumnValue { Columnid = this.txVersionColumnId };
+                    var isCoinbaseColumn = new BoolColumnValue { Columnid = this.isCoinbaseColumnId };
                     var outputStatesColumn = new BytesColumnValue { Columnid = this.outputStatesColumnId };
                     var txOutputBytesColumn = new BytesColumnValue { Columnid = this.txOutputBytesColumnId };
-                    Api.RetrieveColumns(this.jetSession, this.unspentTxTableId, blockIndexColumn, txIndexColumn, txVersionColumn, outputStatesColumn, txOutputBytesColumn);
+                    Api.RetrieveColumns(this.jetSession, this.unspentTxTableId, blockIndexColumn, txIndexColumn, txVersionColumn, isCoinbaseColumn, outputStatesColumn, txOutputBytesColumn);
 
                     var blockIndex = blockIndexColumn.Value.Value;
                     var txIndex = txIndexColumn.Value.Value;
                     var txVersion = txVersionColumn.Value.Value;
+                    var isCoinbase = isCoinbaseColumn.Value.Value;
                     var outputStates = DataEncoder.DecodeOutputStates(outputStatesColumn.Value);
                     var txOutputs = DataEncoder.DecodeTxOutputList(txOutputBytesColumn.Value);
 
-                    unspentTx = new UnspentTx(txHash, blockIndex, txIndex, txVersion, outputStates, txOutputs);
+                    unspentTx = new UnspentTx(txHash, blockIndex, txIndex, txVersion, isCoinbase, outputStates, txOutputs);
                     return true;
                 }
 
@@ -395,6 +399,7 @@ namespace BitSharp.Esent
                             new Int32ColumnValue { Columnid = this.blockIndexColumnId, Value = unspentTx.BlockIndex },
                             new Int32ColumnValue { Columnid = this.txIndexColumnId, Value = unspentTx.TxIndex },
                             new UInt32ColumnValue { Columnid = this.txVersionColumnId, Value = unspentTx.TxVersion },
+                            new BoolColumnValue { Columnid = this.isCoinbaseColumnId, Value = unspentTx.IsCoinbase },
                             new BytesColumnValue { Columnid = this.outputStatesColumnId, Value = DataEncoder.EncodeOutputStates(unspentTx.OutputStates) },
                             new BytesColumnValue { Columnid = this.txOutputBytesColumnId, Value = DataEncoder.EncodeTxOutputList(unspentTx.TxOutputs) });
 
@@ -478,18 +483,20 @@ namespace BitSharp.Esent
                         var blockIndexColumn = new Int32ColumnValue { Columnid = this.blockIndexColumnId };
                         var txIndexColumn = new Int32ColumnValue { Columnid = this.txIndexColumnId };
                         var txVersionColumn = new UInt32ColumnValue { Columnid = this.txVersionColumnId };
+                        var isCoinbaseColumn = new BoolColumnValue { Columnid = this.isCoinbaseColumnId };
                         var outputStatesColumn = new BytesColumnValue { Columnid = this.outputStatesColumnId };
                         var txOutputBytesColumn = new BytesColumnValue { Columnid = this.txOutputBytesColumnId };
-                        Api.RetrieveColumns(this.jetSession, this.unspentTxTableId, txHashColumn, blockIndexColumn, txIndexColumn, txVersionColumn, outputStatesColumn, txOutputBytesColumn);
+                        Api.RetrieveColumns(this.jetSession, this.unspentTxTableId, txHashColumn, blockIndexColumn, txIndexColumn, txVersionColumn, isCoinbaseColumn, outputStatesColumn, txOutputBytesColumn);
 
                         var txHash = DbEncoder.DecodeUInt256(txHashColumn.Value);
                         var blockIndex = blockIndexColumn.Value.Value;
                         var txIndex = txIndexColumn.Value.Value;
                         var txVersion = txVersionColumn.Value.Value;
+                        var isCoinbase = isCoinbaseColumn.Value.Value;
                         var outputStates = DataEncoder.DecodeOutputStates(outputStatesColumn.Value);
                         var txOutputs = DataEncoder.DecodeTxOutputList(txOutputBytesColumn.Value);
 
-                        yield return new UnspentTx(txHash, blockIndex, txIndex, txVersion, outputStates, txOutputs);
+                        yield return new UnspentTx(txHash, blockIndex, txIndex, txVersion, isCoinbase, outputStates, txOutputs);
                     }
                     while (Api.TryMoveNext(this.jetSession, this.unspentTxTableId));
                 }
@@ -783,6 +790,7 @@ namespace BitSharp.Esent
             out JET_COLUMNID blockIndexColumnId,
             out JET_COLUMNID txIndexColumnId,
             out JET_COLUMNID txVersionColumnId,
+            out JET_COLUMNID isCoinbaseColumnId,
             out JET_COLUMNID outputStatesColumnId,
             out JET_COLUMNID txOutputBytesColumnId,
             out JET_TABLEID spentTxTableId,
@@ -824,6 +832,7 @@ namespace BitSharp.Esent
                 blockIndexColumnId = Api.GetTableColumnid(jetSession, unspentTxTableId, "BlockIndex");
                 txIndexColumnId = Api.GetTableColumnid(jetSession, unspentTxTableId, "TxIndex");
                 txVersionColumnId = Api.GetTableColumnid(jetSession, unspentTxTableId, "TxVersion");
+                isCoinbaseColumnId = Api.GetTableColumnid(jetSession, unspentTxTableId, "IsCoinbase");
                 outputStatesColumnId = Api.GetTableColumnid(jetSession, unspentTxTableId, "OutputStates");
                 txOutputBytesColumnId = Api.GetTableColumnid(jetSession, unspentTxTableId, "TxOutputBytes");
 

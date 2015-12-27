@@ -33,8 +33,6 @@ namespace BitSharp.Core.Domain
 
         public bool Pruned { get; }
 
-        public bool IsCoinbase => this.Index == 0;
-
         public EncodedTx EncodedTx { get; }
 
         public ImmutableArray<byte> TxBytes => EncodedTx.TxBytes;

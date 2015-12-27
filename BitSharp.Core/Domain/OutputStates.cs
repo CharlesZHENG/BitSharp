@@ -16,6 +16,8 @@ namespace BitSharp.Core.Domain
     {
         private readonly ImmutableBitArray bitArray;
 
+        public static OutputStates Empty { get; } = new OutputStates(0, OutputState.Spent);
+
         public OutputStates(int length, OutputState state)
         {
             this.bitArray = new ImmutableBitArray(length, Encode(state));

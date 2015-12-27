@@ -115,6 +115,7 @@ namespace BitSharp.Esent.ChainState
             JET_COLUMNID blockIndexColumnId;
             JET_COLUMNID txIndexColumnId;
             JET_COLUMNID txVersionColumnId;
+            JET_COLUMNID isCoinbaseColumnId;
             JET_COLUMNID outputStatesColumnId;
             JET_COLUMNID txOutputBytesColumnId;
 
@@ -123,6 +124,7 @@ namespace BitSharp.Esent.ChainState
             Api.JetAddColumn(jetSession, unspentTxTableId, "BlockIndex", new JET_COLUMNDEF { coltyp = JET_coltyp.Long, grbit = ColumndefGrbit.ColumnNotNULL }, null, 0, out blockIndexColumnId);
             Api.JetAddColumn(jetSession, unspentTxTableId, "TxIndex", new JET_COLUMNDEF { coltyp = JET_coltyp.Long, grbit = ColumndefGrbit.ColumnNotNULL }, null, 0, out txIndexColumnId);
             Api.JetAddColumn(jetSession, unspentTxTableId, "TxVersion", new JET_COLUMNDEF { coltyp = VistaColtyp.UnsignedLong, grbit = ColumndefGrbit.ColumnNotNULL }, null, 0, out txVersionColumnId);
+            Api.JetAddColumn(jetSession, unspentTxTableId, "IsCoinbase", new JET_COLUMNDEF { coltyp = JET_coltyp.Bit, grbit = ColumndefGrbit.ColumnNotNULL }, null, 0, out isCoinbaseColumnId);
             Api.JetAddColumn(jetSession, unspentTxTableId, "OutputStates", new JET_COLUMNDEF { coltyp = JET_coltyp.LongBinary, grbit = ColumndefGrbit.ColumnNotNULL }, null, 0, out outputStatesColumnId);
             Api.JetAddColumn(jetSession, unspentTxTableId, "TxOutputBytes", new JET_COLUMNDEF { coltyp = JET_coltyp.LongBinary }, null, 0, out txOutputBytesColumnId);
 

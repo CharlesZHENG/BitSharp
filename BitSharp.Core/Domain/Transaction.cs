@@ -11,12 +11,20 @@ namespace BitSharp.Core.Domain
             if (hash == null)
                 throw new ArgumentNullException(nameof(hash));
 
+            Hash = hash;
+            IsCoinbase =
+                inputs.Length == 1
+                && inputs[0].PreviousTxOutputKey.TxHash == UInt256.Zero
+                && inputs[0].PreviousTxOutputKey.TxOutputIndex == uint.MaxValue;
             Version = version;
             Inputs = inputs;
             Outputs = outputs;
             LockTime = lockTime;
-            Hash = hash;
         }
+
+        public UInt256 Hash { get; }
+
+        public bool IsCoinbase { get; }
 
         public UInt32 Version { get; }
 
@@ -25,8 +33,6 @@ namespace BitSharp.Core.Domain
         public ImmutableArray<TxOutput> Outputs { get; }
 
         public UInt32 LockTime { get; }
-
-        public UInt256 Hash { get; }
 
         public DecodedTx CreateWith(UInt32? Version = null, ImmutableArray<TxInput>? Inputs = null, ImmutableArray<TxOutput>? Outputs = null, UInt32? LockTime = null, UInt256 Hash = null)
         {

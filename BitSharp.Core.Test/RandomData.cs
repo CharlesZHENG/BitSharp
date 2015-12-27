@@ -86,7 +86,8 @@ namespace BitSharp.Core.Test
                 RandomTxOutput(),
                 random.Next(),
                 random.Next(),
-                random.NextUInt32()
+                random.NextUInt32(),
+                random.NextBool()
             );
         }
 
@@ -111,6 +112,7 @@ namespace BitSharp.Core.Test
                 blockIndex: random.Next(),
                 txIndex: random.Next(),
                 txVersion: random.NextUInt32(),
+                isCoinbase: random.NextBool(),
                 outputStates: new OutputStates(options.TxOutputCount.Value, random.NextBool() ? OutputState.Spent : OutputState.Unspent),
                 txOutputs: Enumerable.Range(0, options.TxOutputCount.Value)
                     .Select(x => RandomTxOutput()).ToImmutableArray()

@@ -97,7 +97,7 @@ namespace BitSharp.Core.Test
                         previousTxOutputKey: new TxOutputKey
                         (
                             txHash: UInt256.Zero,
-                            txOutputIndex: 0
+                            txOutputIndex: uint.MaxValue
                         ),
                         scriptSignature: previousBlockHash.ToByteArray().Concat(random.NextBytes(100)).ToImmutableArray(),
                         sequence: 0

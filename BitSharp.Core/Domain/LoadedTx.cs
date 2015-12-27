@@ -35,7 +35,7 @@ namespace BitSharp.Core.Domain
         /// <summary>
         /// Indicates whether this is the coinbase transaction.
         /// </summary>
-        public bool IsCoinbase => this.TxIndex == 0;
+        public bool IsCoinbase => Transaction.IsCoinbase;
 
         /// <summary>
         /// Gets the transaction.

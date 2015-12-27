@@ -47,6 +47,13 @@ namespace BitSharp.Core.Builders
             var feeCapturer = new TransformBlock<ValidatableTx, ValidatableTx>(
                 validatableTx =>
                 {
+                    // first transaction must be coinbase
+                    if (txCount == 0 && !validatableTx.IsCoinbase)
+                        throw new ValidationException(chainedHeader.Hash);
+                    // all other transactions must not be coinbase
+                    else if (txCount > 0 && validatableTx.IsCoinbase)
+                        throw new ValidationException(chainedHeader.Hash);
+
                     txCount++;
                     if (validatableTx.IsCoinbase)
                     {
