@@ -177,7 +177,7 @@ namespace BitSharp.Esent
                 if (Api.TryMoveFirst(cursor.jetSession, cursor.blockHeadersTableId))
                 {
                     var maxTotalWork = BigInteger.Zero;
-                    var candidateHeaders = new SortedList<DateTime, ChainedHeader>();
+                    var candidateHeaders = new List<ChainedHeader>();
                     do
                     {
                         // check if this block is valid
@@ -193,7 +193,7 @@ namespace BitSharp.Esent
 
                             // add this header as a candidate if it ties the max total work
                             if (chainedHeader.TotalWork >= maxTotalWork)
-                                candidateHeaders.Add(chainedHeader.DateSeen, chainedHeader);
+                                candidateHeaders.Add(chainedHeader);
                             else
                                 break;
                         }
@@ -201,7 +201,8 @@ namespace BitSharp.Esent
                     while (Api.TryMoveNext(cursor.jetSession, cursor.blockHeadersTableId));
 
                     // take the earliest header seen with the max total work
-                    return candidateHeaders.Values.FirstOrDefault();
+                    candidateHeaders.Sort((left, right) => left.DateSeen.CompareTo(right.DateSeen));
+                    return candidateHeaders.FirstOrDefault();
                 }
 
                 // no valid chained header found
