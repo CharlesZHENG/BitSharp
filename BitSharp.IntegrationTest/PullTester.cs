@@ -47,13 +47,13 @@ namespace BitSharp.IntegrationTest
                 var logger = LogManager.GetCurrentClassLogger();
                 logger.Info($"Starting up: {DateTime.Now}");
 
-                // add storage module
-                kernel.Load(new MemoryStorageModule());
-                kernel.Load(new NodeMemoryStorageModule());
-
                 // add rules module
                 var rulesType = RulesEnum.ComparisonToolTestNet;
                 kernel.Load(new RulesModule(rulesType));
+
+                // add storage module
+                kernel.Load(new MemoryStorageModule());
+                kernel.Load(new NodeMemoryStorageModule());
 
                 // initialize the blockchain daemon
                 using (var coreDaemon = kernel.Get<CoreDaemon>())
@@ -95,7 +95,7 @@ namespace BitSharp.IntegrationTest
                                 var onOutput = new DataReceivedEventHandler(
                                     (sender, e) =>
                                     {
-                                        if (e.Data.Contains("bitcoind and bitcoinj acceptance differs"))
+                                        if (e.Data?.Contains("bitcoind and bitcoinj acceptance differs") ?? false)
                                             acceptanceError = true;
 
                                         if (!acceptanceError)
