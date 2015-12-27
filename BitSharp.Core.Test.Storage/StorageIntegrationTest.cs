@@ -25,10 +25,13 @@ namespace BitSharp.Core.Test.Storage
         {
             var logger = LogManager.CreateNullLogger();
 
+            //TODO this should go to at least height 5500 so that it will fail if blocks txes aren't rolled back in reverse
+            //TODO taking any more blocks currently fails due to testnet block target rules not being implemented
+            var blockCount = 4033;
+            var checkUtxoHashFrequencey = 100;
+
             var blockProvider = new TestNet3BlockProvider();
-            //TODO this should go to height 5500 so that it will fail if blocks txes aren't rolled back in reverse
-            //TODO it makes the test run fairly slow
-            var blocks = blockProvider.ReadBlocks().Take(1000).ToList();
+            var blocks = blockProvider.ReadBlocks().Take(blockCount).ToList();
 
             var genesisBlock = blocks[0];
             var genesisHeader = new ChainedHeader(genesisBlock.Header, height: 0, totalWork: 0);
@@ -65,14 +68,15 @@ namespace BitSharp.Core.Test.Storage
                     chainStateBuilder.AddBlockAsync(chainedHeader, block.Transactions.Select(
                         (tx, txIndex) => BlockTx.Create(txIndex, tx))).Wait();
 
-                    using (var chainState = chainStateBuilder.ToImmutable())
-                        expectedUtxoHashes.Add(UtxoCommitment.ComputeHash(chainState));
+                    if (blockIndex % checkUtxoHashFrequencey == 0 || blockIndex == blocks.Count - 1)
+                        using (var chainState = chainStateBuilder.ToImmutable())
+                            expectedUtxoHashes.Add(UtxoCommitment.ComputeHash(chainState));
                 }
 
                 // verify the utxo state before rolling back
                 //TODO verify the UTXO hash hard-coded here is correct
                 //TODO 5500: 0e9da3d53272cda9ecb6037c411ebc3cd0b65b5c16698baba41665edb29b8eaf
-                var expectedLastUtxoHash = UInt256.ParseHex("11cff0cfe071249a315b5c7505905629fa9dd19069bfef1f3e2029592fcc5210");
+                var expectedLastUtxoHash = UInt256.ParseHex("4d76750adb0a2db22a32af12989449e5d4e08e59c7379c966ff7c4f3def0adb2");
                 Assert.AreEqual(expectedLastUtxoHash, expectedUtxoHashes.Last());
                 expectedUtxoHashes.RemoveAt(expectedUtxoHashes.Count - 1);
 
@@ -87,11 +91,14 @@ namespace BitSharp.Core.Test.Storage
 
                     chainStateBuilder.RollbackBlock(chainedHeader, blockTxes);
 
-                    var expectedUtxoHash = expectedUtxoHashes.Last();
-                    expectedUtxoHashes.RemoveAt(expectedUtxoHashes.Count - 1);
+                    if ((blockIndex - 1) % checkUtxoHashFrequencey == 0 || blockIndex == 0)
+                    {
+                        var expectedUtxoHash = expectedUtxoHashes.Last();
+                        expectedUtxoHashes.RemoveAt(expectedUtxoHashes.Count - 1);
 
-                    using (var chainState = chainStateBuilder.ToImmutable())
-                        Assert.AreEqual(expectedUtxoHash, UtxoCommitment.ComputeHash(chainState));
+                        using (var chainState = chainStateBuilder.ToImmutable())
+                            Assert.AreEqual(expectedUtxoHash, UtxoCommitment.ComputeHash(chainState));
+                    }
                 }
 
                 // verify chain state was rolled all the way back
