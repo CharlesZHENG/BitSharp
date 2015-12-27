@@ -91,6 +91,7 @@ namespace BitSharp.IntegrationTest
                             {
                                 var acceptanceError = false;
                                 var output = new StringBuilder();
+                                var successOutput = new StringBuilder();
                                 var errorOutput = new StringBuilder();
 
                                 var onOutput = new DataReceivedEventHandler(
@@ -100,7 +101,9 @@ namespace BitSharp.IntegrationTest
                                             acceptanceError = true;
 
                                         output.AppendLine(e.Data);
-                                        if (acceptanceError)
+                                        if (!acceptanceError)
+                                            successOutput.AppendLine(e.Data);
+                                        else
                                             errorOutput.AppendLine(e.Data);
                                     });
 
@@ -119,13 +122,21 @@ namespace BitSharp.IntegrationTest
                                     $"NioClientManager.handleKey: Successfully connected to /127.0.0.1:{port}"),
                                     $"Failed to connect: {output}");
 
-                                // don't validate pull tester result, consensus is not implemented and it will always fail
-                                if (acceptanceError)
+                                if (acceptanceError || javaProcess.ExitCode != 0)
+                                {
+                                    string line;
+                                    using (var reader = new StringReader(successOutput.ToString()))
+                                        while ((line = reader.ReadLine()) != null)
+                                            logger.Info(line);
+                                    using (var reader = new StringReader(errorOutput.ToString()))
+                                        while ((line = reader.ReadLine()) != null)
+                                            logger.Error(line);
+
+                                    // don't fail on pull tester result, consensus is not implemented and it will always fail
                                     Assert.Inconclusive(errorOutput.ToString());
-                                else if (javaProcess.ExitCode == 0)
-                                    Assert.AreEqual(0, javaProcess.ExitCode);
-                                else
-                                    Assert.Inconclusive(output.ToString());
+                                }
+
+                                Assert.AreEqual(0, javaProcess.ExitCode);
                             }
                             finally
                             {
