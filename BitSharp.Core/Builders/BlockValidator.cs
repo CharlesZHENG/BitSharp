@@ -1,10 +1,12 @@
-﻿using BitSharp.Common.ExtensionMethods;
+﻿using BitSharp.Common;
+using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Domain;
 using BitSharp.Core.Rules;
 using BitSharp.Core.Script;
 using BitSharp.Core.Storage;
 using NLog;
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.IO;
@@ -115,21 +117,39 @@ namespace BitSharp.Core.Builders
             }
         }
 
-        private static TransformBlock<ValidatableTx, ValidatableTx> InitMerkleValidator(ChainedHeader chainedHeader, MerkleStream<BlockTxNode> merkleStream, CancellationToken cancelToken)
+        private static TransformManyBlock<ValidatableTx, ValidatableTx> InitMerkleValidator(ChainedHeader chainedHeader, MerkleStream<BlockTxNode> merkleStream, CancellationToken cancelToken)
         {
-            return new TransformBlock<ValidatableTx, ValidatableTx>(
+            var txHashes = new HashSet<UInt256>();
+            var txRepeated = false;
+
+            return new TransformManyBlock<ValidatableTx, ValidatableTx>(
                 validatableTx =>
                 {
-                    try
+                    if (!txRepeated && txHashes.Add(validatableTx.Hash))
                     {
-                        merkleStream.AddNode(validatableTx.BlockTx);
+                        try
+                        {
+                            merkleStream.AddNode(validatableTx.BlockTx);
+                        }
+                        //TODO
+                        catch (InvalidOperationException)
+                        {
+                            throw CreateMerkleRootException(chainedHeader);
+                        }
+                        return new[] { validatableTx };
                     }
-                    //TODO
-                    catch (InvalidOperationException)
+                    else
                     {
-                        throw CreateMerkleRootException(chainedHeader);
+                        // TODO this needs proper testing, and needs to be made sure this is a safe way to handle the attack
+                        // CVE-2012-2459
+                        // - if a tx has been repeated, this may be a merkle tree malleability attack against the block
+                        // - stop feeding transactions once a tx has been repeated
+                        // - if it's a merkle tree malleability attack, the block will still be able to pass validation
+                        // - if the block is actually made of the duplicate transactions, it will properly fail validation
+                        //   on the merkle root due to stopping transactions early
+                        txRepeated = true;
+                        return new ValidatableTx[0];
                     }
-                    return validatableTx;
                 },
                 new ExecutionDataflowBlockOptions { CancellationToken = cancelToken });
         }
