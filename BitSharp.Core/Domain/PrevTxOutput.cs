@@ -30,6 +30,8 @@ namespace BitSharp.Core.Domain
 
         public uint TxVersion { get; }
 
+        public bool IsCoinbase => TxIndex == 0;
+
         public override bool Equals(object obj)
         {
             if (!(obj is PrevTxOutput))

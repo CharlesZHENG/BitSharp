@@ -264,6 +264,14 @@ namespace BitSharp.Core.Rules
                     var input = tx.Inputs[inputIndex];
                     var prevOutput = validatableTx.PrevTxOutputs[inputIndex];
 
+                    //TODO
+                    var COINBASE_MATURITY = 100;
+                    if (prevOutput.IsCoinbase
+                        && chainedHeader.Height - prevOutput.BlockHeight < COINBASE_MATURITY)
+                    {
+                        throw new ValidationException(chainedHeader.Hash);
+                    }
+
                     // add transactions previous value to unspent amount (used to calculate allowed coinbase reward)
                     txInputValue += prevOutput.Value;
                 }
