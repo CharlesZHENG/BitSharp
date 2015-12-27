@@ -33,12 +33,19 @@ namespace BitSharp.Core.Builders
 
             // capture fees
             Transaction coinbaseTx = null;
+            var txCount = 0U;
             var totalTxInputValue = 0UL;
             var totalTxOutputValue = 0UL;
             var totalSigOpCount = 0;
+            var blockSize = 80;
+
+            //TODO
+            var MAX_BLOCK_SIZE = 1.MILLION(); // :(
+
             var feeCapturer = new TransformBlock<ValidatableTx, ValidatableTx>(
                 validatableTx =>
                 {
+                    txCount++;
                     if (validatableTx.IsCoinbase)
                     {
                         coinbaseTx = validatableTx.Transaction;
@@ -51,15 +58,26 @@ namespace BitSharp.Core.Builders
 
                     totalSigOpCount += validatableTx.Transaction.Inputs.Sum(x => CountSigOps(x.ScriptSignature));
                     totalSigOpCount += validatableTx.Transaction.Outputs.Sum(x => CountSigOps(x.ScriptPublicKey));
+                    //TODO should be optimal encoding length
+                    blockSize += validatableTx.TxBytes.Length;
 
                     //TODO
                     var MAX_BLOCK_SIGOPS = 20.THOUSAND();
                     if (totalSigOpCount > MAX_BLOCK_SIGOPS)
                         throw new ValidationException(chainedHeader.Hash);
 
+                    //TODO
+                    if (blockSize > MAX_BLOCK_SIZE)
+                        throw new ValidationException(chainedHeader.Hash);
+
                     return validatableTx;
                 });
             merkleValidator.LinkTo(feeCapturer, new DataflowLinkOptions { PropagateCompletion = true });
+
+            //TODO
+            blockSize += DataEncoder.VarIntSize(txCount);
+            if (blockSize > MAX_BLOCK_SIZE)
+                throw new ValidationException(chainedHeader.Hash);
 
             // validate transactions
             var txValidator = InitTxValidator(rules, chainedHeader, cancelToken);
