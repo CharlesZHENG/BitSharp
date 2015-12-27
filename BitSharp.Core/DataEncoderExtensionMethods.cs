@@ -12,6 +12,12 @@ namespace BitSharp.Core.ExtensionMethods
     public static class DataEncoderExtensionMethods
     {
         #region Reader Methods
+        public static void ReadExactly(this BinaryReader reader, byte[] buffer, int index, int count)
+        {
+            if (count != reader.Read(buffer, index, count))
+                throw new InvalidOperationException();
+        }
+
         public static bool ReadBool(this BinaryReader reader)
         {
             return reader.ReadByte() != 0;
@@ -46,7 +52,7 @@ namespace BitSharp.Core.ExtensionMethods
         public static UInt64 ReadVarInt(this BinaryReader reader, ref byte[] bytes, ref int startIndex)
         {
             DataEncoder.SizeAtLeast(ref bytes, startIndex + 1);
-            reader.Read(bytes, startIndex, 1);
+            reader.ReadExactly(bytes, startIndex, 1);
             UInt64 value = bytes[startIndex];
             startIndex += 1;
 
@@ -57,7 +63,7 @@ namespace BitSharp.Core.ExtensionMethods
             else if (value == 0xFD)
             {
                 DataEncoder.SizeAtLeast(ref bytes, startIndex + 2);
-                reader.Read(bytes, startIndex, 2);
+                reader.ReadExactly(bytes, startIndex, 2);
                 value = Bits.ToUInt16(bytes, startIndex);
                 startIndex += 2;
                 return value;
@@ -65,7 +71,7 @@ namespace BitSharp.Core.ExtensionMethods
             else if (value == 0xFE)
             {
                 DataEncoder.SizeAtLeast(ref bytes, startIndex + 4);
-                reader.Read(bytes, startIndex, 4);
+                reader.ReadExactly(bytes, startIndex, 4);
                 value = Bits.ToUInt32(bytes, startIndex);
                 startIndex += 4;
                 return value;
@@ -73,7 +79,7 @@ namespace BitSharp.Core.ExtensionMethods
             else if (value == 0xFF)
             {
                 DataEncoder.SizeAtLeast(ref bytes, startIndex + 8);
-                reader.Read(bytes, startIndex, 8);
+                reader.ReadExactly(bytes, startIndex, 8);
                 value = Bits.ToUInt64(bytes, startIndex);
                 startIndex += 8;
                 return value;

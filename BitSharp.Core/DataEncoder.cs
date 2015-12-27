@@ -215,7 +215,7 @@ namespace BitSharp.Core
             var startIndex = 0;
 
             // read version
-            reader.Read(txBytes, startIndex, 4);
+            reader.ReadExactly(txBytes, startIndex, 4);
             var version = Bits.ToUInt32(txBytes, startIndex);
             startIndex += 4;
 
@@ -226,7 +226,7 @@ namespace BitSharp.Core
             {
                 // read prevTxHash and prevTxOutputIndex
                 SizeAtLeast(ref txBytes, startIndex + 36);
-                reader.Read(txBytes, startIndex, 36);
+                reader.ReadExactly(txBytes, startIndex, 36);
                 var prevTxHash = Bits.ToUInt256(txBytes, startIndex);
                 var prevTxOutputIndex = Bits.ToUInt32(txBytes, startIndex + 32);
                 startIndex += 36;
@@ -236,13 +236,13 @@ namespace BitSharp.Core
 
                 // read scriptSignature
                 SizeAtLeast(ref txBytes, startIndex + scriptSignatureLength);
-                reader.Read(txBytes, startIndex, scriptSignatureLength);
+                reader.ReadExactly(txBytes, startIndex, scriptSignatureLength);
                 var scriptSignature = ImmutableArray.Create(txBytes, startIndex, scriptSignatureLength);
                 startIndex += scriptSignatureLength;
 
                 // read sequence
                 SizeAtLeast(ref txBytes, startIndex + 4);
-                reader.Read(txBytes, startIndex, 4);
+                reader.ReadExactly(txBytes, startIndex, 4);
                 var sequence = Bits.ToUInt32(txBytes, startIndex);
                 startIndex += 4;
 
@@ -257,7 +257,7 @@ namespace BitSharp.Core
             {
                 // read value
                 SizeAtLeast(ref txBytes, startIndex + 8);
-                reader.Read(txBytes, startIndex, 8);
+                reader.ReadExactly(txBytes, startIndex, 8);
                 var value = Bits.ToUInt64(txBytes, startIndex);
                 startIndex += 8;
 
@@ -266,7 +266,7 @@ namespace BitSharp.Core
 
                 // read scriptPublicKey
                 SizeAtLeast(ref txBytes, startIndex + scriptPublicKeyLength);
-                reader.Read(txBytes, startIndex, scriptPublicKeyLength);
+                reader.ReadExactly(txBytes, startIndex, scriptPublicKeyLength);
                 var scriptPublicKey = ImmutableArray.Create(txBytes, startIndex, scriptPublicKeyLength);
                 startIndex += scriptPublicKeyLength;
 
@@ -276,7 +276,7 @@ namespace BitSharp.Core
 
             // read lockTime
             SizeAtLeast(ref txBytes, startIndex + 4);
-            reader.Read(txBytes, startIndex, 4);
+            reader.ReadExactly(txBytes, startIndex, 4);
             var lockTime = Bits.ToUInt32(txBytes, startIndex);
             startIndex += 4;
 
