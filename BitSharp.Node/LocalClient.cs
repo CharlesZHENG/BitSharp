@@ -367,8 +367,6 @@ namespace BitSharp.Node
                         && !comparisonUnchainedBlocks.ContainsKey(invVector.Hash)
                         && !this.coreStorage.ContainsBlockTxes(invVector.Hash))
                     {
-                        logger.Info($"requesting: {invVector.Hash}");
-
                         responseInvVectors.Add(invVector);
                         requestedComparisonBlocks.Add(invVector.Hash);
                     }
