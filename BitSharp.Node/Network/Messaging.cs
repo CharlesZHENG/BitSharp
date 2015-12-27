@@ -25,7 +25,7 @@ namespace BitSharp.Node.Network
         private static readonly Uri externalIPServiceUri = new Uri("http://icanhazip.com/");
         private static IPAddress externalIPAddress;
         private static DateTime externalIPAddressTime;
-        
+
         public static IPAddress GetExternalIPAddress()
         {
             if (externalIPAddress == null || (DateTime.UtcNow - externalIPAddressTime).TotalHours >= 1)
@@ -65,7 +65,7 @@ namespace BitSharp.Node.Network
 
         public static UInt32 CalculatePayloadChecksum(byte[] payload)
         {
-            return Bits.ToUInt32(SHA256Static.ComputeDoubleHash(payload).Take(4).ToArray());
+            return Bits.ToUInt32(SHA256Static.ComputeDoubleHash(payload));
         }
 
         public static bool VerifyPayloadChecksum(UInt32 checksum, byte[] payload)
@@ -84,8 +84,9 @@ namespace BitSharp.Node.Network
 
         public static byte[] IPAddressToBytes(IPAddress ipAddress)
         {
+            // if address is IPv4, map it onto IPv6
             if (!ipAddress.IsIPv4MappedToIPv6)
-                ipAddress=ipAddress.MapToIPv6();
+                ipAddress = ipAddress.MapToIPv6();
 
             return ipAddress.GetAddressBytes();
         }
@@ -95,7 +96,6 @@ namespace BitSharp.Node.Network
             return new NetworkAddress
             (
                 Services: 1, // 1 (NODE_NETWORK services)
-                // if address is IPv4, map it onto IPv6
                 IPv6Address: IPAddressToBytes(ip).ToImmutableArray(),
                 Port: (UInt16)port
             );

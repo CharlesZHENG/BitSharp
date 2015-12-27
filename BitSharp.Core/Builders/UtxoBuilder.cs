@@ -191,13 +191,6 @@ namespace BitSharp.Core.Builders
 
         private void Unmint(IChainStateCursor chainStateCursor, Transaction tx, ChainedHeader chainedHeader, bool isCoinbase)
         {
-            // ignore duplicate coinbases
-            if ((chainedHeader.Height == DUPE_COINBASE_1_HEIGHT && tx.Hash == DUPE_COINBASE_1_HASH)
-                || (chainedHeader.Height == DUPE_COINBASE_2_HEIGHT && tx.Hash == DUPE_COINBASE_2_HASH))
-            {
-                return;
-            }
-
             // check that transaction exists
             UnspentTx unspentTx;
             if (!chainStateCursor.TryGetUnspentTx(tx.Hash, out unspentTx))
@@ -224,16 +217,10 @@ namespace BitSharp.Core.Builders
 
         private UnspentTx Unspend(IChainStateCursor chainStateCursor, TxInput input, ChainedHeader chainedHeader)
         {
-            bool wasRestored;
-
             UnspentTx unspentTx;
-            if (chainStateCursor.TryGetUnspentTx(input.PreviousTxOutputKey.TxHash, out unspentTx))
+            if (!chainStateCursor.TryGetUnspentTx(input.PreviousTxOutputKey.TxHash, out unspentTx))
             {
-                wasRestored = false;
-            }
-            else
-            {
-                // unable to rollback, the unspent tx with the block tx key has been pruned
+                // unable to rollback, the unspent tx has been pruned
                 //TODO better exception
                 throw new InvalidOperationException();
             }
@@ -247,6 +234,8 @@ namespace BitSharp.Core.Builders
             if (unspentTx.OutputStates[outputIndex] == OutputState.Unspent)
                 throw new ValidationException(chainedHeader.Hash);
 
+            var wasFullySpent = unspentTx.IsFullySpent;
+
             // mark output as unspent
             unspentTx = unspentTx.SetOutputState(outputIndex, OutputState.Unspent);
 
@@ -254,22 +243,13 @@ namespace BitSharp.Core.Builders
             chainStateCursor.UnspentOutputCount++;
 
             // update storage
-            if (!wasRestored)
-            {
-                var wasUpdated = chainStateCursor.TryUpdateUnspentTx(unspentTx);
-                if (!wasUpdated)
-                    throw new ValidationException(chainedHeader.Hash);
-            }
-            else
-            {
-                // a restored fully spent transaction must be added back
-                var wasAdded = chainStateCursor.TryAddUnspentTx(unspentTx);
-                if (!wasAdded)
-                    throw new ValidationException(chainedHeader.Hash);
+            var wasUpdated = chainStateCursor.TryUpdateUnspentTx(unspentTx);
+            if (!wasUpdated)
+                throw new ValidationException(chainedHeader.Hash);
 
-                // increment unspent tx count
+            // increment unspent tx count
+            if (wasFullySpent)
                 chainStateCursor.UnspentTxCount++;
-            }
 
             return unspentTx;
         }
