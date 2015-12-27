@@ -141,6 +141,7 @@ namespace BitSharp.Core.Builders
                     else
                     {
                         // TODO this needs proper testing, and needs to be made sure this is a safe way to handle the attack
+                        // TODO the block should be unmutated before being shared onto the network
                         // CVE-2012-2459
                         // - if a tx has been repeated, this may be a merkle tree malleability attack against the block
                         // - stop feeding transactions once a tx has been repeated
