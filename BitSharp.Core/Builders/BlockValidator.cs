@@ -196,7 +196,7 @@ namespace BitSharp.Core.Builders
                     case ScriptOp.OP_CHECKMULTISIGVERIFY:
                         //TODO
                         var MAX_PUBKEYS_PER_MULTISIG = 20;
-                        var prevOpCode = script[index - 2];
+                        var prevOpCode = index >= 2 ? script[index - 2] : (byte)ScriptOp.OP_INVALIDOPCODE;
                         if (prevOpCode >= (byte)ScriptOp.OP_1 && prevOpCode <= (byte)ScriptOp.OP_16)
                             sigOpCount += prevOpCode;
                         else
@@ -208,34 +208,42 @@ namespace BitSharp.Core.Builders
                 if (op <= ScriptOp.OP_PUSHDATA4)
                 {
                     //OP_PUSHBYTES1-75
+                    uint dataLength;
                     if (op < ScriptOp.OP_PUSHDATA1)
                     {
-                        index += opByte;
+                        dataLength = opByte;
                     }
                     else if (op == ScriptOp.OP_PUSHDATA1)
                     {
                         if (index + 1 > script.Length)
                             break;
 
-                        var length = script[index++];
-                        index += length;
+                        dataLength = script[index++];
                     }
                     else if (op == ScriptOp.OP_PUSHDATA2)
                     {
                         if (index + 2 > script.Length)
                             break;
 
-                        var length = (ushort)script[index++] + ((ushort)script[index++] << 8);
-                        index += length;
+                        dataLength = (uint)script[index++] + ((uint)script[index++] << 8);
                     }
                     else if (op == ScriptOp.OP_PUSHDATA4)
                     {
                         if (index + 4 > script.Length)
                             break;
 
-                        var length = (uint)script[index++] + ((uint)script[index++] << 8) + ((uint)script[index++] << 16) + ((uint)script[index++] << 24);
-                        index += length.ToIntChecked();
+                        dataLength = (uint)script[index++] + ((uint)script[index++] << 8) + ((uint)script[index++] << 16) + ((uint)script[index++] << 24);
                     }
+                    else
+                    {
+                        dataLength = 0;
+                        Debug.Assert(false);
+                    }
+
+                    if ((ulong)index + dataLength >= (uint)script.Length)
+                        break;
+                    else
+                        index += (int)dataLength;
                 }
             }
 
