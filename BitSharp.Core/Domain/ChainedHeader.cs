@@ -6,11 +6,12 @@ namespace BitSharp.Core.Domain
 {
     public class ChainedHeader
     {
-        public ChainedHeader(BlockHeader blockHeader, int height, BigInteger totalWork)
+        public ChainedHeader(BlockHeader blockHeader, int height, BigInteger totalWork, DateTime dateSeen)
         {
             BlockHeader = blockHeader;
             Height = height;
             TotalWork = totalWork;
+            DateSeen = dateSeen;
         }
 
         public BlockHeader BlockHeader { get; }
@@ -33,6 +34,8 @@ namespace BitSharp.Core.Domain
 
         public BigInteger TotalWork { get; }
 
+        public DateTime DateSeen { get; }
+
         public override bool Equals(object obj)
         {
             if (!(obj is ChainedHeader))
@@ -43,12 +46,12 @@ namespace BitSharp.Core.Domain
 
         public override int GetHashCode()
         {
-            return this.BlockHeader.GetHashCode() ^ this.Height.GetHashCode() ^ this.TotalWork.GetHashCode();
+            return this.BlockHeader.GetHashCode() ^ this.Height.GetHashCode() ^ this.TotalWork.GetHashCode() ^ this.DateSeen.GetHashCode();
         }
 
         public static bool operator ==(ChainedHeader left, ChainedHeader right)
         {
-            return object.ReferenceEquals(left, right) || (!object.ReferenceEquals(left, null) && !object.ReferenceEquals(right, null) && left.BlockHeader == right.BlockHeader && left.Height == right.Height && left.TotalWork == right.TotalWork);
+            return object.ReferenceEquals(left, right) || (!object.ReferenceEquals(left, null) && !object.ReferenceEquals(right, null) && left.BlockHeader == right.BlockHeader && left.Height == right.Height && left.TotalWork == right.TotalWork && left.DateSeen == right.DateSeen);
         }
 
         public static bool operator !=(ChainedHeader left, ChainedHeader right)
@@ -67,11 +70,12 @@ namespace BitSharp.Core.Domain
             (
                 blockHeader: genesisBlockHeader,
                 height: 0,
-                totalWork: genesisBlockHeader.CalculateWork()
+                totalWork: genesisBlockHeader.CalculateWork(),
+                dateSeen: DateTime.MinValue
             );
         }
 
-        public static ChainedHeader CreateFromPrev(ChainedHeader prevChainedHeader, BlockHeader blockHeader)
+        public static ChainedHeader CreateFromPrev(ChainedHeader prevChainedHeader, BlockHeader blockHeader, DateTime dateSeen)
         {
             var headerWork = blockHeader.CalculateWork();
             if (headerWork < 0)
@@ -79,7 +83,8 @@ namespace BitSharp.Core.Domain
 
             return new ChainedHeader(blockHeader,
                 prevChainedHeader.Height + 1,
-                prevChainedHeader.TotalWork + headerWork);
+                prevChainedHeader.TotalWork + headerWork,
+                dateSeen);
         }
     }
 }

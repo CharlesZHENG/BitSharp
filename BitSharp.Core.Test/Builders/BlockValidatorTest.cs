@@ -6,6 +6,7 @@ using BitSharp.Core.Domain;
 using BitSharp.Core.Storage;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
+using System;
 using System.Collections.Immutable;
 using System.Threading.Tasks.Dataflow;
 
@@ -26,7 +27,7 @@ namespace BitSharp.Core.Test.Builders
             var chainedHeader = testBlocks.Chain.LastBlock;
 
             // create an invalid version of the header where the merkle root is incorrect
-            var invalidChainedHeader = ChainedHeader.CreateFromPrev(rules.GenesisChainedHeader, block.Header.With(MerkleRoot: UInt256.Zero));
+            var invalidChainedHeader = ChainedHeader.CreateFromPrev(rules.GenesisChainedHeader, block.Header.With(MerkleRoot: UInt256.Zero), DateTime.Now);
 
             // feed validator loaded txes
             var validatableTxes = new BufferBlock<ValidatableTx>();

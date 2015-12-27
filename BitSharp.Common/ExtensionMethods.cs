@@ -328,6 +328,11 @@ namespace BitSharp.Common.ExtensionMethods
             return (random.NextUInt32() << 32) + random.NextUInt32();
         }
 
+        public static Int64 NextInt64(this Random random)
+        {
+            return unchecked((long)random.NextUInt64());
+        }
+
         public static UInt256 NextUInt256(this Random random)
         {
             return new UInt256(

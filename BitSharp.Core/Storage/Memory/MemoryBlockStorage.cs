@@ -3,6 +3,8 @@ using BitSharp.Core.Domain;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
+using System.Numerics;
 
 namespace BitSharp.Core.Storage.Memory
 {
@@ -50,18 +52,34 @@ namespace BitSharp.Core.Storage.Memory
 
         public ChainedHeader FindMaxTotalWork()
         {
-            ChainedHeader maxTotalWorkHeader = null;
+            var maxTotalWork = BigInteger.Zero;
+            var candidateHeaders = new SortedList<DateTime, ChainedHeader>();
 
+            // TODO more efficient memory implementation than scanning every time, use a sorted dictionary
             foreach (var chainedHeader in this.chainedHeaders.Values)
             {
-                if (!invalidBlocks.Contains(chainedHeader.Hash)
-                    && (maxTotalWorkHeader == null || chainedHeader.TotalWork > maxTotalWorkHeader.TotalWork))
+                // check if this block is valid
+                if (!invalidBlocks.Contains(chainedHeader.Hash))
                 {
-                    maxTotalWorkHeader = chainedHeader;
+                    // initialize max total work, if it isn't yet
+                    if (maxTotalWork == BigInteger.Zero)
+                        maxTotalWork = chainedHeader.TotalWork;
+
+                    // if this header exceeds max total work, set it as the new max
+                    if (chainedHeader.TotalWork > maxTotalWork)
+                    {
+                        maxTotalWork = chainedHeader.TotalWork;
+                        candidateHeaders.Clear();
+                        candidateHeaders.Add(chainedHeader.DateSeen, chainedHeader);
+                    }
+                    // else add this header as a candidate if it ties the max total work
+                    else if (chainedHeader.TotalWork == maxTotalWork)
+                        candidateHeaders.Add(chainedHeader.DateSeen, chainedHeader);
                 }
             }
 
-            return maxTotalWorkHeader;
+            // take the earliest header seen with the max total work
+            return candidateHeaders.Values.FirstOrDefault();
         }
 
         public IEnumerable<ChainedHeader> ReadChainedHeaders()

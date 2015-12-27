@@ -96,7 +96,8 @@ namespace BitSharp.Core.Test
             (
                 blockHeader: RandomBlockHeader(options),
                 height: Math.Abs(random.Next()),
-                totalWork: random.NextUBigIntegerBytes(64)
+                totalWork: random.NextUBigIntegerBytes(64),
+                dateSeen: new DateTime(random.NextInt64())
             );
         }
 

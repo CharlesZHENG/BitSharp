@@ -151,7 +151,7 @@ namespace BitSharp.Core.Storage
                 ChainedHeader previousChainedHeader;
                 if (TryGetChainedHeader(blockHeader.PreviousBlock, out previousChainedHeader))
                 {
-                    chainedHeader = ChainedHeader.CreateFromPrev(previousChainedHeader, blockHeader);
+                    chainedHeader = ChainedHeader.CreateFromPrev(previousChainedHeader, blockHeader, DateTime.Now);
                     if (chainedHeader == null)
                         return false;
 

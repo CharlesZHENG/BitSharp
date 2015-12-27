@@ -182,6 +182,11 @@ namespace BitSharp.Core.ExtensionMethods
             writer.Write(value);
         }
 
+        public static void WriteInt64(this BinaryWriter writer, Int64 value)
+        {
+            writer.Write(value);
+        }
+
         public static void WriteUInt256(this BinaryWriter writer, UInt256 value)
         {
             writer.Write(value.ToByteArray());

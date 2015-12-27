@@ -12,6 +12,8 @@ using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Numerics;
 
 namespace BitSharp.Esent
 {
@@ -174,18 +176,32 @@ namespace BitSharp.Esent
                 // IX_TotalWork is in reverse order, so higher total work comes first
                 if (Api.TryMoveFirst(cursor.jetSession, cursor.blockHeadersTableId))
                 {
+                    var maxTotalWork = BigInteger.Zero;
+                    var candidateHeaders = new SortedList<DateTime, ChainedHeader>();
                     do
                     {
                         // check if this block is valid
                         var valid = Api.RetrieveColumnAsBoolean(cursor.jetSession, cursor.blockHeadersTableId, cursor.blockHeaderValidColumnId);
                         if (valid == null || valid.Value)
                         {
-                            // decode chained header with most work and return
+                            // decode chained header
                             var chainedHeader = DataEncoder.DecodeChainedHeader(Api.RetrieveColumn(cursor.jetSession, cursor.blockHeadersTableId, cursor.blockHeaderBytesColumnId));
-                            return chainedHeader;
+
+                            // initialize max total work, if it isn't yet
+                            if (maxTotalWork == BigInteger.Zero)
+                                maxTotalWork = chainedHeader.TotalWork;
+
+                            // add this header as a candidate if it ties the max total work
+                            if (chainedHeader.TotalWork >= maxTotalWork)
+                                candidateHeaders.Add(chainedHeader.DateSeen, chainedHeader);
+                            else
+                                break;
                         }
                     }
                     while (Api.TryMoveNext(cursor.jetSession, cursor.blockHeadersTableId));
+
+                    // take the earliest header seen with the max total work
+                    return candidateHeaders.Values.FirstOrDefault();
                 }
 
                 // no valid chained header found

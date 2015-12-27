@@ -212,7 +212,7 @@ namespace BitSharp.Core.Test
         public void AddBlock(Block block)
         {
             blocks.Add(block);
-            chain.AddBlock(ChainedHeader.CreateFromPrev(chain.LastBlock, block.Header));
+            chain.AddBlock(ChainedHeader.CreateFromPrev(chain.LastBlock, block.Header, DateTime.Now));
 
             Debug.Assert(chain.Height == blocks.Count - 1);
         }

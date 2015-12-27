@@ -5,6 +5,7 @@ using BitSharp.Core.Rules;
 using BitSharp.Core.Storage;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using NLog;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -34,7 +35,7 @@ namespace BitSharp.Core.Test.Storage
             var blocks = blockProvider.ReadBlocks().Take(blockCount).ToList();
 
             var genesisBlock = blocks[0];
-            var genesisHeader = new ChainedHeader(genesisBlock.Header, height: 0, totalWork: 0);
+            var genesisHeader = new ChainedHeader(genesisBlock.Header, height: 0, totalWork: 0, dateSeen: DateTime.Now);
             var genesisChain = Chain.CreateForGenesisBlock(genesisHeader);
 
             var rules = new Testnet3Rules()
@@ -63,7 +64,7 @@ namespace BitSharp.Core.Test.Storage
                     Debug.WriteLine($"Adding: {blockIndex:N0}");
 
                     var block = blocks[blockIndex];
-                    var chainedHeader = new ChainedHeader(block.Header, blockIndex, 0);
+                    var chainedHeader = new ChainedHeader(block.Header, blockIndex, 0, DateTime.Now);
 
                     chainStateBuilder.AddBlockAsync(chainedHeader, block.Transactions.Select(
                         (tx, txIndex) => BlockTx.Create(txIndex, tx))).Wait();
@@ -86,7 +87,7 @@ namespace BitSharp.Core.Test.Storage
                     Debug.WriteLine($"Rolling back: {blockIndex:N0}");
 
                     var block = blocks[blockIndex];
-                    var chainedHeader = new ChainedHeader(block.Header, blockIndex, 0);
+                    var chainedHeader = new ChainedHeader(block.Header, blockIndex, 0, DateTime.Now);
                     var blockTxes = block.Transactions.Select((tx, txIndex) => BlockTx.Create(txIndex, tx));
 
                     chainStateBuilder.RollbackBlock(chainedHeader, blockTxes);
@@ -111,7 +112,7 @@ namespace BitSharp.Core.Test.Storage
                     Debug.WriteLine($"Adding: {blockIndex:N0}");
 
                     var block = blocks[blockIndex];
-                    var chainedHeader = new ChainedHeader(block.Header, blockIndex, 0);
+                    var chainedHeader = new ChainedHeader(block.Header, blockIndex, 0, DateTime.Now);
 
                     chainStateBuilder.AddBlockAsync(chainedHeader, block.Transactions.Select(
                         (tx, txIndex) => BlockTx.Create(txIndex, tx))).Wait();

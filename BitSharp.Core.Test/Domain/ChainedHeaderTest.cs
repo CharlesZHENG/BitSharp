@@ -16,28 +16,40 @@ namespace BitSharp.Core.Test.Domain
             (
                 blockHeader: randomChainedHeader.BlockHeader,
                 height: randomChainedHeader.Height,
-                totalWork: randomChainedHeader.TotalWork
+                totalWork: randomChainedHeader.TotalWork,
+                dateSeen: randomChainedHeader.DateSeen
             );
 
             var differentChainedHeaderBlockHeader = new ChainedHeader
             (
                 blockHeader: randomHeader,
                 height: randomChainedHeader.Height,
-                totalWork: randomChainedHeader.TotalWork
+                totalWork: randomChainedHeader.TotalWork,
+                dateSeen: randomChainedHeader.DateSeen
             );
 
             var differentChainedHeaderHeight = new ChainedHeader
             (
                 blockHeader: randomChainedHeader.BlockHeader,
                 height: ~randomChainedHeader.Height,
-                totalWork: randomChainedHeader.TotalWork
+                totalWork: randomChainedHeader.TotalWork,
+                dateSeen: randomChainedHeader.DateSeen
             );
 
             var differentChainedHeaderTotalWork = new ChainedHeader
             (
                 blockHeader: randomChainedHeader.BlockHeader,
                 height: randomChainedHeader.Height,
-                totalWork: ~randomChainedHeader.TotalWork
+                totalWork: ~randomChainedHeader.TotalWork,
+                dateSeen: randomChainedHeader.DateSeen
+            );
+
+            var differentChainedHeaderDateSeen = new ChainedHeader
+            (
+                blockHeader: randomChainedHeader.BlockHeader,
+                height: randomChainedHeader.Height,
+                totalWork: randomChainedHeader.TotalWork,
+                dateSeen: randomChainedHeader.DateSeen.AddMinutes(1)
             );
 
             Assert.IsTrue(randomChainedHeader.Equals(sameChainedHeader));
@@ -55,6 +67,10 @@ namespace BitSharp.Core.Test.Domain
             Assert.IsFalse(randomChainedHeader.Equals(differentChainedHeaderTotalWork));
             Assert.IsFalse(randomChainedHeader == differentChainedHeaderTotalWork);
             Assert.IsTrue(randomChainedHeader != differentChainedHeaderTotalWork);
+
+            Assert.IsFalse(randomChainedHeader.Equals(differentChainedHeaderDateSeen));
+            Assert.IsFalse(randomChainedHeader == differentChainedHeaderDateSeen);
+            Assert.IsTrue(randomChainedHeader != differentChainedHeaderDateSeen);
         }
     }
 }

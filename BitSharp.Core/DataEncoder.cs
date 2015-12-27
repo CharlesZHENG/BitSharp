@@ -178,7 +178,8 @@ namespace BitSharp.Core
             (
                 blockHeader: DecodeBlockHeader(reader, blockHash),
                 height: reader.ReadInt32(),
-                totalWork: new BigInteger(reader.ReadVarBytes())
+                totalWork: new BigInteger(reader.ReadVarBytes()),
+                dateSeen: new DateTime(reader.ReadInt64())
             );
         }
 
@@ -197,6 +198,7 @@ namespace BitSharp.Core
             EncodeBlockHeader(writer, chainedHeader.BlockHeader);
             writer.WriteInt32(chainedHeader.Height);
             writer.WriteVarBytes(chainedHeader.TotalWork.ToByteArray());
+            writer.WriteInt64(chainedHeader.DateSeen.Ticks);
         }
 
         public static byte[] EncodeChainedHeader(ChainedHeader chainedHeader)
@@ -787,6 +789,26 @@ namespace BitSharp.Core
             {
                 EncodeVarString(writer, s);
                 return stream.ToArray();
+            }
+        }
+
+        public static int VarIntSize(UInt64 value)
+        {
+            if (value < 0xFD)
+            {
+                return 1;
+            }
+            else if (value <= 0xFFFF)
+            {
+                return 2;
+            }
+            else if (value <= 0xFFFFFFFF)
+            {
+                return 4;
+            }
+            else
+            {
+                return 8;
             }
         }
     }

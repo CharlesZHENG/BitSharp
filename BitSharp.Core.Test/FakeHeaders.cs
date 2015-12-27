@@ -57,7 +57,7 @@ namespace BitSharp.Core.Test
             var blockHeader = new BlockHeader(0, UInt256.Zero, UInt256.Zero, 0, this.bits, this.nonce);
             this.totalWork = blockHeader.CalculateWork();
 
-            var chainedHeader = new ChainedHeader(blockHeader, 0, this.totalWork);
+            var chainedHeader = new ChainedHeader(blockHeader, 0, this.totalWork, DateTime.MinValue);
             this.blockHeaders.Add(chainedHeader);
 
             return chainedHeader;
@@ -78,7 +78,7 @@ namespace BitSharp.Core.Test
             var blockHeader = new BlockHeader(0, prevBlockHeader.Hash, UInt256.Zero, 0, bits ?? this.bits, this.nonce);
             this.totalWork += blockHeader.CalculateWork();
 
-            var chainedHeader = new ChainedHeader(blockHeader, this.blockHeaders.Count, this.totalWork);
+            var chainedHeader = new ChainedHeader(blockHeader, this.blockHeaders.Count, this.totalWork, DateTime.Now);
             this.blockHeaders.Add(chainedHeader);
 
             return chainedHeader;

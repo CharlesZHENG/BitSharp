@@ -97,7 +97,7 @@ namespace BitSharp.Core.Domain
                 else if (targetChain.Height == -1)
                     yield break;
                 // verify the genesis block of the target chain matches current chain
-                else if (genesisBlock != null && genesisBlock != targetChain.GenesisBlock)
+                else if (genesisBlock != null && genesisBlock.Hash != targetChain.GenesisBlock.Hash)
                     throw new InvalidOperationException();
 
                 // if no current block, add genesis
@@ -120,7 +120,7 @@ namespace BitSharp.Core.Domain
                 else
                 {
                     // on same chain, can advance
-                    if (targetChain.Blocks[currentBlock.Height] == currentBlock)
+                    if (targetChain.Blocks[currentBlock.Height].Hash == currentBlock.Hash)
                     {
                         // another block is available
                         if (targetChain.Height >= currentBlock.Height + 1)

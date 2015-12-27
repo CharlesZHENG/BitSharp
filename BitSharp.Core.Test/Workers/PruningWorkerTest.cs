@@ -28,7 +28,7 @@ namespace BitSharp.Core.Test.Workers
             // create a block
             var txCount = 100;
             var block = CreateFakeBlock(txCount);
-            var chainedHeader = new ChainedHeader(block.Header, height: 0, totalWork: block.Header.CalculateWork());
+            var chainedHeader = new ChainedHeader(block.Header, height: 0, totalWork: block.Header.CalculateWork(), dateSeen: DateTime.Now);
 
             // create a long chain based off the block, to account for pruning buffer
             var fakeHeaders = new FakeHeaders(new[] { chainedHeader });

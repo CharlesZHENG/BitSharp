@@ -113,7 +113,7 @@ namespace BitSharp.Core.Builders
         {
             var lastBlock = this.LastBlock;
             if (lastBlock == null
-                || chainedHeader != lastBlock)
+                || chainedHeader.Hash != lastBlock.Hash)
                 throw new InvalidOperationException();
 
             this.blocks.RemoveAt(this.blocks.Count - 1);
