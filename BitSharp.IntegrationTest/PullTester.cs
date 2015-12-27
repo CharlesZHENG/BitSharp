@@ -91,6 +91,7 @@ namespace BitSharp.IntegrationTest
                             {
                                 var acceptanceError = false;
                                 var output = new StringBuilder();
+                                var errorOutput = new StringBuilder();
 
                                 var onOutput = new DataReceivedEventHandler(
                                     (sender, e) =>
@@ -98,12 +99,9 @@ namespace BitSharp.IntegrationTest
                                         if (e.Data?.Contains("bitcoind and bitcoinj acceptance differs") ?? false)
                                             acceptanceError = true;
 
-                                        if (!acceptanceError)
-                                            logger.Info("[Pull Tester]:  " + e.Data);
-                                        else
-                                            logger.Error("[Pull Tester]:  " + e.Data);
-
                                         output.AppendLine(e.Data);
+                                        if (acceptanceError)
+                                            errorOutput.AppendLine(e.Data);
                                     });
 
                                 javaProcess.OutputDataReceived += onOutput;
@@ -118,11 +116,16 @@ namespace BitSharp.IntegrationTest
 
                                 // verify pull tester successfully connected
                                 Assert.IsTrue(output.ToString().Contains(
-                                    $"NioClientManager.handleKey: Successfully connected to /127.0.0.1:{port}"));
+                                    $"NioClientManager.handleKey: Successfully connected to /127.0.0.1:{port}"),
+                                    $"Failed to connect: {output}");
 
                                 // don't validate pull tester result, consensus is not implemented and it will always fail
-                                Assert.Inconclusive("TODO");
-                                Assert.AreEqual(0, javaProcess.ExitCode);
+                                if (acceptanceError)
+                                    Assert.Inconclusive(errorOutput.ToString());
+                                else if (javaProcess.ExitCode == 0)
+                                    Assert.AreEqual(0, javaProcess.ExitCode);
+                                else
+                                    Assert.Inconclusive(output.ToString());
                             }
                             finally
                             {
