@@ -23,14 +23,11 @@ namespace BitSharp.Core.Rules
             [In] uint tx_input_index,
             [In] verify_flags_type flags);
 
-        public static bool VerifyScript(ImmutableArray<byte> txBytes, ImmutableArray<byte> prevTxOutputPublicScriptBytes, int inputIndex)
+        public static bool VerifyScript(ImmutableArray<byte> txBytes, ImmutableArray<byte> prevTxOutputPublicScriptBytes, int inputIndex, verify_flags_type flags)
         {
             //TODO
             if (!Environment.Is64BitProcess)
                 return true;
-
-            //TODO
-            var flags = verify_flags_type.verify_flags_none;
 
             return verify_script(txBytes.ToArray(), (UIntPtr)txBytes.Length, prevTxOutputPublicScriptBytes.ToArray(), (UIntPtr)prevTxOutputPublicScriptBytes.Length, (uint)inputIndex, flags)
                 == verify_result_type.verify_result_eval_true;

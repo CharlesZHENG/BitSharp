@@ -304,10 +304,33 @@ namespace BitSharp.Core.Rules
 
         public virtual void ValidationTransactionScript(ChainedHeader chainedHeader, BlockTx tx, TxInput txInput, int txInputIndex, PrevTxOutput prevTxOutput)
         {
+            // BIP16 didn't become active until Apr 1 2012
+            var nBIP16SwitchTime = 1333238400U;
+            var strictPayToScriptHash = chainedHeader.Time >= nBIP16SwitchTime;
+
+            var flags = strictPayToScriptHash ? verify_flags_type.verify_flags_p2sh : verify_flags_type.verify_flags_none;
+
+            // Start enforcing the DERSIG (BIP66) rules, for block.nVersion=3 blocks,
+            // when 75% of the network has upgraded:
+            if (chainedHeader.Version >= 3)
+            //&& IsSuperMajority(3, pindex->pprev, chainparams.GetConsensus().nMajorityEnforceBlockUpgrade, chainparams.GetConsensus())
+            {
+                flags |= verify_flags_type.verify_flags_dersig;
+            }
+
+            // Start enforcing CHECKLOCKTIMEVERIFY, (BIP65) for block.nVersion=4
+            // blocks, when 75% of the network has upgraded:
+            if (chainedHeader.Version >= 4)
+            //&& IsSuperMajority(4, pindex->pprev, chainparams.GetConsensus().nMajorityEnforceBlockUpgrade, chainparams.GetConsensus()))
+            {
+                flags |= verify_flags_type.verify_flags_checklocktimeverify;
+            }
+
             var result = LibbitcoinConsensus.VerifyScript(
                 tx.TxBytes,
                 prevTxOutput.ScriptPublicKey,
-                txInputIndex);
+                txInputIndex,
+                flags);
 
             //var scriptEngine = new ScriptEngine(this.IgnoreSignatures);
 
