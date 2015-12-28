@@ -54,7 +54,6 @@ namespace BitSharp.Core.Builders
 
         public async Task AddBlockAsync(ChainedHeader chainedHeader, IEnumerable<BlockTx> blockTxes, CancellationToken cancelToken = default(CancellationToken))
         {
-            //TODO concurrent stopwatch
             var stopwatch = Stopwatch.StartNew();
             var txCount = 0;
             var inputCount = 0;
@@ -120,24 +119,44 @@ namespace BitSharp.Core.Builders
                 var timingTasks = new List<Task>();
 
                 // time block txes read
-                timingTasks.Add(blockTxesBuffer.Completion.ContinueWith(_ =>
-                    stats.txesReadDurationMeasure.Tick(stopwatch.Elapsed)));
+                timingTasks.Add(
+                    blockTxesBuffer.Completion.ContinueWith(_ =>
+                    {
+                        lock (stopwatch)
+                            stats.txesReadDurationMeasure.Tick(stopwatch.Elapsed);
+                    }));
 
                 // time utxo look-ahead
-                timingTasks.Add(warmedBlockTxes.Completion.ContinueWith(_ =>
-                    stats.lookAheadDurationMeasure.Tick(stopwatch.Elapsed)));
+                timingTasks.Add(
+                    warmedBlockTxes.Completion.ContinueWith(_ =>
+                    {
+                        lock (stopwatch)
+                            stats.lookAheadDurationMeasure.Tick(stopwatch.Elapsed);
+                    }));
 
                 // time utxo calculation
-                timingTasks.Add(validatableTxes.Completion.ContinueWith(_ =>
-                    stats.calculateUtxoDurationMeasure.Tick(stopwatch.Elapsed)));
+                timingTasks.Add(
+                    validatableTxes.Completion.ContinueWith(_ =>
+                    {
+                        lock (stopwatch)
+                            stats.calculateUtxoDurationMeasure.Tick(stopwatch.Elapsed);
+                    }));
 
                 // time utxo application
-                timingTasks.Add(applyChainState.ContinueWith(_ =>
-                    stats.applyUtxoDurationMeasure.Tick(stopwatch.Elapsed)));
+                timingTasks.Add(
+                    applyChainState.ContinueWith(_ =>
+                    {
+                        lock (stopwatch)
+                            stats.applyUtxoDurationMeasure.Tick(stopwatch.Elapsed);
+                    }));
 
                 // time block validation
-                timingTasks.Add(blockValidator.ContinueWith(_ =>
-                    stats.validateDurationMeasure.Tick(stopwatch.Elapsed)));
+                timingTasks.Add(
+                    blockValidator.ContinueWith(_ =>
+                    {
+                        lock (stopwatch)
+                            stats.validateDurationMeasure.Tick(stopwatch.Elapsed);
+                    }));
 
                 // wait for all tasks to complete, any exceptions that ocurred will be thrown
                 var pipelineCompletion = PipelineCompletion.Create(
