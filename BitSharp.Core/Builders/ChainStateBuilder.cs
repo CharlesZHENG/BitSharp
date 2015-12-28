@@ -54,6 +54,7 @@ namespace BitSharp.Core.Builders
 
         public async Task AddBlockAsync(ChainedHeader chainedHeader, IEnumerable<BlockTx> blockTxes, CancellationToken cancelToken = default(CancellationToken))
         {
+            //TODO concurrent stopwatch
             var stopwatch = Stopwatch.StartNew();
             var txCount = 0;
             var inputCount = 0;
@@ -105,27 +106,48 @@ namespace BitSharp.Core.Builders
                 // begin validating the block
                 var blockValidator = BlockValidator.ValidateBlockAsync(coreStorage, rules, newChain, chainedHeader, validatableTxes, cancelToken);
 
-                // wait for block txes to read
-                await blockTxesBuffer.Completion;
-                stats.txesReadDurationMeasure.Tick(stopwatch.Elapsed);
+                // prepare to finish applying chain state changes once utxo calculation has completed
+                var applyChainState =
+                    validatableTxes.Completion.ContinueWith(async _ =>
+                    {
+                        // finish applying the utxo changes, do not yet commit
+                        chainStateCursor.ChainTip = chainedHeader;
+                        chainStateCursor.TryAddHeader(chainedHeader);
 
-                // wait for utxo look-ahead to complete
-                await warmedBlockTxes.Completion;
-                stats.lookAheadDurationMeasure.Tick(stopwatch.Elapsed);
+                        await chainStateCursor.ApplyChangesAsync();
+                    }, TaskContinuationOptions.OnlyOnRanToCompletion).Unwrap();
 
-                // wait for utxo calculation
-                await validatableTxes.Completion;
-                stats.calculateUtxoDurationMeasure.Tick(stopwatch.Elapsed);
+                var timingTasks = new List<Task>();
 
-                // apply the utxo changes, do not yet commit
-                chainStateCursor.ChainTip = chainedHeader;
-                chainStateCursor.TryAddHeader(chainedHeader);
-                await chainStateCursor.ApplyChangesAsync();
-                stats.applyUtxoDurationMeasure.Tick(stopwatch.Elapsed);
+                // time block txes read
+                timingTasks.Add(blockTxesBuffer.Completion.ContinueWith(_ =>
+                    stats.txesReadDurationMeasure.Tick(stopwatch.Elapsed)));
 
-                // wait for block validation to complete, any exceptions that ocurred will be thrown
-                await blockValidator;
-                stats.validateDurationMeasure.Tick(stopwatch.Elapsed);
+                // time utxo look-ahead
+                timingTasks.Add(warmedBlockTxes.Completion.ContinueWith(_ =>
+                    stats.lookAheadDurationMeasure.Tick(stopwatch.Elapsed)));
+
+                // time utxo calculation
+                timingTasks.Add(validatableTxes.Completion.ContinueWith(_ =>
+                    stats.calculateUtxoDurationMeasure.Tick(stopwatch.Elapsed)));
+
+                // time utxo application
+                timingTasks.Add(applyChainState.ContinueWith(_ =>
+                    stats.applyUtxoDurationMeasure.Tick(stopwatch.Elapsed)));
+
+                // time block validation
+                timingTasks.Add(blockValidator.ContinueWith(_ =>
+                    stats.validateDurationMeasure.Tick(stopwatch.Elapsed)));
+
+                // wait for all tasks to complete, any exceptions that ocurred will be thrown
+                var pipelineCompletion = PipelineCompletion.Create(
+                    new[]
+                    {
+                        blockTxesBuffer.Completion, sendBlockTxes, countBlockTxes.Completion, warmedBlockTxes.Completion,
+                        validatableTxes.Completion, applyChainState, applyChainState, blockValidator
+                    }.Concat(timingTasks).ToArray(),
+                    new ISourceBlock<object>[] { blockTxesBuffer, countBlockTxes, warmedBlockTxes, validatableTxes });
+                await pipelineCompletion;
 
                 var totalTxCount = chainStateCursor.TotalTxCount;
                 var totalInputCount = chainStateCursor.TotalInputCount;

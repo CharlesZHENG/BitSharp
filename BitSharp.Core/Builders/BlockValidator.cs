@@ -23,129 +23,139 @@ namespace BitSharp.Core.Builders
 
         public static async Task ValidateBlockAsync(ICoreStorage coreStorage, IBlockchainRules rules, Chain chain, ChainedHeader chainedHeader, ISourceBlock<ValidatableTx> validatableTxes, CancellationToken cancelToken = default(CancellationToken))
         {
-            // pre-validate block before doing any more work
-            rules.PreValidateBlock(chain, chainedHeader);
-
-            // validate merkle root
-            var merkleStream = new MerkleStream<BlockTxNode>();
-            var merkleValidator = InitMerkleValidator(chainedHeader, merkleStream, cancelToken);
-
-            // begin feeding the merkle validator
-            validatableTxes.LinkTo(merkleValidator, new DataflowLinkOptions { PropagateCompletion = true });
-
-            // capture fees
-            Transaction coinbaseTx = null;
-            var txCount = 0U;
-            var totalTxInputValue = 0UL;
-            var totalTxOutputValue = 0UL;
-            var totalSigOpCount = 0;
-            var blockSize = 80;
-
-            //TODO
-            var MAX_BLOCK_SIZE = 1.MILLION(); // :(
-            var MAX_MONEY = (ulong)21.MILLION() * (ulong)100.MILLION();
-
-            var feeCapturer = new TransformBlock<ValidatableTx, ValidatableTx>(
-                validatableTx =>
-                {
-                    var tx = validatableTx.Transaction;
-
-                    // first transaction must be coinbase
-                    if (txCount == 0 && !tx.IsCoinbase)
-                        throw new ValidationException(chainedHeader.Hash);
-                    // all other transactions must not be coinbase
-                    else if (txCount > 0 && tx.IsCoinbase)
-                        throw new ValidationException(chainedHeader.Hash);
-
-                    // must have inputs
-                    if (tx.Inputs.Length == 0)
-                        throw new ValidationException(chainedHeader.Hash);
-                    // must have outputs
-                    else if (tx.Outputs.Length == 0)
-                        throw new ValidationException(chainedHeader.Hash);
-                    // must not have any negative money value outputs
-                    else if (tx.Outputs.Any(x => unchecked((long)x.Value) < 0))
-                        throw new ValidationException(chainedHeader.Hash);
-                    // must not have any outputs with a value greater than max money
-                    else if (tx.Outputs.Any(x => x.Value > MAX_MONEY))
-                        throw new ValidationException(chainedHeader.Hash);
-                    // must not have a total output value greater than max money
-                    else if (tx.Outputs.Sum(x => x.Value) > MAX_MONEY)
-                        throw new ValidationException(chainedHeader.Hash);
-                    // coinbase scriptSignature length must be >= 2 && <= 100
-                    else if (tx.IsCoinbase && (tx.Inputs[0].ScriptSignature.Length < 2 || tx.Inputs[0].ScriptSignature.Length > 100))
-                        throw new ValidationException(chainedHeader.Hash);
-                    // non-coinbase txes must not have coinbase prev tx output key (txHash: 0, outputIndex: -1)
-                    else if (!tx.IsCoinbase && tx.Inputs.Any(x => x.PreviousTxOutputKey.TxOutputIndex == uint.MaxValue && x.PreviousTxOutputKey.TxHash == UInt256.Zero))
-                        throw new ValidationException(chainedHeader.Hash);
-
-                    txCount++;
-                    if (tx.IsCoinbase)
-                    {
-                        coinbaseTx = tx;
-                    }
-                    else
-                    {
-                        totalTxInputValue += validatableTx.PrevTxOutputs.Sum(x => x.Value);
-                        totalTxOutputValue += tx.Outputs.Sum(x => x.Value);
-                    }
-
-                    totalSigOpCount += tx.Inputs.Sum(x => CountSigOps(x.ScriptSignature));
-                    totalSigOpCount += tx.Outputs.Sum(x => CountSigOps(x.ScriptPublicKey));
-                    //TODO should be optimal encoding length
-                    blockSize += validatableTx.TxBytes.Length;
-
-                    //TODO
-                    var MAX_BLOCK_SIGOPS = 20.THOUSAND();
-                    if (totalSigOpCount > MAX_BLOCK_SIGOPS)
-                        throw new ValidationException(chainedHeader.Hash);
-
-                    //TODO
-                    if (blockSize > MAX_BLOCK_SIZE)
-                        throw new ValidationException(chainedHeader.Hash);
-
-                    return validatableTx;
-                });
-            merkleValidator.LinkTo(feeCapturer, new DataflowLinkOptions { PropagateCompletion = true });
-
-            //TODO
-            blockSize += DataEncoder.VarIntSize(txCount);
-            if (blockSize > MAX_BLOCK_SIZE)
-                throw new ValidationException(chainedHeader.Hash);
-
-            // validate transactions
-            var txValidator = InitTxValidator(rules, chainedHeader, cancelToken);
-
-            // begin feeding the tx validator
-            feeCapturer.LinkTo(txValidator, new DataflowLinkOptions { PropagateCompletion = true });
-
-            // validate scripts
-            var scriptValidator = InitScriptValidator(rules, chainedHeader, cancelToken);
-
-            // begin feeding the script validator
-            txValidator.LinkTo(scriptValidator, new DataflowLinkOptions { PropagateCompletion = true });
-
-            await merkleValidator.Completion;
-            await feeCapturer.Completion;
-            await txValidator.Completion;
-            await scriptValidator.Completion;
-
-            // validate overall block
-            rules.PostValidateBlock(chain, chainedHeader, coinbaseTx, totalTxInputValue, totalTxOutputValue);
-
-            if (!rules.BypassPrevTxLoading)
+            try
             {
-                try
-                {
-                    merkleStream.FinishPairing();
-                }
+                // pre-validate block before doing any more work
+                rules.PreValidateBlock(chain, chainedHeader);
+
+                // validate merkle root
+                var merkleStream = new MerkleStream<BlockTxNode>();
+                var merkleValidator = InitMerkleValidator(chainedHeader, merkleStream, cancelToken);
+
+                // begin feeding the merkle validator
+                validatableTxes.LinkTo(merkleValidator, new DataflowLinkOptions { PropagateCompletion = true });
+
+                // capture fees
+                Transaction coinbaseTx = null;
+                var txCount = 0U;
+                var totalTxInputValue = 0UL;
+                var totalTxOutputValue = 0UL;
+                var totalSigOpCount = 0;
+                var blockSize = 80;
+
                 //TODO
-                catch (InvalidOperationException)
+                var MAX_BLOCK_SIZE = 1.MILLION(); // :(
+                var MAX_MONEY = (ulong)21.MILLION() * (ulong)100.MILLION();
+
+                // BIP16 didn't become active until Apr 1 2012
+                var nBIP16SwitchTime = 1333238400U;
+                var strictPayToScriptHash = chainedHeader.Time >= nBIP16SwitchTime;
+
+                var feeCapturer = new TransformBlock<ValidatableTx, ValidatableTx>(
+                    validatableTx =>
+                    {
+                        var tx = validatableTx.Transaction;
+
+                        // first transaction must be coinbase
+                        if (txCount == 0 && !tx.IsCoinbase)
+                            throw new ValidationException(chainedHeader.Hash);
+                        // all other transactions must not be coinbase
+                        else if (txCount > 0 && tx.IsCoinbase)
+                            throw new ValidationException(chainedHeader.Hash);
+
+                        // must have inputs
+                        if (tx.Inputs.Length == 0)
+                            throw new ValidationException(chainedHeader.Hash);
+                        // must have outputs
+                        else if (tx.Outputs.Length == 0)
+                            throw new ValidationException(chainedHeader.Hash);
+                        // must not have any negative money value outputs
+                        else if (tx.Outputs.Any(x => unchecked((long)x.Value) < 0))
+                            throw new ValidationException(chainedHeader.Hash);
+                        // must not have any outputs with a value greater than max money
+                        else if (tx.Outputs.Any(x => x.Value > MAX_MONEY))
+                            throw new ValidationException(chainedHeader.Hash);
+                        // must not have a total output value greater than max money
+                        else if (tx.Outputs.Sum(x => x.Value) > MAX_MONEY)
+                            throw new ValidationException(chainedHeader.Hash);
+                        // coinbase scriptSignature length must be >= 2 && <= 100
+                        else if (tx.IsCoinbase && (tx.Inputs[0].ScriptSignature.Length < 2 || tx.Inputs[0].ScriptSignature.Length > 100))
+                            throw new ValidationException(chainedHeader.Hash);
+                        // non-coinbase txes must not have coinbase prev tx output key (txHash: 0, outputIndex: -1)
+                        else if (!tx.IsCoinbase && tx.Inputs.Any(x => x.PreviousTxOutputKey.TxOutputIndex == uint.MaxValue && x.PreviousTxOutputKey.TxHash == UInt256.Zero))
+                            throw new ValidationException(chainedHeader.Hash);
+
+                        txCount++;
+                        if (tx.IsCoinbase)
+                        {
+                            coinbaseTx = tx;
+                        }
+                        else
+                        {
+                            totalTxInputValue += validatableTx.PrevTxOutputs.Sum(x => x.Value);
+                            totalTxOutputValue += tx.Outputs.Sum(x => x.Value);
+                        }
+
+                        totalSigOpCount += tx.Inputs.Sum(x => CountLegacySigOps(x.ScriptSignature, accurate: false));
+                        totalSigOpCount += tx.Outputs.Sum(x => CountLegacySigOps(x.ScriptPublicKey, accurate: false));
+                        if (!tx.IsCoinbase && strictPayToScriptHash)
+                            totalSigOpCount += tx.Inputs.Sum(x => CountP2SHSigOps(validatableTx));
+
+                        //TODO
+                        var MAX_BLOCK_SIGOPS = 20.THOUSAND();
+                        if (totalSigOpCount > MAX_BLOCK_SIGOPS)
+                            throw new ValidationException(chainedHeader.Hash);
+
+                        //TODO should be optimal encoding length
+                        blockSize += validatableTx.TxBytes.Length;
+
+                        //TODO
+                        if (blockSize + DataEncoder.VarIntSize(txCount) > MAX_BLOCK_SIZE)
+                            throw new ValidationException(chainedHeader.Hash);
+
+                        return validatableTx;
+                    });
+                merkleValidator.LinkTo(feeCapturer, new DataflowLinkOptions { PropagateCompletion = true });
+
+                // validate transactions
+                var txValidator = InitTxValidator(rules, chainedHeader, cancelToken);
+
+                // begin feeding the tx validator
+                feeCapturer.LinkTo(txValidator, new DataflowLinkOptions { PropagateCompletion = true });
+
+                // validate scripts
+                var scriptValidator = InitScriptValidator(rules, chainedHeader, cancelToken);
+
+                // begin feeding the script validator
+                txValidator.LinkTo(scriptValidator, new DataflowLinkOptions { PropagateCompletion = true });
+
+                //TODO
+                await PipelineCompletion.Create(
+                    new[] { merkleValidator.Completion, feeCapturer.Completion, txValidator.Completion, scriptValidator.Completion },
+                    new ISourceBlock<object>[] { merkleValidator, feeCapturer, txValidator });
+
+                // validate overall block
+                rules.PostValidateBlock(chain, chainedHeader, coinbaseTx, totalTxInputValue, totalTxOutputValue);
+
+                if (!rules.BypassPrevTxLoading)
                 {
-                    throw CreateMerkleRootException(chainedHeader);
+                    try
+                    {
+                        merkleStream.FinishPairing();
+                    }
+                    //TODO
+                    catch (InvalidOperationException)
+                    {
+                        throw CreateMerkleRootException(chainedHeader);
+                    }
+                    if (merkleStream.RootNode.Hash != chainedHeader.MerkleRoot)
+                        throw CreateMerkleRootException(chainedHeader);
                 }
-                if (merkleStream.RootNode.Hash != chainedHeader.MerkleRoot)
-                    throw CreateMerkleRootException(chainedHeader);
+            }
+            catch (Exception ex)
+            {
+                validatableTxes.Fault(ex);
+                throw;
             }
         }
 
@@ -247,15 +257,16 @@ namespace BitSharp.Core.Builders
         }
 
         //TODO - hasn't been checked for correctness, should also be moved
-        private static int CountSigOps(ImmutableArray<byte> script)
+        private static int CountLegacySigOps(ImmutableArray<byte> script, bool accurate)
         {
             var sigOpCount = 0;
 
             var index = 0;
             while (index < script.Length)
             {
-                var opByte = script[index++];
-                var op = (ScriptOp)Enum.ToObject(typeof(ScriptOp), opByte);
+                ScriptOp op;
+                if (!GetOp(script, ref index, out op))
+                    break;
 
                 switch (op)
                 {
@@ -269,57 +280,132 @@ namespace BitSharp.Core.Builders
                         //TODO
                         var MAX_PUBKEYS_PER_MULTISIG = 20;
                         var prevOpCode = index >= 2 ? script[index - 2] : (byte)ScriptOp.OP_INVALIDOPCODE;
-                        if (prevOpCode >= (byte)ScriptOp.OP_1 && prevOpCode <= (byte)ScriptOp.OP_16)
+                        if (accurate && prevOpCode >= (byte)ScriptOp.OP_1 && prevOpCode <= (byte)ScriptOp.OP_16)
                             sigOpCount += prevOpCode;
                         else
                             sigOpCount += MAX_PUBKEYS_PER_MULTISIG;
 
                         break;
                 }
-
-                if (op <= ScriptOp.OP_PUSHDATA4)
-                {
-                    //OP_PUSHBYTES1-75
-                    uint dataLength;
-                    if (op < ScriptOp.OP_PUSHDATA1)
-                    {
-                        dataLength = opByte;
-                    }
-                    else if (op == ScriptOp.OP_PUSHDATA1)
-                    {
-                        if (index + 1 > script.Length)
-                            break;
-
-                        dataLength = script[index++];
-                    }
-                    else if (op == ScriptOp.OP_PUSHDATA2)
-                    {
-                        if (index + 2 > script.Length)
-                            break;
-
-                        dataLength = (uint)script[index++] + ((uint)script[index++] << 8);
-                    }
-                    else if (op == ScriptOp.OP_PUSHDATA4)
-                    {
-                        if (index + 4 > script.Length)
-                            break;
-
-                        dataLength = (uint)script[index++] + ((uint)script[index++] << 8) + ((uint)script[index++] << 16) + ((uint)script[index++] << 24);
-                    }
-                    else
-                    {
-                        dataLength = 0;
-                        Debug.Assert(false);
-                    }
-
-                    if ((ulong)index + dataLength >= (uint)script.Length)
-                        break;
-                    else
-                        index += (int)dataLength;
-                }
             }
 
             return sigOpCount;
+        }
+
+        //TODO - hasn't been checked for correctness, should also be moved
+        private static int CountP2SHSigOps(ValidatableTx validatableTx)
+        {
+            var sigOpCount = 0;
+
+            if (validatableTx.IsCoinbase)
+                return 0;
+
+            for (var inputIndex = 0; inputIndex < validatableTx.Transaction.Inputs.Length; inputIndex++)
+            {
+                sigOpCount += CountP2SHSigOps(validatableTx, inputIndex);
+            }
+
+            return sigOpCount;
+        }
+
+        //TODO - hasn't been checked for correctness, should also be moved
+        private static int CountP2SHSigOps(ValidatableTx validatableTx, int inputIndex)
+        {
+            var prevTxOutput = validatableTx.PrevTxOutputs[inputIndex];
+            if (prevTxOutput.IsPayToScriptHash())
+            {
+                var script = validatableTx.Transaction.Inputs[inputIndex].ScriptSignature;
+
+                ImmutableArray<byte>? data = null;
+
+                var index = 0;
+                while (index < script.Length)
+                {
+                    ScriptOp op;
+                    if (!GetOp(script, ref index, out op, out data))
+                        return 0;
+                    else if (op > ScriptOp.OP_16)
+                        return 0;
+                }
+
+                if (data == null)
+                    return 0;
+
+                return CountLegacySigOps(data.Value, true);
+            }
+            else
+                return 0;
+        }
+
+        private static bool GetOp(ImmutableArray<byte> script, ref int index, out ScriptOp op)
+        {
+            ImmutableArray<byte>? data;
+            return GetOp(script, ref index, out op, out data, readData: false);
+        }
+
+        private static bool GetOp(ImmutableArray<byte> script, ref int index, out ScriptOp op, out ImmutableArray<byte>? data)
+        {
+            return GetOp(script, ref index, out op, out data, readData: true);
+        }
+
+        //TODO - hasn't been checked for correctness, should also be moved
+        private static bool GetOp(ImmutableArray<byte> script, ref int index, out ScriptOp op, out ImmutableArray<byte>? data, bool readData)
+        {
+            op = ScriptOp.OP_INVALIDOPCODE;
+            data = null;
+
+            if (index + 1 > script.Length)
+                return false;
+
+            var opByte = script[index++];
+            var currentOp = (ScriptOp)opByte;
+
+            if (currentOp <= ScriptOp.OP_PUSHDATA4)
+            {
+                //OP_PUSHBYTES1-75
+                uint dataLength;
+                if (currentOp < ScriptOp.OP_PUSHDATA1)
+                {
+                    dataLength = opByte;
+                }
+                else if (currentOp == ScriptOp.OP_PUSHDATA1)
+                {
+                    if (index + 1 > script.Length)
+                        return false;
+
+                    dataLength = script[index++];
+                }
+                else if (currentOp == ScriptOp.OP_PUSHDATA2)
+                {
+                    if (index + 2 > script.Length)
+                        return false;
+
+                    dataLength = (uint)script[index++] + ((uint)script[index++] << 8);
+                }
+                else if (currentOp == ScriptOp.OP_PUSHDATA4)
+                {
+                    if (index + 4 > script.Length)
+                        return false;
+
+                    dataLength = (uint)script[index++] + ((uint)script[index++] << 8) + ((uint)script[index++] << 16) + ((uint)script[index++] << 24);
+                }
+                else
+                {
+                    dataLength = 0;
+                    Debug.Assert(false);
+                }
+
+                if ((ulong)index + dataLength > (uint)script.Length)
+                    return false;
+
+                if (readData)
+                    data = ImmutableArray.Create(script, index, (int)dataLength);
+
+                index += (int)dataLength;
+            }
+
+            op = currentOp;
+            return true;
         }
     }
 }

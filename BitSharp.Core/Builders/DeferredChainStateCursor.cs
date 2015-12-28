@@ -304,6 +304,7 @@ namespace BitSharp.Core.Builders
             });
         }
 
+        // TODO - the way this operates is specific to the block validation pipeline, this should be more apparent
         public async Task ApplyChangesAsync()
         {
             if (!inTransaction || changesApplied)

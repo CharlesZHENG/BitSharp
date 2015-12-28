@@ -104,6 +104,7 @@
     <Compile Include="ImmutableBitArray.cs" />
     <Compile Include="ConsoleLoggingModule.cs" />
     <Compile Include="OnCompleteBlock.cs" />
+    <Compile Include="PipelineCompletion.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="MethodTimer.cs" />
     <Compile Include="DurationMeasure.cs" />

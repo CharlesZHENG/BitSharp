@@ -1,4 +1,5 @@
-﻿using System;
+﻿using BitSharp.Core.Script;
+using System;
 using System.Collections.Immutable;
 using System.Data.Linq;
 using System.Linq;
@@ -32,6 +33,15 @@ namespace BitSharp.Core.Domain
         public uint TxVersion { get; }
 
         public bool IsCoinbase { get; }
+
+        //TODO have a script class for ScriptPublicKey and ScriptSignature to use
+        public bool IsPayToScriptHash()
+        {
+            return ScriptPublicKey.Length == 23
+                && ScriptPublicKey[0] == (byte)ScriptOp.OP_HASH160
+                && ScriptPublicKey[1] == 0x14 // push 20 bytes
+                && ScriptPublicKey[22] == (byte)ScriptOp.OP_EQUAL;
+        }
 
         public override bool Equals(object obj)
         {
