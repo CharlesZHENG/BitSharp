@@ -206,6 +206,18 @@ namespace BitSharp.Core.Rules
                 throw new ValidationException(chainedHeader.Hash,
                     $"Failing block {chainedHeader.Hash} at height {chainedHeader.Height}: Block did not match its own target of {blockTarget}");
             }
+
+            //TODO
+            // calculate adjusted time
+            var adjustedTime = DateTimeOffset.UtcNow;
+
+            // calculate max block time
+            var maxBlockTime = adjustedTime + TimeSpan.FromHours(2);
+
+            // verify max block time
+            var blockTime = DateTimeOffset.FromUnixTimeSeconds(chainedHeader.Time);
+            if (blockTime > maxBlockTime)
+                throw new ValidationException(chainedHeader.Hash);
         }
 
         public virtual void PostValidateBlock(Chain chain, ChainedHeader chainedHeader, Transaction coinbaseTx, ulong totalTxInputValue, ulong totalTxOutputValue)
