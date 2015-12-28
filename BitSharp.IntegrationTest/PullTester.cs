@@ -10,11 +10,13 @@ using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Ninject;
 using NLog;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 
 namespace BitSharp.IntegrationTest
@@ -23,8 +25,11 @@ namespace BitSharp.IntegrationTest
     public class PullTester
     {
         [TestMethod]
+        [Timeout(2 * /*minutes*/(60 * 1000))]
         public void TestPullTester()
         {
+            var javaTimeout = (int)TimeSpan.FromMinutes(1).TotalMilliseconds;
+
             // locate java.exe
             var javaPath = Path.Combine(Environment.GetEnvironmentVariable("JAVA_HOME"), "bin", "java.exe");
             if (!File.Exists(javaPath))
@@ -112,17 +117,21 @@ namespace BitSharp.IntegrationTest
                                 javaProcess.BeginOutputReadLine();
                                 javaProcess.BeginErrorReadLine();
 
-                                javaProcess.WaitForExit();
+                                var didJavaExit = javaProcess.WaitForExit(javaTimeout);
 
-                                logger.Info($"Pull Tester Result: {javaProcess.ExitCode}");
+                                javaProcess.OutputDataReceived -= onOutput;
+                                javaProcess.ErrorDataReceived -= onOutput;
+
+                                logger.Info($"Pull Tester Result: {(didJavaExit ? (int?)javaProcess.ExitCode : null)}");
 
                                 // verify pull tester successfully connected
                                 Assert.IsTrue(output.ToString().Contains(
                                     $"NioClientManager.handleKey: Successfully connected to /127.0.0.1:{port}"),
                                     $"Failed to connect: {output}");
 
-                                if (acceptanceError || javaProcess.ExitCode != 0)
+                                if (acceptanceError || !didJavaExit || javaProcess.ExitCode != 0)
                                 {
+                                    // log all success & error output from the comparison tool
                                     string line;
                                     using (var reader = new StringReader(successOutput.ToString()))
                                         while ((line = reader.ReadLine()) != null)
@@ -132,7 +141,25 @@ namespace BitSharp.IntegrationTest
                                             logger.Error(line);
 
                                     // don't fail on pull tester result, consensus is not implemented and it will always fail
-                                    Assert.Inconclusive(errorOutput.ToString());
+                                    if (didJavaExit)
+                                        Assert.Inconclusive(errorOutput.ToString());
+                                    else
+                                    {
+                                        // if java.exe failed to terminate, log last X lines of output
+                                        var lastLinesCount = 20;
+                                        var lastLines = new List<string>(lastLinesCount);
+
+                                        var match = Regex.Match(output.ToString(), "^.*$", RegexOptions.Multiline | RegexOptions.RightToLeft);
+                                        var count = 0;
+                                        while (count < lastLinesCount && (match = match.NextMatch()) != null)
+                                        {
+                                            lastLines.Add(match.Value);
+                                            count++;
+                                        }
+
+                                        lastLines.Reverse();
+                                        Assert.Fail($"java.exe failed to terminate: {string.Join("", lastLines)}");
+                                    }
                                 }
 
                                 Assert.AreEqual(0, javaProcess.ExitCode);
