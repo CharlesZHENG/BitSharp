@@ -132,7 +132,7 @@ namespace BitSharp.Core.Builders
                 //TODO
                 await PipelineCompletion.Create(
                     new[] { merkleValidator.Completion, feeCapturer.Completion, txValidator.Completion, scriptValidator.Completion },
-                    new ISourceBlock<object>[] { merkleValidator, feeCapturer, txValidator });
+                    new IDataflowBlock[] { merkleValidator, feeCapturer, txValidator, scriptValidator });
 
                 // validate overall block
                 rules.PostValidateBlock(chain, chainedHeader, coinbaseTx, totalTxInputValue, totalTxOutputValue);

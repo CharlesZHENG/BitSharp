@@ -14,9 +14,9 @@ namespace BitSharp.Common
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         //TODO
-        public static async Task Create(IEnumerable<Task> tasks, IEnumerable<ISourceBlock<object>> sourceBlocks)
+        public static async Task Create(IEnumerable<Task> tasks, IEnumerable<IDataflowBlock> dataFlowBlocks)
         {
-            var tasksArray = tasks.ToArray();
+            var tasksArray = tasks.Concat(dataFlowBlocks.Select(x => x.Completion)).ToArray();
 
             var taskExceptions = new ConcurrentBag<Exception>();
             var catchTasks = new Task[tasksArray.Length];
@@ -64,8 +64,8 @@ namespace BitSharp.Common
             {
                 var throwException = taskExceptions.Count > 0 ? new AggregateException(taskExceptions) : ex;
 
-                foreach (var sourceBlock in sourceBlocks)
-                    sourceBlock.Fault(throwException);
+                foreach (var dataFlowBlock in dataFlowBlocks)
+                    dataFlowBlock.Fault(throwException);
 
                 throw throwException;
             }

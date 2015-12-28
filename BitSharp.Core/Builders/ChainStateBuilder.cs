@@ -165,7 +165,7 @@ namespace BitSharp.Core.Builders
                         blockTxesBuffer.Completion, sendBlockTxes, countBlockTxes.Completion, warmedBlockTxes.Completion,
                         validatableTxes.Completion, applyChainState, applyChainState, blockValidator
                     }.Concat(timingTasks).ToArray(),
-                    new ISourceBlock<object>[] { blockTxesBuffer, countBlockTxes, warmedBlockTxes, validatableTxes });
+                    new IDataflowBlock[] { blockTxesBuffer, countBlockTxes, warmedBlockTxes, validatableTxes });
                 await pipelineCompletion;
 
                 var totalTxCount = chainStateCursor.TotalTxCount;
