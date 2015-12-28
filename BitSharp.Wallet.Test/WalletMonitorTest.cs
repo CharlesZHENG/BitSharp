@@ -11,7 +11,7 @@ namespace BitSharp.Wallet.Test
     public class WalletMonitorTest
     {
         [TestMethod]
-        [Timeout(300000/*ms*/)]
+        [Timeout(5 * /*minutes*/(60 * 1000))]
         public void TestMonitorAddress()
         {
             var publicKey =
@@ -51,7 +51,7 @@ namespace BitSharp.Wallet.Test
         }
 
         [TestMethod]
-        [Timeout(300000/*ms*/)]
+        [Timeout(5 * /*minutes*/(60 * 1000))]
         public void TestMonitorAddressRollback()
         {
             var publicKey =

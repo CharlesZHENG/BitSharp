@@ -28,7 +28,7 @@ namespace BitSharp.Core.Test
         }
 
         [TestMethod]
-        [Timeout(300000/*ms*/)]
+        [Timeout(5 * /*minutes*/(60 * 1000))]
         public void TestLongBlockchain()
         {
             using (var daemon = new TestDaemon())

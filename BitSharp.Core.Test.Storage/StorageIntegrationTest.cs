@@ -16,7 +16,7 @@ namespace BitSharp.Core.Test.Storage
     public class StorageIntegrationTest : StorageProviderTest
     {
         [TestMethod]
-        [Timeout(600000/*ms*/)]
+        [Timeout(10 * /*minutes*/(60 * 1000))]
         public void TestRollback()
         {
             RunTest(TestRollback);

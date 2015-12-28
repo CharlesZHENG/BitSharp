@@ -13,7 +13,7 @@ namespace BitSharp.Core.Test
     public class BlockReplayerTest
     {
         [TestMethod]
-        [Timeout(300000/*ms*/)]
+        [Timeout(5 * /*minutes*/(60 * 1000))]
         public void TestReplayBlock()
         {
             var logger = LogManager.CreateNullLogger();
