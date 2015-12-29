@@ -44,7 +44,6 @@ namespace BitSharp.Client
                 var useTestNet = false;
                 var connectToPeers = true;
 
-                var bypassPrevTxLoading = false;
                 var ignoreScripts = false;
                 var ignoreSignatures = false;
                 var ignoreScriptErrors = false;
@@ -158,7 +157,6 @@ namespace BitSharp.Client
 
                 // initialize rules
                 var rules = this.kernel.Get<IBlockchainRules>();
-                rules.BypassPrevTxLoading = bypassPrevTxLoading;
                 rules.IgnoreScripts = ignoreScripts;
                 rules.IgnoreSignatures = ignoreSignatures;
                 rules.IgnoreScriptErrors = ignoreScriptErrors;

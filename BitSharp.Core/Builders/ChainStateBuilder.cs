@@ -98,23 +98,24 @@ namespace BitSharp.Core.Builders
                 // begin calculating the utxo updates
                 var validatableTxes = utxoBuilder.CalculateUtxo(chainStateCursor, newChain, warmedBlockTxes, cancelToken);
 
-                //TODO remove bypass paramter
-                if (rules.BypassPrevTxLoading)
-                    validatableTxes = DropAll(validatableTxes);
-
                 // begin validating the block
                 var blockValidator = BlockValidator.ValidateBlockAsync(coreStorage, rules, newChain, chainedHeader, validatableTxes, cancelToken);
 
                 // prepare to finish applying chain state changes once utxo calculation has completed
                 var applyChainState =
-                    validatableTxes.Completion.ContinueWith(async _ =>
+                    validatableTxes.Completion.ContinueWith(_ =>
                     {
-                        // finish applying the utxo changes, do not yet commit
-                        chainStateCursor.ChainTip = chainedHeader;
-                        chainStateCursor.TryAddHeader(chainedHeader);
+                        if (validatableTxes.Completion.Status == TaskStatus.RanToCompletion)
+                        {
+                            // finish applying the utxo changes, do not yet commit
+                            chainStateCursor.ChainTip = chainedHeader;
+                            chainStateCursor.TryAddHeader(chainedHeader);
 
-                        await chainStateCursor.ApplyChangesAsync();
-                    }, TaskContinuationOptions.OnlyOnRanToCompletion).Unwrap();
+                            return chainStateCursor.ApplyChangesAsync();
+                        }
+                        else
+                            return Task.CompletedTask;
+                    }).Unwrap();
 
                 var timingTasks = new List<Task>();
 
@@ -163,7 +164,7 @@ namespace BitSharp.Core.Builders
                     new[]
                     {
                         blockTxesBuffer.Completion, sendBlockTxes, countBlockTxes.Completion, warmedBlockTxes.Completion,
-                        validatableTxes.Completion, applyChainState, applyChainState, blockValidator
+                        validatableTxes.Completion, applyChainState, blockValidator
                     }.Concat(timingTasks).ToArray(),
                     new IDataflowBlock[] { blockTxesBuffer, countBlockTxes, warmedBlockTxes, validatableTxes });
                 await pipelineCompletion;

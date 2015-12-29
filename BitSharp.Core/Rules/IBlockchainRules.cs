@@ -7,7 +7,6 @@ namespace BitSharp.Core.Rules
     public interface IBlockchainRules
     {
         //TODO
-        bool BypassPrevTxLoading { get; set; }
         bool IgnoreScripts { get; set; }
         bool IgnoreSignatures { get; set; }
         bool IgnoreScriptErrors { get; set; }
