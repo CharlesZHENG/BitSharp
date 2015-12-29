@@ -120,7 +120,7 @@ namespace BitSharp.Core.Builders
 
             //TODO
             await PipelineCompletion.Create(
-                new[] { validatableTxes.Completion, feeCapturer.Completion, txValidator.Completion, scriptValidator.Completion },
+                new Task[] { },
                 new IDataflowBlock[] { validatableTxes, feeCapturer, txValidator, scriptValidator });
 
             // validate overall block
