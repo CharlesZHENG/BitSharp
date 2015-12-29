@@ -5,6 +5,7 @@ using BitSharp.Core.Script;
 using NLog;
 using System;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
 
@@ -18,6 +19,10 @@ namespace BitSharp.Core.Rules
         public bool IgnoreScriptErrors { get; set; }
 
         private const UInt64 SATOSHI_PER_BTC = 100 * 1000 * 1000;
+        private static readonly ulong MAX_MONEY = (ulong)21.MILLION() * (ulong)100.MILLION();
+        private const int COINBASE_MATURITY = 100;
+        private static readonly int MAX_BLOCK_SIZE = 1.MILLION(); // :(
+        private static readonly int MAX_BLOCK_SIGOPS = 20.THOUSAND();
 
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
@@ -27,6 +32,259 @@ namespace BitSharp.Core.Rules
         }
 
         public IChainParams ChainParams { get; }
+
+        public void PreValidateBlock(Chain chain, ChainedHeader chainedHeader)
+        {
+            // calculate the next required target
+            var requiredTarget = GetRequiredNextTarget(chain);
+            if (requiredTarget > ChainParams.HighestTarget)
+                requiredTarget = ChainParams.HighestTarget;
+
+            // validate block's target against the required target
+            var blockTarget = chainedHeader.BlockHeader.CalculateTarget();
+            if (blockTarget != requiredTarget)
+            {
+                throw new ValidationException(chainedHeader.Hash,
+                    $"Failing block {chainedHeader.Hash} at height {chainedHeader.Height}: Block target {blockTarget} did not match required target of {requiredTarget}");
+            }
+
+            // validate block's proof of work against its stated target
+            if (chainedHeader.Hash > blockTarget || chainedHeader.Hash > requiredTarget)
+            {
+                throw new ValidationException(chainedHeader.Hash,
+                    $"Failing block {chainedHeader.Hash} at height {chainedHeader.Height}: Block did not match its own target of {blockTarget}");
+            }
+
+            //TODO
+            // calculate adjusted time
+            var adjustedTime = DateTimeOffset.UtcNow;
+
+            // calculate max block time
+            var maxBlockTime = adjustedTime + TimeSpan.FromHours(2);
+
+            // verify max block time
+            var blockTime = DateTimeOffset.FromUnixTimeSeconds(chainedHeader.Time);
+            if (blockTime > maxBlockTime)
+                throw new ValidationException(chainedHeader.Hash);
+
+            // ensure timestamp is greater than the median timestamp of the previous 11 blocks
+            if (chainedHeader.Height > 0)
+            {
+                var medianTimeSpan = Math.Min(11, chain.Blocks.Count - 1);
+
+                var prevHeaderTimes = chain.Blocks.GetRange(chain.Blocks.Count - 1 - medianTimeSpan, medianTimeSpan)
+                    //TODO pull tester doesn't fail if the sort step is missed
+                    .OrderBy(x => x.Time).ToList();
+
+                var medianPrevHeaderTime = DateTimeOffset.FromUnixTimeSeconds(prevHeaderTimes[prevHeaderTimes.Count / 2].Time);
+
+                if (blockTime <= medianPrevHeaderTime)
+                {
+                    throw new ValidationException(chainedHeader.Hash,
+                        $"Failing block {chainedHeader.Hash} at height {chainedHeader.Height}: Block's time of {blockTime} must be greater than past median time of {medianPrevHeaderTime}");
+                }
+            }
+
+            //TODO: ContextualCheckBlockHeader nVersion checks
+        }
+
+        public void TallyTransaction(ChainedHeader chainedHeader, ValidatableTx validatableTx, ref object runningTally)
+        {
+            if (runningTally == null)
+                runningTally = new BlockTally { BlockSize = 80 };
+
+            var blockTally = (BlockTally)runningTally;
+
+            var tx = validatableTx.Transaction;
+            var txIndex = validatableTx.Index;
+
+            // BIP16 didn't become active until Apr 1 2012
+            var nBIP16SwitchTime = 1333238400U;
+            var strictPayToScriptHash = chainedHeader.Time >= nBIP16SwitchTime;
+
+            // first transaction must be coinbase
+            if (validatableTx.Index == 0 && !tx.IsCoinbase)
+                throw new ValidationException(chainedHeader.Hash);
+            // all other transactions must not be coinbase
+            else if (validatableTx.Index > 0 && tx.IsCoinbase)
+                throw new ValidationException(chainedHeader.Hash);
+            // must have inputs
+            else if (tx.Inputs.Length == 0)
+                throw new ValidationException(chainedHeader.Hash);
+            // must have outputs
+            else if (tx.Outputs.Length == 0)
+                throw new ValidationException(chainedHeader.Hash);
+            // coinbase scriptSignature length must be >= 2 && <= 100
+            else if (tx.IsCoinbase && (tx.Inputs[0].ScriptSignature.Length < 2 || tx.Inputs[0].ScriptSignature.Length > 100))
+                throw new ValidationException(chainedHeader.Hash);
+
+            // running input/output value tallies
+            var txTotalInputValue = 0UL;
+            var txTotalOutputValue = 0UL;
+            var txSigOpCount = 0;
+
+            // validate & tally inputs
+            for (var inputIndex = 0; inputIndex < tx.Inputs.Length; inputIndex++)
+            {
+                var input = tx.Inputs[inputIndex];
+
+                if (!tx.IsCoinbase)
+                {
+                    var prevOutput = validatableTx.PrevTxOutputs[inputIndex];
+
+                    // if spending a coinbase, it must be mature
+                    if (prevOutput.IsCoinbase
+                        && chainedHeader.Height - prevOutput.BlockHeight < COINBASE_MATURITY)
+                    {
+                        throw new ValidationException(chainedHeader.Hash);
+                    }
+
+                    // non-coinbase txes must not have coinbase prev tx output key (txHash: 0, outputIndex: -1)
+                    if (input.PreviousTxOutputKey.TxOutputIndex == uint.MaxValue && input.PreviousTxOutputKey.TxHash == UInt256.Zero)
+                        throw new ValidationException(chainedHeader.Hash);
+
+                    // tally
+                    txTotalInputValue += prevOutput.Value;
+                }
+
+                // tally
+                txSigOpCount += CountLegacySigOps(input.ScriptSignature, accurate: false);
+                if (!tx.IsCoinbase && strictPayToScriptHash)
+                    txSigOpCount += CountP2SHSigOps(validatableTx, inputIndex);
+            }
+
+            // validate & tally outputs
+            for (var outputIndex = 0; outputIndex < tx.Outputs.Length; outputIndex++)
+            {
+                var output = tx.Outputs[outputIndex];
+
+                // must not have any negative money value outputs
+                if (unchecked((long)output.Value) < 0)
+                    throw new ValidationException(chainedHeader.Hash);
+                // must not have any outputs with a value greater than max money
+                else if (output.Value > MAX_MONEY)
+                    throw new ValidationException(chainedHeader.Hash);
+
+                // tally
+                if (!tx.IsCoinbase)
+                    txTotalOutputValue += output.Value;
+                txSigOpCount += CountLegacySigOps(output.ScriptPublicKey, accurate: false);
+            }
+
+            // must not have a total output value greater than max money
+            if (txTotalOutputValue > MAX_MONEY)
+                throw new ValidationException(chainedHeader.Hash);
+
+            // validate non-coinbase fees
+            long txFeeValue;
+            if (!validatableTx.IsCoinbase)
+            {
+                // ensure that output amount isn't greater than input amount
+                if (txTotalOutputValue > txTotalInputValue)
+                    throw new ValidationException(chainedHeader.Hash, $"Failing tx {tx.Hash}: Transaction output value is greater than input value");
+
+                // calculate fee value (unspent amount)
+                txFeeValue = (long)txTotalInputValue - (long)txTotalOutputValue;
+                Debug.Assert(txFeeValue >= 0);
+            }
+            else
+                txFeeValue = 0;
+
+
+            // block tallies
+            if (validatableTx.IsCoinbase)
+                blockTally.CoinbaseTx = validatableTx;
+            blockTally.TxCount++;
+            blockTally.TotalFees += txFeeValue;
+            blockTally.TotalSigOpCount += txSigOpCount;
+            //TODO should be optimal encoding length
+            blockTally.BlockSize += validatableTx.TxBytes.Length;
+
+            logger.Info(blockTally.BlockSize + DataEncoder.VarIntSize((uint)blockTally.TxCount));
+
+            //TODO
+            if (blockTally.TotalSigOpCount > MAX_BLOCK_SIGOPS)
+                throw new ValidationException(chainedHeader.Hash);
+            //TODO
+            else if (blockTally.BlockSize + DataEncoder.VarIntSize((uint)blockTally.TxCount) > MAX_BLOCK_SIZE)
+                throw new ValidationException(chainedHeader.Hash);
+
+            // all validation has passed
+        }
+
+        public void ValidateTransaction(ChainedHeader chainedHeader, ValidatableTx validatableTx)
+        {
+            // TODO any expensive validation can go here
+        }
+
+        public void ValidationTransactionScript(ChainedHeader chainedHeader, BlockTx tx, TxInput txInput, int txInputIndex, PrevTxOutput prevTxOutput)
+        {
+            // BIP16 didn't become active until Apr 1 2012
+            var nBIP16SwitchTime = 1333238400U;
+            var strictPayToScriptHash = chainedHeader.Time >= nBIP16SwitchTime;
+
+            var flags = strictPayToScriptHash ? verify_flags_type.verify_flags_p2sh : verify_flags_type.verify_flags_none;
+
+            // Start enforcing the DERSIG (BIP66) rules, for block.nVersion=3 blocks,
+            // when 75% of the network has upgraded:
+            if (chainedHeader.Version >= 3)
+            //&& IsSuperMajority(3, pindex->pprev, chainparams.GetConsensus().nMajorityEnforceBlockUpgrade, chainparams.GetConsensus())
+            {
+                flags |= verify_flags_type.verify_flags_dersig;
+            }
+
+            // Start enforcing CHECKLOCKTIMEVERIFY, (BIP65) for block.nVersion=4
+            // blocks, when 75% of the network has upgraded:
+            if (chainedHeader.Version >= 4)
+            //&& IsSuperMajority(4, pindex->pprev, chainparams.GetConsensus().nMajorityEnforceBlockUpgrade, chainparams.GetConsensus()))
+            {
+                flags |= verify_flags_type.verify_flags_checklocktimeverify;
+            }
+
+            var result = LibbitcoinConsensus.VerifyScript(
+                tx.TxBytes,
+                prevTxOutput.ScriptPublicKey,
+                txInputIndex,
+                flags);
+
+            if (!result)
+            {
+                logger.Debug($"Script did not pass in block: {chainedHeader.Hash}, tx: {tx.Index}, {tx.Hash}, input: {txInputIndex}");
+                throw new ValidationException(chainedHeader.Hash);
+            }
+        }
+
+        public void PostValidateBlock(Chain chain, ChainedHeader chainedHeader, object finalTally)
+        {
+            var blockTally = (BlockTally)finalTally;
+
+            // ensure there is at least 1 transaction
+            if (blockTally.TxCount == 0)
+                throw new ValidationException(chainedHeader.Hash,
+                    $"Failing block {chainedHeader.Hash} at height {chainedHeader.Height}: Zero transactions present");
+
+            // ensure fees aren't negative (should be caught earlier)
+            if (blockTally.TotalFees < 0)
+                throw new ValidationException(chainedHeader.Hash);
+
+            // calculate the expected reward in coinbase
+            var subsidy = (ulong)(50 * SATOSHI_PER_BTC);
+            if (chainedHeader.Height / 210000 <= 32)
+                subsidy /= (ulong)Math.Pow(2, chainedHeader.Height / 210000);
+
+            // calculate the expected reward in coinbase
+            var expectedReward = subsidy + (ulong)blockTally.TotalFees;
+
+            // calculate the actual reward in coinbase
+            var actualReward = blockTally.CoinbaseTx.Transaction.Outputs.Sum(x => x.Value);
+
+            // ensure coinbase has correct reward
+            if (actualReward > expectedReward)
+            {
+                throw new ValidationException(chainedHeader.Hash,
+                    $"Failing block {chainedHeader.Hash} at height {chainedHeader.Height}: Coinbase value is greater than reward + fees");
+            }
+        }
 
         public double TargetToDifficulty(UInt256 target)
         {
@@ -113,195 +371,164 @@ namespace BitSharp.Core.Rules
             }
         }
 
-        public void PreValidateBlock(Chain chain, ChainedHeader chainedHeader)
+        private int CountLegacySigOps(ImmutableArray<byte> script, bool accurate)
         {
-            // calculate the next required target
-            var requiredTarget = GetRequiredNextTarget(chain);
-            if (requiredTarget > ChainParams.HighestTarget)
-                requiredTarget = ChainParams.HighestTarget;
+            var sigOpCount = 0;
 
-            // validate block's target against the required target
-            var blockTarget = chainedHeader.BlockHeader.CalculateTarget();
-            if (blockTarget != requiredTarget)
+            var index = 0;
+            while (index < script.Length)
             {
-                throw new ValidationException(chainedHeader.Hash,
-                    $"Failing block {chainedHeader.Hash} at height {chainedHeader.Height}: Block target {blockTarget} did not match required target of {requiredTarget}");
-            }
+                ScriptOp op;
+                if (!GetOp(script, ref index, out op))
+                    break;
 
-            // validate block's proof of work against its stated target
-            if (chainedHeader.Hash > blockTarget || chainedHeader.Hash > requiredTarget)
-            {
-                throw new ValidationException(chainedHeader.Hash,
-                    $"Failing block {chainedHeader.Hash} at height {chainedHeader.Height}: Block did not match its own target of {blockTarget}");
-            }
-
-            //TODO
-            // calculate adjusted time
-            var adjustedTime = DateTimeOffset.UtcNow;
-
-            // calculate max block time
-            var maxBlockTime = adjustedTime + TimeSpan.FromHours(2);
-
-            // verify max block time
-            var blockTime = DateTimeOffset.FromUnixTimeSeconds(chainedHeader.Time);
-            if (blockTime > maxBlockTime)
-                throw new ValidationException(chainedHeader.Hash);
-
-            // ensure timestamp is greater than the median timestamp of the previous 11 blocks
-            if (chainedHeader.Height > 0)
-            {
-                var medianTimeSpan = Math.Min(11, chain.Blocks.Count - 1);
-
-                var prevHeaderTimes = chain.Blocks.GetRange(chain.Blocks.Count - 1 - medianTimeSpan, medianTimeSpan)
-                    //TODO pull tester doesn't fail if the sort step is missed
-                    .OrderBy(x => x.Time).ToList();
-
-                var medianPrevHeaderTime = DateTimeOffset.FromUnixTimeSeconds(prevHeaderTimes[prevHeaderTimes.Count / 2].Time);
-
-                if (blockTime <= medianPrevHeaderTime)
+                switch (op)
                 {
-                    throw new ValidationException(chainedHeader.Hash,
-                        $"Failing block {chainedHeader.Hash} at height {chainedHeader.Height}: Block's time of {blockTime} must be greater than past median time of {medianPrevHeaderTime}");
+                    case ScriptOp.OP_CHECKSIG:
+                    case ScriptOp.OP_CHECKSIGVERIFY:
+                        sigOpCount++;
+                        break;
+
+                    case ScriptOp.OP_CHECKMULTISIG:
+                    case ScriptOp.OP_CHECKMULTISIGVERIFY:
+                        //TODO
+                        var MAX_PUBKEYS_PER_MULTISIG = 20;
+                        var prevOpCode = index >= 2 ? script[index - 2] : (byte)ScriptOp.OP_INVALIDOPCODE;
+                        if (accurate && prevOpCode >= (byte)ScriptOp.OP_1 && prevOpCode <= (byte)ScriptOp.OP_16)
+                            sigOpCount += prevOpCode;
+                        else
+                            sigOpCount += MAX_PUBKEYS_PER_MULTISIG;
+
+                        break;
                 }
             }
 
-            //TODO: ContextualCheckBlockHeader nVersion checks
+            return sigOpCount;
         }
 
-        public void PostValidateBlock(Chain chain, ChainedHeader chainedHeader, Transaction coinbaseTx, ulong totalTxInputValue, ulong totalTxOutputValue)
+        private int CountP2SHSigOps(ValidatableTx validatableTx)
         {
-            // ensure there is at least 1 transaction
-            if (coinbaseTx == null)
-            {
-                throw new ValidationException(chainedHeader.Hash,
-                    $"Failing block {chainedHeader.Hash} at height {chainedHeader.Height}: Zero transactions present");
-            }
-
-            // check that coinbase has only one input
-            if (coinbaseTx.Inputs.Length != 1)
-            {
-                throw new ValidationException(chainedHeader.Hash,
-                    $"Failing block {chainedHeader.Hash} at height {chainedHeader.Height}: Coinbase transaction does not have exactly one input");
-            }
-
-            // validate transactions
-            var blockUnspentValue = totalTxInputValue - totalTxOutputValue;
-
-            // calculate the expected reward in coinbase
-            var expectedReward = (ulong)(50 * SATOSHI_PER_BTC);
-            if (chainedHeader.Height / 210000 <= 32)
-                expectedReward /= (ulong)Math.Pow(2, chainedHeader.Height / 210000);
-            expectedReward += blockUnspentValue;
-
-            // calculate the actual reward in coinbase
-            var actualReward = coinbaseTx.Outputs.Sum(x => x.Value);
-
-            // ensure coinbase has correct reward
-            if (actualReward > expectedReward)
-            {
-                throw new ValidationException(chainedHeader.Hash,
-                    $"Failing block {chainedHeader.Hash} at height {chainedHeader.Height}: Coinbase value is greater than reward + fees");
-            }
-        }
-
-        public void ValidateTransaction(ChainedHeader chainedHeader, ValidatableTx validatableTx)
-        {
-            var tx = validatableTx.Transaction;
-            var txIndex = validatableTx.Index;
+            var sigOpCount = 0;
 
             if (validatableTx.IsCoinbase)
+                return 0;
+
+            for (var inputIndex = 0; inputIndex < validatableTx.Transaction.Inputs.Length; inputIndex++)
             {
-                // TODO coinbase tx validation
-            }
-            else
-            {
-                // verify spend amounts
-                var txInputValue = (UInt64)0;
-                var txOutputValue = (UInt64)0;
-
-                for (var inputIndex = 0; inputIndex < tx.Inputs.Length; inputIndex++)
-                {
-                    var input = tx.Inputs[inputIndex];
-                    var prevOutput = validatableTx.PrevTxOutputs[inputIndex];
-
-                    //TODO
-                    var COINBASE_MATURITY = 100;
-                    if (prevOutput.IsCoinbase
-                        && chainedHeader.Height - prevOutput.BlockHeight < COINBASE_MATURITY)
-                    {
-                        throw new ValidationException(chainedHeader.Hash);
-                    }
-
-                    // add transactions previous value to unspent amount (used to calculate allowed coinbase reward)
-                    txInputValue += prevOutput.Value;
-                }
-
-                for (var outputIndex = 0; outputIndex < tx.Outputs.Length; outputIndex++)
-                {
-                    // remove transactions spend value from unspent amount (used to calculate allowed coinbase reward)
-                    var output = tx.Outputs[outputIndex];
-                    txOutputValue += output.Value;
-                }
-
-                // ensure that amount being output from transaction isn't greater than amount being input
-                if (txOutputValue > txInputValue)
-                {
-                    throw new ValidationException(chainedHeader.Hash, $"Failing tx {tx.Hash}: Transaction output value is greater than input value");
-                }
-
-                // calculate fee value (unspent amount)
-                var feeValue = (long)(txInputValue - txOutputValue);
-
-                // sanity check
-                if (feeValue < 0)
-                {
-                    throw new ValidationException(chainedHeader.Hash);
-                }
+                sigOpCount += CountP2SHSigOps(validatableTx, inputIndex);
             }
 
-            // all validation has passed
+            return sigOpCount;
         }
 
-        public void ValidationTransactionScript(ChainedHeader chainedHeader, BlockTx tx, TxInput txInput, int txInputIndex, PrevTxOutput prevTxOutput)
+        private int CountP2SHSigOps(ValidatableTx validatableTx, int inputIndex)
         {
-            // BIP16 didn't become active until Apr 1 2012
-            var nBIP16SwitchTime = 1333238400U;
-            var strictPayToScriptHash = chainedHeader.Time >= nBIP16SwitchTime;
+            if (validatableTx.IsCoinbase)
+                return 0;
 
-            var flags = strictPayToScriptHash ? verify_flags_type.verify_flags_p2sh : verify_flags_type.verify_flags_none;
-
-            // Start enforcing the DERSIG (BIP66) rules, for block.nVersion=3 blocks,
-            // when 75% of the network has upgraded:
-            if (chainedHeader.Version >= 3)
-            //&& IsSuperMajority(3, pindex->pprev, chainparams.GetConsensus().nMajorityEnforceBlockUpgrade, chainparams.GetConsensus())
+            var prevTxOutput = validatableTx.PrevTxOutputs[inputIndex];
+            if (prevTxOutput.IsPayToScriptHash())
             {
-                flags |= verify_flags_type.verify_flags_dersig;
+                var script = validatableTx.Transaction.Inputs[inputIndex].ScriptSignature;
+
+                ImmutableArray<byte>? data = null;
+
+                var index = 0;
+                while (index < script.Length)
+                {
+                    ScriptOp op;
+                    if (!GetOp(script, ref index, out op, out data))
+                        return 0;
+                    else if (op > ScriptOp.OP_16)
+                        return 0;
+                }
+
+                if (data == null)
+                    return 0;
+
+                return CountLegacySigOps(data.Value, true);
+            }
+            else
+                return 0;
+        }
+
+        private bool GetOp(ImmutableArray<byte> script, ref int index, out ScriptOp op)
+        {
+            ImmutableArray<byte>? data;
+            return GetOp(script, ref index, out op, out data, readData: false);
+        }
+
+        private bool GetOp(ImmutableArray<byte> script, ref int index, out ScriptOp op, out ImmutableArray<byte>? data)
+        {
+            return GetOp(script, ref index, out op, out data, readData: true);
+        }
+
+        private bool GetOp(ImmutableArray<byte> script, ref int index, out ScriptOp op, out ImmutableArray<byte>? data, bool readData)
+        {
+            op = ScriptOp.OP_INVALIDOPCODE;
+            data = null;
+
+            if (index + 1 > script.Length)
+                return false;
+
+            var opByte = script[index++];
+            var currentOp = (ScriptOp)opByte;
+
+            if (currentOp <= ScriptOp.OP_PUSHDATA4)
+            {
+                //OP_PUSHBYTES1-75
+                uint dataLength;
+                if (currentOp < ScriptOp.OP_PUSHDATA1)
+                {
+                    dataLength = opByte;
+                }
+                else if (currentOp == ScriptOp.OP_PUSHDATA1)
+                {
+                    if (index + 1 > script.Length)
+                        return false;
+
+                    dataLength = script[index++];
+                }
+                else if (currentOp == ScriptOp.OP_PUSHDATA2)
+                {
+                    if (index + 2 > script.Length)
+                        return false;
+
+                    dataLength = (uint)script[index++] + ((uint)script[index++] << 8);
+                }
+                else if (currentOp == ScriptOp.OP_PUSHDATA4)
+                {
+                    if (index + 4 > script.Length)
+                        return false;
+
+                    dataLength = (uint)script[index++] + ((uint)script[index++] << 8) + ((uint)script[index++] << 16) + ((uint)script[index++] << 24);
+                }
+                else
+                {
+                    dataLength = 0;
+                    Debug.Assert(false);
+                }
+
+                if ((ulong)index + dataLength > (uint)script.Length)
+                    return false;
+
+                if (readData)
+                    data = ImmutableArray.Create(script, index, (int)dataLength);
+
+                index += (int)dataLength;
             }
 
-            // Start enforcing CHECKLOCKTIMEVERIFY, (BIP65) for block.nVersion=4
-            // blocks, when 75% of the network has upgraded:
-            if (chainedHeader.Version >= 4)
-            //&& IsSuperMajority(4, pindex->pprev, chainparams.GetConsensus().nMajorityEnforceBlockUpgrade, chainparams.GetConsensus()))
-            {
-                flags |= verify_flags_type.verify_flags_checklocktimeverify;
-            }
+            op = currentOp;
+            return true;
+        }
 
-            var result = LibbitcoinConsensus.VerifyScript(
-                tx.TxBytes,
-                prevTxOutput.ScriptPublicKey,
-                txInputIndex,
-                flags);
-
-            //var scriptEngine = new ScriptEngine(this.IgnoreSignatures);
-
-            //// create the transaction script from the input and output
-            //var script = txInput.ScriptSignature.Concat(prevTxOutput.ScriptPublicKey);
-            //if (!scriptEngine.VerifyScript(chainedHeader.Hash, txIndex, prevTxOutput.ScriptPublicKey.ToArray(), tx, txInputIndex, script.ToArray()))
-            if (!result)
-            {
-                logger.Debug($"Script did not pass in block: {chainedHeader.Hash}, tx: {tx.Index}, {tx.Hash}, input: {txInputIndex}");
-                throw new ValidationException(chainedHeader.Hash);
-            }
+        private class BlockTally
+        {
+            public ValidatableTx CoinbaseTx { get; set; }
+            public int TxCount { get; set; }
+            public long TotalFees { get; set; }
+            public int TotalSigOpCount { get; set; }
+            public int BlockSize { get; set; }
         }
     }
 }

@@ -13,10 +13,16 @@ namespace BitSharp.Core.Rules
 
         void PreValidateBlock(Chain chain, ChainedHeader chainedHeader);
 
-        void PostValidateBlock(Chain chain, ChainedHeader chainedHeader, Transaction coinbaseTx, ulong totalTxInputValue, ulong totalTxOutputValue);
+        // executed serially, in order
+        void TallyTransaction(ChainedHeader chainedHeader, ValidatableTx validatableTx, ref object runningTally);
 
+        // executed in parallel, any order
         void ValidateTransaction(ChainedHeader chainedHeader, ValidatableTx validatableTx);
 
         void ValidationTransactionScript(ChainedHeader chainedHeader, BlockTx tx, TxInput txInput, int txInputIndex, PrevTxOutput prevTxOutput);
+
+        void PostValidateBlock(Chain chain, ChainedHeader chainedHeader, object finalTally);
     }
+
+    public interface ITally { }
 }
