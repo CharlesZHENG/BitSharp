@@ -6,11 +6,13 @@ namespace BitSharp.Core.Rules
 {
     public interface IChainParams
     {
-        UInt256 HighestTarget { get; }
+        UInt256 GenesisHash { get; }
 
         Block GenesisBlock { get; }
 
         ChainedHeader GenesisChainedHeader { get; }
+
+        UInt256 HighestTarget { get; }
 
         int DifficultyInterval { get; }
 

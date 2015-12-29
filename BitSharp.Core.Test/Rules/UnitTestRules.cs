@@ -12,7 +12,7 @@ namespace BitSharp.Core.Test.Rules
 
         public UnitTestRules()
         {
-            ChainParams = new UnitTestParams(UnitTestParams.Target0);
+            ChainParams = new UnitTestParams { HighestTarget = UnitTestParams.Target0 };
             coreRules = new CoreRules(ChainParams);
         }
 
@@ -100,20 +100,13 @@ namespace BitSharp.Core.Test.Rules
 
         private readonly MainnetParams mainnetParams = new MainnetParams();
 
-        private UInt256 highestTarget;
-        private Block genesisBlock;
-        private ChainedHeader genesisChainedHeader;
+        public UInt256 GenesisHash => GenesisBlock?.Hash;
 
-        public UnitTestParams(UInt256 highestTarget)
-        {
-            this.highestTarget = highestTarget;
-        }
+        public Block GenesisBlock { get; set; }
 
-        public UInt256 HighestTarget => this.highestTarget;
+        public ChainedHeader GenesisChainedHeader { get; set; }
 
-        public Block GenesisBlock => this.genesisBlock;
-
-        public ChainedHeader GenesisChainedHeader => this.genesisChainedHeader;
+        public UInt256 HighestTarget { get; set; }
 
         public int DifficultyInterval => mainnetParams.DifficultyInterval;
 
@@ -121,13 +114,8 @@ namespace BitSharp.Core.Test.Rules
 
         public void SetGenesisBlock(Block genesisBlock)
         {
-            this.genesisBlock = genesisBlock;
-            this.genesisChainedHeader = ChainedHeader.CreateForGenesisBlock(this.genesisBlock.Header);
-        }
-
-        public void SetHighestTarget(UInt256 highestTarget)
-        {
-            this.highestTarget = highestTarget;
+            GenesisBlock = genesisBlock;
+            GenesisChainedHeader = ChainedHeader.CreateForGenesisBlock(genesisBlock.Header);
         }
     }
 }

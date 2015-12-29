@@ -152,7 +152,9 @@
     <Compile Include="Rules\ICoreRules.cs" />
     <Compile Include="Rules\LibbitcoinConsensus.cs" />
     <Compile Include="Rules\CoreRules.cs" />
-    <Compile Include="Rules\MainnetParams.GenesisBlock.cs" />
+    <Compile Include="Rules\GenesisBlocks\MainnetParams_GenesisBlock.cs" />
+    <Compile Include="Rules\GenesisBlocks\Testnet2Params_GenesisBlock.cs" />
+    <Compile Include="Rules\GenesisBlocks\Testnet3Params_GenesisBlock.cs" />
     <Compile Include="StorageType.cs" />
     <Compile Include="Storage\Memory\UncommittedRecord.cs" />
     <Compile Include="Storage\Memory\CommittedRecord.cs" />

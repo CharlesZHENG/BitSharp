@@ -1,15 +1,13 @@
 ﻿using BitSharp.Common;
+using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Domain;
 using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Diagnostics;
 
 namespace BitSharp.Core.Rules
 {
-    public partial class MainnetParams
+    public partial class Testnet3Params : IChainParams
     {
         private readonly Block genesisBlock =
             Block.Create
@@ -19,9 +17,9 @@ namespace BitSharp.Core.Rules
                     version: 1,
                     previousBlock: UInt256.Zero,
                     merkleRoot: UInt256.ParseHex("4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"),
-                    time: 1231006505,
+                    time: 1296688602,
                     bits: 0x1D00FFFF,
-                    nonce: 2083236893
+                    nonce: 414098458
                 ),
                 transactions: ImmutableArray.Create
                 (
@@ -52,7 +50,7 @@ namespace BitSharp.Core.Rules
                         (
                             new TxOutput
                             (
-                                value: 50 * SATOSHI_PER_BTC,
+                                value: (UInt64)(50L * 100.MILLION()),
                                 scriptPublicKey: ImmutableArray.Create<byte>
                                 (
                                     0x41, 0x04, 0x67, 0x8A, 0xFD, 0xB0, 0xFE, 0x55, 0x48, 0x27, 0x19, 0x67, 0xF1, 0xA6, 0x71, 0x30,
