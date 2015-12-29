@@ -25,10 +25,10 @@ namespace BitSharp.IntegrationTest
     public class PullTester
     {
         [TestMethod]
-        [Timeout(2 * /*minutes*/(60 * 1000))]
+        [Timeout(6 * /*minutes*/(60 * 1000))]
         public void TestPullTester()
         {
-            var javaTimeout = (int)TimeSpan.FromMinutes(1).TotalMilliseconds;
+            var javaTimeout = (int)TimeSpan.FromMinutes(5).TotalMilliseconds;
 
             // locate java.exe
             var javaPath = Path.Combine(Environment.GetEnvironmentVariable("JAVA_HOME"), "bin", "java.exe");
@@ -93,7 +93,8 @@ namespace BitSharp.IntegrationTest
                         {
                             try
                             {
-                                var acceptanceError = false;
+                                var errorOccurred = false;
+
                                 var output = new StringBuilder();
                                 var successOutput = new StringBuilder();
                                 var errorOutput = new StringBuilder();
@@ -101,11 +102,17 @@ namespace BitSharp.IntegrationTest
                                 var onOutput = new DataReceivedEventHandler(
                                     (sender, e) =>
                                     {
-                                        if (e.Data?.Contains("bitcoind and bitcoinj acceptance differs") ?? false)
-                                            acceptanceError = true;
+                                        if (e.Data != null && (
+                                            e.Data.Contains("bitcoind and bitcoinj acceptance differs")
+                                            || e.Data.Contains("bitcoind still hasn't requested block")
+                                            || e.Data.Contains("bitcoind failed to request block")
+                                        ))
+                                        {
+                                            errorOccurred = true;
+                                        }
 
                                         output.AppendLine(e.Data);
-                                        if (!acceptanceError)
+                                        if (!errorOccurred)
                                             successOutput.AppendLine(e.Data);
                                         else
                                             errorOutput.AppendLine(e.Data);
@@ -129,7 +136,7 @@ namespace BitSharp.IntegrationTest
                                     $"NioClientManager.handleKey: Successfully connected to /127.0.0.1:{port}"),
                                     $"Failed to connect: {output}");
 
-                                if (acceptanceError || !didJavaExit || javaProcess.ExitCode != 0)
+                                if (errorOccurred || !didJavaExit || javaProcess.ExitCode != 0)
                                 {
                                     // log all success & error output from the comparison tool
                                     string line;
