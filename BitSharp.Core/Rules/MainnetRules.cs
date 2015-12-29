@@ -222,13 +222,17 @@ namespace BitSharp.Core.Rules
             if (chainedHeader.Height > 0)
             {
                 var medianTimeSpan = Math.Min(11, chain.Blocks.Count - 1);
-                var medianHeaders = chain.Blocks.GetRange(chain.Blocks.Count - 1 - medianTimeSpan, medianTimeSpan);
-                var medianTimePast = DateTimeOffset.FromUnixTimeSeconds(medianHeaders[medianHeaders.Count / 2].Time);
 
-                if (blockTime <= medianTimePast)
+                var prevHeaderTimes = chain.Blocks.GetRange(chain.Blocks.Count - 1 - medianTimeSpan, medianTimeSpan)
+                    //TODO pull tester doesn't fail if the sort step is missed
+                    .OrderBy(x => x.Time).ToList();
+
+                var medianPrevHeaderTime = DateTimeOffset.FromUnixTimeSeconds(prevHeaderTimes[prevHeaderTimes.Count / 2].Time);
+
+                if (blockTime <= medianPrevHeaderTime)
                 {
                     throw new ValidationException(chainedHeader.Hash,
-                        $"Failing block {chainedHeader.Hash} at height {chainedHeader.Height}: Block's time of {blockTime} must be greater than past median time of {medianTimePast}");
+                        $"Failing block {chainedHeader.Hash} at height {chainedHeader.Height}: Block's time of {blockTime} must be greater than past median time of {medianPrevHeaderTime}");
                 }
             }
 
