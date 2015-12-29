@@ -1,4 +1,5 @@
 ﻿using BitSharp.Common;
+using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Builders;
 using BitSharp.Core.Domain;
 using BitSharp.Core.Rules;
@@ -26,9 +27,7 @@ namespace BitSharp.Core.Test.Storage
         {
             var logger = LogManager.CreateNullLogger();
 
-            //TODO this should go to at least height 5500 so that it will fail if blocks txes aren't rolled back in reverse
-            //TODO taking any more blocks currently fails due to testnet block target rules not being implemented
-            var blockCount = 4033;
+            var blockCount = 10.THOUSAND();
             var checkUtxoHashFrequencey = 100;
 
             var blockProvider = new TestNet3BlockProvider();
@@ -41,6 +40,7 @@ namespace BitSharp.Core.Test.Storage
             var chainParams = new Testnet3Params();
             var rules = new CoreRules(chainParams)
             {
+                IgnoreScripts = true,
                 IgnoreSignatures = true,
                 IgnoreScriptErrors = true
             };
@@ -76,9 +76,7 @@ namespace BitSharp.Core.Test.Storage
                 }
 
                 // verify the utxo state before rolling back
-                //TODO verify the UTXO hash hard-coded here is correct
-                //TODO 5500: 0e9da3d53272cda9ecb6037c411ebc3cd0b65b5c16698baba41665edb29b8eaf
-                var expectedLastUtxoHash = UInt256.ParseHex("229119d7760af3dfd0bb8e59fc09ed06218d7ffe7d75a140867d44ca99f28a3c");
+                var expectedLastUtxoHash = UInt256.ParseHex("6d9f49d4750dec06536d05ff896d03ff8322ca4c72f6ef93c3c3d1afeb856905");
                 Assert.AreEqual(expectedLastUtxoHash, expectedUtxoHashes.Last());
                 expectedUtxoHashes.RemoveAt(expectedUtxoHashes.Count - 1);
 

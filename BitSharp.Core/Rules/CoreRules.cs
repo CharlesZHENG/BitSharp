@@ -36,20 +36,22 @@ namespace BitSharp.Core.Rules
         public void PreValidateBlock(Chain chain, ChainedHeader chainedHeader)
         {
             // calculate the next required target
-            var requiredTarget = GetRequiredNextTarget(chain);
-            if (requiredTarget > ChainParams.HighestTarget)
-                requiredTarget = ChainParams.HighestTarget;
+            var requiredBits = GetRequiredNextBits(chain);
+
+            // validate required target
+            var blockTarget = chainedHeader.BlockHeader.CalculateTarget();
+            if (blockTarget > ChainParams.HighestTarget)
+                throw new ValidationException(chainedHeader.Hash);
 
             // validate block's target against the required target
-            var blockTarget = chainedHeader.BlockHeader.CalculateTarget();
-            if (blockTarget != requiredTarget)
+            if (chainedHeader.Bits != requiredBits)
             {
                 throw new ValidationException(chainedHeader.Hash,
-                    $"Failing block {chainedHeader.Hash} at height {chainedHeader.Height}: Block target {blockTarget} did not match required target of {requiredTarget}");
+                    $"Failing block {chainedHeader.Hash} at height {chainedHeader.Height}: Block bits {chainedHeader.Bits} did not match required bits of {requiredBits}");
             }
 
             // validate block's proof of work against its stated target
-            if (chainedHeader.Hash > blockTarget || chainedHeader.Hash > requiredTarget)
+            if (chainedHeader.Hash > blockTarget)
             {
                 throw new ValidationException(chainedHeader.Hash,
                     $"Failing block {chainedHeader.Hash} at height {chainedHeader.Height}: Block did not match its own target of {blockTarget}");
@@ -286,88 +288,99 @@ namespace BitSharp.Core.Rules
             }
         }
 
-        public double TargetToDifficulty(UInt256 target)
+        //TODO not needed, but hanging onto
+        //public double TargetToDifficulty(UInt256 target)
+        //{
+        //    // difficulty is HighestTarget / target
+        //    // since these are 256-bit numbers, use division trick for BigIntegers
+        //    return Math.Exp(BigInteger.Log(ChainParams.HighestTarget.ToBigInteger()) - BigInteger.Log(target.ToBigInteger()));
+        //}
+
+        //public UInt256 DifficultyToTarget(double difficulty)
+        //{
+        //    // implementation is equivalent of HighestTarget / difficulty
+
+        //    // multiply difficulty and HighestTarget by a scale so that the decimal portion can be fed into a BigInteger
+        //    var scale = 0x100000000L;
+        //    var highestTargetScaled = (BigInteger)ChainParams.HighestTarget * scale;
+        //    var difficultyScaled = (BigInteger)(difficulty * scale);
+
+        //    // do the division
+        //    var target = highestTargetScaled / difficultyScaled;
+
+        //    // get the resulting target bytes, taking only the 3 most significant
+        //    var targetBytes = target.ToByteArray();
+        //    targetBytes = new byte[targetBytes.Length - 3].Concat(targetBytes.Skip(targetBytes.Length - 3).ToArray());
+
+        //    // return the target
+        //    return new UInt256(targetBytes);
+        //}
+
+        public uint GetRequiredNextBits(Chain chain)
         {
-            // difficulty is HighestTarget / target
-            // since these are 256-bit numbers, use division trick for BigIntegers
-            return Math.Exp(BigInteger.Log(ChainParams.HighestTarget.ToBigInteger()) - BigInteger.Log(target.ToBigInteger()));
-        }
+            var powLimitCompact = DataCalculator.TargetToBits(ChainParams.HighestTarget);
 
-        public UInt256 DifficultyToTarget(double difficulty)
-        {
-            // implementation is equivalent of HighestTarget / difficulty
+            if (chain.Height == 0)
+                return powLimitCompact;
 
-            // multiply difficulty and HighestTarget by a scale so that the decimal portion can be fed into a BigInteger
-            var scale = 0x100000000L;
-            var highestTargetScaled = (BigInteger)ChainParams.HighestTarget * scale;
-            var difficultyScaled = (BigInteger)(difficulty * scale);
+            var prevHeader = chain.Blocks[chain.Height - 1];
 
-            // do the division
-            var target = highestTargetScaled / difficultyScaled;
+            if (ChainParams.PowNoRetargeting)
+                return prevHeader.Bits;
 
-            // get the resulting target bytes, taking only the 3 most significant
-            var targetBytes = target.ToByteArray();
-            targetBytes = new byte[targetBytes.Length - 3].Concat(targetBytes.Skip(targetBytes.Length - 3).ToArray());
-
-            // return the target
-            return new UInt256(targetBytes);
-        }
-
-        public UInt256 GetRequiredNextTarget(Chain chain)
-        {
-            try
+            // not on an adjustment interval, use previous block's target
+            if (chain.Height % ChainParams.DifficultyInterval != 0)
             {
-                // genesis block, use its target
-                if (chain.Height == 0)
-                {
-                    // lookup genesis block header
-                    var genesisBlockHeader = chain.Blocks[0].BlockHeader;
-
-                    return genesisBlockHeader.CalculateTarget();
-                }
-                // not on an adjustment interval, use previous block's target
-                else if (chain.Height % ChainParams.DifficultyInterval != 0)
-                {
-                    // lookup the previous block on the current blockchain
-                    var prevBlockHeader = chain.Blocks[chain.Height - 1].BlockHeader;
-
-                    return prevBlockHeader.CalculateTarget();
-                }
-                // on an adjustment interval, calculate the required next target
+                if (!ChainParams.AllowMininimumDifficultyBlocks)
+                    return prevHeader.Bits;
                 else
                 {
-                    // lookup the previous block on the current blockchain
-                    var prevBlockHeader = chain.Blocks[chain.Height - 1].BlockHeader;
-
-                    // get the block difficultyInterval blocks ago
-                    var startBlockHeader = chain.Blocks[chain.Height - ChainParams.DifficultyInterval].BlockHeader;
-                    //Debug.Assert(startChainedHeader.Height == blockchain.Height - DifficultyInternal);
-
-                    var actualTimespan = (long)prevBlockHeader.Time - (long)startBlockHeader.Time;
-                    var targetTimespan = ChainParams.DifficultyTargetTimespan;
-
-                    // limit adjustment to 4x or 1/4x
-                    if (actualTimespan < targetTimespan / 4)
-                        actualTimespan = targetTimespan / 4;
-                    else if (actualTimespan > targetTimespan * 4)
-                        actualTimespan = targetTimespan * 4;
-
-                    // calculate the new target
-                    var target = startBlockHeader.CalculateTarget();
-                    target *= (UInt256)actualTimespan;
-                    target /= (UInt256)targetTimespan;
-
-                    // make sure target isn't too high (too low difficulty)
-                    if (target > ChainParams.HighestTarget)
-                        target = ChainParams.HighestTarget;
-
-                    return target;
+                    // Special difficulty rule for testnet:
+                    // If the new block's timestamp is more than 2* 10 minutes
+                    // then allow mining of a min-difficulty block.
+                    var currentHeader = chain.LastBlock;
+                    if (currentHeader.Time > prevHeader.Time + ChainParams.PowTargetSpacing * 2)
+                        return powLimitCompact;
+                    else
+                    {
+                        // Return the last non-special-min-difficulty-rules-block
+                        var header = prevHeader;
+                        while (header.Height > 0
+                            && header.Height % ChainParams.DifficultyInterval != 0
+                            && header.Bits == powLimitCompact)
+                        {
+                            header = chain.Blocks[header.Height - 1];
+                        }
+                        return header.Bits;
+                    }
                 }
             }
-            catch (ArgumentException)
+            // on an adjustment interval, calculate the required next target
+            else
             {
-                // invalid bits
-                throw new ValidationException(chain.LastBlock.Hash);
+                // get the block difficultyInterval blocks ago
+                var prevIntervalHeight = prevHeader.Height - (ChainParams.DifficultyInterval - 1);
+                var prevIntervalHeader = chain.Blocks[prevIntervalHeight];
+
+                var actualTimespan = prevHeader.Time - prevIntervalHeader.Time;
+                var targetTimespan = (uint)ChainParams.DifficultyTargetTimespan;
+
+                // limit adjustment to 4x or 1/4x
+                if (actualTimespan < targetTimespan / 4)
+                    actualTimespan = targetTimespan / 4;
+                else if (actualTimespan > targetTimespan * 4)
+                    actualTimespan = targetTimespan * 4;
+
+                // calculate the new target
+                var target = prevHeader.BlockHeader.CalculateTarget();
+                target *= (UInt256)actualTimespan;
+                target /= (UInt256)targetTimespan;
+
+                // make sure target isn't too high (too low difficulty)
+                if (target > ChainParams.HighestTarget)
+                    target = ChainParams.HighestTarget;
+
+                return DataCalculator.TargetToBits(target);
             }
         }
 

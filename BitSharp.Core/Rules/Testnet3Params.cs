@@ -5,6 +5,8 @@ namespace BitSharp.Core.Rules
 {
     public partial class Testnet3Params : IChainParams
     {
+        private readonly MainnetParams mainnetParams = new MainnetParams();
+
         public Testnet3Params()
         {
             GenesisChainedHeader = ChainedHeader.CreateForGenesisBlock(genesisBlock.Header);
@@ -18,8 +20,14 @@ namespace BitSharp.Core.Rules
 
         public UInt256 HighestTarget { get; } = UInt256.ParseHex("00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
 
-        public int DifficultyInterval { get; } = 2016;
+        public int DifficultyInterval => mainnetParams.DifficultyInterval;
 
-        public long DifficultyTargetTimespan { get; } = 14 * 24 * 60 * 60;
+        public int DifficultyTargetTimespan => mainnetParams.DifficultyTargetTimespan;
+
+        public bool AllowMininimumDifficultyBlocks { get; } = true;
+
+        public bool PowNoRetargeting => mainnetParams.PowNoRetargeting;
+
+        public int PowTargetSpacing => mainnetParams.PowTargetSpacing;
     }
 }

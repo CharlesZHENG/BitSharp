@@ -7,7 +7,7 @@ using System.Diagnostics;
 
 namespace BitSharp.Core.Rules
 {
-    public partial class Testnet2Params : IChainParams
+    public partial class RegtestParams : IChainParams
     {
         private readonly Block genesisBlock =
             Block.Create

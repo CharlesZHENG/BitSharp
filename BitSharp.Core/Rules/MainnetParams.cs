@@ -25,8 +25,17 @@ namespace BitSharp.Core.Rules
 
         public UInt256 HighestTarget { get; } = UInt256.ParseHex("00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
 
+        // 2 weeks in blocks
         public int DifficultyInterval { get; } = 2016;
 
-        public long DifficultyTargetTimespan { get; } = 14 * 24 * 60 * 60;
+        // 2 weeks in seconds
+        public int DifficultyTargetTimespan { get; } = 14 * 24 * 60 * 60;
+
+        public bool AllowMininimumDifficultyBlocks { get; } = false;
+
+        public bool PowNoRetargeting { get; } = false;
+
+        // 10 minutes in seconds
+        public int PowTargetSpacing { get; } = 10 * 60;
     }
 }

@@ -110,7 +110,13 @@ namespace BitSharp.Core.Test.Rules
 
         public int DifficultyInterval => mainnetParams.DifficultyInterval;
 
-        public long DifficultyTargetTimespan => mainnetParams.DifficultyTargetTimespan;
+        public int DifficultyTargetTimespan => mainnetParams.DifficultyTargetTimespan;
+
+        public bool AllowMininimumDifficultyBlocks => mainnetParams.AllowMininimumDifficultyBlocks;
+
+        public bool PowNoRetargeting => mainnetParams.PowNoRetargeting;
+
+        public int PowTargetSpacing => mainnetParams.PowTargetSpacing;
 
         public void SetGenesisBlock(Block genesisBlock)
         {

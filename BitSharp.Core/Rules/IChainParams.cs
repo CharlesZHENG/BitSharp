@@ -16,6 +16,12 @@ namespace BitSharp.Core.Rules
 
         int DifficultyInterval { get; }
 
-        long DifficultyTargetTimespan { get; }
+        int DifficultyTargetTimespan { get; }
+
+        bool AllowMininimumDifficultyBlocks { get; }
+
+        bool PowNoRetargeting { get; }
+
+        int PowTargetSpacing { get; }
     }
 }

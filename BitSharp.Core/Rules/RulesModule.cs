@@ -6,7 +6,7 @@ namespace BitSharp.Core.Rules
     public enum ChainTypeEnum
     {
         MainNet,
-        TestNet2,
+        Regtest,
         TestNet3,
         ComparisonToolTestNet
     }
@@ -30,9 +30,9 @@ namespace BitSharp.Core.Rules
                     this.Bind<IChainParams>().To<MainnetParams>().InSingletonScope();
                     break;
 
-                case ChainTypeEnum.TestNet2:
+                case ChainTypeEnum.Regtest:
                 case ChainTypeEnum.ComparisonToolTestNet:
-                    this.Bind<IChainParams>().To<Testnet2Params>().InSingletonScope();
+                    this.Bind<IChainParams>().To<RegtestParams>().InSingletonScope();
                     break;
 
                 case ChainTypeEnum.TestNet3:
