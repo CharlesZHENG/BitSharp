@@ -6,7 +6,9 @@ using BitSharp.Core.Rules;
 using BitSharp.Core.Storage;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
+using System;
 using System.Linq;
+using System.Threading.Tasks.Dataflow;
 
 namespace BitSharp.Core.Test.Builders
 {
@@ -124,6 +126,56 @@ namespace BitSharp.Core.Test.Builders
 
             Assert.AreEqual(StorageType.ChainState, actualEx.StorageType);
             Assert.AreEqual("ChainState is missing header.", actualEx.Message);
+        }
+
+        [TestMethod]
+        public void TestInvalidMerkleRoot()
+        {
+            // prepare mocks
+            var coreStorage = new Mock<ICoreStorage>();
+            var storageManager = new Mock<IStorageManager>();
+            var chainStateCursor = new Mock<IDeferredChainStateCursor>();
+
+            storageManager.Setup(x => x.OpenChainStateCursor()).Returns(
+                new DisposeHandle<IChainStateCursor>(_ => { }, chainStateCursor.Object));
+
+            storageManager.Setup(x => x.OpenDeferredChainStateCursor(It.IsAny<IChainState>())).Returns(
+                new DisposeHandle<IDeferredChainStateCursor>(_ => { }, chainStateCursor.Object));
+
+            chainStateCursor.Setup(x => x.CursorCount).Returns(1);
+            chainStateCursor.Setup(x => x.UtxoWorkQueue).Returns(Mock.Of<IDataflowBlock>());
+            chainStateCursor.Setup(x => x.UtxoApplierBlock).Returns(Mock.Of<IDataflowBlock>());
+
+            // prepare a test block
+            var testBlocks = new TestBlocks();
+            var rules = testBlocks.Rules;
+
+            var block = testBlocks.MineAndAddBlock(txCount: 10);
+            var chainedHeader = testBlocks.Chain.LastBlock;
+
+            // create an invalid version of the header where the merkle root is incorrect
+            var invalidChainedHeader = ChainedHeader.CreateFromPrev(rules.GenesisChainedHeader, block.Header.With(MerkleRoot: UInt256.Zero), DateTime.Now);
+
+            // mock genesis block & chain tip
+            var genesisHeader = rules.GenesisChainedHeader;
+            chainStateCursor.Setup(x => x.ChainTip).Returns(genesisHeader);
+            chainStateCursor.Setup(x => x.TryGetHeader(genesisHeader.Hash, out genesisHeader)).Returns(true);
+
+            // mock invalid block
+            chainStateCursor.Setup(x => x.TryGetHeader(chainedHeader.Hash, out invalidChainedHeader)).Returns(true);
+
+            // init chain state builder
+            var chainStateBuilder = new ChainStateBuilder(rules, coreStorage.Object, storageManager.Object);
+            Assert.AreEqual(rules.GenesisBlock.Hash, chainStateBuilder.Chain.LastBlock.Hash);
+
+            // attempt to add block with invalid merkle root
+            ValidationException actualEx;
+            AssertMethods.AssertAggregateThrows<ValidationException>(() =>
+                chainStateBuilder.AddBlockAsync(invalidChainedHeader, Enumerable.Empty<BlockTx>()).Wait(),
+                out actualEx);
+
+            // verify error
+            Assert.AreEqual($"Failing block {invalidChainedHeader.Hash} at height 1: Merkle root is invalid", actualEx.Message);
         }
     }
 }
