@@ -10,10 +10,14 @@ namespace BitSharp.Common.ExtensionMethods
     {
         public static async Task SendAndCompleteAsync<T>(this ITargetBlock<T> target, IEnumerable<T> items, CancellationToken cancelToken = default(CancellationToken))
         {
+            await Task.Yield();
             try
             {
                 foreach (var item in items)
                 {
+                    if (target.Completion.IsFaulted)
+                        throw target.Completion.Exception;
+
                     await target.SendAsync(item, cancelToken);
                 }
 
