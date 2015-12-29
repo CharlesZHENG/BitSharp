@@ -9,23 +9,23 @@ using System;
 namespace BitSharp.Blockchain.Test
 {
     [TestClass]
-    public sealed class MainnetRulesTest : IDisposable
+    public sealed class CoreRulesTest : IDisposable
     {
         private IKernel kernel;
-        private MainnetRules rules;
+        private CoreRules rules;
 
         [TestInitialize]
         public void TestInitialize()
         {
-            this.kernel = new StandardKernel(new ConsoleLoggingModule(), new MemoryStorageModule(), new RulesModule(RulesEnum.MainNet));
-            this.rules = kernel.Get<MainnetRules>();
+            this.kernel = new StandardKernel(new ConsoleLoggingModule(), new MemoryStorageModule(), new RulesModule(ChainTypeEnum.MainNet));
+            this.rules = kernel.Get<CoreRules>();
         }
 
         public void Dispose()
         {
             this.kernel.Dispose();
         }
-        
+
         [TestMethod]
         public void TestTargetToDifficulty()
         {

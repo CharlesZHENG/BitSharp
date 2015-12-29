@@ -21,7 +21,7 @@ namespace BitSharp.Core.Builders
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        public static async Task ValidateBlockAsync(ICoreStorage coreStorage, IBlockchainRules rules, Chain chain, ChainedHeader chainedHeader, ISourceBlock<ValidatableTx> validatableTxes, CancellationToken cancelToken = default(CancellationToken))
+        public static async Task ValidateBlockAsync(ICoreStorage coreStorage, ICoreRules rules, Chain chain, ChainedHeader chainedHeader, ISourceBlock<ValidatableTx> validatableTxes, CancellationToken cancelToken = default(CancellationToken))
         {
             // capture fees
             Transaction coinbaseTx = null;
@@ -127,7 +127,7 @@ namespace BitSharp.Core.Builders
             rules.PostValidateBlock(chain, chainedHeader, coinbaseTx, totalTxInputValue, totalTxOutputValue);
         }
 
-        private static TransformManyBlock<ValidatableTx, Tuple<ValidatableTx, int>> InitTxValidator(IBlockchainRules rules, ChainedHeader chainedHeader, CancellationToken cancelToken)
+        private static TransformManyBlock<ValidatableTx, Tuple<ValidatableTx, int>> InitTxValidator(ICoreRules rules, ChainedHeader chainedHeader, CancellationToken cancelToken)
         {
             return new TransformManyBlock<ValidatableTx, Tuple<ValidatableTx, int>>(
                 validatableTx =>
@@ -150,7 +150,7 @@ namespace BitSharp.Core.Builders
                 new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, MaxDegreeOfParallelism = Environment.ProcessorCount });
         }
 
-        private static ActionBlock<Tuple<ValidatableTx, int>> InitScriptValidator(IBlockchainRules rules, ChainedHeader chainedHeader, CancellationToken cancelToken)
+        private static ActionBlock<Tuple<ValidatableTx, int>> InitScriptValidator(ICoreRules rules, ChainedHeader chainedHeader, CancellationToken cancelToken)
         {
             return new ActionBlock<Tuple<ValidatableTx, int>>(
                 tuple =>

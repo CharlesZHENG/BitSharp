@@ -103,7 +103,8 @@ namespace BitSharp.Examples
             storageManager = new MemoryStorageManager();
 
             // intialize testnet3 rules (ignore script errors, script engine is not and is not intended to be complete)
-            var rules = new Testnet3Rules { IgnoreScriptErrors = true };
+            var chainParams = new Testnet3Params();
+            var rules = new CoreRules(chainParams) { IgnoreScriptErrors = true };
 
             // initialize & start core daemon
             var coreDaemon = new CoreDaemon(rules, storageManager) { MaxHeight = maxHeight, IsStarted = true };
@@ -167,7 +168,7 @@ namespace BitSharp.Examples
             using (storageManager)
             {
                 // start a chain at the genesis block to represent the processed progress
-                var processedChain = Chain.CreateForGenesisBlock(coreDaemon.Rules.GenesisChainedHeader).ToBuilder();
+                var processedChain = Chain.CreateForGenesisBlock(coreDaemon.ChainParams.GenesisChainedHeader).ToBuilder();
 
                 // a dictionary of public key script hashes can be created for any addresses of interest, allowing for quick checking
                 var scriptHashesOfInterest = new HashSet<UInt256>();

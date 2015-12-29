@@ -36,10 +36,10 @@ namespace BitSharp.Core.Test.Workers
             var chainedHeader0 = ChainedHeader.CreateForGenesisBlock(header0);
             coreStorage.AddGenesisBlock(chainedHeader0);
 
-            // mock rules
-            var mockRules = new Mock<IBlockchainRules>();
-            mockRules.Setup(rules => rules.GenesisChainedHeader).Returns(chainedHeader0);
-            kernel.Bind<IBlockchainRules>().ToConstant(mockRules.Object);
+            // mock chain params
+            var mockChainParams = new Mock<IChainParams>();
+            mockChainParams.Setup(rules => rules.GenesisChainedHeader).Returns(chainedHeader0);
+            kernel.Bind<IChainParams>().ToConstant(mockChainParams.Object);
 
             // initialize the target chain worker
             using (var targetChainWorker = kernel.Get<TargetChainWorker>(new ConstructorArgument("workerConfig", new WorkerConfig(initialNotify: true, minIdleTime: TimeSpan.Zero, maxIdleTime: TimeSpan.MaxValue))))
@@ -108,16 +108,16 @@ namespace BitSharp.Core.Test.Workers
 
             var fakeHeadersB = new FakeHeaders(fakeHeaders);
             var header3B = fakeHeadersB.Next();
-            var header4B = fakeHeadersB.Next(DataCalculator.TargetToBits(UnitTestRules.Target2));
+            var header4B = fakeHeadersB.Next(DataCalculator.TargetToBits(UnitTestParams.Target2));
 
             // store genesis block
             var chainedHeader0 = ChainedHeader.CreateForGenesisBlock(header0);
             coreStorage.AddGenesisBlock(chainedHeader0);
 
-            // mock rules
-            var mockRules = new Mock<IBlockchainRules>();
-            mockRules.Setup(rules => rules.GenesisChainedHeader).Returns(chainedHeader0);
-            kernel.Bind<IBlockchainRules>().ToConstant(mockRules.Object);
+            // mock chain params
+            var mockChainParams = new Mock<IChainParams>();
+            mockChainParams.Setup(rules => rules.GenesisChainedHeader).Returns(chainedHeader0);
+            kernel.Bind<IChainParams>().ToConstant(mockChainParams.Object);
 
             // initialize the target chain worker
             using (var targetChainWorker = kernel.Get<TargetChainWorker>(new ConstructorArgument("workerConfig", new WorkerConfig(initialNotify: true, minIdleTime: TimeSpan.Zero, maxIdleTime: TimeSpan.MaxValue))))

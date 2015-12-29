@@ -118,7 +118,7 @@ namespace BitSharp.Wallet
 
         protected override void SubStart()
         {
-            //this.chainBuilder = Chain.CreateForGenesisBlock(coreDaemon.Rules.GenesisChainedHeader).ToBuilder();
+            //this.chainBuilder = Chain.CreateForGenesisBlock(coreDaemon.ChainParams.GenesisChainedHeader).ToBuilder();
             //TODO start from the currently processed chain tip since wallet state isn't persisted
             this.chainBuilder = coreDaemon.CurrentChain.ToBuilder();
         }

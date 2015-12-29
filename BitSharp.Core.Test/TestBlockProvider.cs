@@ -4,13 +4,13 @@ namespace BitSharp.Core.Test
 {
     public static class TestBlockProvider
     {
-        public static BlockProvider CreateForRules(RulesEnum rulesType)
+        public static BlockProvider CreateForRules(ChainTypeEnum chainType)
         {
-            switch (rulesType)
+            switch (chainType)
             {
-                case RulesEnum.MainNet:
+                case ChainTypeEnum.MainNet:
                     return new MainnetBlockProvider();
-                case RulesEnum.TestNet3:
+                case ChainTypeEnum.TestNet3:
                     return new TestNet3BlockProvider();
                 default:
                     return null;

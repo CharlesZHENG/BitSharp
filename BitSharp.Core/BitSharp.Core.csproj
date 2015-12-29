@@ -149,7 +149,10 @@
     <Compile Include="Exceptions\ChainStateOutOfSyncException.cs" />
     <Compile Include="MerkleStream.cs" />
     <Compile Include="PruningMode.cs" />
+    <Compile Include="Rules\ICoreRules.cs" />
     <Compile Include="Rules\LibbitcoinConsensus.cs" />
+    <Compile Include="Rules\CoreRules.cs" />
+    <Compile Include="Rules\MainnetParams.GenesisBlock.cs" />
     <Compile Include="StorageType.cs" />
     <Compile Include="Storage\Memory\UncommittedRecord.cs" />
     <Compile Include="Storage\Memory\CommittedRecord.cs" />
@@ -184,11 +187,11 @@
     <Compile Include="JsonRpc\CoreRpcServer.cs" />
     <Compile Include="Domain\MerkleTreeNode.cs" />
     <Compile Include="Monitor\ChainPosition.cs" />
-    <Compile Include="Rules\IBlockchainRules.cs" />
-    <Compile Include="Rules\MainnetRules.cs" />
+    <Compile Include="Rules\IChainParams.cs" />
+    <Compile Include="Rules\MainnetParams.cs" />
     <Compile Include="Rules\RulesModule.cs" />
-    <Compile Include="Rules\Testnet2Rules.cs" />
-    <Compile Include="Rules\Testnet3Rules.cs" />
+    <Compile Include="Rules\Testnet2Params.cs" />
+    <Compile Include="Rules\Testnet3Params.cs" />
     <Compile Include="Script\PayToPublicKeyBuilder.cs" />
     <Compile Include="Script\ScriptBuilder.cs" />
     <Compile Include="Script\ScriptEngine.cs" />

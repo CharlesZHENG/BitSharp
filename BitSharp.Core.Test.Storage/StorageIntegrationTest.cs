@@ -38,7 +38,8 @@ namespace BitSharp.Core.Test.Storage
             var genesisHeader = new ChainedHeader(genesisBlock.Header, height: 0, totalWork: 0, dateSeen: DateTime.Now);
             var genesisChain = Chain.CreateForGenesisBlock(genesisHeader);
 
-            var rules = new Testnet3Rules()
+            var chainParams = new Testnet3Params();
+            var rules = new CoreRules(chainParams)
             {
                 IgnoreSignatures = true,
                 IgnoreScriptErrors = true

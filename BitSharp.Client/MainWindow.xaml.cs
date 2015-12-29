@@ -70,7 +70,7 @@ namespace BitSharp.Client
                 //if (Debugger.IsAttached)
                 //    baseDirectory = Path.Combine(baseDirectory, "Debugger");
 
-                var rulesType = useTestNet ? RulesEnum.TestNet3 : RulesEnum.MainNet;
+                var chainType = useTestNet ? ChainTypeEnum.TestNet3 : ChainTypeEnum.MainNet;
 
                 string[] blockTxesStorageLocations = null;
 
@@ -110,17 +110,17 @@ namespace BitSharp.Client
                 //TODO
                 if (cleanData)
                 {
-                    try { Directory.Delete(Path.Combine(baseDirectory, "Data", rulesType.ToString()), recursive: true); }
+                    try { Directory.Delete(Path.Combine(baseDirectory, "Data", chainType.ToString()), recursive: true); }
                     catch (IOException) { }
                 }
                 if (cleanChainState)
                 {
-                    try { Directory.Delete(Path.Combine(baseDirectory, "Data", rulesType.ToString(), "ChainState"), recursive: true); }
+                    try { Directory.Delete(Path.Combine(baseDirectory, "Data", chainType.ToString(), "ChainState"), recursive: true); }
                     catch (IOException) { }
                 }
                 if (cleanBlockTxes)
                 {
-                    try { Directory.Delete(Path.Combine(baseDirectory, "Data", rulesType.ToString(), "BlockTxes"), recursive: true); }
+                    try { Directory.Delete(Path.Combine(baseDirectory, "Data", chainType.ToString(), "BlockTxes"), recursive: true); }
                     catch (IOException) { }
                 }
 
@@ -144,19 +144,19 @@ namespace BitSharp.Client
                 }
                 else
                 {
-                    modules.Add(new EsentStorageModule(baseDirectory, rulesType, blockStorage: !useLmdb, cacheSizeMaxBytes: cacheSizeMaxBytes, blockTxesStorageLocations: blockTxesStorageLocations));
+                    modules.Add(new EsentStorageModule(baseDirectory, chainType, blockStorage: !useLmdb, cacheSizeMaxBytes: cacheSizeMaxBytes, blockTxesStorageLocations: blockTxesStorageLocations));
                     if (useLmdb)
-                        modules.Add(new LmdbStorageModule(baseDirectory, rulesType, blockTxesStorageLocations));
+                        modules.Add(new LmdbStorageModule(baseDirectory, chainType, blockTxesStorageLocations));
                 }
 
                 // add rules module
-                modules.Add(new RulesModule(rulesType));
+                modules.Add(new RulesModule(chainType));
 
                 // load modules
                 this.kernel.Load(modules.ToArray());
 
                 // initialize rules
-                var rules = this.kernel.Get<IBlockchainRules>();
+                var rules = this.kernel.Get<ICoreRules>();
                 rules.IgnoreScripts = ignoreScripts;
                 rules.IgnoreSignatures = ignoreSignatures;
                 rules.IgnoreScriptErrors = ignoreScriptErrors;

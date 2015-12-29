@@ -476,5 +476,12 @@ namespace BitSharp.Common.ExtensionMethods
                     yield return enumerator.Current;
             }
         }
+
+        public static bool AnyDuplicates<TSource, TKey>(this IEnumerable<TSource> source, Func<TSource, TKey> keySelector)
+        {
+            return source.GroupBy(keySelector)
+                .Where(x => x.Skip(1).Any())
+                .Any();
+        }
     }
 }

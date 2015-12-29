@@ -23,7 +23,7 @@ namespace BitSharp.Core.Test
 
         private bool isDisposed;
 
-        public Simulator(RulesEnum rulesType)
+        public Simulator(ChainTypeEnum chainType)
         {
             // initialize kernel
             this.kernel = new StandardKernel();
@@ -36,16 +36,16 @@ namespace BitSharp.Core.Test
             this.logger.Info($"Starting up: {DateTime.Now}");
 
             this.random = new Random();
-            this.blockProvider = TestBlockProvider.CreateForRules(rulesType);
+            this.blockProvider = TestBlockProvider.CreateForRules(chainType);
 
             // add storage module
             this.kernel.Load(new MemoryStorageModule());
 
             // add rules module
-            this.kernel.Load(new RulesModule(rulesType));
+            this.kernel.Load(new RulesModule(chainType));
 
             // TODO ignore script errors in test daemon until scripting engine is completed
-            var rules = this.kernel.Get<IBlockchainRules>();
+            var rules = this.kernel.Get<ICoreRules>();
             rules.IgnoreScriptErrors = true;
 
             // initialize the blockchain daemon
@@ -61,8 +61,8 @@ namespace BitSharp.Core.Test
 
             // verify initial state
             Assert.AreEqual(0, this.coreDaemon.TargetChainHeight);
-            Assert.AreEqual(rules.GenesisBlock.Hash, this.coreDaemon.TargetChain.LastBlock.Hash);
-            Assert.AreEqual(rules.GenesisBlock.Hash, this.coreDaemon.CurrentChain.LastBlock.Hash);
+            Assert.AreEqual(rules.ChainParams.GenesisBlock.Hash, this.coreDaemon.TargetChain.LastBlock.Hash);
+            Assert.AreEqual(rules.ChainParams.GenesisBlock.Hash, this.coreDaemon.CurrentChain.LastBlock.Hash);
         }
 
         public void Dispose()
@@ -131,7 +131,7 @@ namespace BitSharp.Core.Test
     public class MainnetSimulator : Simulator
     {
         public MainnetSimulator()
-            : base(RulesEnum.MainNet)
+            : base(ChainTypeEnum.MainNet)
         {
         }
     }
@@ -139,7 +139,7 @@ namespace BitSharp.Core.Test
     public class TestNet3Simulator : Simulator
     {
         public TestNet3Simulator()
-            : base(RulesEnum.TestNet3)
+            : base(ChainTypeEnum.TestNet3)
         {
         }
     }

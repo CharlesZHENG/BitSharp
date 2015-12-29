@@ -50,8 +50,8 @@ namespace BitSharp.BlockHelper
                 kernel.Load(new NodeMemoryStorageModule());
 
                 // add rules module
-                var rulesType = RulesEnum.TestNet3;
-                kernel.Load(new RulesModule(rulesType));
+                var chainType = ChainTypeEnum.TestNet3;
+                kernel.Load(new RulesModule(chainType));
 
                 // initialize the blockchain daemon
                 using (var coreDaemon = kernel.Get<CoreDaemon>())
@@ -59,7 +59,7 @@ namespace BitSharp.BlockHelper
                     kernel.Bind<CoreDaemon>().ToConstant(coreDaemon).InTransientScope();
 
                     // ignore script errors
-                    var rules = kernel.Get<IBlockchainRules>();
+                    var rules = kernel.Get<ICoreRules>();
                     rules.IgnoreScriptErrors = true;
 
                     // initialize p2p client

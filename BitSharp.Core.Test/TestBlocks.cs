@@ -49,10 +49,10 @@ namespace BitSharp.Core.Test
                 ValidateTransactionAction = (_, __) => { },
                 ValidationTransactionScriptAction = (_, __, ___, ____, _____) => { }
             };
-            rules.SetGenesisBlock(genesisBlock);
+            ChainParams.SetGenesisBlock(genesisBlock);
 
             blocks.Add(genesisBlock);
-            chain.AddBlock(rules.GenesisChainedHeader);
+            chain.AddBlock(ChainParams.GenesisChainedHeader);
         }
 
         public TestBlocks(TestBlocks parent)
@@ -84,6 +84,8 @@ namespace BitSharp.Core.Test
         public Chain Chain => chain.ToImmutable();
 
         public UnitTestRules Rules => rules;
+
+        public UnitTestParams ChainParams => rules.ChainParams;
 
         public Block CreateBlock(UInt256 previousBlockHash, int txCount, UInt256 target = null, DateTime? time = null)
         {
@@ -158,7 +160,7 @@ namespace BitSharp.Core.Test
                     previousBlock: previousBlockHash,
                     merkleRoot: merkleRoot,
                     time: thisBlockTime,
-                    bits: DataCalculator.TargetToBits(target ?? UnitTestRules.Target0),
+                    bits: DataCalculator.TargetToBits(target ?? UnitTestParams.Target0),
                     nonce: 0
                 ),
                 transactions: transactions

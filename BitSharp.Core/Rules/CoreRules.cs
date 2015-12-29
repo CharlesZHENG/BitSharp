@@ -10,109 +10,38 @@ using System.Numerics;
 
 namespace BitSharp.Core.Rules
 {
-    public class MainnetRules : IBlockchainRules
+    public class CoreRules : ICoreRules
     {
-        private const UInt64 SATOSHI_PER_BTC = 100 * 1000 * 1000;
-
-        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
-
-        private readonly Block genesisBlock;
-        private readonly ChainedHeader genesisChainedHeader;
-        private readonly int difficultyInterval = 2016;
-        private readonly long difficultyTargetTimespan = 14 * 24 * 60 * 60;
-
-        public MainnetRules()
-        {
-            this.genesisBlock =
-                Block.Create
-                (
-                    header: new BlockHeader
-                    (
-                        version: 1,
-                        previousBlock: UInt256.Zero,
-                        merkleRoot: UInt256.ParseHex("4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"),
-                        time: 1231006505,
-                        bits: 0x1D00FFFF,
-                        nonce: 2083236893
-                    ),
-                    transactions: ImmutableArray.Create
-                    (
-                        Transaction.Create
-                        (
-                            version: 1,
-                            inputs: ImmutableArray.Create
-                            (
-                                new TxInput
-                                (
-                                    previousTxOutputKey: new TxOutputKey
-                                    (
-                                        txHash: UInt256.Zero,
-                                        txOutputIndex: 0xFFFFFFFF
-                                    ),
-                                    scriptSignature: ImmutableArray.Create<byte>
-                                    (
-                                        0x04, 0xFF, 0xFF, 0x00, 0x1D, 0x01, 0x04, 0x45, 0x54, 0x68, 0x65, 0x20, 0x54, 0x69, 0x6D, 0x65,
-                                        0x73, 0x20, 0x30, 0x33, 0x2F, 0x4A, 0x61, 0x6E, 0x2F, 0x32, 0x30, 0x30, 0x39, 0x20, 0x43, 0x68,
-                                        0x61, 0x6E, 0x63, 0x65, 0x6C, 0x6C, 0x6F, 0x72, 0x20, 0x6F, 0x6E, 0x20, 0x62, 0x72, 0x69, 0x6E,
-                                        0x6B, 0x20, 0x6F, 0x66, 0x20, 0x73, 0x65, 0x63, 0x6F, 0x6E, 0x64, 0x20, 0x62, 0x61, 0x69, 0x6C,
-                                        0x6F, 0x75, 0x74, 0x20, 0x66, 0x6F, 0x72, 0x20, 0x62, 0x61, 0x6E, 0x6B, 0x73
-                                    ),
-                                    sequence: 0xFFFFFFFF
-                                )
-                            ),
-                            outputs: ImmutableArray.Create
-                            (
-                                new TxOutput
-                                (
-                                    value: 50 * SATOSHI_PER_BTC,
-                                    scriptPublicKey: ImmutableArray.Create<byte>
-                                    (
-                                        0x41, 0x04, 0x67, 0x8A, 0xFD, 0xB0, 0xFE, 0x55, 0x48, 0x27, 0x19, 0x67, 0xF1, 0xA6, 0x71, 0x30,
-                                        0xB7, 0x10, 0x5C, 0xD6, 0xA8, 0x28, 0xE0, 0x39, 0x09, 0xA6, 0x79, 0x62, 0xE0, 0xEA, 0x1F, 0x61,
-                                        0xDE, 0xB6, 0x49, 0xF6, 0xBC, 0x3F, 0x4C, 0xEF, 0x38, 0xC4, 0xF3, 0x55, 0x04, 0xE5, 0x1E, 0xC1,
-                                        0x12, 0xDE, 0x5C, 0x38, 0x4D, 0xF7, 0xBA, 0x0B, 0x8D, 0x57, 0x8A, 0x4C, 0x70, 0x2B, 0x6B, 0xF1,
-                                        0x1D, 0x5F, 0xAC
-                                    )
-                                )
-                            ),
-                            lockTime: 0
-                        )
-                    )
-                );
-
-            this.genesisChainedHeader = ChainedHeader.CreateForGenesisBlock(this.genesisBlock.Header);
-        }
-
         //TODO
         public bool IgnoreScripts { get; set; }
         public bool IgnoreSignatures { get; set; }
         public bool IgnoreScriptErrors { get; set; }
 
-        //TODO should be 00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff
-        public virtual UInt256 HighestTarget { get; } = UInt256.ParseHex("00000000FFFF0000000000000000000000000000000000000000000000000000");
+        private const UInt64 SATOSHI_PER_BTC = 100 * 1000 * 1000;
 
-        public virtual Block GenesisBlock => this.genesisBlock;
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        public virtual ChainedHeader GenesisChainedHeader => this.genesisChainedHeader;
+        public CoreRules(IChainParams chainParams)
+        {
+            ChainParams = chainParams;
+        }
 
-        public virtual int DifficultyInterval => this.difficultyInterval;
+        public IChainParams ChainParams { get; }
 
-        public virtual long DifficultyTargetTimespan => this.difficultyTargetTimespan;
-
-        public virtual double TargetToDifficulty(UInt256 target)
+        public double TargetToDifficulty(UInt256 target)
         {
             // difficulty is HighestTarget / target
             // since these are 256-bit numbers, use division trick for BigIntegers
-            return Math.Exp(BigInteger.Log(HighestTarget.ToBigInteger()) - BigInteger.Log(target.ToBigInteger()));
+            return Math.Exp(BigInteger.Log(ChainParams.HighestTarget.ToBigInteger()) - BigInteger.Log(target.ToBigInteger()));
         }
 
-        public virtual UInt256 DifficultyToTarget(double difficulty)
+        public UInt256 DifficultyToTarget(double difficulty)
         {
             // implementation is equivalent of HighestTarget / difficulty
 
             // multiply difficulty and HighestTarget by a scale so that the decimal portion can be fed into a BigInteger
             var scale = 0x100000000L;
-            var highestTargetScaled = (BigInteger)HighestTarget * scale;
+            var highestTargetScaled = (BigInteger)ChainParams.HighestTarget * scale;
             var difficultyScaled = (BigInteger)(difficulty * scale);
 
             // do the division
@@ -126,7 +55,7 @@ namespace BitSharp.Core.Rules
             return new UInt256(targetBytes);
         }
 
-        public virtual UInt256 GetRequiredNextTarget(Chain chain)
+        public UInt256 GetRequiredNextTarget(Chain chain)
         {
             try
             {
@@ -139,7 +68,7 @@ namespace BitSharp.Core.Rules
                     return genesisBlockHeader.CalculateTarget();
                 }
                 // not on an adjustment interval, use previous block's target
-                else if (chain.Height % DifficultyInterval != 0)
+                else if (chain.Height % ChainParams.DifficultyInterval != 0)
                 {
                     // lookup the previous block on the current blockchain
                     var prevBlockHeader = chain.Blocks[chain.Height - 1].BlockHeader;
@@ -153,11 +82,11 @@ namespace BitSharp.Core.Rules
                     var prevBlockHeader = chain.Blocks[chain.Height - 1].BlockHeader;
 
                     // get the block difficultyInterval blocks ago
-                    var startBlockHeader = chain.Blocks[chain.Height - DifficultyInterval].BlockHeader;
+                    var startBlockHeader = chain.Blocks[chain.Height - ChainParams.DifficultyInterval].BlockHeader;
                     //Debug.Assert(startChainedHeader.Height == blockchain.Height - DifficultyInternal);
 
                     var actualTimespan = (long)prevBlockHeader.Time - (long)startBlockHeader.Time;
-                    var targetTimespan = DifficultyTargetTimespan;
+                    var targetTimespan = ChainParams.DifficultyTargetTimespan;
 
                     // limit adjustment to 4x or 1/4x
                     if (actualTimespan < targetTimespan / 4)
@@ -171,8 +100,8 @@ namespace BitSharp.Core.Rules
                     target /= (UInt256)targetTimespan;
 
                     // make sure target isn't too high (too low difficulty)
-                    if (target > HighestTarget)
-                        target = HighestTarget;
+                    if (target > ChainParams.HighestTarget)
+                        target = ChainParams.HighestTarget;
 
                     return target;
                 }
@@ -184,12 +113,12 @@ namespace BitSharp.Core.Rules
             }
         }
 
-        public virtual void PreValidateBlock(Chain chain, ChainedHeader chainedHeader)
+        public void PreValidateBlock(Chain chain, ChainedHeader chainedHeader)
         {
             // calculate the next required target
             var requiredTarget = GetRequiredNextTarget(chain);
-            if (requiredTarget > HighestTarget)
-                requiredTarget = HighestTarget;
+            if (requiredTarget > ChainParams.HighestTarget)
+                requiredTarget = ChainParams.HighestTarget;
 
             // validate block's target against the required target
             var blockTarget = chainedHeader.BlockHeader.CalculateTarget();
@@ -239,7 +168,7 @@ namespace BitSharp.Core.Rules
             //TODO: ContextualCheckBlockHeader nVersion checks
         }
 
-        public virtual void PostValidateBlock(Chain chain, ChainedHeader chainedHeader, Transaction coinbaseTx, ulong totalTxInputValue, ulong totalTxOutputValue)
+        public void PostValidateBlock(Chain chain, ChainedHeader chainedHeader, Transaction coinbaseTx, ulong totalTxInputValue, ulong totalTxOutputValue)
         {
             // ensure there is at least 1 transaction
             if (coinbaseTx == null)
@@ -275,7 +204,7 @@ namespace BitSharp.Core.Rules
             }
         }
 
-        public virtual void ValidateTransaction(ChainedHeader chainedHeader, ValidatableTx validatableTx)
+        public void ValidateTransaction(ChainedHeader chainedHeader, ValidatableTx validatableTx)
         {
             var tx = validatableTx.Transaction;
             var txIndex = validatableTx.Index;
@@ -333,7 +262,7 @@ namespace BitSharp.Core.Rules
             // all validation has passed
         }
 
-        public virtual void ValidationTransactionScript(ChainedHeader chainedHeader, BlockTx tx, TxInput txInput, int txInputIndex, PrevTxOutput prevTxOutput)
+        public void ValidationTransactionScript(ChainedHeader chainedHeader, BlockTx tx, TxInput txInput, int txInputIndex, PrevTxOutput prevTxOutput)
         {
             // BIP16 didn't become active until Apr 1 2012
             var nBIP16SwitchTime = 1333238400U;

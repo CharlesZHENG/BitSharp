@@ -287,8 +287,8 @@ namespace BitSharp.Core.Test
 
                 // create a split with 3b, but do more work than current height 5 chain
                 var testBlocksFork = daemon.TestBlocks.Fork(3);
-                daemon.Rules.SetHighestTarget(UnitTestRules.Target2);
-                var block3b = daemon.AddBlock(testBlocksFork.MineAndAddEmptyBlock(UnitTestRules.Target2));
+                daemon.ChainParams.SetHighestTarget(UnitTestParams.Target2);
+                var block3b = daemon.AddBlock(testBlocksFork.MineAndAddEmptyBlock(UnitTestParams.Target2));
 
                 // check that blockchain reorganized to shorter chain
                 daemon.WaitForUpdate();

@@ -54,8 +54,9 @@ namespace BitSharp.Core.Test
             // initialize unit test rules, allow validation methods to run
             testBlocks.Rules.ValidateTransactionAction = null;
             testBlocks.Rules.ValidationTransactionScriptAction = null;
-            this.kernel.Bind<RulesEnum>().ToConstant(RulesEnum.TestNet2);
-            this.kernel.Bind<IBlockchainRules>().ToConstant(testBlocks.Rules);
+            this.kernel.Bind<ChainTypeEnum>().ToConstant(ChainTypeEnum.TestNet2);
+            this.kernel.Bind<ICoreRules>().ToConstant(testBlocks.Rules);
+            this.kernel.Bind<IChainParams>().ToConstant(testBlocks.ChainParams);
 
             // TODO ignore script errors in test daemon until scripting engine is completed
             testBlocks.Rules.IgnoreScriptErrors = true;
@@ -75,8 +76,8 @@ namespace BitSharp.Core.Test
 
                 // verify initial state
                 Assert.AreEqual(0, this.coreDaemon.TargetChainHeight);
-                Assert.AreEqual(testBlocks.Rules.GenesisBlock.Hash, this.coreDaemon.TargetChain.LastBlock.Hash);
-                Assert.AreEqual(testBlocks.Rules.GenesisBlock.Hash, this.coreDaemon.CurrentChain.LastBlock.Hash);
+                Assert.AreEqual(testBlocks.ChainParams.GenesisBlock.Hash, this.coreDaemon.TargetChain.LastBlock.Hash);
+                Assert.AreEqual(testBlocks.ChainParams.GenesisBlock.Hash, this.coreDaemon.CurrentChain.LastBlock.Hash);
             }
             catch (Exception)
             {
@@ -118,6 +119,8 @@ namespace BitSharp.Core.Test
         public TestBlocks TestBlocks => testBlocks;
 
         public UnitTestRules Rules => testBlocks.Rules;
+
+        public UnitTestParams ChainParams => testBlocks.ChainParams;
 
         public CoreDaemon CoreDaemon => this.coreDaemon;
 

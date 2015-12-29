@@ -16,7 +16,7 @@ namespace BitSharp.Core.Workers
 
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        private readonly IBlockchainRules rules;
+        private readonly IChainParams chainParams;
         private readonly CoreStorage coreStorage;
 
         private readonly UpdatedTracker updatedTracker = new UpdatedTracker();
@@ -25,10 +25,10 @@ namespace BitSharp.Core.Workers
         private ChainedHeader targetBlock;
         private Chain targetChain;
 
-        public TargetChainWorker(WorkerConfig workerConfig, IBlockchainRules rules, CoreStorage coreStorage)
+        public TargetChainWorker(WorkerConfig workerConfig, IChainParams chainParams, CoreStorage coreStorage)
             : base("TargetChainWorker", workerConfig.initialNotify, workerConfig.minIdleTime, workerConfig.maxIdleTime)
         {
-            this.rules = rules;
+            this.chainParams = chainParams;
             this.coreStorage = coreStorage;
 
             this.coreStorage.ChainedHeaderAdded += HandleChainedHeaderAdded;
@@ -114,7 +114,7 @@ namespace BitSharp.Core.Workers
                     if (targetBlockLocal != null && targetBlockLocal.Hash != targetChainLocal?.LastBlock.Hash)
                     {
                         var newTargetChain = targetChainLocal?.ToBuilder()
-                            ?? new ChainBuilder(Chain.CreateForGenesisBlock(this.rules.GenesisChainedHeader));
+                            ?? new ChainBuilder(Chain.CreateForGenesisBlock(this.chainParams.GenesisChainedHeader));
 
                         var deltaBlockPath = new BlockchainWalker().GetBlockchainPath(newTargetChain.LastBlock, targetBlockLocal, blockHash => this.coreStorage.GetChainedHeader(blockHash));
 

@@ -6,7 +6,79 @@ using System.Collections.Immutable;
 
 namespace BitSharp.Core.Test.Rules
 {
-    public class UnitTestRules : MainnetRules
+    public class UnitTestRules : ICoreRules
+    {
+        private readonly CoreRules coreRules;
+
+        public UnitTestRules()
+        {
+            ChainParams = new UnitTestParams(UnitTestParams.Target0);
+            coreRules = new CoreRules(ChainParams);
+        }
+
+        public UnitTestParams ChainParams { get; }
+        IChainParams ICoreRules.ChainParams => ChainParams;
+
+        public Action<Chain, ChainedHeader> PreValidateBlockAction { get; set; }
+
+        public Action<Chain, ChainedHeader, Transaction, ulong, ulong> PostValidateBlockAction { get; set; }
+
+        public Action<ChainedHeader, ValidatableTx> ValidateTransactionAction { get; set; }
+
+        public Action<ChainedHeader, BlockTx, TxInput, int, PrevTxOutput> ValidationTransactionScriptAction { get; set; }
+
+        public bool IgnoreScripts
+        {
+            get { return coreRules.IgnoreScripts; }
+            set { coreRules.IgnoreScripts = value; }
+        }
+
+        public bool IgnoreSignatures
+        {
+            get { return coreRules.IgnoreSignatures; }
+            set { coreRules.IgnoreSignatures = value; }
+        }
+
+        public bool IgnoreScriptErrors
+        {
+            get { return coreRules.IgnoreScriptErrors; }
+            set { coreRules.IgnoreScriptErrors = value; }
+        }
+
+        public void PreValidateBlock(Chain chain, ChainedHeader chainedHeader)
+        {
+            if (PreValidateBlockAction == null)
+                coreRules.PreValidateBlock(chain, chainedHeader);
+            else
+                PreValidateBlockAction(chain, chainedHeader);
+        }
+
+        public void PostValidateBlock(Chain chain, ChainedHeader chainedHeader, Transaction coinbaseTx, ulong totalTxInputValue, ulong totalTxOutputValue)
+        {
+            if (PreValidateBlockAction == null)
+                coreRules.PostValidateBlock(chain, chainedHeader, coinbaseTx, totalTxInputValue, totalTxOutputValue);
+            else
+                PostValidateBlockAction(chain, chainedHeader, coinbaseTx, totalTxInputValue, totalTxOutputValue);
+        }
+
+        public void ValidateTransaction(ChainedHeader chainedHeader, ValidatableTx validatableTx)
+        {
+            if (ValidateTransactionAction == null)
+                coreRules.ValidateTransaction(chainedHeader, validatableTx);
+            else
+                ValidateTransactionAction(chainedHeader, validatableTx);
+        }
+
+        public void ValidationTransactionScript(ChainedHeader chainedHeader, BlockTx tx, TxInput txInput, int txInputIndex, PrevTxOutput prevTxOutput)
+        {
+            if (ValidationTransactionScriptAction == null)
+                coreRules.ValidationTransactionScript(chainedHeader, tx, txInput, txInputIndex, prevTxOutput);
+            else
+                ValidationTransactionScriptAction(chainedHeader, tx, txInput, txInputIndex, prevTxOutput);
+        }
+    }
+
+    public class UnitTestParams : IChainParams
     {
         public static readonly UInt256 Target0 = UInt256.ParseHex("FFFFFF0000000000000000000000000000000000000000000000000000000000");
         public static readonly UInt256 Target1 = UInt256.ParseHex("0FFFFFF000000000000000000000000000000000000000000000000000000000");
@@ -14,70 +86,36 @@ namespace BitSharp.Core.Test.Rules
         public static readonly UInt256 Target3 = UInt256.ParseHex("000FFFFFF0000000000000000000000000000000000000000000000000000000");
         public static readonly UInt256 Target4 = UInt256.ParseHex("0000FFFFFF000000000000000000000000000000000000000000000000000000");
 
-        private UInt256 _highestTarget;
-        private Block _genesisBlock;
-        private ChainedHeader _genesisChainedHeader;
+        private readonly MainnetParams mainnetParams = new MainnetParams();
 
-        public UnitTestRules()
+        private UInt256 highestTarget;
+        private Block genesisBlock;
+        private ChainedHeader genesisChainedHeader;
+
+        public UnitTestParams(UInt256 highestTarget)
         {
-            this._highestTarget = Target0;
+            this.highestTarget = highestTarget;
         }
 
-        public override UInt256 HighestTarget => this._highestTarget;
+        public UInt256 HighestTarget => this.highestTarget;
 
-        public override Block GenesisBlock => this._genesisBlock;
+        public Block GenesisBlock => this.genesisBlock;
 
-        public override ChainedHeader GenesisChainedHeader => this._genesisChainedHeader;
+        public ChainedHeader GenesisChainedHeader => this.genesisChainedHeader;
 
-        public Action<Chain, ChainedHeader> PreValidateBlockAction { get; set; }
+        public int DifficultyInterval => mainnetParams.DifficultyInterval;
 
-        public override void PreValidateBlock(Chain chain, ChainedHeader chainedHeader)
-        {
-            if (PreValidateBlockAction == null)
-                base.PreValidateBlock(chain, chainedHeader);
-            else
-                PreValidateBlockAction(chain, chainedHeader);
-        }
-
-        public Action<Chain, ChainedHeader, Transaction, ulong, ulong> PostValidateBlockAction { get; set; }
-
-        public override void PostValidateBlock(Chain chain, ChainedHeader chainedHeader, Transaction coinbaseTx, ulong totalTxInputValue, ulong totalTxOutputValue)
-        {
-            if (PreValidateBlockAction == null)
-                base.PostValidateBlock(chain, chainedHeader, coinbaseTx, totalTxInputValue, totalTxOutputValue);
-            else
-                PostValidateBlockAction(chain, chainedHeader, coinbaseTx, totalTxInputValue, totalTxOutputValue);
-        }
-
-        public Action<ChainedHeader, ValidatableTx> ValidateTransactionAction { get; set; }
-
-        public override void ValidateTransaction(ChainedHeader chainedHeader, ValidatableTx validatableTx)
-        {
-            if (ValidateTransactionAction == null)
-                base.ValidateTransaction(chainedHeader, validatableTx);
-            else
-                ValidateTransactionAction(chainedHeader, validatableTx);
-        }
-
-        public Action<ChainedHeader, BlockTx, TxInput, int, PrevTxOutput> ValidationTransactionScriptAction { get; set; }
-
-        public override void ValidationTransactionScript(ChainedHeader chainedHeader, BlockTx tx, TxInput txInput, int txInputIndex, PrevTxOutput prevTxOutput)
-        {
-            if (ValidationTransactionScriptAction == null)
-                base.ValidationTransactionScript(chainedHeader, tx, txInput, txInputIndex, prevTxOutput);
-            else
-                ValidationTransactionScriptAction(chainedHeader, tx, txInput, txInputIndex, prevTxOutput);
-        }
+        public long DifficultyTargetTimespan => mainnetParams.DifficultyTargetTimespan;
 
         public void SetGenesisBlock(Block genesisBlock)
         {
-            this._genesisBlock = genesisBlock;
-            this._genesisChainedHeader = ChainedHeader.CreateForGenesisBlock(this._genesisBlock.Header);
+            this.genesisBlock = genesisBlock;
+            this.genesisChainedHeader = ChainedHeader.CreateForGenesisBlock(this.genesisBlock.Header);
         }
 
         public void SetHighestTarget(UInt256 highestTarget)
         {
-            this._highestTarget = highestTarget;
+            this.highestTarget = highestTarget;
         }
     }
 }

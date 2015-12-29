@@ -19,7 +19,7 @@ namespace BitSharp.Core.Workers
 
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        private readonly IBlockchainRules rules;
+        private readonly ICoreRules rules;
         private readonly CoreStorage coreStorage;
 
         private readonly UpdatedTracker updatedTracker = new UpdatedTracker();
@@ -34,7 +34,7 @@ namespace BitSharp.Core.Workers
 
         private int? maxHeight;
 
-        public ChainStateWorker(WorkerConfig workerConfig, TargetChainWorker targetChainWorker, ChainStateBuilder chainStateBuilder, IBlockchainRules rules, CoreStorage coreStorage)
+        public ChainStateWorker(WorkerConfig workerConfig, TargetChainWorker targetChainWorker, ChainStateBuilder chainStateBuilder, ICoreRules rules, CoreStorage coreStorage)
             : base("ChainStateWorker", workerConfig.initialNotify, workerConfig.minIdleTime, workerConfig.maxIdleTime)
         {
             this.rules = rules;
@@ -137,6 +137,7 @@ namespace BitSharp.Core.Workers
                         var blockStopwatch = Stopwatch.StartNew();
                         if (direction > 0)
                         {
+                            //logger.Info($"Adding block {chainedHeader.Height:N0}: {chainedHeader.Hash} time: {chainedHeader.Time}, {DateTimeOffset.FromUnixTimeSeconds(chainedHeader.Time)}");
                             await this.chainStateBuilder.AddBlockAsync(chainedHeader, blockTxes.UsingAsEnumerable());
                         }
                         else if (direction < 0)

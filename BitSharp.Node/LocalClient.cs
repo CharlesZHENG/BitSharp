@@ -33,9 +33,9 @@ namespace BitSharp.Node
         private readonly CancellationTokenSource shutdownToken;
         private readonly Random random = new Random();
 
-        private readonly RulesEnum type;
+        private readonly ChainTypeEnum type;
         private readonly IKernel kernel;
-        private readonly IBlockchainRules rules;
+        private readonly IChainParams chainParams;
         private readonly CoreDaemon coreDaemon;
         private readonly CoreStorage coreStorage;
         private readonly INetworkPeerStorage networkPeerStorage;
@@ -57,14 +57,14 @@ namespace BitSharp.Node
         private readonly AutoResetEvent comparisonBlockAddedEvent = new AutoResetEvent(false);
         private readonly ManualResetEvent comparisonHeadersSentEvent = new ManualResetEvent(true);
 
-        public LocalClient(RulesEnum type, IKernel kernel, IBlockchainRules rules, CoreDaemon coreDaemon, INetworkPeerStorage networkPeerStorage)
+        public LocalClient(ChainTypeEnum type, IKernel kernel, CoreDaemon coreDaemon, INetworkPeerStorage networkPeerStorage)
         {
             this.shutdownToken = new CancellationTokenSource();
 
             this.type = type;
             this.kernel = kernel;
-            this.rules = rules;
             this.coreDaemon = coreDaemon;
+            this.chainParams = coreDaemon.ChainParams;
             this.coreStorage = coreDaemon.CoreStorage;
             this.networkPeerStorage = networkPeerStorage;
 
@@ -93,30 +93,30 @@ namespace BitSharp.Node
 
             switch (this.Type)
             {
-                case RulesEnum.MainNet:
+                case ChainTypeEnum.MainNet:
                     Messaging.Port = 8333;
                     Messaging.Magic = Messaging.MAGIC_MAIN;
                     break;
 
-                case RulesEnum.TestNet3:
+                case ChainTypeEnum.TestNet3:
                     Messaging.Port = 18333;
                     Messaging.Magic = Messaging.MAGIC_TESTNET3;
                     break;
 
-                case RulesEnum.ComparisonToolTestNet:
+                case ChainTypeEnum.ComparisonToolTestNet:
                     Messaging.Port = 18444;
                     Messaging.Magic = Messaging.MAGIC_COMPARISON_TOOL;
                     break;
             }
         }
 
-        public RulesEnum Type => this.type;
+        public ChainTypeEnum Type => this.type;
 
         internal ConcurrentSet<Peer> ConnectedPeers => this.peerWorker.ConnectedPeers;
 
         public void Start(bool connectToPeers = true)
         {
-            if (this.Type != RulesEnum.ComparisonToolTestNet)
+            if (this.Type != ChainTypeEnum.ComparisonToolTestNet)
                 this.headersRequestWorker.Start();
 
             this.blockRequestWorker.Start();
@@ -126,7 +126,7 @@ namespace BitSharp.Node
             if (connectToPeers)
             {
                 this.peerWorker.Start();
-                if (this.Type != RulesEnum.ComparisonToolTestNet)
+                if (this.Type != ChainTypeEnum.ComparisonToolTestNet)
                 {
                     // add seed peers
                     Task.Run(() => AddSeedPeers());
@@ -216,7 +216,7 @@ namespace BitSharp.Node
                             (
                                 ipEndPoint: new IPEndPoint(ipAddress, Messaging.Port),
                                 time: DateTime.MinValue,
-                                isSeed: this.Type == RulesEnum.MainNet ? true : false
+                                isSeed: this.Type == ChainTypeEnum.MainNet ? true : false
                             ));
                     }
                     catch (SocketException ex)
@@ -227,7 +227,7 @@ namespace BitSharp.Node
 
             switch (this.Type)
             {
-                case RulesEnum.MainNet:
+                case ChainTypeEnum.MainNet:
                     addSeed("seed.bitcoin.sipa.be");
                     addSeed("dnsseed.bluematt.me");
                     //addSeed("dnsseed.bitcoin.dashjr.org");
@@ -237,7 +237,7 @@ namespace BitSharp.Node
                     addSeed("bitseed.xf2.org");
                     break;
 
-                case RulesEnum.TestNet3:
+                case ChainTypeEnum.TestNet3:
                     addSeed("testnet-seed.alexykot.me");
                     addSeed("testnet-seed.bitcoin.petertodd.org");
                     addSeed("testnet-seed.bluematt.me");
@@ -286,12 +286,14 @@ namespace BitSharp.Node
 
         private void HandleBlockFlushed(Object sender, Block block)
         {
-            if (type == RulesEnum.ComparisonToolTestNet)
+            if (type == ChainTypeEnum.ComparisonToolTestNet)
             {
                 // the block won't have been added if it doesn't chain onto another block, hold onto it to try again later
                 if (!coreStorage.ContainsBlockTxes(block.Hash))
                 {
-                    comparisonUnchainedBlocks.TryAdd(block.Hash, block);
+                    // don't add the block back in if it was deleted due to CVE-2012-2459 handling
+                    if (!block.Transactions.AnyDuplicates(x => x.Hash))
+                        comparisonUnchainedBlocks.TryAdd(block.Hash, block);
                 }
                 // now that a block has been added, try any unchained blocks again
                 else
@@ -356,7 +358,7 @@ namespace BitSharp.Node
             if (connectedPeersLocal.Count == 0)
                 return;
 
-            if (this.Type == RulesEnum.ComparisonToolTestNet)
+            if (this.Type == ChainTypeEnum.ComparisonToolTestNet)
             {
                 var responseInvVectors = ImmutableArray.CreateBuilder<InventoryVector>();
 
@@ -367,8 +369,13 @@ namespace BitSharp.Node
                         && !comparisonUnchainedBlocks.ContainsKey(invVector.Hash)
                         && !this.coreStorage.ContainsBlockTxes(invVector.Hash))
                     {
+                        logger.Info($"processing block inv: {invVector.Hash}");
                         responseInvVectors.Add(invVector);
                         requestedComparisonBlocks.Add(invVector.Hash);
+                    }
+                    else
+                    {
+                        logger.Info($"ignoring block inv: {invVector.Hash}, exists: {coreStorage.ContainsBlockTxes(invVector.Hash)}");
                     }
                 }
 
@@ -440,7 +447,7 @@ namespace BitSharp.Node
 
             if (matchingChainedHeader == null)
             {
-                matchingChainedHeader = this.rules.GenesisChainedHeader;
+                matchingChainedHeader = this.chainParams.GenesisChainedHeader;
             }
 
             var limit = 500;
@@ -459,7 +466,7 @@ namespace BitSharp.Node
 
         private void OnGetHeaders(Peer peer, GetBlocksPayload payload)
         {
-            if (this.Type == RulesEnum.ComparisonToolTestNet)
+            if (this.Type == ChainTypeEnum.ComparisonToolTestNet)
             {
                 // don't send headers until all blocks requested from the comparison tool have been downloaded and processed
                 while (this.requestedComparisonBlocks.Count > 0 && comparisonBlockAddedEvent.WaitOne(1000))
@@ -488,7 +495,7 @@ namespace BitSharp.Node
 
             if (matchingChainedHeader == null)
             {
-                matchingChainedHeader = this.rules.GenesisChainedHeader;
+                matchingChainedHeader = this.chainParams.GenesisChainedHeader;
             }
 
             var limit = 500;
@@ -507,7 +514,7 @@ namespace BitSharp.Node
             var sendTask = peer.Sender.SendHeaders(blockHeaders.ToImmutable())
                 .ContinueWith(_ => comparisonHeadersSentEvent.Set());
 
-            if (type == RulesEnum.ComparisonToolTestNet)
+            if (type == ChainTypeEnum.ComparisonToolTestNet)
                 sendTask.Wait();
         }
 
@@ -534,7 +541,7 @@ namespace BitSharp.Node
 
         private void OnPing(Peer peer, ImmutableArray<byte> payload)
         {
-            if (this.Type == RulesEnum.ComparisonToolTestNet)
+            if (this.Type == ChainTypeEnum.ComparisonToolTestNet)
             {
                 // don't pong back until:
                 // - all blocks requested from the comparison tool have been downloaded and processed

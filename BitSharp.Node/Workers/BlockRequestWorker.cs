@@ -128,7 +128,7 @@ namespace BitSharp.Node.Workers
         protected override async Task WorkAction()
         {
             // blocks will be requested on-demand in LocalClient for comparison tool
-            if (localClient.Type == RulesEnum.ComparisonToolTestNet)
+            if (localClient.Type == ChainTypeEnum.ComparisonToolTestNet)
                 return;
 
             // update rates

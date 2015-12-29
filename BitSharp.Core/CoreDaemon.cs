@@ -24,7 +24,7 @@ namespace BitSharp.Core
 
         private readonly ReaderWriterLockSlim controlLock = new ReaderWriterLockSlim();
 
-        private readonly IBlockchainRules rules;
+        private readonly ICoreRules rules;
         private readonly IStorageManager storageManager;
         private readonly CoreStorage coreStorage;
 
@@ -41,7 +41,7 @@ namespace BitSharp.Core
         private bool isStarted;
         private bool isDisposed;
 
-        public CoreDaemon(IBlockchainRules rules, IStorageManager storageManager)
+        public CoreDaemon(ICoreRules rules, IStorageManager storageManager)
         {
             this.rules = rules;
             this.storageManager = storageManager;
@@ -53,7 +53,7 @@ namespace BitSharp.Core
             // create workers
             this.targetChainWorker = new TargetChainWorker(
                 new WorkerConfig(initialNotify: true, minIdleTime: TimeSpan.FromMilliseconds(0), maxIdleTime: TimeSpan.FromSeconds(30)),
-                this.rules, this.coreStorage);
+                this.ChainParams, this.coreStorage);
 
             this.chainStateWorker = new ChainStateWorker(
                 new WorkerConfig(initialNotify: true, minIdleTime: TimeSpan.FromMilliseconds(0), maxIdleTime: TimeSpan.FromSeconds(5)),
@@ -113,7 +113,7 @@ namespace BitSharp.Core
 
         public CoreStorage CoreStorage => this.coreStorage;
 
-        public IBlockchainRules Rules => this.rules;
+        public IChainParams ChainParams => this.rules.ChainParams;
 
         public Chain TargetChain => this.targetChainWorker.TargetChain;
 
@@ -195,8 +195,8 @@ namespace BitSharp.Core
             if (!isInitted)
             {
                 // write genesis block out to storage
-                this.coreStorage.AddGenesisBlock(this.rules.GenesisChainedHeader);
-                this.coreStorage.TryAddBlock(this.rules.GenesisBlock);
+                this.coreStorage.AddGenesisBlock(ChainParams.GenesisChainedHeader);
+                this.coreStorage.TryAddBlock(ChainParams.GenesisBlock);
 
                 isInitted = true;
             }

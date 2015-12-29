@@ -22,7 +22,7 @@ namespace BitSharp.Core.Test.Builders
             var header0 = fakeHeaders.GenesisChained();
             var header1 = fakeHeaders.NextChained();
 
-            var rules = Mock.Of<IBlockchainRules>();
+            var rules = Mock.Of<ICoreRules>();
             var coreStorage = new Mock<ICoreStorage>();
             var storageManager = new Mock<IStorageManager>();
             var chainStateCursor = new Mock<IDeferredChainStateCursor>();
@@ -50,7 +50,7 @@ namespace BitSharp.Core.Test.Builders
             var header1 = fakeHeaders.NextChained();
             var header2 = fakeHeaders.NextChained();
 
-            var rules = Mock.Of<IBlockchainRules>();
+            var rules = Mock.Of<ICoreRules>();
             var coreStorage = new Mock<ICoreStorage>();
             var storageManager = new Mock<IStorageManager>();
             var chainStateCursor = new Mock<IDeferredChainStateCursor>();
@@ -101,7 +101,7 @@ namespace BitSharp.Core.Test.Builders
             var header1 = fakeHeaders.NextChained();
             var header2 = fakeHeaders.NextChained();
 
-            var rules = Mock.Of<IBlockchainRules>();
+            var rules = Mock.Of<ICoreRules>();
             var coreStorage = new Mock<ICoreStorage>();
             var storageManager = new Mock<IStorageManager>();
             var chainStateCursor = new Mock<IChainStateCursor>();
@@ -154,10 +154,10 @@ namespace BitSharp.Core.Test.Builders
             var chainedHeader = testBlocks.Chain.LastBlock;
 
             // create an invalid version of the header where the merkle root is incorrect
-            var invalidChainedHeader = ChainedHeader.CreateFromPrev(rules.GenesisChainedHeader, block.Header.With(MerkleRoot: UInt256.Zero), DateTime.Now);
+            var invalidChainedHeader = ChainedHeader.CreateFromPrev(rules.ChainParams.GenesisChainedHeader, block.Header.With(MerkleRoot: UInt256.Zero), DateTime.Now);
 
             // mock genesis block & chain tip
-            var genesisHeader = rules.GenesisChainedHeader;
+            var genesisHeader = rules.ChainParams.GenesisChainedHeader;
             chainStateCursor.Setup(x => x.ChainTip).Returns(genesisHeader);
             chainStateCursor.Setup(x => x.TryGetHeader(genesisHeader.Hash, out genesisHeader)).Returns(true);
 
@@ -166,7 +166,7 @@ namespace BitSharp.Core.Test.Builders
 
             // init chain state builder
             var chainStateBuilder = new ChainStateBuilder(rules, coreStorage.Object, storageManager.Object);
-            Assert.AreEqual(rules.GenesisBlock.Hash, chainStateBuilder.Chain.LastBlock.Hash);
+            Assert.AreEqual(rules.ChainParams.GenesisBlock.Hash, chainStateBuilder.Chain.LastBlock.Hash);
 
             // attempt to add block with invalid merkle root
             ValidationException actualEx;

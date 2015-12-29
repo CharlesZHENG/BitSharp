@@ -24,7 +24,7 @@ namespace BitSharp.Core.Test
         public FakeHeaders()
         {
             this.blockHeaders = ImmutableList.CreateBuilder<ChainedHeader>();
-            this.bits = DataCalculator.TargetToBits(UnitTestRules.Target0);
+            this.bits = DataCalculator.TargetToBits(UnitTestParams.Target0);
             this.nonce = (UInt32)Interlocked.Increment(ref staticNonce);
             this.totalWork = 0;
         }
@@ -32,7 +32,7 @@ namespace BitSharp.Core.Test
         public FakeHeaders(IEnumerable<ChainedHeader> blockHeaders)
         {
             this.blockHeaders = ImmutableList.CreateRange(blockHeaders).ToBuilder();
-            this.bits = DataCalculator.TargetToBits(UnitTestRules.Target0);
+            this.bits = DataCalculator.TargetToBits(UnitTestParams.Target0);
             this.nonce = (UInt32)Interlocked.Increment(ref staticNonce);
             this.totalWork = this.blockHeaders.Sum(x => x.BlockHeader.CalculateWork());
         }

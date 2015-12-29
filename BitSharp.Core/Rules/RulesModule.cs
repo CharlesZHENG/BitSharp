@@ -1,8 +1,9 @@
 ﻿using Ninject.Modules;
+using System;
 
 namespace BitSharp.Core.Rules
 {
-    public enum RulesEnum
+    public enum ChainTypeEnum
     {
         MainNet,
         TestNet2,
@@ -12,32 +13,37 @@ namespace BitSharp.Core.Rules
 
     public class RulesModule : NinjectModule
     {
-        private readonly RulesEnum rules;
+        private readonly ChainTypeEnum chainType;
 
-        public RulesModule(RulesEnum rules)
+        public RulesModule(ChainTypeEnum chainType)
         {
-            this.rules = rules;
+            this.chainType = chainType;
         }
 
         public override void Load()
         {
-            this.Bind<RulesEnum>().ToConstant(this.rules);
+            this.Bind<ChainTypeEnum>().ToConstant(this.chainType);
 
-            switch (this.rules)
+            switch (this.chainType)
             {
-                case RulesEnum.MainNet:
-                    this.Bind<IBlockchainRules>().To<MainnetRules>().InSingletonScope();
+                case ChainTypeEnum.MainNet:
+                    this.Bind<IChainParams>().To<MainnetParams>().InSingletonScope();
                     break;
 
-                case RulesEnum.TestNet2:
-                case RulesEnum.ComparisonToolTestNet:
-                    this.Bind<IBlockchainRules>().To<Testnet2Rules>().InSingletonScope();
+                case ChainTypeEnum.TestNet2:
+                case ChainTypeEnum.ComparisonToolTestNet:
+                    this.Bind<IChainParams>().To<Testnet2Params>().InSingletonScope();
                     break;
-                
-                case RulesEnum.TestNet3:
-                    this.Bind<IBlockchainRules>().To<Testnet3Rules>().InSingletonScope();
+
+                case ChainTypeEnum.TestNet3:
+                    this.Bind<IChainParams>().To<Testnet3Params>().InSingletonScope();
                     break;
+
+                default:
+                    throw new InvalidOperationException();
             }
+
+            this.Bind<ICoreRules>().To<CoreRules>().InSingletonScope();
         }
     }
 }
