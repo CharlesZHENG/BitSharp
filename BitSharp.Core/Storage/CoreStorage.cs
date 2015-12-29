@@ -18,7 +18,7 @@ namespace BitSharp.Core.Storage
         private readonly Lazy<IBlockStorage> blockStorage;
         private readonly Lazy<IBlockTxesStorage> blockTxesStorage;
 
-        private readonly Lazy<ConcurrentDictionary<UInt256, ChainedHeader>> cachedHeaders;
+        private readonly Lazy<Dictionary<UInt256, ChainedHeader>> cachedHeaders;
 
         private readonly ConcurrentDictionary<UInt256, bool> presentBlockTxes = new ConcurrentDictionary<UInt256, bool>();
         private readonly object[] presentBlockTxesLocks = new object[64];
@@ -34,14 +34,15 @@ namespace BitSharp.Core.Storage
             this.blockStorage = new Lazy<IBlockStorage>(() => storageManager.BlockStorage);
             this.blockTxesStorage = new Lazy<IBlockTxesStorage>(() => storageManager.BlockTxesStorage);
 
-            this.cachedHeaders = new Lazy<ConcurrentDictionary<UInt256, ChainedHeader>>(() =>
-            {
-                var cachedHeaders = new ConcurrentDictionary<UInt256, ChainedHeader>();
-                foreach (var chainedHeader in this.blockStorage.Value.ReadChainedHeaders())
-                    cachedHeaders[chainedHeader.Hash] = chainedHeader;
+            this.cachedHeaders = new Lazy<Dictionary<UInt256, ChainedHeader>>(
+                () =>
+                {
+                    var cachedHeaders = new Dictionary<UInt256, ChainedHeader>();
+                    foreach (var chainedHeader in this.blockStorage.Value.ReadChainedHeaders())
+                        cachedHeaders[chainedHeader.Hash] = chainedHeader;
 
-                return cachedHeaders;
-            });
+                    return cachedHeaders;
+                });
         }
 
         public void Dispose()
@@ -62,7 +63,7 @@ namespace BitSharp.Core.Storage
 
         public event Action<ChainedHeader> BlockTxesAdded;
 
-        public event Action<ChainedHeader> BlockTxesRemoved;
+        public event Action<UInt256> BlockTxesRemoved;
 
         public event Action<UInt256> BlockInvalidated;
 
@@ -83,29 +84,54 @@ namespace BitSharp.Core.Storage
             if (genesisHeader.Height != 0)
                 throw new ArgumentException("genesisHeader");
 
-            if (this.blockStorage.Value.TryAddChainedHeader(genesisHeader))
-            {
-                this.cachedHeaders.Value[genesisHeader.Hash] = genesisHeader;
-                RaiseChainedHeaderAdded(genesisHeader);
-            }
+            lock (cachedHeaders)
+                if (this.blockStorage.Value.TryAddChainedHeader(genesisHeader))
+                {
+                    this.cachedHeaders.Value[genesisHeader.Hash] = genesisHeader;
+                    RaiseChainedHeaderAdded(genesisHeader);
+                }
         }
 
         public bool TryGetChainedHeader(UInt256 blockHash, out ChainedHeader chainedHeader)
         {
-            if (this.cachedHeaders.Value.TryGetValue(blockHash, out chainedHeader))
-            {
-                return chainedHeader != null;
-            }
-            else if (this.blockStorage.Value.TryGetChainedHeader(blockHash, out chainedHeader))
-            {
-                this.cachedHeaders.Value[blockHash] = chainedHeader;
-                return true;
-            }
-            else
-            {
-                this.cachedHeaders.Value[blockHash] = null;
-                return false;
-            }
+            lock (cachedHeaders)
+                if (this.cachedHeaders.Value.TryGetValue(blockHash, out chainedHeader))
+                {
+                    return chainedHeader != null;
+                }
+                else if (this.blockStorage.Value.TryGetChainedHeader(blockHash, out chainedHeader))
+                {
+                    this.cachedHeaders.Value[blockHash] = chainedHeader;
+                    return true;
+                }
+                else
+                {
+                    this.cachedHeaders.Value[blockHash] = null;
+                    return false;
+                }
+        }
+
+        public bool TryRemoveChainedHeader(UInt256 blockHash)
+        {
+            ChainedHeader chainedHeader;
+            lock (cachedHeaders)
+                if (this.cachedHeaders.Value.TryGetValue(blockHash, out chainedHeader))
+                {
+                    if (chainedHeader != null && this.blockStorage.Value.TryRemoveChainedHeader(blockHash))
+                    {
+                        this.cachedHeaders.Value[blockHash] = null;
+                        return true;
+                    }
+                    else
+                        return false;
+                }
+                else if (this.blockStorage.Value.TryRemoveChainedHeader(blockHash))
+                {
+                    this.cachedHeaders.Value[blockHash] = null;
+                    return true;
+                }
+                else
+                    return false;
         }
 
         public ChainedHeader GetChainedHeader(UInt256 blockHash)
@@ -155,19 +181,20 @@ namespace BitSharp.Core.Storage
                     if (chainedHeader == null)
                         return false;
 
-                    if (this.blockStorage.Value.TryAddChainedHeader(chainedHeader))
-                    {
-                        this.cachedHeaders.Value[chainedHeader.Hash] = chainedHeader;
+                    lock (cachedHeaders)
+                        if (this.blockStorage.Value.TryAddChainedHeader(chainedHeader))
+                        {
+                            this.cachedHeaders.Value[chainedHeader.Hash] = chainedHeader;
 
-                        if (!suppressEvent)
-                            RaiseChainedHeaderAdded(chainedHeader);
+                            if (!suppressEvent)
+                                RaiseChainedHeaderAdded(chainedHeader);
 
-                        return true;
-                    }
-                    else
-                    {
-                        logger.Warn("Unexpected condition: validly chained header could not be added");
-                    }
+                            return true;
+                        }
+                        else
+                        {
+                            logger.Warn("Unexpected condition: validly chained header could not be added");
+                        }
                 }
             }
 
@@ -310,7 +337,17 @@ namespace BitSharp.Core.Storage
 
         public bool TryRemoveBlockTransactions(UInt256 blockHash)
         {
-            return this.blockTxesStorage.Value.TryRemoveBlockTransactions(blockHash);
+            lock (GetBlockLock(blockHash))
+            {
+                if (this.blockTxesStorage.Value.TryRemoveBlockTransactions(blockHash))
+                {
+                    this.presentBlockTxes[blockHash] = false;
+                    BlockTxesRemoved?.Invoke(blockHash);
+                    return true;
+                }
+                else
+                    return false;
+            };
         }
 
         public bool IsBlockInvalid(UInt256 blockHash)
@@ -354,11 +391,6 @@ namespace BitSharp.Core.Storage
         private void RaiseBlockTxesAdded(ChainedHeader chainedHeader)
         {
             this.BlockTxesAdded?.Invoke(chainedHeader);
-        }
-
-        private void RaiseBlockTxesRemoved(ChainedHeader chainedHeader)
-        {
-            this.BlockTxesRemoved?.Invoke(chainedHeader);
         }
 
         private object GetBlockLock(UInt256 blockHash)

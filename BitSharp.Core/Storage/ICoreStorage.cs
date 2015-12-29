@@ -9,6 +9,8 @@ namespace BitSharp.Core.Storage
     {
         bool TryGetChainedHeader(UInt256 blockHash, out ChainedHeader chainedHeader);
 
+        bool TryRemoveChainedHeader(UInt256 blockHash);
+
         bool TryReadChain(UInt256 blockHash, out Chain chain);
 
         bool TryReadBlockTransactions(UInt256 blockHash, out IEnumerator<BlockTx> blockTxes);
