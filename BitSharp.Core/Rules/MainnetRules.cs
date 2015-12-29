@@ -217,6 +217,22 @@ namespace BitSharp.Core.Rules
             var blockTime = DateTimeOffset.FromUnixTimeSeconds(chainedHeader.Time);
             if (blockTime > maxBlockTime)
                 throw new ValidationException(chainedHeader.Hash);
+
+            // ensure timestamp is greater than the median timestamp of the previous 11 blocks
+            if (chainedHeader.Height > 0)
+            {
+                var medianTimeSpan = Math.Min(11, chain.Blocks.Count - 1);
+                var medianHeaders = chain.Blocks.GetRange(chain.Blocks.Count - 1 - medianTimeSpan, medianTimeSpan);
+                var medianTimePast = DateTimeOffset.FromUnixTimeSeconds(medianHeaders[medianHeaders.Count / 2].Time);
+
+                if (blockTime <= medianTimePast)
+                {
+                    throw new ValidationException(chainedHeader.Hash,
+                        $"Failing block {chainedHeader.Hash} at height {chainedHeader.Height}: Block's time of {blockTime} must be greater than past median time of {medianTimePast}");
+                }
+            }
+
+            //TODO: ContextualCheckBlockHeader nVersion checks
         }
 
         public virtual void PostValidateBlock(Chain chain, ChainedHeader chainedHeader, Transaction coinbaseTx, ulong totalTxInputValue, ulong totalTxOutputValue)
