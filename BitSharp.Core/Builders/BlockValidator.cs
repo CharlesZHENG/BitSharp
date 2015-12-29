@@ -141,7 +141,7 @@ namespace BitSharp.Core.Builders
             txValidator.LinkTo(scriptValidator, new DataflowLinkOptions { PropagateCompletion = true });
 
             //TODO
-            await PipelineCompletion.Create("BlockValidator",
+            await PipelineCompletion.Create(
                 new[] { validatableTxes.Completion, merkleValidator.Completion, feeCapturer.Completion, txValidator.Completion, scriptValidator.Completion },
                 new IDataflowBlock[] { validatableTxes, merkleValidator, feeCapturer, txValidator, scriptValidator });
 
