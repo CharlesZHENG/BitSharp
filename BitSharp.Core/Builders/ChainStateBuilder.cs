@@ -169,10 +169,13 @@ namespace BitSharp.Core.Builders
                 var pipelineCompletion = PipelineCompletion.Create(
                     new[]
                     {
-                        blockTxesBuffer.Completion, merkleBlockTxes.Completion, sendBlockTxes, countBlockTxes.Completion, warmedBlockTxes.Completion,
-                        validatableTxes.Completion, applyChainState, blockValidator
+                        sendBlockTxes, applyChainState, blockValidator
                     }.Concat(timingTasks).ToArray(),
-                    new IDataflowBlock[] { blockTxesBuffer, merkleBlockTxes, countBlockTxes, warmedBlockTxes, validatableTxes });
+                    new IDataflowBlock[]
+                    {
+                        chainStateCursor.UtxoWorkQueue, chainStateCursor.UtxoApplierBlock, blockTxesBuffer,
+                        merkleBlockTxes, countBlockTxes, warmedBlockTxes, validatableTxes
+                    });
                 await pipelineCompletion;
 
                 var totalTxCount = chainStateCursor.TotalTxCount;
@@ -354,6 +357,7 @@ namespace BitSharp.Core.Builders
                         //return new DecodedBlockTx[0];
 
                         //TODO remove the attacked version of the block
+                        coreStorage.TryRemoveChainedHeader(chainedHeader.Hash);
                         coreStorage.TryRemoveBlockTransactions(chainedHeader.Hash);
 
                         //TODO fail the block as missing, not invalid
