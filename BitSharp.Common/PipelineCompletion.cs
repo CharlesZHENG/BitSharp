@@ -14,64 +14,42 @@ namespace BitSharp.Common
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         //TODO
-        public static async Task Create(IEnumerable<Task> tasks, IEnumerable<IDataflowBlock> dataFlowBlocks)
+        public static async Task Create(Task[] tasks, IDataflowBlock[] dataFlowBlocks)
         {
-            var tasksArray = tasks.Concat(dataFlowBlocks.Select(x => x.Completion)).ToArray();
+            var pipelineTasks = tasks.Concat(dataFlowBlocks.Select(x => x.Completion)).ToArray();
 
-            var taskExceptions = new ConcurrentBag<Exception>();
-            var catchTasks = new Task[tasksArray.Length];
-
-            var finishedEvent = new TaskCompletionSource<object>();
-            for (var i = 0; i < tasksArray.Length; i++)
+            var catchTasks = new Task[pipelineTasks.Length];
+            for (var i = 0; i < pipelineTasks.Length; i++)
             {
-                var task = tasksArray[i];
+                var task = pipelineTasks[i];
 
                 catchTasks[i] =
                     task.ContinueWith(_ =>
                     {
                         if (task.IsFaulted)
                         {
-                            taskExceptions.Add(task.Exception);
-                            throw task.Exception;
-                        }
-                        else
-                        {
-                            finishedEvent.Task.Wait();
+                            // fault all dataflow blocks as soon as any fault occurs
+                            foreach (var dataFlowBlock in dataFlowBlocks)
+                                dataFlowBlock.Fault(task.Exception);
                         }
                     });
             }
 
             try
             {
-                // wait for any of the tasks to fault, or for all tasks to complete
-                var whenAnyThrows = Task.WhenAny(catchTasks);
-                var whenAllCompleted = Task.WhenAll(tasks);
-                var finishedTask = await Task.WhenAny(whenAnyThrows, whenAllCompleted);
-
-                // propagate exceptions
-                finishedTask.Wait();
-                foreach (var catchTask in catchTasks)
-                    if (catchTask.IsFaulted)
-                        catchTask.Wait();
+                var allTasks = pipelineTasks.Concat(catchTasks).ToArray();
+                await Task.WhenAll(allTasks);
 
                 // we should only be here if all tasks completed successfully
-                Debug.Assert(finishedTask == whenAllCompleted);
-                Debug.Assert(!finishedEvent.Task.IsCompleted);
-                Debug.Assert(!catchTasks.Any(x => x.IsCompleted));
-                Debug.Assert(tasks.All(x => x.Status == TaskStatus.RanToCompletion));
+                Debug.Assert(allTasks.All(x => x.Status == TaskStatus.RanToCompletion));
             }
             catch (Exception ex)
             {
-                var throwException = taskExceptions.Count > 0 ? new AggregateException(taskExceptions) : ex;
-
+                // ensure all dataflow blocks are faulted
                 foreach (var dataFlowBlock in dataFlowBlocks)
-                    dataFlowBlock.Fault(throwException);
+                    dataFlowBlock.Fault(ex);
 
-                throw throwException;
-            }
-            finally
-            {
-                finishedEvent.SetResult(null);
+                throw;
             }
         }
     }
