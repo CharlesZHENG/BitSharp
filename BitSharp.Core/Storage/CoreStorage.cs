@@ -308,6 +308,11 @@ namespace BitSharp.Core.Storage
             }
         }
 
+        public bool TryRemoveBlockTransactions(UInt256 blockHash)
+        {
+            return this.blockTxesStorage.Value.TryRemoveBlockTransactions(blockHash);
+        }
+
         public bool IsBlockInvalid(UInt256 blockHash)
         {
             return this.blockStorage.Value.IsBlockInvalid(blockHash);

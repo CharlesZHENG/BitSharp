@@ -58,6 +58,11 @@ namespace BitSharp.Core.Builders
             var txCount = 0;
             var inputCount = 0;
 
+            var newChain = chain.Value.ToBuilder().AddBlock(chainedHeader).ToImmutable();
+
+            // pre-validate block before doing any work
+            rules.PreValidateBlock(newChain, chainedHeader);
+
             using (var chainState = ToImmutable())
             using (var handle = storageManager.OpenDeferredChainStateCursor(chainState))
             {
@@ -70,11 +75,12 @@ namespace BitSharp.Core.Builders
                 // verify storage chain tip matches this chain state builder's chain tip
                 CheckChainTip(chainStateCursor);
 
-                var newChain = chain.Value.ToBuilder().AddBlock(chainedHeader).ToImmutable();
-
                 // begin reading and decoding block txes into the buffer
                 var blockTxesBuffer = new BufferBlock<DecodedBlockTx>();
                 var sendBlockTxes = blockTxesBuffer.SendAndCompleteAsync(blockTxes.Select(x => x.Decode()), cancelToken);
+
+                // feed block txes through the merkle validator
+                var merkleBlockTxes = InitMerkleValidator(chainedHeader, blockTxesBuffer, cancelToken);
 
                 // track tx/input stats
                 var countBlockTxes = new TransformBlock<DecodedBlockTx, DecodedBlockTx>(
@@ -90,7 +96,7 @@ namespace BitSharp.Core.Builders
 
                         return blockTx;
                     });
-                blockTxesBuffer.LinkTo(countBlockTxes, new DataflowLinkOptions { PropagateCompletion = true });
+                merkleBlockTxes.LinkTo(countBlockTxes, new DataflowLinkOptions { PropagateCompletion = true });
 
                 // warm-up utxo entries for block txes
                 var warmedBlockTxes = UtxoLookAhead.LookAhead(countBlockTxes, chainStateCursor, cancelToken);
@@ -119,9 +125,9 @@ namespace BitSharp.Core.Builders
 
                 var timingTasks = new List<Task>();
 
-                // time block txes read
+                // time block txes read & merkle root validation
                 timingTasks.Add(
-                    blockTxesBuffer.Completion.ContinueWith(_ =>
+                    merkleBlockTxes.Completion.ContinueWith(_ =>
                     {
                         lock (stopwatch)
                             stats.txesReadDurationMeasure.Tick(stopwatch.Elapsed);
@@ -163,10 +169,10 @@ namespace BitSharp.Core.Builders
                 var pipelineCompletion = PipelineCompletion.Create(
                     new[]
                     {
-                        blockTxesBuffer.Completion, sendBlockTxes, countBlockTxes.Completion, warmedBlockTxes.Completion,
+                        blockTxesBuffer.Completion, merkleBlockTxes.Completion, sendBlockTxes, countBlockTxes.Completion, warmedBlockTxes.Completion,
                         validatableTxes.Completion, applyChainState, blockValidator
                     }.Concat(timingTasks).ToArray(),
-                    new IDataflowBlock[] { blockTxesBuffer, countBlockTxes, warmedBlockTxes, validatableTxes });
+                    new IDataflowBlock[] { blockTxesBuffer, merkleBlockTxes, countBlockTxes, warmedBlockTxes, validatableTxes });
                 await pipelineCompletion;
 
                 var totalTxCount = chainStateCursor.TotalTxCount;
@@ -295,6 +301,90 @@ namespace BitSharp.Core.Builders
             {
                 throw new ChainStateOutOfSyncException(chain.Value.LastBlock, chainTip);
             }
+        }
+
+        private ISourceBlock<DecodedBlockTx> InitMerkleValidator(ChainedHeader chainedHeader, ISourceBlock<DecodedBlockTx> blockTxes, CancellationToken cancelToken)
+        {
+            var merkleStream = new MerkleStream<BlockTxNode>();
+
+            var txHashes = new HashSet<UInt256>();
+            var cve_2012_2459 = false;
+
+            var merkleValidator = new TransformManyBlock<DecodedBlockTx, DecodedBlockTx>(
+                blockTx =>
+                {
+                    if (cve_2012_2459)
+                        return new DecodedBlockTx[0];
+
+                    if (txHashes.Add(blockTx.Hash))
+                    {
+                        try
+                        {
+                            merkleStream.AddNode(blockTx);
+                            return new[] { blockTx };
+                        }
+                        //TODO
+                        catch (InvalidOperationException)
+                        {
+                            throw CreateMerkleRootException(chainedHeader);
+                        }
+                    }
+                    else
+                    {
+                        // TODO this needs proper testing, and needs to be made sure this is a safe way to handle the attack
+                        // TODO the block should be unmutated before being shared onto the network
+
+                        // CVE-2012-2459
+                        // - if a tx has been repeated, this may be a merkle tree malleability attack against the block
+                        // - finish the merkle stream early and verify if the root still matches the block header
+                        //
+                        // - if the root matches, this is a CVE-2012-2459 attack
+                        //   - proceed to validate the block normally by ignoring the remaining duplicate transactions
+                        //
+                        // - if the root does not match
+                        //   - the block truly did contain duplicate transactions and is invalid
+
+                        merkleStream.FinishPairing();
+                        if (merkleStream.RootNode.Hash == chainedHeader.MerkleRoot)
+                            cve_2012_2459 = true;
+                        else
+                            throw CreateMerkleRootException(chainedHeader);
+
+                        //TODO throw exception anyway for the sake of the pull tester
+                        //return new DecodedBlockTx[0];
+
+                        //TODO remove the attacked version of the block
+                        coreStorage.TryRemoveBlockTransactions(chainedHeader.Hash);
+
+                        //TODO fail the block as missing, not invalid
+                        throw new MissingDataException(chainedHeader.Hash);
+                    }
+                },
+                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken });
+
+            blockTxes.LinkTo(merkleValidator, new DataflowLinkOptions { PropagateCompletion = true });
+
+            return OnCompleteBlock.Create(merkleValidator,
+                () =>
+                {
+                    try
+                    {
+                        merkleStream.FinishPairing();
+                    }
+                    //TODO
+                    catch (InvalidOperationException)
+                    {
+                        throw CreateMerkleRootException(chainedHeader);
+                    }
+
+                    if (merkleStream.RootNode.Hash != chainedHeader.MerkleRoot)
+                        throw CreateMerkleRootException(chainedHeader);
+                }, cancelToken);
+        }
+
+        private static ValidationException CreateMerkleRootException(ChainedHeader chainedHeader)
+        {
+            return new ValidationException(chainedHeader.Hash, $"Failing block {chainedHeader.Hash} at height {chainedHeader.Height}: Merkle root is invalid");
         }
     }
 }

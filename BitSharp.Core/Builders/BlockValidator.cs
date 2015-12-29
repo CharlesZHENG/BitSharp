@@ -23,29 +23,6 @@ namespace BitSharp.Core.Builders
 
         public static async Task ValidateBlockAsync(ICoreStorage coreStorage, IBlockchainRules rules, Chain chain, ChainedHeader chainedHeader, ISourceBlock<ValidatableTx> validatableTxes, CancellationToken cancelToken = default(CancellationToken))
         {
-            // ensure non-async pre-validation errors aren't fired until task is awaited
-            await Task.Yield();
-
-            // pre-validate block before feeding pipeline
-            try
-            {
-                rules.PreValidateBlock(chain, chainedHeader);
-            }
-            catch (Exception ex)
-            {
-                // ensure the pipeline is linked if pre-validation throws an exception, and fault it
-                validatableTxes.LinkTo(new ActionBlock<ValidatableTx>(x => { }), new DataflowLinkOptions { PropagateCompletion = true });
-                validatableTxes.Fault(ex);
-                throw;
-            }
-
-            // validate merkle root
-            var merkleStream = new MerkleStream<BlockTxNode>();
-            var merkleValidator = InitMerkleValidator(chainedHeader, merkleStream, cancelToken);
-
-            // begin feeding the merkle validator
-            validatableTxes.LinkTo(merkleValidator, new DataflowLinkOptions { PropagateCompletion = true });
-
             // capture fees
             Transaction coinbaseTx = null;
             var txCount = 0U;
@@ -126,7 +103,8 @@ namespace BitSharp.Core.Builders
 
                     return validatableTx;
                 });
-            merkleValidator.LinkTo(feeCapturer, new DataflowLinkOptions { PropagateCompletion = true });
+
+            validatableTxes.LinkTo(feeCapturer, new DataflowLinkOptions { PropagateCompletion = true });
 
             // validate transactions
             var txValidator = InitTxValidator(rules, chainedHeader, cancelToken);
@@ -142,62 +120,11 @@ namespace BitSharp.Core.Builders
 
             //TODO
             await PipelineCompletion.Create(
-                new[] { validatableTxes.Completion, merkleValidator.Completion, feeCapturer.Completion, txValidator.Completion, scriptValidator.Completion },
-                new IDataflowBlock[] { validatableTxes, merkleValidator, feeCapturer, txValidator, scriptValidator });
+                new[] { validatableTxes.Completion, feeCapturer.Completion, txValidator.Completion, scriptValidator.Completion },
+                new IDataflowBlock[] { validatableTxes, feeCapturer, txValidator, scriptValidator });
 
             // validate overall block
             rules.PostValidateBlock(chain, chainedHeader, coinbaseTx, totalTxInputValue, totalTxOutputValue);
-
-            try
-            {
-                merkleStream.FinishPairing();
-            }
-            //TODO
-            catch (InvalidOperationException)
-            {
-                throw CreateMerkleRootException(chainedHeader);
-            }
-
-            if (merkleStream.RootNode.Hash != chainedHeader.MerkleRoot)
-                throw CreateMerkleRootException(chainedHeader);
-        }
-
-        private static TransformManyBlock<ValidatableTx, ValidatableTx> InitMerkleValidator(ChainedHeader chainedHeader, MerkleStream<BlockTxNode> merkleStream, CancellationToken cancelToken)
-        {
-            var txHashes = new HashSet<UInt256>();
-            var txRepeated = false;
-
-            return new TransformManyBlock<ValidatableTx, ValidatableTx>(
-                validatableTx =>
-                {
-                    if (!txRepeated && txHashes.Add(validatableTx.Hash))
-                    {
-                        try
-                        {
-                            merkleStream.AddNode(validatableTx.BlockTx);
-                        }
-                        //TODO
-                        catch (InvalidOperationException)
-                        {
-                            throw CreateMerkleRootException(chainedHeader);
-                        }
-                        return new[] { validatableTx };
-                    }
-                    else
-                    {
-                        // TODO this needs proper testing, and needs to be made sure this is a safe way to handle the attack
-                        // TODO the block should be unmutated before being shared onto the network
-                        // CVE-2012-2459
-                        // - if a tx has been repeated, this may be a merkle tree malleability attack against the block
-                        // - stop feeding transactions once a tx has been repeated
-                        // - if it's a merkle tree malleability attack, the block will still be able to pass validation
-                        // - if the block is actually made of the duplicate transactions, it will properly fail validation
-                        //   on the merkle root due to stopping transactions early
-                        txRepeated = true;
-                        return new ValidatableTx[0];
-                    }
-                },
-                new ExecutionDataflowBlockOptions { CancellationToken = cancelToken });
         }
 
         private static TransformManyBlock<ValidatableTx, Tuple<ValidatableTx, int>> InitTxValidator(IBlockchainRules rules, ChainedHeader chainedHeader, CancellationToken cancelToken)
@@ -252,11 +179,6 @@ namespace BitSharp.Core.Builders
                     }
                 },
                 new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, MaxDegreeOfParallelism = Environment.ProcessorCount });
-        }
-
-        private static ValidationException CreateMerkleRootException(ChainedHeader chainedHeader)
-        {
-            return new ValidationException(chainedHeader.Hash, $"Failing block {chainedHeader.Hash} at height {chainedHeader.Height}: Merkle root is invalid");
         }
 
         //TODO - hasn't been checked for correctness, should also be moved

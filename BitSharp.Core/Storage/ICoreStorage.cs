@@ -13,6 +13,8 @@ namespace BitSharp.Core.Storage
 
         bool TryReadBlockTransactions(UInt256 blockHash, out IEnumerator<BlockTx> blockTxes);
 
+        bool TryRemoveBlockTransactions(UInt256 blockHash);
+
         bool TryGetTransaction(UInt256 blockHash, int txIndex, out BlockTx transaction);
     }
 }
