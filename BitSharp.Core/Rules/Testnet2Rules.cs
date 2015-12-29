@@ -79,5 +79,7 @@ namespace BitSharp.Core.Rules
         public override Block GenesisBlock => this._genesisBlock;
 
         public override ChainedHeader GenesisChainedHeader => this._genesisChainedHeader;
+
+        public override UInt256 HighestTarget { get; } = UInt256.ParseHex("7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
     }
 }

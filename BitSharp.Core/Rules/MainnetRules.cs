@@ -24,7 +24,7 @@ namespace BitSharp.Core.Rules
 
         public MainnetRules()
         {
-            this.highestTarget = UInt256.ParseHex("00000000FFFF0000000000000000000000000000000000000000000000000000");
+            this.highestTarget = UInt256.ParseHex("00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
 
             this.genesisBlock =
                 Block.Create
@@ -191,10 +191,12 @@ namespace BitSharp.Core.Rules
         {
             // calculate the next required target
             var requiredTarget = GetRequiredNextTarget(chain);
+            if (requiredTarget > HighestTarget)
+                requiredTarget = HighestTarget;
 
             // validate block's target against the required target
             var blockTarget = chainedHeader.BlockHeader.CalculateTarget();
-            if (blockTarget > requiredTarget)
+            if (blockTarget != requiredTarget)
             {
                 throw new ValidationException(chainedHeader.Hash,
                     $"Failing block {chainedHeader.Hash} at height {chainedHeader.Height}: Block target {blockTarget} did not match required target of {requiredTarget}");
