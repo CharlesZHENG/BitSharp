@@ -16,7 +16,6 @@ namespace BitSharp.Core.Rules
 
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        private readonly UInt256 highestTarget;
         private readonly Block genesisBlock;
         private readonly ChainedHeader genesisChainedHeader;
         private readonly int difficultyInterval = 2016;
@@ -24,8 +23,6 @@ namespace BitSharp.Core.Rules
 
         public MainnetRules()
         {
-            this.highestTarget = UInt256.ParseHex("00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff");
-
             this.genesisBlock =
                 Block.Create
                 (
@@ -87,12 +84,12 @@ namespace BitSharp.Core.Rules
         }
 
         //TODO
-        public bool BypassPrevTxLoading { get; set; }
         public bool IgnoreScripts { get; set; }
         public bool IgnoreSignatures { get; set; }
         public bool IgnoreScriptErrors { get; set; }
 
-        public virtual UInt256 HighestTarget => this.highestTarget;
+        //TODO should be 00000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+        public virtual UInt256 HighestTarget { get; } = UInt256.ParseHex("00000000FFFF0000000000000000000000000000000000000000000000000000");
 
         public virtual Block GenesisBlock => this.genesisBlock;
 
