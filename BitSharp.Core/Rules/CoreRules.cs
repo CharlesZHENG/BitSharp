@@ -202,8 +202,6 @@ namespace BitSharp.Core.Rules
             //TODO should be optimal encoding length
             blockTally.BlockSize += validatableTx.TxBytes.Length;
 
-            logger.Info(blockTally.BlockSize + DataEncoder.VarIntSize((uint)blockTally.TxCount));
-
             //TODO
             if (blockTally.TotalSigOpCount > MAX_BLOCK_SIGOPS)
                 throw new ValidationException(chainedHeader.Hash);
