@@ -149,7 +149,7 @@ namespace BitSharp.IntegrationTest
 
                                     // don't fail on pull tester result, consensus is not implemented and it will always fail
                                     if (didJavaExit)
-                                        Assert.Inconclusive(errorOutput.ToString());
+                                        Assert.Inconclusive(errorOutput.Length > 0 ? errorOutput.ToString() : output.ToString());
                                     else
                                     {
                                         // if java.exe failed to terminate, log last X lines of output
