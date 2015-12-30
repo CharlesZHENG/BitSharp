@@ -31,15 +31,17 @@ namespace BitSharp.Core.Workers
             this.chainParams = chainParams;
             this.coreStorage = coreStorage;
 
-            this.coreStorage.ChainedHeaderAdded += HandleChainedHeaderAdded;
-            this.coreStorage.BlockInvalidated += HandleBlockInvalidated;
+            this.coreStorage.ChainedHeaderAdded += HandleChanged;
+            this.coreStorage.ChainedHeaderRemoved += HandleChanged;
+            this.coreStorage.BlockInvalidated += HandleChanged;
         }
 
         protected override void SubDispose()
         {
             // cleanup events
-            this.coreStorage.ChainedHeaderAdded -= HandleChainedHeaderAdded;
-            this.coreStorage.BlockInvalidated -= HandleBlockInvalidated;
+            this.coreStorage.ChainedHeaderAdded -= HandleChanged;
+            this.coreStorage.ChainedHeaderRemoved -= HandleChanged;
+            this.coreStorage.BlockInvalidated -= HandleChanged;
 
             inittedEvent.Dispose();
         }
@@ -148,12 +150,12 @@ namespace BitSharp.Core.Workers
             this.NotifyWork();
         }
 
-        private void HandleChainedHeaderAdded(ChainedHeader chainedHeader)
+        private void HandleChanged(ChainedHeader chainedHeader)
         {
             HandleChanged();
         }
 
-        private void HandleBlockInvalidated(UInt256 blockHash)
+        private void HandleChanged(UInt256 blockHash)
         {
             HandleChanged();
         }

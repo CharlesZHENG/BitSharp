@@ -51,6 +51,7 @@ namespace BitSharp.Core.Workers
             this.coreStorage.BlockTxesAdded += HandleChanged;
             this.coreStorage.BlockTxesRemoved += HandleChanged;
             this.coreStorage.ChainedHeaderAdded += HandleChanged;
+            this.coreStorage.ChainedHeaderRemoved += HandleChanged;
             this.targetChainWorker.OnTargetChainChanged += HandleChanged;
         }
 
@@ -102,6 +103,7 @@ namespace BitSharp.Core.Workers
             this.coreStorage.BlockTxesAdded -= HandleChanged;
             this.coreStorage.BlockTxesRemoved -= HandleChanged;
             this.coreStorage.ChainedHeaderAdded -= HandleChanged;
+            this.coreStorage.ChainedHeaderRemoved -= HandleChanged;
             this.targetChainWorker.OnTargetChainChanged -= HandleChanged;
 
             this.blockProcessingDurationMeasure.Dispose();
@@ -137,7 +139,7 @@ namespace BitSharp.Core.Workers
                         var blockStopwatch = Stopwatch.StartNew();
                         if (direction > 0)
                         {
-                            //logger.Info($"Adding block {chainedHeader.Height:N0}: {chainedHeader.Hash} time: {chainedHeader.Time}, {DateTimeOffset.FromUnixTimeSeconds(chainedHeader.Time)}");
+                            //logger.Info($"Adding block {chainedHeader.Height:N0}: {chainedHeader.Hash}");
                             await this.chainStateBuilder.AddBlockAsync(chainedHeader, blockTxes.UsingAsEnumerable());
                         }
                         else if (direction < 0)

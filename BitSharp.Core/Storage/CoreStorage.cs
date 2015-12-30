@@ -61,6 +61,8 @@ namespace BitSharp.Core.Storage
 
         public event Action<ChainedHeader> ChainedHeaderAdded;
 
+        public event Action<UInt256> ChainedHeaderRemoved;
+
         public event Action<ChainedHeader> BlockTxesAdded;
 
         public event Action<UInt256> BlockTxesRemoved;
@@ -88,7 +90,7 @@ namespace BitSharp.Core.Storage
                 if (this.blockStorage.Value.TryAddChainedHeader(genesisHeader))
                 {
                     this.cachedHeaders.Value[genesisHeader.Hash] = genesisHeader;
-                    RaiseChainedHeaderAdded(genesisHeader);
+                    ChainedHeaderAdded?.Invoke(genesisHeader);
                 }
         }
 
@@ -145,19 +147,20 @@ namespace BitSharp.Core.Storage
 
         public void ChainHeaders(IEnumerable<BlockHeader> blockHeaders)
         {
-            var added = false;
+            var addedHeaders = new List<ChainedHeader>();
             try
             {
                 foreach (var blockHeader in blockHeaders)
                 {
-                    ChainedHeader ignore;
-                    added |= TryChainHeader(blockHeader, out ignore, suppressEvent: true);
+                    ChainedHeader chainedHeader;
+                    if (TryChainHeader(blockHeader, out chainedHeader, suppressEvent: true))
+                        addedHeaders.Add(chainedHeader);
                 }
             }
             finally
             {
-                if (added)
-                    RaiseChainedHeaderAdded(/*TODO*/null);
+                foreach (var chainedHeader in addedHeaders)
+                    ChainedHeaderAdded?.Invoke(chainedHeader);
             }
         }
 
@@ -187,7 +190,7 @@ namespace BitSharp.Core.Storage
                             this.cachedHeaders.Value[chainedHeader.Hash] = chainedHeader;
 
                             if (!suppressEvent)
-                                RaiseChainedHeaderAdded(chainedHeader);
+                                ChainedHeaderAdded?.Invoke(chainedHeader);
 
                             return true;
                         }
@@ -249,7 +252,7 @@ namespace BitSharp.Core.Storage
                     if (this.blockTxesStorage.Value.TryAddBlockTransactions(block.Hash, block.BlockTxes))
                     {
                         this.presentBlockTxes[block.Hash] = true;
-                        RaiseBlockTxesAdded(chainedHeader);
+                        BlockTxesAdded?.Invoke(chainedHeader);
                         return true;
                     }
                 }
@@ -381,16 +384,6 @@ namespace BitSharp.Core.Storage
                 foreach (var invalidatedBlock in invalidatedBlocks)
                     BlockInvalidated?.Invoke(invalidatedBlock);
             }
-        }
-
-        private void RaiseChainedHeaderAdded(ChainedHeader chainedHeader)
-        {
-            this.ChainedHeaderAdded?.Invoke(chainedHeader);
-        }
-
-        private void RaiseBlockTxesAdded(ChainedHeader chainedHeader)
-        {
-            this.BlockTxesAdded?.Invoke(chainedHeader);
         }
 
         private object GetBlockLock(UInt256 blockHash)
