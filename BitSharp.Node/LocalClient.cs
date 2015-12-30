@@ -360,6 +360,11 @@ namespace BitSharp.Node
 
             if (this.Type == ChainTypeEnum.ComparisonToolTestNet)
             {
+                // don't process new inv request until previous inv request has finished
+                while (this.requestedComparisonBlocks.Count > 0 && comparisonBlockAddedEvent.WaitOne(1000))
+                { }
+                this.coreDaemon.ForceUpdateAndWait();
+
                 var responseInvVectors = ImmutableArray.CreateBuilder<InventoryVector>();
 
                 foreach (var invVector in invVectors)
@@ -471,7 +476,7 @@ namespace BitSharp.Node
                 // don't send headers until all blocks requested from the comparison tool have been downloaded and processed
                 while (this.requestedComparisonBlocks.Count > 0 && comparisonBlockAddedEvent.WaitOne(1000))
                 { }
-                this.coreDaemon.WaitForUpdate();
+                this.coreDaemon.ForceUpdateAndWait();
             }
 
             var currentChainLocal = this.coreDaemon.CurrentChain;
