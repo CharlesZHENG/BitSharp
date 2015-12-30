@@ -58,9 +58,9 @@ namespace BitSharp.BlockHelper
                 {
                     kernel.Bind<CoreDaemon>().ToConstant(coreDaemon).InTransientScope();
 
-                    // ignore script errors
+                    // ignore scripts
                     var rules = kernel.Get<ICoreRules>();
-                    rules.IgnoreScriptErrors = true;
+                    rules.IgnoreScripts = true;
 
                     // initialize p2p client
                     using (var localClient = kernel.Get<LocalClient>())

@@ -45,8 +45,6 @@ namespace BitSharp.Client
                 var connectToPeers = true;
 
                 var ignoreScripts = false;
-                var ignoreSignatures = false;
-                var ignoreScriptErrors = false;
 
                 var pruningMode = PruningMode.TxIndex | PruningMode.BlockSpentIndex | PruningMode.BlockTxesPreserveMerkle;
                 var enableDummyWallet = true;
@@ -158,8 +156,6 @@ namespace BitSharp.Client
                 // initialize rules
                 var rules = this.kernel.Get<ICoreRules>();
                 rules.IgnoreScripts = ignoreScripts;
-                rules.IgnoreSignatures = ignoreSignatures;
-                rules.IgnoreScriptErrors = ignoreScriptErrors;
 
                 // initialize the blockchain daemon
                 this.coreDaemon = this.kernel.Get<CoreDaemon>();

@@ -6,8 +6,6 @@ namespace BitSharp.Core.Rules
     {
         //TODO
         bool IgnoreScripts { get; set; }
-        bool IgnoreSignatures { get; set; }
-        bool IgnoreScriptErrors { get; set; }
 
         IChainParams ChainParams { get; }
 

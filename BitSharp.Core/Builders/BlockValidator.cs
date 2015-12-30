@@ -84,22 +84,7 @@ namespace BitSharp.Core.Builders
                     var txInput = tx.Inputs[inputIndex];
                     var prevTxOutputs = validatableTx.PrevTxOutputs[inputIndex];
 
-                    if (!rules.IgnoreScriptErrors)
-                    {
-                        rules.ValidationTransactionScript(newChain, validatableTx.BlockTx, txInput, inputIndex, prevTxOutputs);
-                    }
-                    else
-                    {
-                        try
-                        {
-                            rules.ValidationTransactionScript(newChain, validatableTx.BlockTx, txInput, inputIndex, prevTxOutputs);
-                        }
-                        catch (Exception ex)
-                        {
-                            var aggEx = ex as AggregateException;
-                            logger.Debug($"Ignoring script errors in block: {newChain.Height,9:N0}, errors: {(aggEx?.InnerExceptions.Count ?? -1):N0}");
-                        }
-                    }
+                    rules.ValidationTransactionScript(newChain, validatableTx.BlockTx, txInput, inputIndex, prevTxOutputs);
                 },
                 new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, MaxDegreeOfParallelism = Environment.ProcessorCount });
         }
