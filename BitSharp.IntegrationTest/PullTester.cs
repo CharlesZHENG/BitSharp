@@ -102,14 +102,8 @@ namespace BitSharp.IntegrationTest
                                 var onOutput = new DataReceivedEventHandler(
                                     (sender, e) =>
                                     {
-                                        if (e.Data != null && (
-                                            e.Data.Contains("bitcoind and bitcoinj acceptance differs")
-                                            || e.Data.Contains("bitcoind still hasn't requested block")
-                                            || e.Data.Contains("bitcoind failed to request block")
-                                        ))
-                                        {
+                                        if (e.Data?.Contains("ERROR:") ?? false)
                                             errorOccurred = true;
-                                        }
 
                                         output.AppendLine(e.Data);
                                         if (!errorOccurred)
