@@ -122,6 +122,7 @@ namespace BitSharp.Core.Storage
                     if (chainedHeader != null && this.blockStorage.Value.TryRemoveChainedHeader(blockHash))
                     {
                         this.cachedHeaders.Value[blockHash] = null;
+                        ChainedHeaderRemoved?.Invoke(blockHash);
                         return true;
                     }
                     else
@@ -130,6 +131,7 @@ namespace BitSharp.Core.Storage
                 else if (this.blockStorage.Value.TryRemoveChainedHeader(blockHash))
                 {
                     this.cachedHeaders.Value[blockHash] = null;
+                    ChainedHeaderRemoved?.Invoke(blockHash);
                     return true;
                 }
                 else
