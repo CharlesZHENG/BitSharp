@@ -14,7 +14,7 @@ namespace BitSharp.Core.Builders
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        public static async Task ValidateBlockAsync(ICoreStorage coreStorage, ICoreRules rules, Chain chain, ChainedHeader chainedHeader, ISourceBlock<ValidatableTx> validatableTxes, CancellationToken cancelToken = default(CancellationToken))
+        public static async Task ValidateBlockAsync(ICoreStorage coreStorage, ICoreRules rules, Chain newChain, ISourceBlock<ValidatableTx> validatableTxes, CancellationToken cancelToken = default(CancellationToken))
         {
             // tally transactions
             object finalTally = null;
@@ -22,7 +22,7 @@ namespace BitSharp.Core.Builders
                 validatableTx =>
                 {
                     var runningTally = finalTally;
-                    rules.TallyTransaction(chainedHeader, validatableTx, ref runningTally);
+                    rules.TallyTransaction(newChain, validatableTx, ref runningTally);
                     finalTally = runningTally;
 
                     return validatableTx;
@@ -30,13 +30,13 @@ namespace BitSharp.Core.Builders
             validatableTxes.LinkTo(txTallier, new DataflowLinkOptions { PropagateCompletion = true });
 
             // validate transactions
-            var txValidator = InitTxValidator(rules, chainedHeader, cancelToken);
+            var txValidator = InitTxValidator(rules, newChain, cancelToken);
 
             // begin feeding the tx validator
             txTallier.LinkTo(txValidator, new DataflowLinkOptions { PropagateCompletion = true });
 
             // validate scripts
-            var scriptValidator = InitScriptValidator(rules, chainedHeader, cancelToken);
+            var scriptValidator = InitScriptValidator(rules, newChain, cancelToken);
 
             // begin feeding the script validator
             txValidator.LinkTo(scriptValidator, new DataflowLinkOptions { PropagateCompletion = true });
@@ -47,15 +47,15 @@ namespace BitSharp.Core.Builders
                 new IDataflowBlock[] { validatableTxes, txTallier, txValidator, scriptValidator });
 
             // validate overall block
-            rules.PostValidateBlock(chain, chainedHeader, finalTally);
+            rules.PostValidateBlock(newChain, finalTally);
         }
 
-        private static TransformManyBlock<ValidatableTx, Tuple<ValidatableTx, int>> InitTxValidator(ICoreRules rules, ChainedHeader chainedHeader, CancellationToken cancelToken)
+        private static TransformManyBlock<ValidatableTx, Tuple<ValidatableTx, int>> InitTxValidator(ICoreRules rules, Chain newChain, CancellationToken cancelToken)
         {
             return new TransformManyBlock<ValidatableTx, Tuple<ValidatableTx, int>>(
                 validatableTx =>
                 {
-                    rules.ValidateTransaction(chainedHeader, validatableTx);
+                    rules.ValidateTransaction(newChain, validatableTx);
 
                     if (!rules.IgnoreScripts && !validatableTx.IsCoinbase)
                     {
@@ -73,7 +73,7 @@ namespace BitSharp.Core.Builders
                 new ExecutionDataflowBlockOptions { CancellationToken = cancelToken, MaxDegreeOfParallelism = Environment.ProcessorCount });
         }
 
-        private static ActionBlock<Tuple<ValidatableTx, int>> InitScriptValidator(ICoreRules rules, ChainedHeader chainedHeader, CancellationToken cancelToken)
+        private static ActionBlock<Tuple<ValidatableTx, int>> InitScriptValidator(ICoreRules rules, Chain newChain, CancellationToken cancelToken)
         {
             return new ActionBlock<Tuple<ValidatableTx, int>>(
                 tuple =>
@@ -86,18 +86,18 @@ namespace BitSharp.Core.Builders
 
                     if (!rules.IgnoreScriptErrors)
                     {
-                        rules.ValidationTransactionScript(chainedHeader, validatableTx.BlockTx, txInput, inputIndex, prevTxOutputs);
+                        rules.ValidationTransactionScript(newChain, validatableTx.BlockTx, txInput, inputIndex, prevTxOutputs);
                     }
                     else
                     {
                         try
                         {
-                            rules.ValidationTransactionScript(chainedHeader, validatableTx.BlockTx, txInput, inputIndex, prevTxOutputs);
+                            rules.ValidationTransactionScript(newChain, validatableTx.BlockTx, txInput, inputIndex, prevTxOutputs);
                         }
                         catch (Exception ex)
                         {
                             var aggEx = ex as AggregateException;
-                            logger.Debug($"Ignoring script errors in block: {chainedHeader.Height,9:N0}, errors: {(aggEx?.InnerExceptions.Count ?? -1):N0}");
+                            logger.Debug($"Ignoring script errors in block: {newChain.Height,9:N0}, errors: {(aggEx?.InnerExceptions.Count ?? -1):N0}");
                         }
                     }
                 },

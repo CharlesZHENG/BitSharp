@@ -11,17 +11,17 @@ namespace BitSharp.Core.Rules
 
         IChainParams ChainParams { get; }
 
-        void PreValidateBlock(Chain chain, ChainedHeader chainedHeader);
+        void PreValidateBlock(Chain newChain);
 
         // executed serially, in order
-        void TallyTransaction(ChainedHeader chainedHeader, ValidatableTx validatableTx, ref object runningTally);
+        void TallyTransaction(Chain newChain, ValidatableTx validatableTx, ref object runningTally);
 
         // executed in parallel, any order
-        void ValidateTransaction(ChainedHeader chainedHeader, ValidatableTx validatableTx);
+        void ValidateTransaction(Chain newChain, ValidatableTx validatableTx);
 
-        void ValidationTransactionScript(ChainedHeader chainedHeader, BlockTx tx, TxInput txInput, int txInputIndex, PrevTxOutput prevTxOutput);
+        void ValidationTransactionScript(Chain newChain, BlockTx tx, TxInput txInput, int txInputIndex, PrevTxOutput prevTxOutput);
 
-        void PostValidateBlock(Chain chain, ChainedHeader chainedHeader, object finalTally);
+        void PostValidateBlock(Chain newChain, object finalTally);
     }
 
     public interface ITally { }

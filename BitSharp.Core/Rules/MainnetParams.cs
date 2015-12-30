@@ -37,5 +37,11 @@ namespace BitSharp.Core.Rules
 
         // 10 minutes in seconds
         public int PowTargetSpacing { get; } = 10 * 60;
+
+        public int MajorityWindow { get; } = 1000;
+
+        public int MajorityEnforceBlockUpgrade { get; } = 750;
+
+        public int MajorityRejectBlockOutdated { get; } = 950;
     }
 }

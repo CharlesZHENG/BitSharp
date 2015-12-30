@@ -19,15 +19,15 @@ namespace BitSharp.Core.Test.Rules
         public UnitTestParams ChainParams { get; }
         IChainParams ICoreRules.ChainParams => ChainParams;
 
-        public Action<Chain, ChainedHeader> PreValidateBlockAction { get; set; }
+        public Action<Chain> PreValidateBlockAction { get; set; }
 
-        public Func<ChainedHeader, ValidatableTx, object, object> TallyTransactionFunc { get; set; }
+        public Func<Chain, ValidatableTx, object, object> TallyTransactionFunc { get; set; }
 
-        public Action<ChainedHeader, ValidatableTx> ValidateTransactionAction { get; set; }
+        public Action<Chain, ValidatableTx> ValidateTransactionAction { get; set; }
 
-        public Action<ChainedHeader, BlockTx, TxInput, int, PrevTxOutput> ValidationTransactionScriptAction { get; set; }
+        public Action<Chain, BlockTx, TxInput, int, PrevTxOutput> ValidationTransactionScriptAction { get; set; }
 
-        public Action<Chain, ChainedHeader, object> PostValidateBlockAction { get; set; }
+        public Action<Chain, object> PostValidateBlockAction { get; set; }
 
         public bool IgnoreScripts
         {
@@ -47,46 +47,46 @@ namespace BitSharp.Core.Test.Rules
             set { coreRules.IgnoreScriptErrors = value; }
         }
 
-        public void PreValidateBlock(Chain chain, ChainedHeader chainedHeader)
+        public void PreValidateBlock(Chain newChain)
         {
             if (PreValidateBlockAction == null)
-                coreRules.PreValidateBlock(chain, chainedHeader);
+                coreRules.PreValidateBlock(newChain);
             else
-                PreValidateBlockAction(chain, chainedHeader);
+                PreValidateBlockAction(newChain);
         }
 
-        public void TallyTransaction(ChainedHeader chainedHeader, ValidatableTx validatableTx, ref object runningTally)
+        public void TallyTransaction(Chain newChain, ValidatableTx validatableTx, ref object runningTally)
         {
             if (TallyTransactionFunc == null)
-                coreRules.TallyTransaction(chainedHeader, validatableTx, ref runningTally);
+                coreRules.TallyTransaction(newChain, validatableTx, ref runningTally);
             else
             {
-                runningTally = TallyTransactionFunc(chainedHeader, validatableTx, runningTally);
+                runningTally = TallyTransactionFunc(newChain, validatableTx, runningTally);
             }
         }
 
-        public void ValidateTransaction(ChainedHeader chainedHeader, ValidatableTx validatableTx)
+        public void ValidateTransaction(Chain newChain, ValidatableTx validatableTx)
         {
             if (ValidateTransactionAction == null)
-                coreRules.ValidateTransaction(chainedHeader, validatableTx);
+                coreRules.ValidateTransaction(newChain, validatableTx);
             else
-                ValidateTransactionAction(chainedHeader, validatableTx);
+                ValidateTransactionAction(newChain, validatableTx);
         }
 
-        public void ValidationTransactionScript(ChainedHeader chainedHeader, BlockTx tx, TxInput txInput, int txInputIndex, PrevTxOutput prevTxOutput)
+        public void ValidationTransactionScript(Chain newChain, BlockTx tx, TxInput txInput, int txInputIndex, PrevTxOutput prevTxOutput)
         {
             if (ValidationTransactionScriptAction == null)
-                coreRules.ValidationTransactionScript(chainedHeader, tx, txInput, txInputIndex, prevTxOutput);
+                coreRules.ValidationTransactionScript(newChain, tx, txInput, txInputIndex, prevTxOutput);
             else
-                ValidationTransactionScriptAction(chainedHeader, tx, txInput, txInputIndex, prevTxOutput);
+                ValidationTransactionScriptAction(newChain, tx, txInput, txInputIndex, prevTxOutput);
         }
 
-        public void PostValidateBlock(Chain chain, ChainedHeader chainedHeader, object finalTally)
+        public void PostValidateBlock(Chain newChain, object finalTally)
         {
             if (PreValidateBlockAction == null)
-                coreRules.PostValidateBlock(chain, chainedHeader, finalTally);
+                coreRules.PostValidateBlock(newChain, finalTally);
             else
-                PostValidateBlockAction(chain, chainedHeader, finalTally);
+                PostValidateBlockAction(newChain, finalTally);
         }
     }
 
@@ -117,6 +117,12 @@ namespace BitSharp.Core.Test.Rules
         public bool PowNoRetargeting => mainnetParams.PowNoRetargeting;
 
         public int PowTargetSpacing => mainnetParams.PowTargetSpacing;
+
+        public int MajorityWindow => mainnetParams.MajorityWindow;
+
+        public int MajorityEnforceBlockUpgrade => mainnetParams.MajorityEnforceBlockUpgrade;
+
+        public int MajorityRejectBlockOutdated => mainnetParams.MajorityRejectBlockOutdated;
 
         public void SetGenesisBlock(Block genesisBlock)
         {

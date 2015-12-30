@@ -29,5 +29,11 @@ namespace BitSharp.Core.Rules
         public bool PowNoRetargeting => mainnetParams.PowNoRetargeting;
 
         public int PowTargetSpacing => mainnetParams.PowTargetSpacing;
+
+        public int MajorityWindow { get; } = 100;
+
+        public int MajorityEnforceBlockUpgrade { get; } = 51;
+
+        public int MajorityRejectBlockOutdated { get; } = 75;
     }
 }

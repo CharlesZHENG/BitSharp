@@ -61,7 +61,7 @@ namespace BitSharp.Core.Builders
             var newChain = chain.Value.ToBuilder().AddBlock(chainedHeader).ToImmutable();
 
             // pre-validate block before doing any work
-            rules.PreValidateBlock(newChain, chainedHeader);
+            rules.PreValidateBlock(newChain);
 
             using (var chainState = ToImmutable())
             using (var handle = storageManager.OpenDeferredChainStateCursor(chainState))
@@ -105,7 +105,7 @@ namespace BitSharp.Core.Builders
                 var validatableTxes = utxoBuilder.CalculateUtxo(chainStateCursor, newChain, warmedBlockTxes, cancelToken);
 
                 // begin validating the block
-                var blockValidator = BlockValidator.ValidateBlockAsync(coreStorage, rules, newChain, chainedHeader, validatableTxes, cancelToken);
+                var blockValidator = BlockValidator.ValidateBlockAsync(coreStorage, rules, newChain, validatableTxes, cancelToken);
 
                 // prepare to finish applying chain state changes once utxo calculation has completed
                 var applyChainState =

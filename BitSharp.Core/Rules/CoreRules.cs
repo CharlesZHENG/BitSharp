@@ -4,6 +4,7 @@ using BitSharp.Core.Domain;
 using BitSharp.Core.Script;
 using NLog;
 using System;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Diagnostics;
 using System.Linq;
@@ -21,8 +22,14 @@ namespace BitSharp.Core.Rules
         private const UInt64 SATOSHI_PER_BTC = 100 * 1000 * 1000;
         private static readonly ulong MAX_MONEY = (ulong)21.MILLION() * (ulong)100.MILLION();
         private const int COINBASE_MATURITY = 100;
+
         private static readonly int MAX_BLOCK_SIZE = 1.MILLION(); // :(
         private static readonly int MAX_BLOCK_SIGOPS = 20.THOUSAND();
+
+        private const int LOCKTIME_MEDIAN_TIME_PAST = 1 << 1;
+        // Threshold for nLockTime: below this value it is interpreted as block number,
+        // otherwise as UNIX timestamp.
+        private const uint LOCKTIME_THRESHOLD = 500000000; // Tue Nov  5 00:53:20 1985 UTC
 
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
@@ -33,10 +40,12 @@ namespace BitSharp.Core.Rules
 
         public IChainParams ChainParams { get; }
 
-        public void PreValidateBlock(Chain chain, ChainedHeader chainedHeader)
+        public void PreValidateBlock(Chain newChain)
         {
+            var chainedHeader = newChain.LastBlock;
+
             // calculate the next required target
-            var requiredBits = GetRequiredNextBits(chain);
+            var requiredBits = GetRequiredNextBits(newChain);
 
             // validate required target
             var blockTarget = chainedHeader.BlockHeader.CalculateTarget();
@@ -72,13 +81,14 @@ namespace BitSharp.Core.Rules
             // ensure timestamp is greater than the median timestamp of the previous 11 blocks
             if (chainedHeader.Height > 0)
             {
-                var medianTimeSpan = Math.Min(11, chain.Blocks.Count - 1);
+                var medianTimeSpan = Math.Min(11, newChain.Blocks.Count - 1);
 
-                var prevHeaderTimes = chain.Blocks.GetRange(chain.Blocks.Count - 1 - medianTimeSpan, medianTimeSpan)
+                var prevHeaderTimes = newChain.Blocks.GetRange(newChain.Blocks.Count - 1 - medianTimeSpan, medianTimeSpan)
                     //TODO pull tester doesn't fail if the sort step is missed
                     .OrderBy(x => x.Time).ToList();
 
-                var medianPrevHeaderTime = DateTimeOffset.FromUnixTimeSeconds(prevHeaderTimes[prevHeaderTimes.Count / 2].Time);
+                var medianPrevHeaderTime = DateTimeOffset.FromUnixTimeSeconds(
+                    GetMedianPrevHeaderTime(newChain, chainedHeader.Height));
 
                 if (blockTime <= medianPrevHeaderTime)
                 {
@@ -90,10 +100,21 @@ namespace BitSharp.Core.Rules
             //TODO: ContextualCheckBlockHeader nVersion checks
         }
 
-        public void TallyTransaction(ChainedHeader chainedHeader, ValidatableTx validatableTx, ref object runningTally)
+        public void TallyTransaction(Chain newChain, ValidatableTx validatableTx, ref object runningTally)
         {
+            var chainedHeader = newChain.LastBlock;
+
             if (runningTally == null)
-                runningTally = new BlockTally { BlockSize = 80 };
+            {
+                var medianPrevHeaderTime = GetMedianPrevHeaderTime(newChain, chainedHeader.Height);
+
+                var lockTimeFlags = 0; // TODO why is this used here?
+                var lockTimeCutoff = ((lockTimeFlags & LOCKTIME_MEDIAN_TIME_PAST) != 0)
+                                      ? GetMedianPrevHeaderTime(newChain, chainedHeader.Height)
+                                      : chainedHeader.Time;
+
+                runningTally = new BlockTally { BlockSize = 80, LockTimeCutoff = lockTimeCutoff };
+            }
 
             var blockTally = (BlockTally)runningTally;
 
@@ -119,6 +140,25 @@ namespace BitSharp.Core.Rules
             // coinbase scriptSignature length must be >= 2 && <= 100
             else if (tx.IsCoinbase && (tx.Inputs[0].ScriptSignature.Length < 2 || tx.Inputs[0].ScriptSignature.Length > 100))
                 throw new ValidationException(chainedHeader.Hash);
+            // all transactions must be finalized
+            else if (!IsFinal(tx, chainedHeader.Height, blockTally.LockTimeCutoff))
+                throw new ValidationException(chainedHeader.Hash);
+
+            // Enforce block.nVersion=2 rule that the coinbase starts with serialized block height
+            // if 750 of the last 1,000 blocks are version 2 or greater (51/100 if testnet):
+            if (tx.IsCoinbase
+                && chainedHeader.Version >= 2
+                && IsSuperMajority(2, newChain, ChainParams.MajorityEnforceBlockUpgrade))
+            {
+                var requiredScript = GetPushInt64Script(chainedHeader.Height);
+                var actualScript = tx.Inputs[0].ScriptSignature;
+
+                if (actualScript.Length < requiredScript.Length
+                    || !actualScript.Take(requiredScript.Length).SequenceEqual(requiredScript))
+                {
+                    throw new ValidationException(chainedHeader.Hash);
+                }
+            }
 
             // running input/output value tallies
             var txTotalInputValue = 0UL;
@@ -212,13 +252,15 @@ namespace BitSharp.Core.Rules
             // all validation has passed
         }
 
-        public void ValidateTransaction(ChainedHeader chainedHeader, ValidatableTx validatableTx)
+        public void ValidateTransaction(Chain newChain, ValidatableTx validatableTx)
         {
             // TODO any expensive validation can go here
         }
 
-        public void ValidationTransactionScript(ChainedHeader chainedHeader, BlockTx tx, TxInput txInput, int txInputIndex, PrevTxOutput prevTxOutput)
+        public void ValidationTransactionScript(Chain newChain, BlockTx tx, TxInput txInput, int txInputIndex, PrevTxOutput prevTxOutput)
         {
+            var chainedHeader = newChain.LastBlock;
+
             // BIP16 didn't become active until Apr 1 2012
             var nBIP16SwitchTime = 1333238400U;
             var strictPayToScriptHash = chainedHeader.Time >= nBIP16SwitchTime;
@@ -227,16 +269,16 @@ namespace BitSharp.Core.Rules
 
             // Start enforcing the DERSIG (BIP66) rules, for block.nVersion=3 blocks,
             // when 75% of the network has upgraded:
-            if (chainedHeader.Version >= 3)
-            //&& IsSuperMajority(3, pindex->pprev, chainparams.GetConsensus().nMajorityEnforceBlockUpgrade, chainparams.GetConsensus())
+            if (chainedHeader.Version >= 3
+                && IsSuperMajority(3, newChain, ChainParams.MajorityEnforceBlockUpgrade))
             {
                 flags |= verify_flags_type.verify_flags_dersig;
             }
 
             // Start enforcing CHECKLOCKTIMEVERIFY, (BIP65) for block.nVersion=4
             // blocks, when 75% of the network has upgraded:
-            if (chainedHeader.Version >= 4)
-            //&& IsSuperMajority(4, pindex->pprev, chainparams.GetConsensus().nMajorityEnforceBlockUpgrade, chainparams.GetConsensus()))
+            if (chainedHeader.Version >= 4
+                && IsSuperMajority(4, newChain, ChainParams.MajorityEnforceBlockUpgrade))
             {
                 flags |= verify_flags_type.verify_flags_checklocktimeverify;
             }
@@ -254,8 +296,9 @@ namespace BitSharp.Core.Rules
             }
         }
 
-        public void PostValidateBlock(Chain chain, ChainedHeader chainedHeader, object finalTally)
+        public void PostValidateBlock(Chain newChain, object finalTally)
         {
+            var chainedHeader = newChain.LastBlock;
             var blockTally = (BlockTally)finalTally;
 
             // ensure there is at least 1 transaction
@@ -533,13 +576,138 @@ namespace BitSharp.Core.Rules
             return true;
         }
 
+        private uint GetMedianPrevHeaderTime(Chain chain, int height)
+        {
+            if (height == 0)
+                return 0;
+
+            var medianTimeSpan = Math.Min(11, height);
+
+            var prevHeaderTimes = chain.Blocks.GetRange(height - medianTimeSpan, medianTimeSpan)
+                //TODO pull tester doesn't fail if the sort step is missed
+                .OrderBy(x => x.Time).ToList();
+
+            return prevHeaderTimes[prevHeaderTimes.Count / 2].Time;
+        }
+
+        private bool IsFinal(Transaction tx, int blockHeight, long blockTime)
+        {
+            // no tx lock time specified, transaction is final
+            if (tx.LockTime == 0)
+                return true;
+
+            // lock time is compared by block height before LOCKTIME_THRESHOLD, block time afterwards
+            var blockLockTime = (tx.LockTime < LOCKTIME_THRESHOLD ? blockHeight : blockTime);
+
+            // if block's time is after tx's lock time, transaction is final
+            if (blockLockTime >= tx.LockTime)
+                return true;
+
+            // if tx's lock time hasn't yet been reached, the transaction is final if all its inputs are final
+            return tx.Inputs.All(x => IsFinal(x));
+        }
+
+        private bool IsFinal(TxInput input)
+        {
+            return input.Sequence == uint.MaxValue;
+        }
+
+        private bool IsSuperMajority(int minVersion, Chain newChain, int requiredCount)
+        {
+            if (newChain.Height == 0)
+                return false;
+
+            var count = 0;
+            var metVersionCount = 0;
+            for (var i = newChain.Height - 1; i >= 0 && count < ChainParams.MajorityWindow; i--)
+            {
+                if (newChain.Blocks[i].Version >= minVersion)
+                    metVersionCount++;
+
+                if (metVersionCount >= requiredCount)
+                    return true;
+
+                count++;
+            }
+
+            return false;
+        }
+
+        private ImmutableArray<byte> GetPushInt64Script(long value)
+        {
+            var script = new ScriptBuilder();
+
+            // push 0 onto the stack using OP_0
+            if (value == 0)
+            {
+                script.WriteOp(ScriptOp.OP_0);
+            }
+            // push -1 onto the stack using OP_1NEGATE
+            else if (value == -1)
+            {
+                script.WriteOp(ScriptOp.OP_1NEGATE);
+            }
+            // push 1-16 onto the stack using OP_1 to OP_16
+            else if (value >= 1 && value <= 16)
+            {
+                script.WriteOp((ScriptOp)(value + ((long)ScriptOp.OP_1 - 1)));
+            }
+            else
+            {
+                var valueBytes = SerializeScriptValue(value);
+                script.WritePushData(valueBytes);
+            }
+
+            return script.GetScript().ToImmutableArray();
+        }
+
+        private byte[] SerializeScriptValue(long value)
+        {
+            if (value == 0)
+                return new byte[0];
+
+            var result = new List<byte>();
+
+            var neg = value < 0;
+            var absvalue = (ulong)(neg ? -value : value);
+
+            while (absvalue != 0)
+            {
+                result.Add((byte)(absvalue & 0xff));
+                absvalue >>= 8;
+            }
+
+            //    - If the most significant byte is >= 0x80 and the value is positive, push a
+            //    new zero-byte to make the significant byte < 0x80 again.
+
+            //    - If the most significant byte is >= 0x80 and the value is negative, push a
+            //    new 0x80 byte that will be popped off when converting to an integral.
+
+            //    - If the most significant byte is < 0x80 and the value is negative, add
+            //    0x80 to it, since it will be subtracted and interpreted as a negative when
+            //    converting to an integral.
+
+            if ((result.Last() & 0x80) != 0)
+                result.Add((byte)(neg ? 0x80 : 0));
+            else if (neg)
+                result[result.Count - 1] = (byte)(result.Last() | 0x80);
+
+            return result.ToArray();
+        }
+
         private class BlockTally
         {
             public ValidatableTx CoinbaseTx { get; set; }
+
             public int TxCount { get; set; }
+
             public long TotalFees { get; set; }
+
             public int TotalSigOpCount { get; set; }
+
             public int BlockSize { get; set; }
+
+            public long LockTimeCutoff { get; set; }
         }
     }
 }
