@@ -29,10 +29,11 @@ namespace BitSharp.Node.Network
 
         private CountMeasure blockMissCountMeasure;
 
-        public Peer(IPEndPoint remoteEndPoint, bool isSeed)
+        public Peer(IPEndPoint remoteEndPoint, bool isSeed, bool isIncoming)
         {
             RemoteEndPoint = remoteEndPoint;
             IsSeed = isSeed;
+            IsIncoming = isIncoming;
 
             this.socket = new Socket(remoteEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
             Receiver = new RemoteReceiver(this, this.socket, persistent: false);
@@ -43,10 +44,11 @@ namespace BitSharp.Node.Network
             WireNode();
         }
 
-        public Peer(Socket socket, bool isSeed)
+        public Peer(Socket socket, bool isSeed, bool isIncoming)
         {
             this.socket = socket;
             this.IsConnected = true;
+            IsIncoming = isIncoming;
 
             LocalEndPoint = (IPEndPoint)socket.LocalEndPoint;
             RemoteEndPoint = (IPEndPoint)socket.RemoteEndPoint;
@@ -97,6 +99,8 @@ namespace BitSharp.Node.Network
         public bool IsConnected { get; private set; }
 
         public bool IsSeed { get; }
+
+        public bool IsIncoming { get; }
 
         public int BlockMissCount
         {
@@ -149,6 +153,8 @@ namespace BitSharp.Node.Network
             {
                 logger.Debug(ex, $"Error on connecting to {RemoteEndPoint}");
                 Disconnect();
+
+                throw;
             }
             finally
             {

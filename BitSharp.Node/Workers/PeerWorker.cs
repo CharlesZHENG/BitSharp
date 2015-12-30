@@ -45,6 +45,8 @@ namespace BitSharp.Node.Workers
 
         public event Action<Peer> PeerConnected;
 
+        public event Action<Peer> PeerHandshakeCompleted;
+
         public event Action<Peer> PeerDisconnected;
 
         internal int UnconnectedPeersCount
@@ -73,14 +75,14 @@ namespace BitSharp.Node.Workers
                 this.unconnectedPeers.Add(peer.IPEndPoint, peer));
         }
 
-        public void AddIncomingPeer(Socket socket)
+        public async Task AddIncomingPeer(Socket socket)
         {
-            var peer = new Peer(socket, isSeed: false);
+            var peer = new Peer(socket, isSeed: false, isIncoming: true);
             try
             {
-                ConnectAndHandshake(peer, isIncoming: true)
-                    .ContinueWith(task => DisconnectPeer(peer, task.Exception), TaskContinuationOptions.OnlyOnFaulted)
-                    .Forget();
+                await ConnectAndHandshake(peer);
+
+                PeerHandshakeCompleted?.Invoke(peer);
             }
             catch (Exception e)
             {
@@ -101,7 +103,10 @@ namespace BitSharp.Node.Workers
             if (ex != null)
                 logger.Debug(ex, $"Remote peer failed: {peer.RemoteEndPoint}");
 
-            RaisePeerDisconnected(peer);
+            PeerDisconnected?.Invoke(peer);
+
+            if (peer.IsIncoming)
+                Interlocked.Decrement(ref this.incomingCount);
 
             this.badPeers.Add(peer.RemoteEndPoint); //TODO
 
@@ -206,15 +211,17 @@ namespace BitSharp.Node.Workers
         {
             try
             {
-                var peer = new Peer(remoteEndPoint, isSeed);
+                var peer = new Peer(remoteEndPoint, isSeed, isIncoming: false);
                 try
                 {
                     this.unconnectedPeersLock.Do(() =>
                         this.unconnectedPeers.Remove(remoteEndPoint));
                     this.pendingPeers.TryAdd(peer);
 
-                    await ConnectAndHandshake(peer, isIncoming: false);
+                    await ConnectAndHandshake(peer);
                     await PeerStartup(peer);
+
+                    PeerHandshakeCompleted?.Invoke(peer);
 
                     return peer;
                 }
@@ -234,12 +241,20 @@ namespace BitSharp.Node.Workers
             }
         }
 
-        private async Task ConnectAndHandshake(Peer peer, bool isIncoming)
+        private async Task ConnectAndHandshake(Peer peer)
         {
+            peer.OnDisconnect += DisconnectPeer;
+            if (peer.IsIncoming)
+                Interlocked.Increment(ref this.incomingCount);
+
             // connect
             await peer.ConnectAsync();
-            if (!peer.IsConnected)
-                throw new Exception();
+
+            this.pendingPeers.TryRemove(peer);
+            this.connectedPeers.TryAdd(peer);
+
+            // notify peer is connected
+            PeerConnected?.Invoke(peer);
 
             // setup task to wait for verack
             var verAckTask = peer.Receiver.WaitForMessage(x => x.Command == "verack", HANDSHAKE_TIMEOUT_MS);
@@ -277,30 +292,11 @@ namespace BitSharp.Node.Workers
 
             // acknowledge their version
             await peer.Sender.SendVersionAcknowledge();
-
-            if (isIncoming)
-                Interlocked.Increment(ref this.incomingCount);
-
-            this.pendingPeers.TryRemove(peer);
-            this.connectedPeers.TryAdd(peer);
-
-            peer.OnDisconnect += DisconnectPeer;
-            RaisePeerConnected(peer);
         }
 
         private async Task PeerStartup(Peer peer)
         {
             await peer.Sender.RequestKnownAddressesAsync();
-        }
-
-        private void RaisePeerConnected(Peer peer)
-        {
-            this.PeerConnected?.Invoke(peer);
-        }
-
-        private void RaisePeerDisconnected(Peer peer)
-        {
-            this.PeerDisconnected?.Invoke(peer);
         }
     }
 }
