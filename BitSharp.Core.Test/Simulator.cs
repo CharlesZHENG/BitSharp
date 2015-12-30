@@ -44,9 +44,9 @@ namespace BitSharp.Core.Test
             // add rules module
             this.kernel.Load(new RulesModule(chainType));
 
-            // TODO ignore script errors in test daemon until scripting engine is completed
+            // by default, don't run scripts in unit tests
             var rules = this.kernel.Get<ICoreRules>();
-            rules.IgnoreScriptErrors = true;
+            rules.IgnoreScripts = true;
 
             // initialize the blockchain daemon
             this.kernel.Bind<CoreDaemon>().ToSelf().InSingletonScope();

@@ -58,8 +58,8 @@ namespace BitSharp.Core.Test
             this.kernel.Bind<ICoreRules>().ToConstant(testBlocks.Rules);
             this.kernel.Bind<IChainParams>().ToConstant(testBlocks.ChainParams);
 
-            // TODO ignore script errors in test daemon until scripting engine is completed
-            testBlocks.Rules.IgnoreScriptErrors = true;
+            // by default, don't run scripts in unit tests
+            testBlocks.Rules.IgnoreScripts = true;
 
             // initialize the blockchain daemon
             this.kernel.Bind<CoreDaemon>().ToSelf().InSingletonScope();
