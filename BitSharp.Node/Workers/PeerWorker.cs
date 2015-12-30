@@ -130,7 +130,7 @@ namespace BitSharp.Node.Workers
 
         protected override Task WorkAction()
         {
-            if (this.localClient.Type == ChainTypeEnum.ComparisonToolTestNet)
+            if (this.localClient.Type == ChainType.Regtest)
                 return Task.FromResult(false);
 
             foreach (var peer in this.connectedPeers)

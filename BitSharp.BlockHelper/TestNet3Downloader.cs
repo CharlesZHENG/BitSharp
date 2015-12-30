@@ -50,7 +50,7 @@ namespace BitSharp.BlockHelper
                 kernel.Load(new NodeMemoryStorageModule());
 
                 // add rules module
-                var chainType = ChainTypeEnum.TestNet3;
+                var chainType = ChainType.TestNet3;
                 kernel.Load(new RulesModule(chainType));
 
                 // initialize the blockchain daemon

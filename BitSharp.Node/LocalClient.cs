@@ -33,7 +33,7 @@ namespace BitSharp.Node
         private readonly CancellationTokenSource shutdownToken;
         private readonly Random random = new Random();
 
-        private readonly ChainTypeEnum type;
+        private readonly ChainType type;
         private readonly IKernel kernel;
         private readonly IChainParams chainParams;
         private readonly CoreDaemon coreDaemon;
@@ -57,7 +57,7 @@ namespace BitSharp.Node
         private readonly AutoResetEvent comparisonBlockAddedEvent = new AutoResetEvent(false);
         private readonly ManualResetEvent comparisonHeadersSentEvent = new ManualResetEvent(true);
 
-        public LocalClient(ChainTypeEnum type, IKernel kernel, CoreDaemon coreDaemon, INetworkPeerStorage networkPeerStorage)
+        public LocalClient(ChainType type, IKernel kernel, CoreDaemon coreDaemon, INetworkPeerStorage networkPeerStorage)
         {
             this.shutdownToken = new CancellationTokenSource();
 
@@ -93,30 +93,30 @@ namespace BitSharp.Node
 
             switch (this.Type)
             {
-                case ChainTypeEnum.MainNet:
+                case ChainType.MainNet:
                     Messaging.Port = 8333;
                     Messaging.Magic = Messaging.MAGIC_MAIN;
                     break;
 
-                case ChainTypeEnum.TestNet3:
+                case ChainType.TestNet3:
                     Messaging.Port = 18333;
                     Messaging.Magic = Messaging.MAGIC_TESTNET3;
                     break;
 
-                case ChainTypeEnum.ComparisonToolTestNet:
+                case ChainType.Regtest:
                     Messaging.Port = 18444;
                     Messaging.Magic = Messaging.MAGIC_COMPARISON_TOOL;
                     break;
             }
         }
 
-        public ChainTypeEnum Type => this.type;
+        public ChainType Type => this.type;
 
         internal ConcurrentSet<Peer> ConnectedPeers => this.peerWorker.ConnectedPeers;
 
         public void Start(bool connectToPeers = true)
         {
-            if (this.Type != ChainTypeEnum.ComparisonToolTestNet)
+            if (this.Type != ChainType.Regtest)
                 this.headersRequestWorker.Start();
 
             this.blockRequestWorker.Start();
@@ -126,7 +126,7 @@ namespace BitSharp.Node
             if (connectToPeers)
             {
                 this.peerWorker.Start();
-                if (this.Type != ChainTypeEnum.ComparisonToolTestNet)
+                if (this.Type != ChainType.Regtest)
                 {
                     // add seed peers
                     Task.Run(() => AddSeedPeers());
@@ -216,7 +216,7 @@ namespace BitSharp.Node
                             (
                                 ipEndPoint: new IPEndPoint(ipAddress, Messaging.Port),
                                 time: DateTime.MinValue,
-                                isSeed: this.Type == ChainTypeEnum.MainNet ? true : false
+                                isSeed: this.Type == ChainType.MainNet ? true : false
                             ));
                     }
                     catch (SocketException ex)
@@ -227,7 +227,7 @@ namespace BitSharp.Node
 
             switch (this.Type)
             {
-                case ChainTypeEnum.MainNet:
+                case ChainType.MainNet:
                     addSeed("seed.bitcoin.sipa.be");
                     addSeed("dnsseed.bluematt.me");
                     //addSeed("dnsseed.bitcoin.dashjr.org");
@@ -237,7 +237,7 @@ namespace BitSharp.Node
                     addSeed("bitseed.xf2.org");
                     break;
 
-                case ChainTypeEnum.TestNet3:
+                case ChainType.TestNet3:
                     addSeed("testnet-seed.alexykot.me");
                     addSeed("testnet-seed.bitcoin.petertodd.org");
                     addSeed("testnet-seed.bluematt.me");
@@ -286,7 +286,7 @@ namespace BitSharp.Node
 
         private void HandleBlockFlushed(Object sender, Block block)
         {
-            if (type == ChainTypeEnum.ComparisonToolTestNet)
+            if (type == ChainType.Regtest)
             {
                 // the block won't have been added if it doesn't chain onto another block, hold onto it to try again later
                 if (!coreStorage.ContainsBlockTxes(block.Hash))
@@ -358,7 +358,7 @@ namespace BitSharp.Node
             if (connectedPeersLocal.Count == 0)
                 return;
 
-            if (this.Type == ChainTypeEnum.ComparisonToolTestNet)
+            if (this.Type == ChainType.Regtest)
             {
                 // don't process new inv request until previous inv request has finished
                 while (this.requestedComparisonBlocks.Count > 0 && comparisonBlockAddedEvent.WaitOne(1000))
@@ -471,7 +471,7 @@ namespace BitSharp.Node
 
         private void OnGetHeaders(Peer peer, GetBlocksPayload payload)
         {
-            if (this.Type == ChainTypeEnum.ComparisonToolTestNet)
+            if (this.Type == ChainType.Regtest)
             {
                 // don't send headers until all blocks requested from the comparison tool have been downloaded and processed
                 while (this.requestedComparisonBlocks.Count > 0 && comparisonBlockAddedEvent.WaitOne(1000))
@@ -519,7 +519,7 @@ namespace BitSharp.Node
             var sendTask = peer.Sender.SendHeaders(blockHeaders.ToImmutable())
                 .ContinueWith(_ => comparisonHeadersSentEvent.Set());
 
-            if (type == ChainTypeEnum.ComparisonToolTestNet)
+            if (type == ChainType.Regtest)
                 sendTask.Wait();
         }
 
@@ -546,7 +546,7 @@ namespace BitSharp.Node
 
         private void OnPing(Peer peer, ImmutableArray<byte> payload)
         {
-            if (this.Type == ChainTypeEnum.ComparisonToolTestNet)
+            if (this.Type == ChainType.Regtest)
             {
                 // don't pong back until:
                 // - all blocks requested from the comparison tool have been downloaded and processed

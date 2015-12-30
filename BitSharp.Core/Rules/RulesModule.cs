@@ -3,39 +3,30 @@ using System;
 
 namespace BitSharp.Core.Rules
 {
-    public enum ChainTypeEnum
-    {
-        MainNet,
-        Regtest,
-        TestNet3,
-        ComparisonToolTestNet
-    }
-
     public class RulesModule : NinjectModule
     {
-        private readonly ChainTypeEnum chainType;
+        private readonly ChainType chainType;
 
-        public RulesModule(ChainTypeEnum chainType)
+        public RulesModule(ChainType chainType)
         {
             this.chainType = chainType;
         }
 
         public override void Load()
         {
-            this.Bind<ChainTypeEnum>().ToConstant(this.chainType);
+            this.Bind<ChainType>().ToConstant(this.chainType);
 
             switch (this.chainType)
             {
-                case ChainTypeEnum.MainNet:
+                case ChainType.MainNet:
                     this.Bind<IChainParams>().To<MainnetParams>().InSingletonScope();
                     break;
 
-                case ChainTypeEnum.Regtest:
-                case ChainTypeEnum.ComparisonToolTestNet:
+                case ChainType.Regtest:
                     this.Bind<IChainParams>().To<RegtestParams>().InSingletonScope();
                     break;
 
-                case ChainTypeEnum.TestNet3:
+                case ChainType.TestNet3:
                     this.Bind<IChainParams>().To<Testnet3Params>().InSingletonScope();
                     break;
 

@@ -13,12 +13,12 @@ namespace BitSharp.Esent
         private readonly string[] blockTxesStorageLocations;
         private readonly string dataDirectory;
         private readonly string peersDirectory;
-        private readonly ChainTypeEnum chainType;
+        private readonly ChainType chainType;
         private readonly long? cacheSizeMinBytes;
         private readonly long? cacheSizeMaxBytes;
         private readonly bool blockStorage;
 
-        public EsentStorageModule(string baseDirectory, ChainTypeEnum rulesType, bool blockStorage = true, long? cacheSizeMinBytes = null, long? cacheSizeMaxBytes = null, string[] blockTxesStorageLocations = null)
+        public EsentStorageModule(string baseDirectory, ChainType rulesType, bool blockStorage = true, long? cacheSizeMinBytes = null, long? cacheSizeMaxBytes = null, string[] blockTxesStorageLocations = null)
         {
             this.baseDirectory = baseDirectory;
             this.blockTxesStorageLocations = blockTxesStorageLocations;

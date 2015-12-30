@@ -4,8 +4,17 @@ using System.Collections.Immutable;
 
 namespace BitSharp.Core.Rules
 {
+    public enum ChainType
+    {
+        MainNet,
+        Regtest,
+        TestNet3
+    }
+
     public interface IChainParams
     {
+        ChainType ChainType { get; }
+
         UInt256 GenesisHash { get; }
 
         Block GenesisBlock { get; }

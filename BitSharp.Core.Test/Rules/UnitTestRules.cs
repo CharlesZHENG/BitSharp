@@ -98,7 +98,9 @@ namespace BitSharp.Core.Test.Rules
         public static readonly UInt256 Target3 = UInt256.ParseHex("000FFFFFF0000000000000000000000000000000000000000000000000000000");
         public static readonly UInt256 Target4 = UInt256.ParseHex("0000FFFFFF000000000000000000000000000000000000000000000000000000");
 
-        private readonly MainnetParams mainnetParams = new MainnetParams();
+        private static readonly MainnetParams mainnetParams = new MainnetParams();
+
+        public ChainType ChainType { get; set; } = mainnetParams.ChainType;
 
         public UInt256 GenesisHash => GenesisBlock?.Hash;
 

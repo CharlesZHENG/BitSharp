@@ -38,11 +38,11 @@ namespace BitSharp.Core.Test
             var storageModules = useLmdb ?
                 new INinjectModule[]
                 {
-                    new EsentStorageModule(baseDirectory, ChainTypeEnum.Regtest, blockStorage: !useLmdb, cacheSizeMaxBytes: 500.MILLION()),
-                    new LmdbStorageModule(baseDirectory, ChainTypeEnum.Regtest)
+                    new EsentStorageModule(baseDirectory, ChainType.Regtest, blockStorage: !useLmdb, cacheSizeMaxBytes: 500.MILLION()),
+                    new LmdbStorageModule(baseDirectory, ChainType.Regtest)
                 }
                 :
-                new[] { new EsentStorageModule(baseDirectory, ChainTypeEnum.Regtest, cacheSizeMaxBytes: 500.MILLION()) };
+                new[] { new EsentStorageModule(baseDirectory, ChainType.Regtest, cacheSizeMaxBytes: 500.MILLION()) };
 
             return new IntegrationTestDaemon(genesisBlock, baseDirectory, loggingModule, storageModules);
         }

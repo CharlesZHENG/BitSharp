@@ -41,8 +41,8 @@ namespace BitSharp.Node.Workers
             {
                 switch (this.localClient.Type)
                 {
-                    case ChainTypeEnum.MainNet:
-                    case ChainTypeEnum.TestNet3:
+                    case ChainType.MainNet:
+                    case ChainType.TestNet3:
                         var externalIPAddress = Messaging.GetExternalIPAddress();
                         var localhost = Dns.GetHostEntry(Dns.GetHostName());
 
@@ -50,7 +50,7 @@ namespace BitSharp.Node.Workers
                         this.listenSocket.Bind(new IPEndPoint(localhost.AddressList.Where(x => x.AddressFamily == externalIPAddress.AddressFamily).First(), Messaging.Port));
                         break;
 
-                    case ChainTypeEnum.ComparisonToolTestNet:
+                    case ChainType.Regtest:
                         this.listenSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                         this.listenSocket.Bind(new IPEndPoint(IPAddress.Parse("127.0.0.1"), Messaging.Port));
                         break;

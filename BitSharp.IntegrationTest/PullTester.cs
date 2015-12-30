@@ -52,7 +52,7 @@ namespace BitSharp.IntegrationTest
                 logger.Info($"Starting up: {DateTime.Now}");
 
                 // add rules module
-                var chainType = ChainTypeEnum.ComparisonToolTestNet;
+                var chainType = ChainType.Regtest;
                 kernel.Load(new RulesModule(chainType));
 
                 // add storage module

@@ -139,7 +139,9 @@ namespace BitSharp.Core.Workers
                         var blockStopwatch = Stopwatch.StartNew();
                         if (direction > 0)
                         {
-                            //logger.Info($"Adding block {chainedHeader.Height:N0}: {chainedHeader.Hash}");
+                            if (rules.ChainParams.ChainType == ChainType.Regtest)
+                                logger.Info($"Adding block {chainedHeader.Height:N0}: {chainedHeader.Hash}");
+
                             await this.chainStateBuilder.AddBlockAsync(chainedHeader, blockTxes.UsingAsEnumerable());
                         }
                         else if (direction < 0)

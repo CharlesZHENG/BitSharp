@@ -23,7 +23,7 @@ namespace BitSharp.Core.Test
 
         private bool isDisposed;
 
-        public Simulator(ChainTypeEnum chainType)
+        public Simulator(ChainType chainType)
         {
             // initialize kernel
             this.kernel = new StandardKernel();
@@ -131,7 +131,7 @@ namespace BitSharp.Core.Test
     public class MainnetSimulator : Simulator
     {
         public MainnetSimulator()
-            : base(ChainTypeEnum.MainNet)
+            : base(ChainType.MainNet)
         {
         }
     }
@@ -139,7 +139,7 @@ namespace BitSharp.Core.Test
     public class TestNet3Simulator : Simulator
     {
         public TestNet3Simulator()
-            : base(ChainTypeEnum.TestNet3)
+            : base(ChainType.TestNet3)
         {
         }
     }

@@ -70,7 +70,7 @@ namespace BitSharp.Client
                 //if (Debugger.IsAttached)
                 //    baseDirectory = Path.Combine(baseDirectory, "Debugger");
 
-                var chainType = useTestNet ? ChainTypeEnum.TestNet3 : ChainTypeEnum.MainNet;
+                var chainType = useTestNet ? ChainType.TestNet3 : ChainType.MainNet;
 
                 string[] blockTxesStorageLocations = null;
 

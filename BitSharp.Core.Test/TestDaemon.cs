@@ -54,7 +54,7 @@ namespace BitSharp.Core.Test
             // initialize unit test rules, allow validation methods to run
             testBlocks.Rules.ValidateTransactionAction = null;
             testBlocks.Rules.ValidationTransactionScriptAction = null;
-            this.kernel.Bind<ChainTypeEnum>().ToConstant(ChainTypeEnum.Regtest);
+            this.kernel.Bind<ChainType>().ToConstant(ChainType.Regtest);
             this.kernel.Bind<ICoreRules>().ToConstant(testBlocks.Rules);
             this.kernel.Bind<IChainParams>().ToConstant(testBlocks.ChainParams);
 

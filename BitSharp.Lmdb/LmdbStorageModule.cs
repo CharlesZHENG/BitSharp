@@ -11,9 +11,9 @@ namespace BitSharp.Lmdb
         private readonly string baseDirectory;
         private readonly string[] blockTxesStorageLocations;
         private readonly string dataDirectory;
-        private readonly ChainTypeEnum rulesType;
+        private readonly ChainType rulesType;
 
-        public LmdbStorageModule(string baseDirectory, ChainTypeEnum rulesType, string[] blockTxesStorageLocations = null)
+        public LmdbStorageModule(string baseDirectory, ChainType rulesType, string[] blockTxesStorageLocations = null)
         {
             this.baseDirectory = baseDirectory;
             this.blockTxesStorageLocations = blockTxesStorageLocations;

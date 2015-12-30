@@ -12,6 +12,8 @@ namespace BitSharp.Core.Rules
             GenesisChainedHeader = ChainedHeader.CreateForGenesisBlock(genesisBlock.Header);
         }
 
+        public ChainType ChainType { get; } = ChainType.Regtest;
+
         public UInt256 GenesisHash => UInt256.ParseHex("0f9188f13cb7b2c71f2a335e3a4fc328bf5beb436012afca590b1a11466e2206");
 
         public Block GenesisBlock => genesisBlock;
