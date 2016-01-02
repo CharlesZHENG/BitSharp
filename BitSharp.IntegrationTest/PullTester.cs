@@ -30,6 +30,11 @@ namespace BitSharp.IntegrationTest
         {
             var javaTimeout = (int)TimeSpan.FromMinutes(5).TotalMilliseconds;
 
+            // locate java.exe
+            var javaPath = Path.Combine(Environment.GetEnvironmentVariable("JAVA_HOME"), "bin", "java.exe");
+            if (!File.Exists(javaPath))
+                Assert.Inconclusive("java.exe could not be found under JAVA_HOME");
+
             // prepare a temp folder for bitcoinj
             string tempFolder;
             using (TempDirectory.CreateTempDirectory(out tempFolder))
