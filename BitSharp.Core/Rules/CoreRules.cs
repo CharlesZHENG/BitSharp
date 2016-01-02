@@ -25,6 +25,7 @@ namespace BitSharp.Core.Rules
 
         private static readonly int MAX_BLOCK_SIZE = 1.MILLION(); // :(
         private static readonly int MAX_BLOCK_SIGOPS = 20.THOUSAND();
+        private const int MAX_PUBKEYS_PER_MULTISIG = 20;
 
         private const int LOCKTIME_MEDIAN_TIME_PAST = 1 << 1;
         // Threshold for nLockTime: below this value it is interpreted as block number,
@@ -239,8 +240,9 @@ namespace BitSharp.Core.Rules
             blockTally.TxCount++;
             blockTally.TotalFees += txFeeValue;
             blockTally.TotalSigOpCount += txSigOpCount;
-            //TODO should be optimal encoding length
-            blockTally.BlockSize += validatableTx.TxBytes.Length;
+            // re-encode transaction for block size calculation so it is optimal length
+            blockTally.BlockSize +=
+                DataEncoder.EncodeTransaction(validatableTx.Transaction).TxBytes.Length;
 
             //TODO
             if (blockTally.TotalSigOpCount > MAX_BLOCK_SIGOPS)
@@ -446,10 +448,9 @@ namespace BitSharp.Core.Rules
                     case ScriptOp.OP_CHECKMULTISIG:
                     case ScriptOp.OP_CHECKMULTISIGVERIFY:
                         //TODO
-                        var MAX_PUBKEYS_PER_MULTISIG = 20;
                         var prevOpCode = index >= 2 ? script[index - 2] : (byte)ScriptOp.OP_INVALIDOPCODE;
                         if (accurate && prevOpCode >= (byte)ScriptOp.OP_1 && prevOpCode <= (byte)ScriptOp.OP_16)
-                            sigOpCount += prevOpCode;
+                            sigOpCount += prevOpCode - ((byte)ScriptOp.OP_1 - 1);
                         else
                             sigOpCount += MAX_PUBKEYS_PER_MULTISIG;
 
@@ -487,6 +488,7 @@ namespace BitSharp.Core.Rules
 
                 ImmutableArray<byte>? data = null;
 
+                // find the last item pushed onto the stack in the P2SH script signature...
                 var index = 0;
                 while (index < script.Length)
                 {
@@ -500,7 +502,8 @@ namespace BitSharp.Core.Rules
                 if (data == null)
                     return 0;
 
-                return CountLegacySigOps(data.Value, true);
+                // ...and count its sig ops
+                return CountLegacySigOps(data.Value, accurate: true);
             }
             else
                 return 0;
