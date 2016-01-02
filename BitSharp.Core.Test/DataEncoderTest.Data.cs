@@ -8,11 +8,8 @@ namespace BitSharp.Core.Test
     {
         public static readonly TxInput TRANSACTION_INPUT_1 = new TxInput
         (
-            previousTxOutputKey: new TxOutputKey
-            (
-                txHash: UInt256.ParseHex("00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff"),
-                txOutputIndex: 0x01
-            ),
+            prevTxHash: UInt256.ParseHex("00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff"),
+            prevTxOutputIndex: 0x01,
             scriptSignature: ImmutableArray.Create<byte>(0x00, 0x01, 0x02, 0x03, 0x04),
             sequence: 0x02
         );

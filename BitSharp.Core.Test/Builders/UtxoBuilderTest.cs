@@ -46,7 +46,7 @@ namespace BitSharp.Core.Test.Builders
             memoryChainStateCursor.TryAddUnspentTx(unspentTx);
 
             // create an input to spend the unspent transaction's first output
-            var input0 = new TxInput(new TxOutputKey(txHash, txOutputIndex: 0), ImmutableArray.Create<byte>(), 0);
+            var input0 = new TxInput(txHash, 0, ImmutableArray.Create<byte>(), 0);
             var tx0 = BlockTx.Create(1, Transaction.Create(0, ImmutableArray.Create(input0), ImmutableArray.Create<TxOutput>(), 0));
 
             // spend the input
@@ -62,7 +62,7 @@ namespace BitSharp.Core.Test.Builders
             Assert.IsTrue(actualUnspentTx.OutputStates[2] == OutputState.Unspent);
 
             // create an input to spend the unspent transaction's second output
-            var input1 = new TxInput(new TxOutputKey(txHash, txOutputIndex: 1), ImmutableArray.Create<byte>(), 0);
+            var input1 = new TxInput(txHash, 1, ImmutableArray.Create<byte>(), 0);
             var tx1 = BlockTx.Create(1, Transaction.Create(0, ImmutableArray.Create(input1), ImmutableArray.Create<TxOutput>(), 0));
 
             // spend the input
@@ -77,7 +77,7 @@ namespace BitSharp.Core.Test.Builders
             Assert.IsTrue(actualUnspentTx.OutputStates[2] == OutputState.Unspent);
 
             // create an input to spend the unspent transaction's third output
-            var input2 = new TxInput(new TxOutputKey(txHash, txOutputIndex: 2), ImmutableArray.Create<byte>(), 0);
+            var input2 = new TxInput(txHash, 2, ImmutableArray.Create<byte>(), 0);
             var tx2 = BlockTx.Create(2, Transaction.Create(0, ImmutableArray.Create(input2), ImmutableArray.Create<TxOutput>(), 0));
 
             // spend the input
@@ -117,7 +117,7 @@ namespace BitSharp.Core.Test.Builders
             memoryChainStateCursor.TryAddUnspentTx(unspentTx);
 
             // create an input to spend the unspent transaction
-            var input = new TxInput(new TxOutputKey(txHash, txOutputIndex: 0), ImmutableArray.Create<byte>(), 0);
+            var input = new TxInput(txHash, 0, ImmutableArray.Create<byte>(), 0);
             var tx = BlockTx.Create(1, Transaction.Create(0, ImmutableArray.Create(input), ImmutableArray.Create<TxOutput>(), 0));
 
             // spend the input

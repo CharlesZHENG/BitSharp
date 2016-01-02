@@ -102,11 +102,8 @@ namespace BitSharp.Core.Test
                 (
                     new TxInput
                     (
-                        previousTxOutputKey: new TxOutputKey
-                        (
-                            txHash: UInt256.Zero,
-                            txOutputIndex: uint.MaxValue
-                        ),
+                        prevTxHash: UInt256.Zero,
+                        prevTxOutputIndex: uint.MaxValue,
                         // coinbase scriptSignature must be 2-100 bytes long
                         scriptSignature: random.NextBytes(2 + random.Next(99)).ToImmutableArray(),
                         sequence: 0
@@ -140,7 +137,7 @@ namespace BitSharp.Core.Test
 
                 var tx = Transaction.Create(
                     version: 0,
-                    inputs: ImmutableArray.Create(new TxInput(new TxOutputKey(prevTx.Hash, 0), new byte[100].ToImmutableArray(), 0)),
+                    inputs: ImmutableArray.Create(new TxInput(prevTx.Hash, 0, new byte[100].ToImmutableArray(), 0)),
                     outputs: outputs,
                     lockTime: 0).Transaction;
 

@@ -60,11 +60,8 @@ namespace BitSharp.Core.Test
         {
             return new TxInput
             (
-                previousTxOutputKey: new TxOutputKey
-                (
-                    txHash: random.NextUInt256(),
-                    txOutputIndex: random.NextUInt32()
-                ),
+                prevTxHash: random.NextUInt256(),
+                prevTxOutputIndex: random.NextUInt32(),
                 scriptSignature: random.NextBytes(random.NextOrExactly(100, options.ScriptSignatureSize)).ToImmutableArray(),
                 sequence: random.NextUInt32()
             );

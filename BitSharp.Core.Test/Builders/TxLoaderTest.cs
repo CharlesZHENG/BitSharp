@@ -38,7 +38,7 @@ namespace BitSharp.Core.Test.Builders
                 var prevBlockTx = (BlockTx)BlockTx.Create(i, prevTx);
 
                 prevTxes[i] = prevTx;
-                inputs[i] = new TxInput(new TxOutputKey(prevTx.Hash, 0), ImmutableArray.Create<byte>(), 0);
+                inputs[i] = new TxInput(prevTx.Hash, 0, ImmutableArray.Create<byte>(), 0);
 
                 // mock retrieval of the previous transaction
                 coreStorageMock.Setup(coreStorage => coreStorage.TryGetTransaction(UInt256.Zero, i, out prevBlockTx)).Returns(true);

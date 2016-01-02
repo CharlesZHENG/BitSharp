@@ -125,11 +125,8 @@ namespace BitSharp.Core.Script
                 (
                     new TxInput
                     (
-                        previousTxOutputKey: new TxOutputKey
-                        (
-                            txHash: UInt256.Zero,
-                            txOutputIndex: 0
-                        ),
+                        prevTxHash: UInt256.Zero,
+                        prevTxOutputIndex: 0,
                         scriptSignature: coinbase.ToImmutableArray(),
                         sequence: 0
                     )
@@ -157,11 +154,8 @@ namespace BitSharp.Core.Script
                 (
                     new TxInput
                     (
-                        previousTxOutputKey: new TxOutputKey
-                        (
-                            txHash: prevTx.Hash,
-                            txOutputIndex: (UInt32)prevInputIndex
-                        ),
+                        prevTxHash: prevTx.Hash,
+                        prevTxOutputIndex: (UInt32)prevInputIndex,
                         scriptSignature: ImmutableArray.Create<byte>(),
                         sequence: 0
                     )

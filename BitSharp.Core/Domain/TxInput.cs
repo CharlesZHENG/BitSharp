@@ -1,4 +1,5 @@
-﻿using System;
+﻿using BitSharp.Common;
+using System;
 using System.Collections.Immutable;
 
 namespace BitSharp.Core.Domain
@@ -11,6 +12,10 @@ namespace BitSharp.Core.Domain
             ScriptSignature = scriptSignature;
             Sequence = sequence;
         }
+
+        public TxInput(UInt256 prevTxHash, uint prevTxOutputIndex, ImmutableArray<byte> scriptSignature, UInt32 sequence)
+            : this(new TxOutputKey(prevTxHash, prevTxOutputIndex), scriptSignature, sequence)
+        { }
 
         public TxOutputKey PreviousTxOutputKey { get; }
 

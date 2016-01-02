@@ -248,7 +248,7 @@ namespace BitSharp.Core
                 var sequence = Bits.ToUInt32(txBytes, startIndex);
                 startIndex += 4;
 
-                var intput = new TxInput(new TxOutputKey(prevTxHash, prevTxOutputIndex), scriptSignature, sequence);
+                var intput = new TxInput(prevTxHash, prevTxOutputIndex, scriptSignature, sequence);
                 inputs.Add(intput);
             }
 
@@ -349,11 +349,8 @@ namespace BitSharp.Core
         {
             return new TxInput
             (
-                previousTxOutputKey: new TxOutputKey
-                (
-                    txHash: reader.ReadUInt256(),
-                    txOutputIndex: reader.ReadUInt32()
-                ),
+                prevTxHash: reader.ReadUInt256(),
+                prevTxOutputIndex: reader.ReadUInt32(),
                 scriptSignature: reader.ReadVarBytes().ToImmutableArray(),
                 sequence: reader.ReadUInt32()
             );

@@ -34,11 +34,8 @@ namespace BitSharp.Core.Test
                     (
                         new TxInput
                         (
-                            previousTxOutputKey: new TxOutputKey
-                            (
-                                txHash: UInt256.Zero,
-                                txOutputIndex: 0xFFFFFFFF
-                            ),
+                            prevTxHash: UInt256.Zero,
+                            prevTxOutputIndex: 0xFFFFFFFF,
                             scriptSignature: ImmutableArray.Create<byte>
                             (
                                 0x04, 0xFF, 0xFF, 0x00, 0x1D, 0x01, 0x04, 0x45, 0x54, 0x68, 0x65, 0x20, 0x54, 0x69, 0x6D, 0x65,
