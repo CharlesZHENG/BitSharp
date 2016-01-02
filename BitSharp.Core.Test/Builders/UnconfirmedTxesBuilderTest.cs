@@ -57,8 +57,8 @@ namespace BitSharp.Core.Test.Builders
 
             using (var unconfirmedTxesBuilder = new UnconfirmedTxesBuilder(coreDaemon.Object, storageManager))
             {
-                // add the tx
-                unconfirmedTxesBuilder.TryAddTransaction(tx);
+                // try to add the tx
+                Assert.IsFalse(unconfirmedTxesBuilder.TryAddTransaction(tx));
 
                 // verify unconfirmed tx was not added
                 UnconfirmedTx unconfirmedTx;
