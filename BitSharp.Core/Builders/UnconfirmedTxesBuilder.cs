@@ -17,7 +17,7 @@ namespace BitSharp.Core.Builders
         private readonly ICoreDaemon coreDaemon;
         private readonly IStorageManager storageManager;
 
-        private readonly SemaphoreSlim addBlockLock = new SemaphoreSlim(1);
+        private readonly ReaderWriterLockSlim updateLock = new ReaderWriterLockSlim();
         private readonly ReaderWriterLockSlim commitLock = new ReaderWriterLockSlim();
 
         private bool disposed;
@@ -38,7 +38,7 @@ namespace BitSharp.Core.Builders
         {
             if (!disposed && disposing)
             {
-                addBlockLock.Dispose();
+                updateLock.Dispose();
                 commitLock.Dispose();
 
                 disposed = true;
@@ -62,8 +62,13 @@ namespace BitSharp.Core.Builders
                 // unconfirmed tx already exists
                 return false;
 
-            // take addBlockLock, cannot add unconfirmed txes while they are being updated by a block operation
-            return addBlockLock.Do(() =>
+            // allow concurrent transaction adds if underlying storage supports it
+            // in either case, lock waits for block add/rollback to finish
+            if (storageManager.IsUnconfirmedTxesConcurrent)
+                updateLock.EnterReadLock();
+            else
+                updateLock.EnterWriteLock();
+            try
             {
                 using (var chainState = coreDaemon.GetChainState())
                 {
@@ -73,7 +78,7 @@ namespace BitSharp.Core.Builders
                     {
                         var input = tx.Inputs[inputIndex];
 
-                        if (!prevTxOutputKeys.Add(input.PreviousTxOutputKey))
+                        if (!prevTxOutputKeys.Add(input.PrevTxOutputKey))
                             // tx double spends one of its own inputs
                             return false;
 
@@ -112,7 +117,14 @@ namespace BitSharp.Core.Builders
                             return false;
                     }
                 }
-            });
+            }
+            finally
+            {
+                if (storageManager.IsUnconfirmedTxesConcurrent)
+                    updateLock.ExitReadLock();
+                else
+                    updateLock.ExitWriteLock();
+            }
 
             throw new NotImplementedException();
         }
@@ -128,23 +140,40 @@ namespace BitSharp.Core.Builders
             }
         }
 
-        public ImmutableList<Transaction> GetTransactionsSpending(UInt256 txHash, int outputIndex)
+        public ImmutableDictionary<UInt256, UnconfirmedTx> GetTransactionsSpending(UInt256 txHash, uint outputIndex)
         {
-            throw new NotImplementedException();
+            return GetTransactionsSpending(new TxOutputKey(txHash, outputIndex));
         }
 
+        public ImmutableDictionary<UInt256, UnconfirmedTx> GetTransactionsSpending(TxOutputKey txOutputKey)
+        {
+            using (var handle = storageManager.OpenUnconfirmedTxesCursor())
+            {
+                var unconfirmedTxesCursor = handle.Item;
+                unconfirmedTxesCursor.BeginTransaction(readOnly: true);
+
+                return unconfirmedTxesCursor.GetTransactionsSpending(txOutputKey);
+            }
+        }
 
         public async Task AddBlockAsync(ChainedHeader chainedHeader, IEnumerable<BlockTx> blockTxes, CancellationToken cancelToken = default(CancellationToken))
         {
-            await addBlockLock.DoAsync(async () =>
+            await Task.Yield();
+
+            updateLock.EnterWriteLock();
+            try
             {
 
-            });
+            }
+            finally
+            {
+                updateLock.ExitWriteLock();
+            }
         }
 
         public void RollbackBlock(ChainedHeader chainedHeader, IEnumerable<BlockTx> blockTxes)
         {
-            addBlockLock.Do(() =>
+            updateLock.DoWrite(() =>
             {
 
             });

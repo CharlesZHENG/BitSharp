@@ -40,8 +40,8 @@ namespace BitSharp.Core.Test.Builders
                     var input = tx.Inputs[inputIndex];
 
                     // create a fake unspent tx, with enough outputs for this input
-                    var unspentTx = new UnspentTx(input.PreviousTxOutputKey.TxHash, blockIndex: 1, txIndex: txIndex * inputIndex, txVersion: 0, isCoinbase: false,
-                        outputStates: tx.IsCoinbase ? OutputStates.Empty : new OutputStates(input.PreviousTxOutputKey.TxOutputIndex.ToIntChecked() + 1, OutputState.Unspent),
+                    var unspentTx = new UnspentTx(input.PrevTxOutputKey.TxHash, blockIndex: 1, txIndex: txIndex * inputIndex, txVersion: 0, isCoinbase: false,
+                        outputStates: tx.IsCoinbase ? OutputStates.Empty : new OutputStates(input.PrevTxOutputKey.TxOutputIndex.ToIntChecked() + 1, OutputState.Unspent),
                         txOutputs: tx.Outputs);
 
                     chainState.Setup(x => x.TryGetUnspentTx(unspentTx.TxHash, out unspentTx)).Returns(true);

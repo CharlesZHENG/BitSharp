@@ -6,9 +6,9 @@ namespace BitSharp.Core.Domain
 {
     public class TxInput
     {
-        public TxInput(TxOutputKey previousTxOutputKey, ImmutableArray<byte> scriptSignature, UInt32 sequence)
+        public TxInput(TxOutputKey prevTxOutputKey, ImmutableArray<byte> scriptSignature, UInt32 sequence)
         {
-            PreviousTxOutputKey = previousTxOutputKey;
+            PrevTxOutputKey = prevTxOutputKey;
             ScriptSignature = scriptSignature;
             Sequence = sequence;
         }
@@ -17,11 +17,11 @@ namespace BitSharp.Core.Domain
             : this(new TxOutputKey(prevTxHash, prevTxOutputIndex), scriptSignature, sequence)
         { }
 
-        public TxOutputKey PreviousTxOutputKey { get; }
+        public TxOutputKey PrevTxOutputKey { get; }
 
-        public UInt256 PrevTxHash => PreviousTxOutputKey.TxHash;
+        public UInt256 PrevTxHash => PrevTxOutputKey.TxHash;
 
-        public uint PrevTxOutputIndex => PreviousTxOutputKey.TxOutputIndex;
+        public uint PrevTxOutputIndex => PrevTxOutputKey.TxOutputIndex;
 
         public ImmutableArray<byte> ScriptSignature { get; }
 
@@ -31,7 +31,7 @@ namespace BitSharp.Core.Domain
         {
             return new TxInput
             (
-                previousTxOutput ?? this.PreviousTxOutputKey,
+                previousTxOutput ?? this.PrevTxOutputKey,
                 scriptSignature ?? this.ScriptSignature,
                 sequence ?? this.Sequence
             );

@@ -97,7 +97,7 @@ namespace BitSharp.Core.Test.Builders
             CollectionAssert.AreEqual(expectedBlockTxes.Select(x => x.Hash).ToList(), warmedTxes.Select(x => x.Hash).ToList());
 
             // verify each non-coinbase input transaction was warmed up
-            var expectedLookups = expectedBlockTxes.Skip(1).SelectMany(x => x.Transaction.Inputs.Select(input => input.PreviousTxOutputKey.TxHash));
+            var expectedLookups = expectedBlockTxes.Skip(1).SelectMany(x => x.Transaction.Inputs.Select(input => input.PrevTxOutputKey.TxHash));
             foreach (var txHash in expectedLookups)
                 deferredCursor.Verify(x => x.WarmUnspentTx(txHash));
 
@@ -124,14 +124,14 @@ namespace BitSharp.Core.Test.Builders
             using (var blockTx2ReadEvent = new ManualResetEventSlim())
             using (var blockTx3ReadEvent = new ManualResetEventSlim())
             {
-                deferredCursor.Setup(x => x.WarmUnspentTx(blockTx1.Transaction.Inputs[0].PreviousTxOutputKey.TxHash))
+                deferredCursor.Setup(x => x.WarmUnspentTx(blockTx1.Transaction.Inputs[0].PrevTxOutputKey.TxHash))
                     .Callback(() =>
                     {
                         blockTx3ReadEvent.Wait();
                         blockTx1ReadEvent.Set();
                     });
 
-                deferredCursor.Setup(x => x.WarmUnspentTx(blockTx2.Transaction.Inputs[0].PreviousTxOutputKey.TxHash))
+                deferredCursor.Setup(x => x.WarmUnspentTx(blockTx2.Transaction.Inputs[0].PrevTxOutputKey.TxHash))
                     .Callback(() =>
                     {
                         blockTx3ReadEvent.Wait();
@@ -139,7 +139,7 @@ namespace BitSharp.Core.Test.Builders
                         blockTx2ReadEvent.Set();
                     });
 
-                deferredCursor.Setup(x => x.WarmUnspentTx(blockTx3.Transaction.Inputs[0].PreviousTxOutputKey.TxHash))
+                deferredCursor.Setup(x => x.WarmUnspentTx(blockTx3.Transaction.Inputs[0].PrevTxOutputKey.TxHash))
                     .Callback(() =>
                     {
                         blockTx3ReadEvent.Set();
@@ -175,7 +175,7 @@ namespace BitSharp.Core.Test.Builders
             var blockTx1 = BlockTx.Create(1, RandomData.RandomTransaction(new RandomDataOptions { TxInputCount = 2 }));
 
             var expectedException = new InvalidOperationException();
-            deferredCursor.Setup(x => x.WarmUnspentTx(blockTx1.Transaction.Inputs[0].PreviousTxOutputKey.TxHash)).Throws(expectedException);
+            deferredCursor.Setup(x => x.WarmUnspentTx(blockTx1.Transaction.Inputs[0].PrevTxOutputKey.TxHash)).Throws(expectedException);
 
             blockTxes.Post(blockTx0);
             blockTxes.Post(blockTx1);

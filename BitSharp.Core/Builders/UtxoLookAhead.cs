@@ -46,7 +46,7 @@ namespace BitSharp.Core.Builders
                     {
                         for (var inputIndex = 0; inputIndex < tx.Inputs.Length; inputIndex++)
                         {
-                            var txHash = tx.Inputs[inputIndex].PreviousTxOutputKey.TxHash;
+                            var txHash = tx.Inputs[inputIndex].PrevTxOutputKey.TxHash;
                             txHashes[inputIndex + 1] = Tuple.Create(txHash, completionCount, blockTx);
                         }
                     }

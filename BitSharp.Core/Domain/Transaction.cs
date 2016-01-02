@@ -14,8 +14,8 @@ namespace BitSharp.Core.Domain
             Hash = hash;
             IsCoinbase =
                 inputs.Length == 1
-                && inputs[0].PreviousTxOutputKey.TxHash == UInt256.Zero
-                && inputs[0].PreviousTxOutputKey.TxOutputIndex == uint.MaxValue;
+                && inputs[0].PrevTxOutputKey.TxHash == UInt256.Zero
+                && inputs[0].PrevTxOutputKey.TxOutputIndex == uint.MaxValue;
             Version = version;
             Inputs = inputs;
             Outputs = outputs;

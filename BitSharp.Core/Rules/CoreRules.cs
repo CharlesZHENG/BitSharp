@@ -183,7 +183,7 @@ namespace BitSharp.Core.Rules
                     }
 
                     // non-coinbase txes must not have coinbase prev tx output key (txHash: 0, outputIndex: -1)
-                    if (input.PreviousTxOutputKey.TxOutputIndex == uint.MaxValue && input.PreviousTxOutputKey.TxHash == UInt256.Zero)
+                    if (input.PrevTxOutputKey.TxOutputIndex == uint.MaxValue && input.PrevTxOutputKey.TxHash == UInt256.Zero)
                         throw new ValidationException(chainedHeader.Hash);
 
                     // tally

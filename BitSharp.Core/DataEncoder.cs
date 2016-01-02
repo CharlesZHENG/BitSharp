@@ -367,8 +367,8 @@ namespace BitSharp.Core
 
         public static void EncodeTxInput(BinaryWriter writer, TxInput txInput)
         {
-            writer.WriteUInt256(txInput.PreviousTxOutputKey.TxHash);
-            writer.WriteUInt32(txInput.PreviousTxOutputKey.TxOutputIndex);
+            writer.WriteUInt256(txInput.PrevTxOutputKey.TxHash);
+            writer.WriteUInt32(txInput.PrevTxOutputKey.TxOutputIndex);
             writer.WriteVarBytes(txInput.ScriptSignature.ToArray());
             writer.WriteUInt32(txInput.Sequence);
         }

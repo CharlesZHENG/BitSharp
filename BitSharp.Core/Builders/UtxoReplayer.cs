@@ -120,10 +120,10 @@ namespace BitSharp.Core.Builders
                             var input = tx.Inputs[inputIndex];
 
                             UnspentTx unspentTx;
-                            if (!chainState.TryGetUnspentTx(input.PreviousTxOutputKey.TxHash, out unspentTx))
+                            if (!chainState.TryGetUnspentTx(input.PrevTxOutputKey.TxHash, out unspentTx))
                                 throw new MissingDataException(replayBlock.Hash);
 
-                            prevTxOutputs.Add(unspentTx.GetPrevTxOutput(input.PreviousTxOutputKey));
+                            prevTxOutputs.Add(unspentTx.GetPrevTxOutput(input.PrevTxOutputKey));
                         }
                     }
 

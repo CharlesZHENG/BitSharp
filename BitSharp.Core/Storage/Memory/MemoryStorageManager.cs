@@ -83,6 +83,8 @@ namespace BitSharp.Core.Storage.Memory
                 _ => cursor.Dispose(), cursor);
         }
 
+        public bool IsUnconfirmedTxesConcurrent { get; } = false;
+
         public DisposeHandle<IUnconfirmedTxesCursor> OpenUnconfirmedTxesCursor()
         {
             return unconfirmedTxesCursorCache.TakeItem();

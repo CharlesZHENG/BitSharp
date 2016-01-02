@@ -17,7 +17,6 @@ namespace BitSharp.Core.Test.Builders
     [TestClass]
     public class UnconfirmedTxesBuilderTest
     {
-        // TODO run as a standard StorageProviderTest
         private MemoryTestStorageProvider storageProvider;
         private IStorageManager storageManager;
 
@@ -68,6 +67,11 @@ namespace BitSharp.Core.Test.Builders
                 UnconfirmedTx unconfirmedTx;
                 Assert.IsTrue(unconfirmedTxesBuilder.TryGetTransaction(tx.Hash, out unconfirmedTx));
                 Assert.IsNotNull(unconfirmedTx);
+
+                // verify tx was indexed against its input
+                var txesSpending = unconfirmedTxesBuilder.GetTransactionsSpending(tx.Inputs[0].PrevTxOutputKey);
+                Assert.AreEqual(1, txesSpending.Count);
+                Assert.AreEqual(tx.Hash, txesSpending.Values.Single().Hash);
             }
         }
 
@@ -97,6 +101,9 @@ namespace BitSharp.Core.Test.Builders
                 UnconfirmedTx unconfirmedTx;
                 Assert.IsFalse(unconfirmedTxesBuilder.TryGetTransaction(tx.Hash, out unconfirmedTx));
                 Assert.IsNull(unconfirmedTx);
+
+                // verify tx is not indexed against its input
+                Assert.AreEqual(0, unconfirmedTxesBuilder.GetTransactionsSpending(tx.Inputs[0].PrevTxOutputKey).Count);
             }
         }
 
@@ -130,6 +137,9 @@ namespace BitSharp.Core.Test.Builders
                 UnconfirmedTx unconfirmedTx;
                 Assert.IsFalse(unconfirmedTxesBuilder.TryGetTransaction(tx.Hash, out unconfirmedTx));
                 Assert.IsNull(unconfirmedTx);
+
+                // verify tx is not indexed against its input
+                Assert.AreEqual(0, unconfirmedTxesBuilder.GetTransactionsSpending(tx.Inputs[0].PrevTxOutputKey).Count);
             }
         }
     }

@@ -126,7 +126,7 @@ namespace BitSharp.Core.Test.Script
             for (var inputIndex = 0; inputIndex < tx.Inputs.Length; inputIndex++)
             {
                 var input = tx.Inputs[inputIndex];
-                var prevOutput = txLookup[input.PreviousTxOutputKey.TxHash].Outputs[input.PreviousTxOutputKey.TxOutputIndex.ToIntChecked()];
+                var prevOutput = txLookup[input.PrevTxOutputKey.TxHash].Outputs[input.PrevTxOutputKey.TxOutputIndex.ToIntChecked()];
 
                 var hashType = GetHashTypeFromScriptSig(input.ScriptSignature.ToArray());
 
@@ -142,7 +142,7 @@ namespace BitSharp.Core.Test.Script
             for (var inputIndex = 0; inputIndex < tx.Inputs.Length; inputIndex++)
             {
                 var input = tx.Inputs[inputIndex];
-                var prevOutput = txLookup[input.PreviousTxOutputKey.TxHash].Outputs[input.PreviousTxOutputKey.TxOutputIndex.ToIntChecked()];
+                var prevOutput = txLookup[input.PrevTxOutputKey.TxHash].Outputs[input.PrevTxOutputKey.TxOutputIndex.ToIntChecked()];
 
                 var scriptSigBytes = input.ScriptSignature.ToArray();
                 var hashType = GetHashTypeFromScriptSig(scriptSigBytes);
@@ -166,7 +166,7 @@ namespace BitSharp.Core.Test.Script
             for (var inputIndex = 0; inputIndex < tx.Inputs.Length; inputIndex++)
             {
                 var input = tx.Inputs[inputIndex];
-                var prevOutput = txLookup[input.PreviousTxOutputKey.TxHash].Outputs[input.PreviousTxOutputKey.TxOutputIndex.ToIntChecked()];
+                var prevOutput = txLookup[input.PrevTxOutputKey.TxHash].Outputs[input.PrevTxOutputKey.TxOutputIndex.ToIntChecked()];
 
                 var script = GetScriptFromInputPrevOutput(input, prevOutput);
 

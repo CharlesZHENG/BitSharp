@@ -67,7 +67,7 @@ namespace BitSharp.Core.Domain
             var inputTx = this.InputTxes[inputIndex].Transaction;
 
             var prevTxOutputsLength = inputTx.Outputs.Length;
-            var prevTxOutputIndex = this.Transaction.Inputs[inputIndex].PreviousTxOutputKey.TxOutputIndex.ToIntChecked();
+            var prevTxOutputIndex = this.Transaction.Inputs[inputIndex].PrevTxOutputKey.TxOutputIndex.ToIntChecked();
 
             if (prevTxOutputIndex < 0 || prevTxOutputIndex >= prevTxOutputsLength)
                 throw new InvalidOperationException($"{nameof(prevTxOutputIndex)} of {prevTxOutputIndex} is < 0 or >= {prevTxOutputsLength}");

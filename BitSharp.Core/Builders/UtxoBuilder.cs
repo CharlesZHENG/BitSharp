@@ -43,7 +43,7 @@ namespace BitSharp.Core.Builders
                             var input = tx.Inputs[inputIndex];
                             var unspentTx = this.Spend(chainStateCursor, txIndex, tx, inputIndex, input, chainedHeader, blockSpentTxes);
 
-                            prevTxOutputs.Add(unspentTx.GetPrevTxOutput(input.PreviousTxOutputKey));
+                            prevTxOutputs.Add(unspentTx.GetPrevTxOutput(input.PrevTxOutputKey));
                         }
                     }
 
@@ -97,13 +97,13 @@ namespace BitSharp.Core.Builders
         private UnspentTx Spend(IChainStateCursor chainStateCursor, int txIndex, Transaction tx, int inputIndex, TxInput input, ChainedHeader chainedHeader, BlockSpentTxesBuilder blockSpentTxes)
         {
             UnspentTx unspentTx;
-            if (!chainStateCursor.TryGetUnspentTx(input.PreviousTxOutputKey.TxHash, out unspentTx))
+            if (!chainStateCursor.TryGetUnspentTx(input.PrevTxOutputKey.TxHash, out unspentTx))
             {
                 // output wasn't present in utxo, invalid block
                 throw new ValidationException(chainedHeader.Hash);
             }
 
-            var outputIndex = unchecked((int)input.PreviousTxOutputKey.TxOutputIndex);
+            var outputIndex = unchecked((int)input.PrevTxOutputKey.TxOutputIndex);
 
             if (outputIndex < 0 || outputIndex >= unspentTx.OutputStates.Length)
             {
@@ -177,7 +177,7 @@ namespace BitSharp.Core.Builders
                         var unspentTx = this.Unspend(chainStateCursor, input, chainedHeader);
 
                         // store rollback replay information
-                        prevTxOutputs.Add(unspentTx.GetPrevTxOutput(input.PreviousTxOutputKey));
+                        prevTxOutputs.Add(unspentTx.GetPrevTxOutput(input.PrevTxOutputKey));
                     }
                 }
 
@@ -218,7 +218,7 @@ namespace BitSharp.Core.Builders
         private UnspentTx Unspend(IChainStateCursor chainStateCursor, TxInput input, ChainedHeader chainedHeader)
         {
             UnspentTx unspentTx;
-            if (!chainStateCursor.TryGetUnspentTx(input.PreviousTxOutputKey.TxHash, out unspentTx))
+            if (!chainStateCursor.TryGetUnspentTx(input.PrevTxOutputKey.TxHash, out unspentTx))
             {
                 // unable to rollback, the unspent tx has been pruned
                 //TODO better exception
@@ -226,7 +226,7 @@ namespace BitSharp.Core.Builders
             }
 
             // retrieve previous output index
-            var outputIndex = unchecked((int)input.PreviousTxOutputKey.TxOutputIndex);
+            var outputIndex = unchecked((int)input.PrevTxOutputKey.TxOutputIndex);
             if (outputIndex < 0 || outputIndex >= unspentTx.OutputStates.Length)
                 throw new Exception("TODO - corruption");
 

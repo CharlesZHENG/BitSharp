@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.Immutable;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -29,5 +30,7 @@ namespace BitSharp.Core.Storage
         bool TryAddTransaction(UnconfirmedTx unconfirmedTx);
 
         bool TryRemoveTransaction(UInt256 txHash);
+
+        ImmutableDictionary<UInt256, UnconfirmedTx> GetTransactionsSpending(TxOutputKey prevTxOutputKey);
     }
 }

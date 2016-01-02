@@ -82,7 +82,7 @@ namespace BitSharp.Core.Builders
                 var prevOutputTxKey = loadingTx.PrevOutputTxKeys[inputIndex];
 
                 var input = transaction.Inputs[inputIndex];
-                var inputPrevTxHash = input.PreviousTxOutputKey.TxHash;
+                var inputPrevTxHash = input.PrevTxOutputKey.TxHash;
 
                 var inputPrevTx = txCache.GetOrAdd(prevOutputTxKey, new Lazy<BlockTx>(() =>
                     {
@@ -93,7 +93,7 @@ namespace BitSharp.Core.Builders
                             throw new MissingDataException(prevOutputTxKey.BlockHash);
                     })).Value;
 
-                if (input.PreviousTxOutputKey.TxHash != inputPrevTx.Hash)
+                if (input.PrevTxOutputKey.TxHash != inputPrevTx.Hash)
                     throw new Exception("TODO");
 
                 if (loadingTx.InputTxes.TryComplete(inputIndex, inputPrevTx.Decode().DecodedTx))

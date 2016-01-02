@@ -15,6 +15,8 @@ namespace BitSharp.Core.Storage
 
         DisposeHandle<IDeferredChainStateCursor> OpenDeferredChainStateCursor(IChainState chainState);
 
+        bool IsUnconfirmedTxesConcurrent { get; }
+
         DisposeHandle<IUnconfirmedTxesCursor> OpenUnconfirmedTxesCursor();
     }
 }

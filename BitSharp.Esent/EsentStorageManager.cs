@@ -84,6 +84,8 @@ namespace BitSharp.Esent
                 _ => cursor.Dispose(), cursor);
         }
 
+        public bool IsUnconfirmedTxesConcurrent { get; } = true;
+
         public DisposeHandle<IUnconfirmedTxesCursor> OpenUnconfirmedTxesCursor()
         {
             throw new NotImplementedException();
