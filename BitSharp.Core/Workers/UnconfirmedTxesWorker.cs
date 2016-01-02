@@ -72,6 +72,7 @@ namespace BitSharp.Core.Workers
 
         protected override async Task WorkAction()
         {
+            await Task.Yield();
             using (updatedTracker.TryUpdate(staleAction: NotifyWork))
             {
                 try

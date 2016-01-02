@@ -239,7 +239,7 @@ namespace BitSharp.Core.Builders
         public UnconfirmedTxes ToImmutable()
         {
             return updateLock.DoRead(() =>
-                new UnconfirmedTxes());
+                new UnconfirmedTxes(chain.Value, storageManager));
         }
 
         private Chain LoadChain()

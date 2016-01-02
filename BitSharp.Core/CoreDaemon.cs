@@ -268,6 +268,11 @@ namespace BitSharp.Core
 
         public IUnconfirmedTxes GetUnconfirmedTxes() => unconfirmedTxesBuilder.ToImmutable();
 
+        public bool TryAddUnconfirmedTx(Transaction tx)
+        {
+            return unconfirmedTxesBuilder.TryAddTransaction(tx);
+        }
+
         private Task GcWorker(WorkerMethod instance)
         {
             logger.Info(

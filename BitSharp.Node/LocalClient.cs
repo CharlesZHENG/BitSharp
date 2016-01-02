@@ -358,7 +358,31 @@ namespace BitSharp.Node
             if (connectedPeersLocal.Count == 0)
                 return;
 
-            if (this.Type == ChainType.Regtest)
+            if (this.Type != ChainType.Regtest)
+            {
+                var responseInvVectors = ImmutableArray.CreateBuilder<InventoryVector>();
+
+                using (var chainState = coreDaemon.GetChainState())
+                using (var unconfirmedTxes = coreDaemon.GetUnconfirmedTxes())
+                {
+                    foreach (var invVector in invVectors)
+                    {
+                        // check if this is a transaction we don't have yet
+                        if (invVector.Type == InventoryVector.TYPE_MESSAGE_TRANSACTION
+                            && !unconfirmedTxes.ContainsTransaction(invVector.Hash)
+                            && !chainState.ContainsUnspentTx(invVector.Hash))
+                        {
+                            logger.Info($"Requesting transaction {invVector.Hash}");
+                            responseInvVectors.Add(invVector);
+                        }
+                    }
+                }
+
+                // request missing transactions
+                if (responseInvVectors.Count > 0)
+                    connectedPeersLocal.Single().Sender.SendGetData(responseInvVectors.ToImmutable()).Wait();
+            }
+            else
             {
                 // don't process new inv request until previous inv request has finished
                 while (this.requestedComparisonBlocks.Count > 0 && comparisonBlockAddedEvent.WaitOne(1000))
@@ -401,8 +425,9 @@ namespace BitSharp.Node
 
         private void OnTransaction(Transaction transaction)
         {
-            if (logger.IsTraceEnabled)
-                logger.Trace($"Received transaction {transaction.Hash}");
+            var result = coreDaemon.TryAddUnconfirmedTx(transaction);
+
+            logger.Info($"Received transaction {transaction.Hash}: {result}");
         }
 
         private void OnReceivedAddresses(ImmutableArray<NetworkAddressWithTime> addresses)
