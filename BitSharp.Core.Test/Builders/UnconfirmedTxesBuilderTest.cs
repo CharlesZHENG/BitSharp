@@ -126,7 +126,7 @@ namespace BitSharp.Core.Test.Builders
                 // try to add the tx
                 Assert.IsFalse(unconfirmedTxesBuilder.TryAddTransaction(tx));
 
-                // verify unconfirmed tx was added
+                // verify unconfirmed tx was not added
                 UnconfirmedTx unconfirmedTx;
                 Assert.IsFalse(unconfirmedTxesBuilder.TryGetTransaction(tx.Hash, out unconfirmedTx));
                 Assert.IsNull(unconfirmedTx);
