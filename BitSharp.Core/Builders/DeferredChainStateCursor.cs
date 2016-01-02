@@ -272,12 +272,12 @@ namespace BitSharp.Core.Builders
             get
             {
                 CheckTransaction();
-                return totalTxCount;
+                return totalInputCount;
             }
             set
             {
                 CheckWriteTransaction();
-                totalTxCount = value;
+                totalInputCount = value;
             }
         }
 
