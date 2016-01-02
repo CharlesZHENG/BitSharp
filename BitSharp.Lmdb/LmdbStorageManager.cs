@@ -134,6 +134,11 @@ namespace BitSharp.Lmdb
                 _ => cursor.Dispose(), cursor);
         }
 
+        public DisposeHandle<IUnconfirmedTxesCursor> OpenUnconfirmedTxesCursor()
+        {
+            throw new NotImplementedException();
+        }
+
         internal static void PrepareSparseDatabase(string jetDirectory)
         {
             // detect windows OS

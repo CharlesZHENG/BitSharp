@@ -84,6 +84,11 @@ namespace BitSharp.Esent
                 _ => cursor.Dispose(), cursor);
         }
 
+        public DisposeHandle<IUnconfirmedTxesCursor> OpenUnconfirmedTxesCursor()
+        {
+            throw new NotImplementedException();
+        }
+
         internal static void InitSystemParameters(long? cacheSizeMinBytes = null, long? cacheSizeMaxBytes = null)
         {
             //TODO remove reflection once PersistentDictionary is phased out

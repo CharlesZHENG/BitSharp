@@ -70,5 +70,10 @@ namespace BitSharp.Core.Storage.Memory
             return new DisposeHandle<IDeferredChainStateCursor>(
                 _ => cursor.Dispose(), cursor);
         }
+
+        public DisposeHandle<IUnconfirmedTxesCursor> OpenUnconfirmedTxesCursor()
+        {
+            throw new NotImplementedException();
+        }
     }
 }

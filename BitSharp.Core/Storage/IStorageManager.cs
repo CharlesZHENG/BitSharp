@@ -14,5 +14,7 @@ namespace BitSharp.Core.Storage
         DisposeHandle<IChainStateCursor> OpenChainStateCursor();
 
         DisposeHandle<IDeferredChainStateCursor> OpenDeferredChainStateCursor(IChainState chainState);
+
+        DisposeHandle<IUnconfirmedTxesCursor> OpenUnconfirmedTxesCursor();
     }
 }
