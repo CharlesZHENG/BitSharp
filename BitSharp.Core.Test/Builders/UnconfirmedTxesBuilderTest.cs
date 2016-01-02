@@ -58,7 +58,7 @@ namespace BitSharp.Core.Test.Builders
             var coreDaemon = new Mock<ICoreDaemon>();
             coreDaemon.Setup(x => x.GetChainState()).Returns(chainState.Object);
 
-            using (var unconfirmedTxesBuilder = new UnconfirmedTxesBuilder(coreDaemon.Object, storageManager))
+            using (var unconfirmedTxesBuilder = new UnconfirmedTxesBuilder(coreDaemon.Object, Mock.Of<ICoreStorage>(), storageManager))
             {
                 // try to add the tx
                 Assert.IsTrue(unconfirmedTxesBuilder.TryAddTransaction(tx));
@@ -92,7 +92,7 @@ namespace BitSharp.Core.Test.Builders
             var coreDaemon = new Mock<ICoreDaemon>();
             coreDaemon.Setup(x => x.GetChainState()).Returns(chainState.Object);
 
-            using (var unconfirmedTxesBuilder = new UnconfirmedTxesBuilder(coreDaemon.Object, storageManager))
+            using (var unconfirmedTxesBuilder = new UnconfirmedTxesBuilder(coreDaemon.Object, Mock.Of<ICoreStorage>(), storageManager))
             {
                 // try to add the tx
                 Assert.IsFalse(unconfirmedTxesBuilder.TryAddTransaction(tx));
@@ -128,7 +128,7 @@ namespace BitSharp.Core.Test.Builders
             var coreDaemon = new Mock<ICoreDaemon>();
             coreDaemon.Setup(x => x.GetChainState()).Returns(chainState.Object);
 
-            using (var unconfirmedTxesBuilder = new UnconfirmedTxesBuilder(coreDaemon.Object, storageManager))
+            using (var unconfirmedTxesBuilder = new UnconfirmedTxesBuilder(coreDaemon.Object, Mock.Of<ICoreStorage>(), storageManager))
             {
                 // try to add the tx
                 Assert.IsFalse(unconfirmedTxesBuilder.TryAddTransaction(tx));
@@ -156,9 +156,19 @@ namespace BitSharp.Core.Test.Builders
             // create prev output tx
             var unspentTx = new UnspentTx(tx.Inputs[0].PrevTxHash, 0, 1, 0, false, new OutputStates(1, OutputState.Unspent), ImmutableArray<TxOutput>.Empty);
 
+            // create a fake chain
+            var fakeHeaders = new FakeHeaders();
+            var genesisHeader = fakeHeaders.GenesisChained();
+
             // create a block confirming the tx
-            var block = Block.Create(RandomData.RandomBlockHeader(), ImmutableArray.Create(tx));
+            var block = Block.Create(RandomData.RandomBlockHeader().With(PreviousBlock: genesisHeader.Hash), ImmutableArray.Create(tx));
             var chainedHeader = new ChainedHeader(block.Header, 1, 0, DateTime.Now);
+
+            // mock core storage with chained header
+            var coreStorage = new Mock<ICoreStorage>();
+            var initialChain = new ChainBuilder().ToImmutable();
+            coreStorage.Setup(x => x.TryReadChain(null, out initialChain)).Returns(true);
+            coreStorage.Setup(x => x.TryGetChainedHeader(chainedHeader.Hash, out chainedHeader)).Returns(true);
 
             // mock chain state with prev output
             var chainState = new Mock<IChainState>();
@@ -168,12 +178,13 @@ namespace BitSharp.Core.Test.Builders
             var coreDaemon = new Mock<ICoreDaemon>();
             coreDaemon.Setup(x => x.GetChainState()).Returns(chainState.Object);
 
-            using (var unconfirmedTxesBuilder = new UnconfirmedTxesBuilder(coreDaemon.Object, storageManager))
+            using (var unconfirmedTxesBuilder = new UnconfirmedTxesBuilder(coreDaemon.Object, coreStorage.Object, storageManager))
             {
                 // add the tx
                 Assert.IsTrue(unconfirmedTxesBuilder.TryAddTransaction(tx));
 
                 // add the block
+                unconfirmedTxesBuilder.AddBlock(genesisHeader, Enumerable.Empty<BlockTx>());
                 unconfirmedTxesBuilder.AddBlock(chainedHeader, block.BlockTxes);
 
                 // verify the confirmed tx was removed

@@ -3,6 +3,7 @@ using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Builders;
 using BitSharp.Core.Domain;
 using BitSharp.Core.Storage;
+using BitSharp.Core.Storage.Memory;
 using Microsoft.Isam.Esent.Collections.Generic;
 using Microsoft.Isam.Esent.Interop;
 using Microsoft.Isam.Esent.Interop.Windows81;
@@ -24,6 +25,8 @@ namespace BitSharp.Esent
         private Lazy<EsentBlockStorage> blockStorage;
         private Lazy<IBlockTxesStorage> blockTxesStorage;
         private Lazy<EsentChainStateManager> chainStateManager;
+        //TODO memory storage should not be used for unconfirmed txes
+        private Lazy<MemoryStorageManager> memoryStorageManager;
 
         private bool isDisposed;
 
@@ -43,6 +46,26 @@ namespace BitSharp.Esent
             });
 
             this.chainStateManager = new Lazy<EsentChainStateManager>(() => new EsentChainStateManager(this.baseDirectory));
+            this.memoryStorageManager = new Lazy<MemoryStorageManager>(() =>
+            {
+                // create memory storage with the unconfirmed txes chain tip already in sync with chain state
+                ChainedHeader chainTip;
+                using (var handle = OpenChainStateCursor())
+                {
+                    handle.Item.BeginTransaction(readOnly: true);
+                    chainTip = handle.Item.ChainTip;
+                }
+
+                var memoryStorageManager = new MemoryStorageManager();
+                using (var handle = memoryStorageManager.OpenUnconfirmedTxesCursor())
+                {
+                    handle.Item.BeginTransaction();
+                    handle.Item.ChainTip = chainTip;
+                    handle.Item.CommitTransaction();
+                }
+
+                return memoryStorageManager;
+            });
         }
 
         public void Dispose()
@@ -64,6 +87,9 @@ namespace BitSharp.Esent
                 if (this.blockTxesStorage.IsValueCreated)
                     this.blockTxesStorage.Value.Dispose();
 
+                if (this.memoryStorageManager.IsValueCreated)
+                    memoryStorageManager.Value.Dispose();
+
                 isDisposed = true;
             }
         }
@@ -84,11 +110,12 @@ namespace BitSharp.Esent
                 _ => cursor.Dispose(), cursor);
         }
 
-        public bool IsUnconfirmedTxesConcurrent { get; } = true;
+        //TODO should be true once its not backed by memory
+        public bool IsUnconfirmedTxesConcurrent { get; } = false;
 
         public DisposeHandle<IUnconfirmedTxesCursor> OpenUnconfirmedTxesCursor()
         {
-            throw new NotImplementedException();
+            return memoryStorageManager.Value.OpenUnconfirmedTxesCursor();
         }
 
         internal static void InitSystemParameters(long? cacheSizeMinBytes = null, long? cacheSizeMaxBytes = null)

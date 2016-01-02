@@ -29,9 +29,11 @@ namespace BitSharp.Core
         private readonly CoreStorage coreStorage;
 
         private readonly ChainStateBuilder chainStateBuilder;
+        private readonly UnconfirmedTxesBuilder unconfirmedTxesBuilder;
 
         private readonly TargetChainWorker targetChainWorker;
         private readonly ChainStateWorker chainStateWorker;
+        private readonly UnconfirmedTxesWorker unconfirmedTxesWorker;
         private readonly PruningWorker pruningWorker;
         private readonly DefragWorker defragWorker;
         private readonly WorkerMethod gcWorker;
@@ -45,39 +47,46 @@ namespace BitSharp.Core
         {
             this.rules = rules;
             this.storageManager = storageManager;
-            this.coreStorage = new CoreStorage(storageManager);
+            coreStorage = new CoreStorage(storageManager);
 
             // create chain state builder
-            this.chainStateBuilder = new ChainStateBuilder(this.rules, this.coreStorage, this.storageManager);
+            chainStateBuilder = new ChainStateBuilder(this.rules, coreStorage, this.storageManager);
+
+            // create unconfirmed txes builder
+            unconfirmedTxesBuilder = new UnconfirmedTxesBuilder(this, coreStorage, this.storageManager);
 
             // create workers
-            this.targetChainWorker = new TargetChainWorker(
+            targetChainWorker = new TargetChainWorker(
                 new WorkerConfig(initialNotify: true, minIdleTime: TimeSpan.FromMilliseconds(0), maxIdleTime: TimeSpan.FromSeconds(30)),
-                this.ChainParams, this.coreStorage);
+                ChainParams, coreStorage);
 
-            this.chainStateWorker = new ChainStateWorker(
+            chainStateWorker = new ChainStateWorker(
                 new WorkerConfig(initialNotify: true, minIdleTime: TimeSpan.FromMilliseconds(0), maxIdleTime: TimeSpan.FromSeconds(5)),
-                this.targetChainWorker, this.chainStateBuilder, this.rules, this.coreStorage);
+                targetChainWorker, chainStateBuilder, this.rules, coreStorage);
 
-            this.pruningWorker = new PruningWorker(
+            unconfirmedTxesWorker = new UnconfirmedTxesWorker(
+                new WorkerConfig(initialNotify: true, minIdleTime: TimeSpan.FromMilliseconds(0), maxIdleTime: TimeSpan.FromSeconds(5)),
+                chainStateWorker, unconfirmedTxesBuilder, coreStorage);
+
+            pruningWorker = new PruningWorker(
                 new WorkerConfig(initialNotify: true, minIdleTime: TimeSpan.FromSeconds(0), maxIdleTime: TimeSpan.FromMinutes(5)),
-                this, this.storageManager, this.chainStateWorker);
+                this, this.storageManager, chainStateWorker);
 
-            this.defragWorker = new DefragWorker(
+            defragWorker = new DefragWorker(
                 new WorkerConfig(initialNotify: true, minIdleTime: TimeSpan.FromMinutes(5), maxIdleTime: TimeSpan.FromMinutes(5)),
                 this.storageManager);
 
-            this.gcWorker = new WorkerMethod("GC Worker", GcWorker,
+            gcWorker = new WorkerMethod("GC Worker", GcWorker,
                 initialNotify: true, minIdleTime: TimeSpan.FromMinutes(5), maxIdleTime: TimeSpan.FromMinutes(5));
 
-            this.utxoScanWorker = new WorkerMethod("UTXO Scan Worker", UtxoScanWorker,
+            utxoScanWorker = new WorkerMethod("UTXO Scan Worker", UtxoScanWorker,
                 initialNotify: true, minIdleTime: TimeSpan.FromSeconds(60), maxIdleTime: TimeSpan.FromSeconds(60));
 
             // wire events
-            this.chainStateWorker.BlockMissed += HandleBlockMissed;
-            this.targetChainWorker.OnTargetChainChanged += HandleTargetChainChanged;
-            this.chainStateWorker.OnChainStateChanged += HandleChainStateChanged;
-            this.pruningWorker.OnWorkFinished += this.defragWorker.NotifyWork;
+            chainStateWorker.BlockMissed += HandleBlockMissed;
+            targetChainWorker.OnTargetChainChanged += HandleTargetChainChanged;
+            chainStateWorker.OnChainStateChanged += HandleChainStateChanged;
+            pruningWorker.OnWorkFinished += defragWorker.NotifyWork;
         }
 
         public void Dispose()
@@ -91,35 +100,37 @@ namespace BitSharp.Core
             if (!isDisposed && disposing)
             {
                 // unwire events
-                this.chainStateWorker.BlockMissed -= HandleBlockMissed;
-                this.targetChainWorker.OnTargetChainChanged -= HandleTargetChainChanged;
-                this.chainStateWorker.OnChainStateChanged -= HandleChainStateChanged;
-                this.pruningWorker.OnWorkFinished -= this.defragWorker.NotifyWork;
+                chainStateWorker.BlockMissed -= HandleBlockMissed;
+                targetChainWorker.OnTargetChainChanged -= HandleTargetChainChanged;
+                chainStateWorker.OnChainStateChanged -= HandleChainStateChanged;
+                pruningWorker.OnWorkFinished -= defragWorker.NotifyWork;
 
                 // cleanup workers
-                this.defragWorker.Dispose();
-                this.pruningWorker.Dispose();
-                this.chainStateWorker.Dispose();
-                this.targetChainWorker.Dispose();
-                this.gcWorker.Dispose();
-                this.utxoScanWorker.Dispose();
-                this.chainStateBuilder.Dispose();
-                this.coreStorage.Dispose();
-                this.controlLock.Dispose();
+                defragWorker.Dispose();
+                pruningWorker.Dispose();
+                unconfirmedTxesWorker.Dispose();
+                chainStateWorker.Dispose();
+                targetChainWorker.Dispose();
+                gcWorker.Dispose();
+                utxoScanWorker.Dispose();
+                unconfirmedTxesBuilder.Dispose();
+                chainStateBuilder.Dispose();
+                coreStorage.Dispose();
+                controlLock.Dispose();
 
                 isDisposed = true;
             }
         }
 
-        public CoreStorage CoreStorage => this.coreStorage;
+        public CoreStorage CoreStorage => coreStorage;
 
-        public IChainParams ChainParams => this.rules.ChainParams;
+        public IChainParams ChainParams => rules.ChainParams;
 
-        public Chain TargetChain => this.targetChainWorker.TargetChain;
+        public Chain TargetChain => targetChainWorker.TargetChain;
 
-        public int TargetChainHeight => this.targetChainWorker.TargetChain?.Height ?? -1;
+        public int TargetChainHeight => targetChainWorker.TargetChain?.Height ?? -1;
 
-        public Chain CurrentChain => this.chainStateWorker.CurrentChain;
+        public Chain CurrentChain => chainStateWorker.CurrentChain;
 
         public int? MaxHeight
         {
@@ -147,8 +158,8 @@ namespace BitSharp.Core
 
         public PruningMode PruningMode
         {
-            get { return this.pruningWorker.Mode; }
-            set { this.pruningWorker.Mode = value; }
+            get { return pruningWorker.Mode; }
+            set { pruningWorker.Mode = value; }
         }
 
         //TODO any replayers should register their chain tip with CoreDaemon, and update it as the replay
@@ -156,33 +167,33 @@ namespace BitSharp.Core
         //TODO the pruning of rollback replay information would also be coordinated against the registered chain tips
         public int PrunableHeight
         {
-            get { return this.pruningWorker.PrunableHeight; }
-            set { this.pruningWorker.PrunableHeight = value; }
+            get { return pruningWorker.PrunableHeight; }
+            set { pruningWorker.PrunableHeight = value; }
         }
 
         public float GetBlockRate(TimeSpan? perUnitTime = null)
         {
-            return this.chainStateBuilder.Stats.blockRateMeasure.GetAverage(perUnitTime);
+            return chainStateBuilder.Stats.blockRateMeasure.GetAverage(perUnitTime);
         }
 
         public float GetTxRate(TimeSpan? perUnitTime = null)
         {
-            return this.chainStateBuilder.Stats.txRateMeasure.GetAverage(perUnitTime);
+            return chainStateBuilder.Stats.txRateMeasure.GetAverage(perUnitTime);
         }
 
         public float GetInputRate(TimeSpan? perUnitTime = null)
         {
-            return this.chainStateBuilder.Stats.inputRateMeasure.GetAverage(perUnitTime);
+            return chainStateBuilder.Stats.inputRateMeasure.GetAverage(perUnitTime);
         }
 
         public TimeSpan AverageBlockProcessingTime()
         {
-            return this.chainStateWorker.AverageBlockProcessingTime();
+            return chainStateWorker.AverageBlockProcessingTime();
         }
 
         public int GetBlockMissCount()
         {
-            return this.chainStateWorker.GetBlockMissCount();
+            return chainStateWorker.GetBlockMissCount();
         }
 
         public void Start()
@@ -195,19 +206,20 @@ namespace BitSharp.Core
             if (!isInitted)
             {
                 // write genesis block out to storage
-                this.coreStorage.AddGenesisBlock(ChainParams.GenesisChainedHeader);
-                this.coreStorage.TryAddBlock(ChainParams.GenesisBlock);
+                coreStorage.AddGenesisBlock(ChainParams.GenesisChainedHeader);
+                coreStorage.TryAddBlock(ChainParams.GenesisBlock);
 
                 isInitted = true;
             }
 
             // startup workers
             //this.utxoScanWorker.Start();
-            this.gcWorker.Start();
-            this.targetChainWorker.Start();
-            this.chainStateWorker.Start();
-            this.pruningWorker.Start();
-            this.defragWorker.Start();
+            gcWorker.Start();
+            targetChainWorker.Start();
+            chainStateWorker.Start();
+            unconfirmedTxesWorker.Start();
+            pruningWorker.Start();
+            defragWorker.Start();
             isStarted = true;
         }
 
@@ -219,39 +231,42 @@ namespace BitSharp.Core
         private void InternalStop()
         {
             // stop workers
-            this.defragWorker.Stop();
-            this.pruningWorker.Stop();
-            this.chainStateWorker.Stop();
-            this.targetChainWorker.Stop();
-            this.gcWorker.Stop();
-            this.utxoScanWorker.Stop();
+            defragWorker.Stop();
+            pruningWorker.Stop();
+            unconfirmedTxesWorker.Stop();
+            chainStateWorker.Stop();
+            targetChainWorker.Stop();
+            gcWorker.Stop();
+            utxoScanWorker.Stop();
             isStarted = false;
         }
 
         public void WaitForUpdate()
         {
-            this.targetChainWorker.WaitForUpdate();
-            this.chainStateWorker.WaitForUpdate();
+            targetChainWorker.WaitForUpdate();
+            chainStateWorker.WaitForUpdate();
         }
 
         public void ForceUpdate()
         {
-            this.targetChainWorker.ForceUpdate();
-            this.chainStateWorker.ForceUpdate();
+            targetChainWorker.ForceUpdate();
+            chainStateWorker.ForceUpdate();
         }
 
         public void ForceUpdateAndWait()
         {
-            this.targetChainWorker.ForceUpdateAndWait();
-            this.chainStateWorker.ForceUpdateAndWait();
+            targetChainWorker.ForceUpdateAndWait();
+            chainStateWorker.ForceUpdateAndWait();
         }
 
         //TODO need to implement functionality to prevent pruning from removing block data that is being used by chain state snapshots
         //TODO i.e. don't prune past height X
         public IChainState GetChainState()
         {
-            return this.chainStateBuilder.ToImmutable();
+            return chainStateBuilder.ToImmutable();
         }
+
+        public IUnconfirmedTxes GetUnconfirmedTxes() => unconfirmedTxesBuilder.ToImmutable();
 
         private Task GcWorker(WorkerMethod instance)
         {
@@ -271,7 +286,7 @@ namespace BitSharp.Core
             // time taking chain state snapshots
             var stopwatch = Stopwatch.StartNew();
             int chainStateHeight;
-            using (var chainState = this.GetChainState())
+            using (var chainState = GetChainState())
             {
                 chainStateHeight = chainState.Chain.Height;
             }
@@ -280,7 +295,7 @@ namespace BitSharp.Core
 
             // time enumerating chain state snapshots
             stopwatch = Stopwatch.StartNew();
-            using (var chainState = this.GetChainState())
+            using (var chainState = GetChainState())
             {
                 chainStateHeight = chainState.Chain.Height;
                 chainState.ReadUnspentTransactions().Count();
@@ -312,20 +327,20 @@ namespace BitSharp.Core
 
         private void HandleBlockMissed(UInt256 blockHash)
         {
-            this.BlockMissed?.Invoke(blockHash);
+            BlockMissed?.Invoke(blockHash);
         }
 
         private void HandleTargetChainChanged()
         {
-            this.OnTargetChainChanged?.Invoke(this, EventArgs.Empty);
+            OnTargetChainChanged?.Invoke(this, EventArgs.Empty);
         }
 
         private void HandleChainStateChanged()
         {
-            this.pruningWorker.NotifyWork();
-            this.utxoScanWorker.NotifyWork();
+            pruningWorker.NotifyWork();
+            utxoScanWorker.NotifyWork();
 
-            this.OnChainStateChanged?.Invoke(this, EventArgs.Empty);
+            OnChainStateChanged?.Invoke(this, EventArgs.Empty);
         }
     }
 }

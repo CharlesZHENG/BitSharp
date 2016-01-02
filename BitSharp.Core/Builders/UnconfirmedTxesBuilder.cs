@@ -18,17 +18,23 @@ namespace BitSharp.Core.Builders
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly ICoreDaemon coreDaemon;
+        private readonly ICoreStorage coreStorage;
         private readonly IStorageManager storageManager;
 
         private readonly ReaderWriterLockSlim updateLock = new ReaderWriterLockSlim();
         private readonly ReaderWriterLockSlim commitLock = new ReaderWriterLockSlim();
 
+        private Lazy<Chain> chain;
+
         private bool disposed;
 
-        public UnconfirmedTxesBuilder(ICoreDaemon coreDaemon, IStorageManager storageManager)
+        public UnconfirmedTxesBuilder(ICoreDaemon coreDaemon, ICoreStorage coreStorage, IStorageManager storageManager)
         {
             this.coreDaemon = coreDaemon;
+            this.coreStorage = coreStorage;
             this.storageManager = storageManager;
+
+            this.chain = new Lazy<Chain>(() => LoadChain());
         }
 
         public void Dispose()
@@ -47,6 +53,8 @@ namespace BitSharp.Core.Builders
                 disposed = true;
             }
         }
+
+        public Chain Chain => chain.Value;
 
         public bool ContainsTransaction(UInt256 txHash)
         {
@@ -161,7 +169,10 @@ namespace BitSharp.Core.Builders
 
         public void AddBlock(ChainedHeader chainedHeader, IEnumerable<BlockTx> blockTxes, CancellationToken cancelToken = default(CancellationToken))
         {
-            updateLock.EnterWriteLock();
+            if (storageManager.IsUnconfirmedTxesConcurrent)
+                updateLock.EnterUpgradeableReadLock();
+            else
+                updateLock.EnterWriteLock();
             try
             {
                 using (var handle = storageManager.OpenUnconfirmedTxesCursor())
@@ -169,6 +180,8 @@ namespace BitSharp.Core.Builders
                     var unconfirmedTxesCursor = handle.Item;
 
                     unconfirmedTxesCursor.BeginTransaction();
+
+                    var newChain = chain.Value.ToBuilder().AddBlock(chainedHeader).ToImmutable();
 
                     foreach (var blockTx in blockTxes)
                     {
@@ -194,7 +207,20 @@ namespace BitSharp.Core.Builders
                         }
                     }
 
-                    unconfirmedTxesCursor.CommitTransaction();
+                    unconfirmedTxesCursor.ChainTip = chainedHeader;
+
+                    if (storageManager.IsUnconfirmedTxesConcurrent)
+                        updateLock.EnterWriteLock();
+                    try
+                    {
+                        unconfirmedTxesCursor.CommitTransaction();
+                        chain = new Lazy<Chain>(() => newChain).Force();
+                    }
+                    finally
+                    {
+                        if (storageManager.IsUnconfirmedTxesConcurrent)
+                            updateLock.ExitWriteLock();
+                    }
                 }
             }
             finally
@@ -207,14 +233,32 @@ namespace BitSharp.Core.Builders
         {
             updateLock.DoWrite(() =>
             {
-
             });
         }
 
-        //public UnconfirmedTxPool ToImmutable()
-        //{
-        //    return commitLock.DoRead(() =>
-        //        new UnconfirmedTxPool(chain.Value, storageManager));
-        //}
+        public UnconfirmedTxes ToImmutable()
+        {
+            return updateLock.DoRead(() =>
+                new UnconfirmedTxes());
+        }
+
+        private Chain LoadChain()
+        {
+            using (var handle = storageManager.OpenUnconfirmedTxesCursor())
+            {
+                var unconfirmedTxesCursor = handle.Item;
+
+                unconfirmedTxesCursor.BeginTransaction(readOnly: true);
+
+                var chainTip = unconfirmedTxesCursor.ChainTip;
+                var chainTipHash = chainTip?.Hash;
+
+                Chain chain;
+                if (!coreStorage.TryReadChain(chainTipHash, out chain))
+                    throw new StorageCorruptException(StorageType.UnconfirmedTxes, "UnconfirmedTxes is missing header.");
+
+                return chain;
+            }
+        }
     }
 }

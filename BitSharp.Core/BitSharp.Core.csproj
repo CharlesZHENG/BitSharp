@@ -122,6 +122,8 @@
     <Compile Include="BlockProvider.cs" />
     <Compile Include="BlockReplayer.cs" />
     <Compile Include="Builders\ChainStateBuilderStats.cs" />
+    <Compile Include="Domain\IUnconfirmedTxes.cs" />
+    <Compile Include="Domain\UnconfirmedTxes.cs" />
     <Compile Include="Storage\IUnconfirmedTxesCursor.cs" />
     <Compile Include="Domain\DecodedBlockTx.cs" />
     <Compile Include="Domain\BlockTxNode.cs" />
@@ -226,6 +228,7 @@
     <Compile Include="Builders\UnconfirmedTxesBuilder.cs" />
     <Compile Include="UpdatedTracker.cs" />
     <Compile Include="ValidationException.cs" />
+    <Compile Include="Workers\UnconfirmedTxesWorker.cs" />
     <Compile Include="Workers\ChainStateWorker.cs" />
     <Compile Include="Workers\DefragWorker.cs" />
     <Compile Include="Workers\PruningWorker.cs" />
