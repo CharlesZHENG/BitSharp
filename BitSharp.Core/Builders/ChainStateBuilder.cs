@@ -125,9 +125,9 @@ namespace BitSharp.Core.Builders
 
                 var timingTasks = new List<Task>();
 
-                // time block txes read & merkle root validation
+                // time block txes read & decode
                 timingTasks.Add(
-                    merkleBlockTxes.Completion.ContinueWith(_ =>
+                    blockTxesBuffer.Completion.ContinueWith(_ =>
                     {
                         lock (stopwatch)
                             stats.txesReadDurationMeasure.Tick(stopwatch.Elapsed);
@@ -306,18 +306,19 @@ namespace BitSharp.Core.Builders
             }
         }
 
-        private ISourceBlock<DecodedBlockTx> InitMerkleValidator(ChainedHeader chainedHeader, ISourceBlock<DecodedBlockTx> blockTxes, CancellationToken cancelToken)
+        private ISourceBlock<T> InitMerkleValidator<T>(ChainedHeader chainedHeader, ISourceBlock<T> blockTxes, CancellationToken cancelToken)
+            where T : BlockTx
         {
             var merkleStream = new MerkleStream<BlockTxNode>();
 
             var txHashes = new HashSet<UInt256>();
             var cve_2012_2459 = false;
 
-            var merkleValidator = new TransformManyBlock<DecodedBlockTx, DecodedBlockTx>(
+            var merkleValidator = new TransformManyBlock<T, T>(
                 blockTx =>
                 {
                     if (cve_2012_2459)
-                        return new DecodedBlockTx[0];
+                        return new T[0];
 
                     if (txHashes.Add(blockTx.Hash))
                     {
