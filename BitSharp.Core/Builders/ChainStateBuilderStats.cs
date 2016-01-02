@@ -81,7 +81,7 @@ namespace BitSharp.Core.Builders
             statString.AppendLine($"Utxo Size:        {UnspentOutputCount,15:N0}");
             statString.AppendLine($"-------------------------");
 
-            var texReadDuration = txesReadDurationMeasure.GetAverage();
+            var txesReadDuration = txesReadDurationMeasure.GetAverage();
             var lookAheadDuration = lookAheadDurationMeasure.GetAverage();
             var calculateUtxoDuration = calculateUtxoDurationMeasure.GetAverage();
             var applyUtxoDuration = applyUtxoDurationMeasure.GetAverage();
@@ -89,8 +89,8 @@ namespace BitSharp.Core.Builders
             var commitUtxoDuration = commitUtxoDurationMeasure.GetAverage();
             var addBlockDuration = addBlockDurationMeasure.GetAverage();
 
-            statString.AppendLine(GetPipelineStat("Block Txes Read", texReadDuration, TimeSpan.Zero));
-            statString.AppendLine(GetPipelineStat("UTXO Look-ahead", lookAheadDuration, texReadDuration));
+            statString.AppendLine(GetPipelineStat("Block Txes Read", txesReadDuration, TimeSpan.Zero));
+            statString.AppendLine(GetPipelineStat("UTXO Look-ahead", lookAheadDuration, txesReadDuration));
             statString.AppendLine(GetPipelineStat("UTXO Calculation", calculateUtxoDuration, lookAheadDuration));
             statString.AppendLine(GetPipelineStat("UTXO Application", applyUtxoDuration, calculateUtxoDuration));
             statString.AppendLine(GetPipelineStat("Block Validation", validateDuration, applyUtxoDuration));
