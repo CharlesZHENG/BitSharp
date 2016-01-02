@@ -92,7 +92,9 @@ namespace BitSharp.Client
                 }
                 else if (isLocalDev)
                 {
-                    cacheSizeMaxBytes = null;
+                    //Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.BelowNormal;
+
+                    cacheSizeMaxBytes = (int)2.BILLION();
 
                     // location to store a copy of raw blocks to avoid redownload
                     BlockRequestWorker.SecondaryBlockFolder = Path.Combine(baseDirectory, "RawBlocks");
