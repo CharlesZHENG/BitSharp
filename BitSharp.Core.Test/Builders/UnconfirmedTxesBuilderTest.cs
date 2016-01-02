@@ -142,5 +142,48 @@ namespace BitSharp.Core.Test.Builders
                 Assert.AreEqual(0, unconfirmedTxesBuilder.GetTransactionsSpending(tx.Inputs[0].PrevTxOutputKey).Count);
             }
         }
+
+        [TestMethod]
+        public void TestAddBlocConfirmingTx()
+        {
+            // create tx spending a previous output that exists
+            var tx = Transaction.Create(
+                0,
+                ImmutableArray.Create(new TxInput(UInt256.One, 0, ImmutableArray<byte>.Empty, 0)),
+                ImmutableArray.Create(new TxOutput(0, ImmutableArray<byte>.Empty)),
+                0).Transaction;
+
+            // create prev output tx
+            var unspentTx = new UnspentTx(tx.Inputs[0].PrevTxHash, 0, 1, 0, false, new OutputStates(1, OutputState.Unspent), ImmutableArray<TxOutput>.Empty);
+
+            // create a block confirming the tx
+            var block = Block.Create(RandomData.RandomBlockHeader(), ImmutableArray.Create(tx));
+            var chainedHeader = new ChainedHeader(block.Header, 1, 0, DateTime.Now);
+
+            // mock chain state with prev output
+            var chainState = new Mock<IChainState>();
+            chainState.Setup(x => x.TryGetUnspentTx(tx.Inputs[0].PrevTxHash, out unspentTx)).Returns(true);
+
+            // mock core daemon for chain state retrieval
+            var coreDaemon = new Mock<ICoreDaemon>();
+            coreDaemon.Setup(x => x.GetChainState()).Returns(chainState.Object);
+
+            using (var unconfirmedTxesBuilder = new UnconfirmedTxesBuilder(coreDaemon.Object, storageManager))
+            {
+                // add the tx
+                Assert.IsTrue(unconfirmedTxesBuilder.TryAddTransaction(tx));
+
+                // add the block
+                unconfirmedTxesBuilder.AddBlock(chainedHeader, block.BlockTxes);
+
+                // verify the confirmed tx was removed
+                UnconfirmedTx unconfirmedTx;
+                Assert.IsFalse(unconfirmedTxesBuilder.TryGetTransaction(tx.Hash, out unconfirmedTx));
+                Assert.IsNull(unconfirmedTx);
+
+                // verify the confirmed tx was de-indexed against its input
+                Assert.AreEqual(0, unconfirmedTxesBuilder.GetTransactionsSpending(tx.Inputs[0].PrevTxOutputKey).Count);
+            }
+        }
     }
 }

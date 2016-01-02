@@ -2,6 +2,7 @@
 using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Domain;
 using BitSharp.Core.Storage;
+using NLog;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
@@ -14,6 +15,8 @@ namespace BitSharp.Core.Builders
 {
     internal class UnconfirmedTxesBuilder : IDisposable
     {
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
+
         private readonly ICoreDaemon coreDaemon;
         private readonly IStorageManager storageManager;
 
@@ -156,14 +159,43 @@ namespace BitSharp.Core.Builders
             }
         }
 
-        public async Task AddBlockAsync(ChainedHeader chainedHeader, IEnumerable<BlockTx> blockTxes, CancellationToken cancelToken = default(CancellationToken))
+        public void AddBlock(ChainedHeader chainedHeader, IEnumerable<BlockTx> blockTxes, CancellationToken cancelToken = default(CancellationToken))
         {
-            await Task.Yield();
-
             updateLock.EnterWriteLock();
             try
             {
+                using (var handle = storageManager.OpenUnconfirmedTxesCursor())
+                {
+                    var unconfirmedTxesCursor = handle.Item;
 
+                    unconfirmedTxesCursor.BeginTransaction();
+
+                    foreach (var blockTx in blockTxes)
+                    {
+                        // remove any txes confirmed in the block from the list of unconfirmed txes
+                        if (!unconfirmedTxesCursor.TryRemoveTransaction(blockTx.Hash))
+                        {
+                            var confirmedTx = blockTx.EncodedTx.Decode().Transaction;
+
+                            // check for and remove any unconfirmed txes that conflict with the confirmed tx
+                            foreach (var input in confirmedTx.Inputs)
+                            {
+                                var conflictingTxes = unconfirmedTxesCursor.GetTransactionsSpending(input.PrevTxOutputKey);
+                                if (conflictingTxes.Count > 0)
+                                {
+                                    logger.Warn($"Removing {conflictingTxes.Count} conflicting txes from the unconfirmed transaction pool");
+
+                                    // remove the conflicting unconfirmed txes
+                                    foreach (var conflictingTx in conflictingTxes.Keys)
+                                        if (!unconfirmedTxesCursor.TryRemoveTransaction(conflictingTx))
+                                            throw new StorageCorruptException(StorageType.UnconfirmedTxes, $"{conflictingTx} is indexed but not present");
+                                }
+                            }
+                        }
+                    }
+
+                    unconfirmedTxesCursor.CommitTransaction();
+                }
             }
             finally
             {

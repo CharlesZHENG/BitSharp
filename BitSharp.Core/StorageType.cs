@@ -4,6 +4,7 @@
     {
         Blocks,
         BlockTxes,
-        ChainState
+        ChainState,
+        UnconfirmedTxes
     }
 }
