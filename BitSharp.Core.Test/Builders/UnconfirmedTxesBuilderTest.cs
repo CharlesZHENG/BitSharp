@@ -144,7 +144,7 @@ namespace BitSharp.Core.Test.Builders
         }
 
         [TestMethod]
-        public void TestAddBlocConfirmingTx()
+        public void TestAddBlockConfirmingTx()
         {
             // create tx spending a previous output that exists
             var tx = Transaction.Create(
