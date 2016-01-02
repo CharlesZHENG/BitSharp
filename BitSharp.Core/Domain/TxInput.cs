@@ -19,6 +19,10 @@ namespace BitSharp.Core.Domain
 
         public TxOutputKey PreviousTxOutputKey { get; }
 
+        public UInt256 PrevTxHash => PreviousTxOutputKey.TxHash;
+
+        public uint PrevTxOutputIndex => PreviousTxOutputKey.TxOutputIndex;
+
         public ImmutableArray<byte> ScriptSignature { get; }
 
         public UInt32 Sequence { get; }

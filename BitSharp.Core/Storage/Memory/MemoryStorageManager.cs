@@ -11,8 +11,10 @@ namespace BitSharp.Core.Storage.Memory
         private readonly MemoryBlockStorage blockStorage;
         private readonly MemoryBlockTxesStorage blockTxesStorage;
         private readonly MemoryChainStateStorage chainStateStorage;
+        private readonly MemoryUnconfirmedTxesStorage unconfirmedTxesStorage;
 
-        private readonly DisposableCache<IChainStateCursor> cursorCache;
+        private readonly DisposableCache<IChainStateCursor> chainStateCursorCache;
+        private readonly DisposableCache<IUnconfirmedTxesCursor> unconfirmedTxesCursorCache;
 
         private bool isDisposed;
 
@@ -22,12 +24,22 @@ namespace BitSharp.Core.Storage.Memory
 
         internal MemoryStorageManager(ChainedHeader chainTip = null, int? unspentTxCount = null, int? unspentOutputCount = null, int? totalTxCount = null, int? totalInputCount = null, int? totalOutputCount = null, ImmutableSortedDictionary<UInt256, ChainedHeader> headers = null, ImmutableSortedDictionary<UInt256, UnspentTx> unspentTransactions = null, ImmutableDictionary<int, BlockSpentTxes> spentTransactions = null)
         {
-            this.blockStorage = new MemoryBlockStorage();
-            this.blockTxesStorage = new MemoryBlockTxesStorage();
-            this.chainStateStorage = new MemoryChainStateStorage(chainTip, unspentTxCount, unspentOutputCount, totalTxCount, totalInputCount, totalOutputCount, headers, unspentTransactions, spentTransactions);
+            blockStorage = new MemoryBlockStorage();
+            blockTxesStorage = new MemoryBlockTxesStorage();
+            chainStateStorage = new MemoryChainStateStorage(chainTip, unspentTxCount, unspentOutputCount, totalTxCount, totalInputCount, totalOutputCount, headers, unspentTransactions, spentTransactions);
+            unconfirmedTxesStorage = new MemoryUnconfirmedTxesStorage();
 
-            this.cursorCache = new DisposableCache<IChainStateCursor>(1024,
-                createFunc: () => new MemoryChainStateCursor(this.chainStateStorage),
+            chainStateCursorCache = new DisposableCache<IChainStateCursor>(1024,
+                createFunc: () => new MemoryChainStateCursor(chainStateStorage),
+                prepareAction: cursor =>
+                {
+                    // rollback any open transaction before returning the cursor to the cache
+                    if (cursor.InTransaction)
+                        cursor.RollbackTransaction();
+                });
+
+            unconfirmedTxesCursorCache = new DisposableCache<IUnconfirmedTxesCursor>(1024,
+                createFunc: () => new MemoryUnconfirmedTxesCursor(unconfirmedTxesStorage),
                 prepareAction: cursor =>
                 {
                     // rollback any open transaction before returning the cursor to the cache
@@ -46,22 +58,22 @@ namespace BitSharp.Core.Storage.Memory
         {
             if (!isDisposed && disposing)
             {
-                this.cursorCache.Dispose();
-                this.blockStorage.Dispose();
-                this.blockTxesStorage.Dispose();
-                this.chainStateStorage.Dispose();
+                chainStateCursorCache.Dispose();
+                blockStorage.Dispose();
+                blockTxesStorage.Dispose();
+                chainStateStorage.Dispose();
 
                 isDisposed = true;
             }
         }
 
-        public IBlockStorage BlockStorage => this.blockStorage;
+        public IBlockStorage BlockStorage => blockStorage;
 
-        public IBlockTxesStorage BlockTxesStorage => this.blockTxesStorage;
+        public IBlockTxesStorage BlockTxesStorage => blockTxesStorage;
 
         public DisposeHandle<IChainStateCursor> OpenChainStateCursor()
         {
-            return this.cursorCache.TakeItem();
+            return chainStateCursorCache.TakeItem();
         }
 
         public DisposeHandle<IDeferredChainStateCursor> OpenDeferredChainStateCursor(IChainState chainState)
@@ -73,7 +85,7 @@ namespace BitSharp.Core.Storage.Memory
 
         public DisposeHandle<IUnconfirmedTxesCursor> OpenUnconfirmedTxesCursor()
         {
-            throw new NotImplementedException();
+            return unconfirmedTxesCursorCache.TakeItem();
         }
     }
 }

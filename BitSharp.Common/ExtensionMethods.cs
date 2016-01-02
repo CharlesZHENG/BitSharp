@@ -113,20 +113,6 @@ namespace BitSharp.Common.ExtensionMethods
         }
 
         [DebuggerStepThrough]
-        public async static Task DoAsync(this SemaphoreSlim semaphore, Action action)
-        {
-            await semaphore.WaitAsync();
-            try
-            {
-                action();
-            }
-            finally
-            {
-                semaphore.Release();
-            }
-        }
-
-        [DebuggerStepThrough]
         public async static Task DoAsync(this SemaphoreSlim semaphore, Func<Task> action)
         {
             await semaphore.WaitAsync();

@@ -122,7 +122,7 @@
     <Compile Include="BlockProvider.cs" />
     <Compile Include="BlockReplayer.cs" />
     <Compile Include="Builders\ChainStateBuilderStats.cs" />
-    <Compile Include="Builders\IUnconfirmedTxesCursor.cs" />
+    <Compile Include="Storage\IUnconfirmedTxesCursor.cs" />
     <Compile Include="Domain\DecodedBlockTx.cs" />
     <Compile Include="Domain\BlockTxNode.cs" />
     <Compile Include="Domain\DecodedTx.cs" />
@@ -158,6 +158,8 @@
     <Compile Include="Rules\GenesisBlocks\RegtestParams_GenesisBlock.cs" />
     <Compile Include="Rules\GenesisBlocks\Testnet3Params_GenesisBlock.cs" />
     <Compile Include="StorageType.cs" />
+    <Compile Include="Storage\Memory\MemoryUnconfirmedTxesStorage.cs" />
+    <Compile Include="Storage\Memory\MemoryUnconfirmedTxesCursor.cs" />
     <Compile Include="Storage\Memory\UncommittedRecord.cs" />
     <Compile Include="Storage\Memory\CommittedRecord.cs" />
     <Compile Include="Storage\SplitBlockTxesStorage.cs" />
