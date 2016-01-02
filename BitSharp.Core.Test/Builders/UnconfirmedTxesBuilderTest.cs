@@ -39,6 +39,39 @@ namespace BitSharp.Core.Test.Builders
         }
 
         [TestMethod]
+        public void TestUnconfTxAdded()
+        {
+            // create tx spending a previous output that exists
+            var tx = Transaction.Create(
+                0,
+                ImmutableArray.Create(new TxInput(UInt256.One, 0, ImmutableArray<byte>.Empty, 0)),
+                ImmutableArray.Create(new TxOutput(0, ImmutableArray<byte>.Empty)),
+                0).Transaction;
+
+            // create prev output tx
+            var unspentTx = new UnspentTx(tx.Inputs[0].PrevTxHash, 0, 1, 0, false, new OutputStates(1, OutputState.Unspent), ImmutableArray<TxOutput>.Empty);
+
+            // mock chain state with prev output
+            var chainState = new Mock<IChainState>();
+            chainState.Setup(x => x.TryGetUnspentTx(tx.Inputs[0].PrevTxHash, out unspentTx)).Returns(true);
+
+            // mock core daemon for chain state retrieval
+            var coreDaemon = new Mock<ICoreDaemon>();
+            coreDaemon.Setup(x => x.GetChainState()).Returns(chainState.Object);
+
+            using (var unconfirmedTxesBuilder = new UnconfirmedTxesBuilder(coreDaemon.Object, storageManager))
+            {
+                // try to add the tx
+                Assert.IsTrue(unconfirmedTxesBuilder.TryAddTransaction(tx));
+
+                // verify unconfirmed tx was added
+                UnconfirmedTx unconfirmedTx;
+                Assert.IsTrue(unconfirmedTxesBuilder.TryGetTransaction(tx.Hash, out unconfirmedTx));
+                Assert.IsNotNull(unconfirmedTx);
+            }
+        }
+
+        [TestMethod]
         public void TestUnconfTxMissingPrevOutput()
         {
             // create tx spending a previous output that doesn't exist
@@ -61,6 +94,39 @@ namespace BitSharp.Core.Test.Builders
                 Assert.IsFalse(unconfirmedTxesBuilder.TryAddTransaction(tx));
 
                 // verify unconfirmed tx was not added
+                UnconfirmedTx unconfirmedTx;
+                Assert.IsFalse(unconfirmedTxesBuilder.TryGetTransaction(tx.Hash, out unconfirmedTx));
+                Assert.IsNull(unconfirmedTx);
+            }
+        }
+
+        [TestMethod]
+        public void TestUnconfTxPrevOutputSpent()
+        {
+            // create tx spending a previous output that exists, but is spent
+            var tx = Transaction.Create(
+                0,
+                ImmutableArray.Create(new TxInput(UInt256.One, 0, ImmutableArray<byte>.Empty, 0)),
+                ImmutableArray.Create(new TxOutput(0, ImmutableArray<byte>.Empty)),
+                0).Transaction;
+
+            // create prev output tx
+            var unspentTx = new UnspentTx(tx.Inputs[0].PrevTxHash, 0, 1, 0, false, new OutputStates(1, OutputState.Spent), ImmutableArray<TxOutput>.Empty);
+
+            // mock chain state with prev output
+            var chainState = new Mock<IChainState>();
+            chainState.Setup(x => x.TryGetUnspentTx(tx.Inputs[0].PrevTxHash, out unspentTx)).Returns(true);
+
+            // mock core daemon for chain state retrieval
+            var coreDaemon = new Mock<ICoreDaemon>();
+            coreDaemon.Setup(x => x.GetChainState()).Returns(chainState.Object);
+
+            using (var unconfirmedTxesBuilder = new UnconfirmedTxesBuilder(coreDaemon.Object, storageManager))
+            {
+                // try to add the tx
+                Assert.IsFalse(unconfirmedTxesBuilder.TryAddTransaction(tx));
+
+                // verify unconfirmed tx was added
                 UnconfirmedTx unconfirmedTx;
                 Assert.IsFalse(unconfirmedTxesBuilder.TryGetTransaction(tx.Hash, out unconfirmedTx));
                 Assert.IsNull(unconfirmedTx);
