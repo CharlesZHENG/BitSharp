@@ -231,8 +231,7 @@ namespace BitSharp.Esent
                         if (pruned && requireTx)
                             throw new MissingDataException(blockHash);
 
-                        var tx = !pruned ? DataEncoder.DecodeTransaction(txBytes, txHash) : null;
-                        var blockTxNode = new BlockTxNode(txIndex, depth, txHash, pruned, tx);
+                        var blockTxNode = new BlockTxNode(txIndex, depth, txHash, pruned, txBytes?.ToImmutableArray());
 
                         yield return blockTxNode;
                     }
