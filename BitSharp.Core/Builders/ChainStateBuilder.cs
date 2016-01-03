@@ -76,11 +76,15 @@ namespace BitSharp.Core.Builders
                 CheckChainTip(chainStateCursor);
 
                 // begin reading and decoding block txes into the buffer
-                var blockTxesBuffer = new BufferBlock<DecodedBlockTx>();
-                var sendBlockTxes = blockTxesBuffer.SendAndCompleteAsync(blockTxes.Select(x => x.Decode()), cancelToken);
+                var blockTxesBuffer = new BufferBlock<BlockTx>();
+                var sendBlockTxes = blockTxesBuffer.SendAndCompleteAsync(blockTxes, cancelToken);
+
+                var decodedTxes = new TransformBlock<BlockTx, DecodedBlockTx>(blockTx => blockTx.Decode(),
+                    new ExecutionDataflowBlockOptions { CancellationToken = cancelToken });
 
                 // feed block txes through the merkle validator
                 var merkleBlockTxes = InitMerkleValidator(chainedHeader, blockTxesBuffer, cancelToken);
+                merkleBlockTxes.LinkTo(decodedTxes, new DataflowLinkOptions { PropagateCompletion = true });
 
                 // track tx/input stats
                 var countBlockTxes = new TransformBlock<DecodedBlockTx, DecodedBlockTx>(
@@ -95,8 +99,8 @@ namespace BitSharp.Core.Builders
                         }
 
                         return blockTx;
-                    });
-                merkleBlockTxes.LinkTo(countBlockTxes, new DataflowLinkOptions { PropagateCompletion = true });
+                    }, new ExecutionDataflowBlockOptions { CancellationToken = cancelToken });
+                decodedTxes.LinkTo(countBlockTxes, new DataflowLinkOptions { PropagateCompletion = true });
 
                 // warm-up utxo entries for block txes
                 var warmedBlockTxes = UtxoLookAhead.LookAhead(countBlockTxes, chainStateCursor, cancelToken);
@@ -125,12 +129,20 @@ namespace BitSharp.Core.Builders
 
                 var timingTasks = new List<Task>();
 
-                // time block txes read & decode
+                // time block txes read
                 timingTasks.Add(
                     blockTxesBuffer.Completion.ContinueWith(_ =>
                     {
                         lock (stopwatch)
                             stats.txesReadDurationMeasure.Tick(stopwatch.Elapsed);
+                    }));
+
+                // time block txes decode
+                timingTasks.Add(
+                    decodedTxes.Completion.ContinueWith(_ =>
+                    {
+                        lock (stopwatch)
+                            stats.txesDecodeDurationMeasure.Tick(stopwatch.Elapsed);
                     }));
 
                 // time utxo look-ahead

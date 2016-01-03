@@ -26,6 +26,7 @@ namespace BitSharp.Core.Builders
         internal readonly AverageMeasure inputsPerBlockMeasure = new AverageMeasure(sampleCutoff, sampleResolution);
 
         internal readonly DurationMeasure txesReadDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
+        internal readonly DurationMeasure txesDecodeDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
         internal readonly DurationMeasure lookAheadDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
         internal readonly DurationMeasure calculateUtxoDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
         internal readonly DurationMeasure applyUtxoDurationMeasure = new DurationMeasure(sampleCutoff, sampleResolution);
@@ -45,6 +46,7 @@ namespace BitSharp.Core.Builders
             this.inputsPerBlockMeasure.Dispose();
 
             this.txesReadDurationMeasure.Dispose();
+            this.txesDecodeDurationMeasure.Dispose();
             this.lookAheadDurationMeasure.Dispose();
             this.calculateUtxoDurationMeasure.Dispose();
             this.applyUtxoDurationMeasure.Dispose();
@@ -82,6 +84,7 @@ namespace BitSharp.Core.Builders
             statString.AppendLine($"-------------------------");
 
             var txesReadDuration = txesReadDurationMeasure.GetAverage();
+            var txesDecodeDuration = txesDecodeDurationMeasure.GetAverage();
             var lookAheadDuration = lookAheadDurationMeasure.GetAverage();
             var calculateUtxoDuration = calculateUtxoDurationMeasure.GetAverage();
             var applyUtxoDuration = applyUtxoDurationMeasure.GetAverage();
@@ -90,7 +93,8 @@ namespace BitSharp.Core.Builders
             var addBlockDuration = addBlockDurationMeasure.GetAverage();
 
             statString.AppendLine(GetPipelineStat("Block Txes Read", txesReadDuration, TimeSpan.Zero));
-            statString.AppendLine(GetPipelineStat("UTXO Look-ahead", lookAheadDuration, txesReadDuration));
+            statString.AppendLine(GetPipelineStat("Block Txes Decode", txesDecodeDuration, txesReadDuration));
+            statString.AppendLine(GetPipelineStat("UTXO Look-ahead", lookAheadDuration, txesDecodeDuration));
             statString.AppendLine(GetPipelineStat("UTXO Calculation", calculateUtxoDuration, lookAheadDuration));
             statString.AppendLine(GetPipelineStat("UTXO Application", applyUtxoDuration, calculateUtxoDuration));
             statString.AppendLine(GetPipelineStat("Block Validation", validateDuration, applyUtxoDuration));
