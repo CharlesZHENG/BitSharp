@@ -27,7 +27,14 @@ namespace BitSharp.LevelDb
             this.keyDecoder = keyDecoder;
             this.valueEncoder = valueEncoder;
             this.valueDecoder = valueDecoder;
-            db = DB.Open(dbFile);
+            db = DB.Open(
+                new Options
+                {
+                    Compression = CompressionType.NoCompression,
+                    CreateIfMissing = true,
+                    //ParanoidChecks = true,
+                },
+                dbFile);
         }
 
         public void Dispose()
@@ -53,7 +60,7 @@ namespace BitSharp.LevelDb
 
         public bool ContainsKey(TKey key)
         {
-            Slice value;
+            byte[] value;
             return db.TryGet(new ReadOptions(), EncodeKey(key), out value);
         }
 
@@ -73,10 +80,10 @@ namespace BitSharp.LevelDb
 
         public bool TryGetValue(TKey key, out TValue value)
         {
-            Slice rawValue;
+            byte[] rawValue;
             if (db.TryGet(new ReadOptions(), EncodeKey(key), out rawValue))
             {
-                value = DecodeValue(rawValue.ToArray());
+                value = DecodeValue(rawValue);
                 return true;
             }
             else
@@ -95,9 +102,9 @@ namespace BitSharp.LevelDb
         {
             get
             {
-                Slice value;
+                byte[] value;
                 if (db.TryGet(new ReadOptions(), EncodeKey(key), out value))
-                    return DecodeValue(value.ToArray());
+                    return DecodeValue(value);
                 else
                     return default(TValue);
             }
@@ -148,21 +155,19 @@ namespace BitSharp.LevelDb
 
         public IEnumerator<KeyValuePair<TKey, TValue>> GetEnumerator()
         {
-            using (var snapshot = db.GetSnapshot())
+            var snapshot = db.CreateSnapshot();
+            var readOptions = new ReadOptions { Snapshot = snapshot };
+
+            using (var iterator = new Iterator(db, readOptions))
             {
-                var readOptions = new ReadOptions { Snapshot = snapshot };
-
-                using (var iterator = db.NewIterator(readOptions))
+                iterator.SeekToFirst();
+                while (iterator.IsValid)
                 {
-                    iterator.SeekToFirst();
-                    while (iterator.Valid())
-                    {
-                        var key = iterator.Key().ToArray();
-                        var value = iterator.Value().ToArray();
-                        yield return new KeyValuePair<TKey, TValue>(DecodeKey(key), DecodeValue(value));
+                    var key = iterator.Key;
+                    var value = iterator.Value;
+                    yield return new KeyValuePair<TKey, TValue>(DecodeKey(key), DecodeValue(value));
 
-                        iterator.Next();
-                    }
+                    iterator.Next();
                 }
             }
         }

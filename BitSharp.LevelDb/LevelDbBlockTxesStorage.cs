@@ -7,6 +7,7 @@ using LevelDB;
 using NLog;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 
@@ -27,7 +28,14 @@ namespace BitSharp.LevelDb
             dbDirectory = Path.Combine(baseDirectory, "BlockTxes");
             dbFile = Path.Combine(dbDirectory, "BlockTxes.edb");
 
-            db = DB.Open(dbFile);
+            db = DB.Open(
+                new Options
+                {
+                    Compression = CompressionType.NoCompression,
+                    CreateIfMissing = true,
+                    //ParanoidChecks = true,
+                },
+                dbFile);
         }
 
         public void Dispose()
@@ -48,7 +56,7 @@ namespace BitSharp.LevelDb
 
         public bool ContainsBlock(UInt256 blockHash)
         {
-            Slice value;
+            byte[] value;
             return db.TryGet(new ReadOptions(), DbEncoder.EncodeBlockHashTxIndex(blockHash, 0), out value);
         }
 
@@ -154,40 +162,38 @@ namespace BitSharp.LevelDb
 
         private IEnumerator<BlockTxNode> ReadBlockTransactions(UInt256 blockHash, bool requireTx)
         {
-            using (var snapshot = db.GetSnapshot())
+            var snapshot = db.CreateSnapshot();
+            var readOptions = new ReadOptions { Snapshot = snapshot };
+            using (var iterator = new Iterator(db, readOptions))
             {
-                var readOptions = new ReadOptions { Snapshot = snapshot };
-                using (var iterator = db.NewIterator(readOptions))
+                iterator.Seek(DbEncoder.EncodeBlockHashTxIndex(blockHash, 0));
+                while (iterator.IsValid)
                 {
-                    iterator.Seek(DbEncoder.EncodeBlockHashTxIndex(blockHash, 0));
-                    while (iterator.Valid())
-                    {
-                        var key = iterator.Key().ToArray();
+                    var key = iterator.Key;
 
-                        UInt256 iteratorBlockHash; int txIndex;
-                        DbEncoder.DecodeBlockHashTxIndex(key, out iteratorBlockHash, out txIndex);
+                    UInt256 iteratorBlockHash; int txIndex;
+                    DbEncoder.DecodeBlockHashTxIndex(key, out iteratorBlockHash, out txIndex);
 
-                        if (iteratorBlockHash != blockHash)
-                            yield break;
+                    if (iteratorBlockHash != blockHash)
+                        yield break;
 
-                        var value = iterator.Value().ToArray();
+                    var value = iterator.Value;
 
-                        var blockTxNode = DataEncoder.DecodeBlockTxNode(value);
+                    var blockTxNode = DataEncoder.DecodeBlockTxNode(value);
 
-                        if (blockTxNode.Pruned && requireTx)
-                            throw new MissingDataException(blockHash);
+                    if (blockTxNode.Pruned && requireTx)
+                        throw new MissingDataException(blockHash);
 
-                        yield return blockTxNode;
+                    yield return blockTxNode;
 
-                        iterator.Next();
-                    }
+                    iterator.Next();
                 }
             }
         }
 
         public bool TryGetTransaction(UInt256 blockHash, int txIndex, out BlockTx transaction)
         {
-            Slice value;
+            byte[] value;
             if (db.TryGet(new ReadOptions(), DbEncoder.EncodeBlockHashTxIndex(blockHash, txIndex), out value))
             {
                 var blockTxNode = DataEncoder.DecodeBlockTxNode(value.ToArray());
@@ -233,26 +239,24 @@ namespace BitSharp.LevelDb
 
             var writeBatch = new WriteBatch();
 
-            using (var snapshot = db.GetSnapshot())
+            var snapshot = db.CreateSnapshot();
+            var readOptions = new ReadOptions { Snapshot = snapshot };
+
+            var txIndex = 0;
+            foreach (var tx in blockTxes)
             {
-                var readOptions = new ReadOptions { Snapshot = snapshot };
+                var key = DbEncoder.EncodeBlockHashTxIndex(blockHash, txIndex);
 
-                var txIndex = 0;
-                foreach (var tx in blockTxes)
-                {
-                    var key = DbEncoder.EncodeBlockHashTxIndex(blockHash, txIndex);
+                byte[] existingValue;
+                if (db.TryGet(readOptions, key, out existingValue))
+                    return false;
 
-                    Slice existingValue;
-                    if (db.TryGet(readOptions, key, out existingValue))
-                        return false;
+                var blockTx = new BlockTx(txIndex, tx);
+                var value = DataEncoder.EncodeBlockTxNode(blockTx);
 
-                    var blockTx = new BlockTx(txIndex, tx);
-                    var value = DataEncoder.EncodeBlockTxNode(blockTx);
+                writeBatch.Put(key, value);
 
-                    writeBatch.Put(key, value);
-
-                    txIndex++;
-                }
+                txIndex++;
             }
 
             db.Write(new WriteOptions(), writeBatch);
@@ -264,33 +268,38 @@ namespace BitSharp.LevelDb
             if (!ContainsBlock(blockHash))
                 return false;
 
+            var anyRemoved = false;
             var writeBatch = new WriteBatch();
 
-            using (var snapshot = db.GetSnapshot())
+            var snapshot = db.CreateSnapshot();
+            var readOptions = new ReadOptions { Snapshot = snapshot };
+            using (var iterator = new Iterator(db, readOptions))
             {
-                var readOptions = new ReadOptions { Snapshot = snapshot };
-                using (var iterator = db.NewIterator(readOptions))
+                iterator.Seek(DbEncoder.EncodeBlockHashTxIndex(blockHash, 0));
+                while (iterator.IsValid)
                 {
-                    iterator.Seek(DbEncoder.EncodeBlockHashTxIndex(blockHash, 0));
-                    while (iterator.Valid())
-                    {
-                        var key = iterator.Key().ToArray();
+                    var key = iterator.Key;
 
-                        UInt256 iteratorBlockHash; int txIndex;
-                        DbEncoder.DecodeBlockHashTxIndex(key, out iteratorBlockHash, out txIndex);
+                    UInt256 iteratorBlockHash; int txIndex;
+                    DbEncoder.DecodeBlockHashTxIndex(key, out iteratorBlockHash, out txIndex);
 
-                        if (iteratorBlockHash != blockHash)
-                            break;
+                    if (iteratorBlockHash != blockHash)
+                        break;
 
-                        writeBatch.Delete(key);
+                    writeBatch.Delete(key);
+                    anyRemoved = true;
 
-                        iterator.Next();
-                    }
+                    iterator.Next();
                 }
             }
 
-            db.Write(new WriteOptions(), writeBatch);
-            return true;
+            if (anyRemoved)
+            {
+                db.Write(new WriteOptions(), writeBatch);
+                return true;
+            }
+            else
+                return false;
         }
 
         public void Flush()

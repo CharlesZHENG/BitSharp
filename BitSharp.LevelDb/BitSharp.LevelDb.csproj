@@ -106,9 +106,9 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\LevelDB.Net\LevelDB.Net.vcxproj">
-      <Project>{8553d33e-e0c5-46a2-819c-8513d2229f67}</Project>
-      <Name>LevelDB.Net</Name>
+    <ProjectReference Include="..\..\leveldb-sharp\leveldb-sharp.csproj">
+      <Project>{8dd96596-38ac-46dd-80c1-75d9ebe585ea}</Project>
+      <Name>leveldb-sharp</Name>
     </ProjectReference>
     <ProjectReference Include="..\BitSharp.Common\BitSharp.Common.csproj">
       <Project>{b8d21dec-5370-4194-9e6d-2f620804a892}</Project>
@@ -126,6 +126,11 @@
   <ItemGroup>
     <None Include="app.config" />
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="leveldb.dll">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

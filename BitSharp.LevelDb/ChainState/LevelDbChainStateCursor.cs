@@ -1,17 +1,13 @@
 ﻿using BitSharp.Common;
-using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core;
-using BitSharp.Core.Builders;
 using BitSharp.Core.Domain;
-using BitSharp.Core.ExtensionMethods;
 using BitSharp.Core.Storage;
 using LevelDB;
 using NLog;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.IO;
-using System.Reactive.Disposables;
+using System.Linq;
 using System.Threading;
 
 namespace BitSharp.LevelDb
@@ -30,7 +26,7 @@ namespace BitSharp.LevelDb
         private Snapshot txSnapshot;
         private ReadOptions txReadOptions;
         private WriteBatch txWriteBatch;
-        private SortedDictionary<Slice, Tuple<UpdateType, Slice>> txUpdates;
+        private Dictionary<byte[], Tuple<UpdateType, byte[]>> txUpdates;
 
         private const byte UNSPENT_TX_PREFIX = 0; // place unspent txes first so they can be iterated over without skipping other data
         private const byte GLOBAL_PREFIX = 1;
@@ -59,7 +55,7 @@ namespace BitSharp.LevelDb
         {
             if (!disposed && disposing)
             {
-                txSnapshot?.Dispose();
+                //txSnapshot?.Dispose();
                 //txWriteBatch.Dispose();
 
                 disposed = true;
@@ -74,9 +70,9 @@ namespace BitSharp.LevelDb
             {
                 CheckTransaction();
 
-                Slice value;
+                byte[] value;
                 if (CursorTryGet(MakeGlobalKey(GlobalValue.ChainTip), out value))
-                    return DataEncoder.DecodeChainedHeader(value.ToArray());
+                    return DataEncoder.DecodeChainedHeader(value);
                 else
                     return null;
             }
@@ -97,9 +93,9 @@ namespace BitSharp.LevelDb
             {
                 CheckTransaction();
 
-                Slice value;
+                byte[] value;
                 if (CursorTryGet(MakeGlobalKey(GlobalValue.UnspentTxCount), out value))
-                    return value.ToInt32();
+                    return Bits.ToInt32(value);
                 else
                     return 0;
             }
@@ -107,7 +103,7 @@ namespace BitSharp.LevelDb
             {
                 CheckWriteTransaction();
 
-                CursorPut(MakeGlobalKey(GlobalValue.UnspentTxCount), value);
+                CursorPut(MakeGlobalKey(GlobalValue.UnspentTxCount), Bits.GetBytes(value));
             }
         }
 
@@ -117,9 +113,9 @@ namespace BitSharp.LevelDb
             {
                 CheckTransaction();
 
-                Slice value;
+                byte[] value;
                 if (CursorTryGet(MakeGlobalKey(GlobalValue.UnspentOutputCount), out value))
-                    return value.ToInt32();
+                    return Bits.ToInt32(value);
                 else
                     return 0;
             }
@@ -127,7 +123,7 @@ namespace BitSharp.LevelDb
             {
                 CheckWriteTransaction();
 
-                CursorPut(MakeGlobalKey(GlobalValue.UnspentOutputCount), value);
+                CursorPut(MakeGlobalKey(GlobalValue.UnspentOutputCount), Bits.GetBytes(value));
             }
         }
 
@@ -137,9 +133,9 @@ namespace BitSharp.LevelDb
             {
                 CheckTransaction();
 
-                Slice value;
+                byte[] value;
                 if (CursorTryGet(MakeGlobalKey(GlobalValue.TotalTxCount), out value))
-                    return value.ToInt32();
+                    return Bits.ToInt32(value);
                 else
                     return 0;
             }
@@ -147,7 +143,7 @@ namespace BitSharp.LevelDb
             {
                 CheckWriteTransaction();
 
-                CursorPut(MakeGlobalKey(GlobalValue.TotalTxCount), value);
+                CursorPut(MakeGlobalKey(GlobalValue.TotalTxCount), Bits.GetBytes(value));
             }
         }
 
@@ -157,9 +153,9 @@ namespace BitSharp.LevelDb
             {
                 CheckTransaction();
 
-                Slice value;
+                byte[] value;
                 if (CursorTryGet(MakeGlobalKey(GlobalValue.TotalInputCount), out value))
-                    return value.ToInt32();
+                    return Bits.ToInt32(value);
                 else
                     return 0;
             }
@@ -167,7 +163,7 @@ namespace BitSharp.LevelDb
             {
                 CheckWriteTransaction();
 
-                CursorPut(MakeGlobalKey(GlobalValue.TotalInputCount), value);
+                CursorPut(MakeGlobalKey(GlobalValue.TotalInputCount), Bits.GetBytes(value));
             }
         }
 
@@ -177,9 +173,9 @@ namespace BitSharp.LevelDb
             {
                 CheckTransaction();
 
-                Slice value;
+                byte[] value;
                 if (CursorTryGet(MakeGlobalKey(GlobalValue.TotalOutputCount), out value))
-                    return value.ToInt32();
+                    return Bits.ToInt32(value);
                 else
                     return 0;
             }
@@ -187,7 +183,7 @@ namespace BitSharp.LevelDb
             {
                 CheckWriteTransaction();
 
-                CursorPut(MakeGlobalKey(GlobalValue.TotalOutputCount), value);
+                CursorPut(MakeGlobalKey(GlobalValue.TotalOutputCount), Bits.GetBytes(value));
             }
         }
 
@@ -195,7 +191,7 @@ namespace BitSharp.LevelDb
         {
             CheckTransaction();
 
-            Slice value;
+            byte[] value;
             return CursorTryGet(MakeHeaderKey(blockHash), out value);
         }
 
@@ -203,10 +199,10 @@ namespace BitSharp.LevelDb
         {
             CheckTransaction();
 
-            Slice value;
+            byte[] value;
             if (CursorTryGet(MakeHeaderKey(blockHash), out value))
             {
-                header = DataEncoder.DecodeChainedHeader(value.ToArray());
+                header = DataEncoder.DecodeChainedHeader(value);
                 return true;
             }
             else
@@ -246,7 +242,7 @@ namespace BitSharp.LevelDb
         {
             CheckTransaction();
 
-            Slice value;
+            byte[] value;
             return CursorTryGet(MakeUnspentTxKey(txHash), out value);
         }
 
@@ -254,10 +250,10 @@ namespace BitSharp.LevelDb
         {
             CheckTransaction();
 
-            Slice value;
+            byte[] value;
             if (CursorTryGet(MakeUnspentTxKey(txHash), out value))
             {
-                unspentTx = DataEncoder.DecodeUnspentTx(value.ToArray());
+                unspentTx = DataEncoder.DecodeUnspentTx(value);
                 return true;
             }
             else
@@ -310,17 +306,17 @@ namespace BitSharp.LevelDb
         {
             CheckTransaction();
 
-            using (var iterator = db.NewIterator(txReadOptions))
+            using (var iterator = new Iterator(db, txReadOptions))
             {
                 iterator.SeekToFirst();
-                while (iterator.Valid())
+                while (iterator.IsValid)
                 {
-                    var key = iterator.Key().ToArray();
+                    var key = iterator.Key;
                     if (key[0] == UNSPENT_TX_PREFIX)
                     {
                         if (readOnly || !txUpdates.ContainsKey(key))
                         {
-                            var value = iterator.Value().ToArray();
+                            var value = iterator.Value;
                             yield return DataEncoder.DecodeUnspentTx(value);
                         }
                     }
@@ -336,12 +332,12 @@ namespace BitSharp.LevelDb
             {
                 foreach (var txUpdate in txUpdates)
                 {
-                    var key = txUpdate.Key.ToArray();
+                    var key = txUpdate.Key;
                     if (key[0] == UNSPENT_TX_PREFIX)
                     {
                         if (txUpdate.Value.Item1 == UpdateType.Put)
                         {
-                            var value = txUpdate.Value.Item2.ToArray();
+                            var value = txUpdate.Value.Item2;
                             yield return DataEncoder.DecodeUnspentTx(value);
                         }
                     }
@@ -355,7 +351,7 @@ namespace BitSharp.LevelDb
         {
             CheckTransaction();
 
-            Slice value;
+            byte[] value;
             return CursorTryGet(MakeSpentTxesKey(blockIndex), out value);
         }
 
@@ -363,10 +359,10 @@ namespace BitSharp.LevelDb
         {
             CheckTransaction();
 
-            Slice value;
+            byte[] value;
             if (CursorTryGet(MakeSpentTxesKey(blockIndex), out value))
             {
-                spentTxes = DataEncoder.DecodeBlockSpentTxes(value.ToArray());
+                spentTxes = DataEncoder.DecodeBlockSpentTxes(value);
                 return true;
 
             }
@@ -403,7 +399,7 @@ namespace BitSharp.LevelDb
         {
             CheckTransaction();
 
-            Slice value;
+            byte[] value;
             return CursorTryGet(MakeUnmintedTxesKey(blockHash), out value);
         }
 
@@ -411,10 +407,10 @@ namespace BitSharp.LevelDb
         {
             CheckTransaction();
 
-            Slice value;
+            byte[] value;
             if (CursorTryGet(MakeUnmintedTxesKey(blockHash), out value))
             {
-                unmintedTxes = DataEncoder.DecodeUnmintedTxList(value.ToArray());
+                unmintedTxes = DataEncoder.DecodeUnmintedTxList(value);
                 return true;
             }
             else
@@ -451,12 +447,12 @@ namespace BitSharp.LevelDb
             if (inTransaction)
                 throw new InvalidOperationException();
 
-            txSnapshot = db.GetSnapshot();
+            txSnapshot = db.CreateSnapshot();
             txReadOptions = new ReadOptions { Snapshot = txSnapshot };
             if (!readOnly)
             {
                 txWriteBatch = new WriteBatch();
-                txUpdates = new SortedDictionary<Slice, Tuple<UpdateType, Slice>>();
+                txUpdates = new Dictionary<byte[], Tuple<UpdateType, byte[]>>(new ByteComparer());
             }
             else
             {
@@ -476,7 +472,7 @@ namespace BitSharp.LevelDb
             if (!readOnly)
                 db.Write(new WriteOptions(), txWriteBatch);
 
-            txSnapshot.Dispose();
+            //txSnapshot.Dispose();
 
             txSnapshot = null;
             txReadOptions = null;
@@ -491,7 +487,7 @@ namespace BitSharp.LevelDb
             if (!inTransaction)
                 throw new InvalidOperationException();
 
-            txSnapshot.Dispose();
+            //txSnapshot.Dispose();
 
             txSnapshot = null;
             txReadOptions = null;
@@ -568,7 +564,7 @@ namespace BitSharp.LevelDb
             return key;
         }
 
-        private void CursorPut(Slice key, Slice value)
+        private void CursorPut(byte[] key, byte[] value)
         {
             CheckWriteTransaction();
 
@@ -576,19 +572,19 @@ namespace BitSharp.LevelDb
             txUpdates[key] = Tuple.Create(UpdateType.Put, value);
         }
 
-        private void CursorDelete(Slice key)
+        private void CursorDelete(byte[] key)
         {
             CheckWriteTransaction();
 
             txWriteBatch.Delete(key);
-            txUpdates[key] = Tuple.Create(UpdateType.Delete, default(Slice));
+            txUpdates[key] = Tuple.Create(UpdateType.Delete, default(byte[]));
         }
 
-        private bool CursorTryGet(Slice key, out Slice value)
+        private bool CursorTryGet(byte[] key, out byte[] value)
         {
             CheckTransaction();
 
-            Tuple<UpdateType, Slice> txUpdateValue;
+            Tuple<UpdateType, byte[]> txUpdateValue;
             if (!readOnly && txUpdates.TryGetValue(key, out txUpdateValue))
             {
                 if (txUpdateValue.Item1 == UpdateType.Put)
@@ -598,13 +594,53 @@ namespace BitSharp.LevelDb
                 }
                 else
                 {
-                    value = default(Slice);
+                    value = default(byte[]);
                     return false;
                 }
             }
             else
             {
                 return db.TryGet(txReadOptions, key, out value);
+            }
+        }
+
+        private class ByteComparer : IEqualityComparer<byte[]>
+        {
+            public int Compare(byte[] x, byte[] y)
+            {
+                var commonLength = Math.Min(x.Length, y.Length);
+                for (var i = 0; i < commonLength; i++)
+                {
+                    if (x[i] < y[i])
+                        return -1;
+                    else if (x[i] > y[i])
+                        return +1;
+                }
+
+                if (x.Length < y.Length)
+                    return -1;
+                else if (x.Length > y.Length)
+                    return +1;
+                else
+                    return 0;
+            }
+
+            public bool Equals(byte[] x, byte[] y)
+            {
+                return x.SequenceEqual(y);
+            }
+
+            public int GetHashCode(byte[] obj)
+            {
+                if (obj == null || obj.Length == 0)
+                    return 0;
+
+                var hashCode = 0;
+                for (var i = 0; i < obj.Length; i++)
+                    // Rotate by 3 bits and XOR the new value.
+                    hashCode = (hashCode << 3) | (hashCode >> (29)) ^ obj[i];
+
+                return hashCode;
             }
         }
     }

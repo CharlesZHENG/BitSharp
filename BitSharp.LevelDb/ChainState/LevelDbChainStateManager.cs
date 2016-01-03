@@ -24,7 +24,14 @@ namespace BitSharp.LevelDb
             dbDirectory = Path.Combine(baseDirectory, "ChainState");
             dbFile = Path.Combine(dbDirectory, "ChainState.edb");
 
-            db = DB.Open(dbFile);
+            db = DB.Open(
+                new Options
+                {
+                    Compression = CompressionType.NoCompression,
+                    CreateIfMissing = true,
+                    //ParanoidChecks = true,
+                },
+                dbFile);
 
             cursorCache = new DisposableCache<IChainStateCursor>(1024,
                 createFunc: () => new LevelDbChainStateCursor(dbFile, db),

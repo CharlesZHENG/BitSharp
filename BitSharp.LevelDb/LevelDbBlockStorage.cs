@@ -27,7 +27,14 @@ namespace BitSharp.LevelDb
             dbDirectory = Path.Combine(baseDirectory, "Blocks");
             dbFile = Path.Combine(dbDirectory, "Blocks.edb");
 
-            db = DB.Open(dbFile);
+            db = DB.Open(
+                new Options
+                {
+                    Compression = CompressionType.NoCompression,
+                    CreateIfMissing = true,
+                    //ParanoidChecks = true,
+                },
+                dbFile);
         }
 
         public void Dispose()
@@ -48,7 +55,7 @@ namespace BitSharp.LevelDb
 
         public bool ContainsChainedHeader(UInt256 blockHash)
         {
-            Slice ignore;
+            byte[] ignore;
             return db.TryGet(new ReadOptions(), DbEncoder.EncodeUInt256(blockHash), out ignore);
         }
 
@@ -63,7 +70,7 @@ namespace BitSharp.LevelDb
 
         public bool TryGetChainedHeader(UInt256 blockHash, out ChainedHeader chainedHeader)
         {
-            Slice value;
+            byte[] value;
             if (db.TryGet(new ReadOptions(), DbEncoder.EncodeUInt256(blockHash), out value))
             {
                 chainedHeader = DataEncoder.DecodeChainedHeader(value.ToArray());
@@ -92,40 +99,39 @@ namespace BitSharp.LevelDb
             var maxTotalWork = BigInteger.Zero;
             var candidateHeaders = new List<ChainedHeader>();
 
-            using (var snapshot = db.GetSnapshot())
+            var snapshot = db.CreateSnapshot();
+            var readOptions = new ReadOptions { Snapshot = snapshot };
+
+            using (var iterator = new Iterator(db, readOptions))
             {
-                var readOptions = new ReadOptions { Snapshot = snapshot };
-
-                using (var iterator = db.NewIterator(readOptions))
+                iterator.SeekToFirst();
+                while (iterator.IsValid)
                 {
-                    iterator.SeekToFirst();
-                    while (iterator.Valid())
+                    // check if this block is valid
+                    //TODO
+                    var valid = true; // Api.RetrieveColumnAsBoolean(cursor.jetSession, cursor.blockHeadersTableId, cursor.blockHeaderValidColumnId);
+                    if (valid)
                     {
-                        // check if this block is valid
-                        //TODO
-                        var valid = true; // Api.RetrieveColumnAsBoolean(cursor.jetSession, cursor.blockHeadersTableId, cursor.blockHeaderValidColumnId);
-                        if (valid)
+                        // decode chained header
+                        var value = iterator.Value;
+                        var chainedHeader = DataEncoder.DecodeChainedHeader(value);
+
+                        // initialize max total work, if it isn't yet
+                        if (maxTotalWork == BigInteger.Zero)
+                            maxTotalWork = chainedHeader.TotalWork;
+
+                        if (chainedHeader.TotalWork > maxTotalWork)
                         {
-                            // decode chained header
-                            var chainedHeader = DataEncoder.DecodeChainedHeader(iterator.Value().ToArray());
-
-                            // initialize max total work, if it isn't yet
-                            if (maxTotalWork == BigInteger.Zero)
-                                maxTotalWork = chainedHeader.TotalWork;
-
-                            if (chainedHeader.TotalWork > maxTotalWork)
-                            {
-                                maxTotalWork = chainedHeader.TotalWork;
-                                candidateHeaders = new List<ChainedHeader>();
-                            }
-
-                            // add this header as a candidate if it ties the max total work
-                            if (chainedHeader.TotalWork >= maxTotalWork)
-                                candidateHeaders.Add(chainedHeader);
+                            maxTotalWork = chainedHeader.TotalWork;
+                            candidateHeaders = new List<ChainedHeader>();
                         }
 
-                        iterator.Next();
+                        // add this header as a candidate if it ties the max total work
+                        if (chainedHeader.TotalWork >= maxTotalWork)
+                            candidateHeaders.Add(chainedHeader);
                     }
+
+                    iterator.Next();
                 }
             }
 
@@ -137,20 +143,19 @@ namespace BitSharp.LevelDb
 
         public IEnumerable<ChainedHeader> ReadChainedHeaders()
         {
-            using (var snapshot = db.GetSnapshot())
+            var snapshot = db.CreateSnapshot();
+            var readOptions = new ReadOptions { Snapshot = snapshot };
+
+            using (var iterator = new Iterator(db, readOptions))
             {
-                var readOptions = new ReadOptions { Snapshot = snapshot };
-
-                using (var iterator = db.NewIterator(readOptions))
+                iterator.SeekToFirst();
+                while (iterator.IsValid)
                 {
-                    iterator.SeekToFirst();
-                    while (iterator.Valid())
-                    {
-                        var chainedHeader = DataEncoder.DecodeChainedHeader(iterator.Value().ToArray());
-                        yield return chainedHeader;
+                    var value = iterator.Value;
+                    var chainedHeader = DataEncoder.DecodeChainedHeader(value);
+                    yield return chainedHeader;
 
-                        iterator.Next();
-                    }
+                    iterator.Next();
                 }
             }
         }
