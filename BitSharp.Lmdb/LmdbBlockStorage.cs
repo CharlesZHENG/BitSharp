@@ -203,11 +203,6 @@ namespace BitSharp.Lmdb
 
         public string Name => "Blocks";
 
-        public bool TryRemove(UInt256 blockHash)
-        {
-            throw new NotImplementedException();
-        }
-
         public void Flush()
         {
             this.jetInstance.Flush(force: true);

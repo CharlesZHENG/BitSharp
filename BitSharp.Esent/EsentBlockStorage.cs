@@ -441,11 +441,6 @@ namespace BitSharp.Esent
 
         public string Name => "Blocks";
 
-        public bool TryRemove(UInt256 blockHash)
-        {
-            throw new NotImplementedException();
-        }
-
         public void Flush()
         {
             using (var handle = this.cursorCache.TakeItem())
