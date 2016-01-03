@@ -125,17 +125,31 @@ namespace BitSharp.Common
         }
 
         //TODO properly taken into account host endianness
-        public static UInt256 FromByteArrayBE(byte[] buffer)
+        public byte[] ToByteArrayBE(byte[] buffer, int offset = 0)
         {
             unchecked
             {
-                if (buffer.Length != 32)
+                Buffer.BlockCopy(BitConverter.GetBytes(IPAddress.HostToNetworkOrder((long)this.part1)), 0, buffer, 0 + offset, 8);
+                Buffer.BlockCopy(BitConverter.GetBytes(IPAddress.HostToNetworkOrder((long)this.part2)), 0, buffer, 8 + offset, 8);
+                Buffer.BlockCopy(BitConverter.GetBytes(IPAddress.HostToNetworkOrder((long)this.part3)), 0, buffer, 16 + offset, 8);
+                Buffer.BlockCopy(BitConverter.GetBytes(IPAddress.HostToNetworkOrder((long)this.part4)), 0, buffer, 24 + offset, 8);
+
+                return buffer;
+            }
+        }
+
+        //TODO properly taken into account host endianness
+        public static UInt256 FromByteArrayBE(byte[] buffer, int offset = 0)
+        {
+            unchecked
+            {
+                if (buffer.Length < offset + 32)
                     throw new ArgumentException();
 
-                var part1 = (ulong)IPAddress.HostToNetworkOrder(BitConverter.ToInt64(buffer, 0));
-                var part2 = (ulong)IPAddress.HostToNetworkOrder(BitConverter.ToInt64(buffer, 8));
-                var part3 = (ulong)IPAddress.HostToNetworkOrder(BitConverter.ToInt64(buffer, 16));
-                var part4 = (ulong)IPAddress.HostToNetworkOrder(BitConverter.ToInt64(buffer, 24));
+                var part1 = (ulong)IPAddress.HostToNetworkOrder(BitConverter.ToInt64(buffer, 0 + offset));
+                var part2 = (ulong)IPAddress.HostToNetworkOrder(BitConverter.ToInt64(buffer, 8 + offset));
+                var part3 = (ulong)IPAddress.HostToNetworkOrder(BitConverter.ToInt64(buffer, 16 + offset));
+                var part4 = (ulong)IPAddress.HostToNetworkOrder(BitConverter.ToInt64(buffer, 24 + offset));
 
                 return new UInt256(part1, part2, part3, part4);
             }

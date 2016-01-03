@@ -1,5 +1,6 @@
 using BitSharp.Common;
 using BitSharp.Common.ExtensionMethods;
+using BitSharp.Core.Builders;
 using BitSharp.Core.Domain;
 using BitSharp.Core.ExtensionMethods;
 using NLog;
@@ -662,6 +663,35 @@ namespace BitSharp.Core
             }
         }
 
+        public static IImmutableList<UnmintedTx> DecodeUnmintedTxList(BinaryReader reader)
+        {
+            return reader.ReadList(() => DecodeUnmintedTx(reader));
+        }
+
+        public static IImmutableList<UnmintedTx> DecodeUnmintedTxList(byte[] bytes)
+        {
+            using (var stream = new MemoryStream(bytes))
+            using (var reader = new BinaryReader(stream))
+            {
+                return DecodeUnmintedTxList(reader);
+            }
+        }
+
+        public static void EncodeUnmintedTxList(BinaryWriter writer, IImmutableList<UnmintedTx> unmintedTxes)
+        {
+            writer.WriteList(unmintedTxes, unmintedTx => EncodeUnmintedTx(writer, unmintedTx));
+        }
+
+        public static byte[] EncodeUnmintedTxList(IImmutableList<UnmintedTx> unmintedTxes)
+        {
+            using (var stream = new MemoryStream())
+            using (var writer = new BinaryWriter(stream))
+            {
+                EncodeUnmintedTxList(writer, unmintedTxes);
+                return stream.ToArray();
+            }
+        }
+
         public static OutputStates DecodeOutputStates(byte[] bytes)
         {
             var length = BitConverter.ToInt32(bytes, 0);
@@ -760,6 +790,40 @@ namespace BitSharp.Core
             using (var writer = new BinaryWriter(stream))
             {
                 EncodeBlockTxNode(writer, blockTx);
+                return stream.ToArray();
+            }
+        }
+
+        public static BlockSpentTxes DecodeBlockSpentTxes(BinaryReader reader)
+        {
+            var blockSpentTxesBuilder = new BlockSpentTxesBuilder();
+
+            foreach (var spentTx in reader.ReadList(() => DecodeSpentTx(reader)))
+                blockSpentTxesBuilder.AddSpentTx(spentTx);
+
+            return blockSpentTxesBuilder.ToImmutable();
+        }
+
+        public static BlockSpentTxes DecodeBlockSpentTxes(byte[] bytes)
+        {
+            using (var stream = new MemoryStream(bytes))
+            using (var reader = new BinaryReader(stream))
+            {
+                return DecodeBlockSpentTxes(reader);
+            }
+        }
+
+        public static void EncodeBlockSpentTxes(BinaryWriter writer, BlockSpentTxes blockSpentTxes)
+        {
+            writer.WriteList(blockSpentTxes, spentTx => EncodeSpentTx(writer, spentTx));
+        }
+
+        public static byte[] EncodeBlockSpentTxes(BlockSpentTxes blockSpentTxes)
+        {
+            using (var stream = new MemoryStream())
+            using (var writer = new BinaryWriter(stream))
+            {
+                EncodeBlockSpentTxes(writer, blockSpentTxes);
                 return stream.ToArray();
             }
         }
