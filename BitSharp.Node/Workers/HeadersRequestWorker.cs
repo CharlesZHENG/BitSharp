@@ -76,11 +76,13 @@ namespace BitSharp.Node.Workers
             var blockLocatorHashes = CalculateBlockLocatorHashes(targetChainLocal.Blocks);
 
             // remove any stale requests from the peer's list of requests
-            this.headersRequestsByPeer.RemoveWhere(x => (now - x.Value) > STALE_REQUEST_TIME);
+            this.headersRequestsByPeer.RemoveWhere(x => !x.Key.IsConnected || (now - x.Value) > STALE_REQUEST_TIME);
 
             // loop through each connected peer
             var requestCount = 0;
-            foreach (var peer in this.localClient.ConnectedPeers)
+            var connectedPeers = this.localClient.ConnectedPeers.SafeToList();
+            connectedPeers.Shuffle();
+            foreach (var peer in connectedPeers)
             {
                 // determine if a new request can be made
                 if (this.headersRequestsByPeer.TryAdd(peer, now))
@@ -90,7 +92,7 @@ namespace BitSharp.Node.Workers
 
                     // only send out a few header requests at a time
                     requestCount++;
-                    if (requestCount >= 5)
+                    if (requestCount >= 2)
                         break;
                 }
             }

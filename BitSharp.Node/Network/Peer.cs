@@ -83,6 +83,8 @@ namespace BitSharp.Node.Network
                     this.blockMissCountMeasure.Dispose();
                     this.semaphore.Dispose();
 
+                    this.IsConnected = false;
+
                     this.isDisposed = true;
                 }
             }

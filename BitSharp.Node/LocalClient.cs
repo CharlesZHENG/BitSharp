@@ -84,7 +84,7 @@ namespace BitSharp.Node
                 new WorkerConfig(initialNotify: true, minIdleTime: TimeSpan.FromMilliseconds(50), maxIdleTime: TimeSpan.FromSeconds(30)),
                 this, this.coreDaemon);
 
-            this.statsWorker = new WorkerMethod("LocalClient.StatsWorker", StatsWorker, true, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
+            this.statsWorker = new WorkerMethod("LocalClient.StatsWorker", StatsWorker, true, TimeSpan.FromSeconds(5), TimeSpan.FromMinutes(5));
 
             this.peerWorker.PeerConnected += HandlePeerConnected;
             this.peerWorker.PeerDisconnected += HandlePeerDisconnected;
@@ -248,13 +248,13 @@ namespace BitSharp.Node
         private void AddKnownPeers()
         {
             var count = 0;
-            foreach (var knownAddress in this.networkPeerStorage.Values)
+            foreach (var knownAddress in this.networkPeerStorage)
             {
                 this.peerWorker.AddCandidatePeer(
                     new CandidatePeer
                     (
-                        ipEndPoint: knownAddress.NetworkAddress.ToIPEndPoint(),
-                        time: knownAddress.Time.UnixTimeToDateTime() + TimeSpan.FromDays(random.NextDouble(-2, +2)),
+                        ipEndPoint: knownAddress.Value.NetworkAddress.ToIPEndPoint(),
+                        time: knownAddress.Value.Time.UnixTimeToDateTime() + TimeSpan.FromDays(random.NextDouble(-2, +2)),
                         isSeed: false
                     ));
                 count++;
@@ -271,7 +271,6 @@ namespace BitSharp.Node
             WirePeerEvents(peer);
 
             this.statsWorker.NotifyWork();
-            this.headersRequestWorker.NotifyWork();
             this.blockRequestWorker.NotifyWork();
         }
 
@@ -280,7 +279,6 @@ namespace BitSharp.Node
             UnwirePeerEvents(peer);
 
             this.statsWorker.NotifyWork();
-            this.headersRequestWorker.NotifyWork();
             this.blockRequestWorker.NotifyWork();
         }
 
@@ -372,7 +370,7 @@ namespace BitSharp.Node
                             && !unconfirmedTxes.ContainsTransaction(invVector.Hash)
                             && !chainState.ContainsUnspentTx(invVector.Hash))
                         {
-                            logger.Info($"Requesting transaction {invVector.Hash}");
+                            //logger.Info($"Requesting transaction {invVector.Hash}");
                             responseInvVectors.Add(invVector);
                         }
                     }
@@ -380,7 +378,7 @@ namespace BitSharp.Node
 
                 // request missing transactions
                 if (responseInvVectors.Count > 0)
-                    connectedPeersLocal.Single().Sender.SendGetData(responseInvVectors.ToImmutable()).Wait();
+                    connectedPeersLocal[random.Next(connectedPeersLocal.Count)].Sender.SendGetData(responseInvVectors.ToImmutable()).Wait();
             }
             else
             {
@@ -427,7 +425,7 @@ namespace BitSharp.Node
         {
             var result = coreDaemon.TryAddUnconfirmedTx(transaction);
 
-            logger.Info($"Received transaction {transaction.Hash}: {result}");
+            //logger.Info($"Received transaction {transaction.Hash}: {result}");
         }
 
         private void OnReceivedAddresses(ImmutableArray<NetworkAddressWithTime> addresses)

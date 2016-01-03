@@ -83,6 +83,9 @@ namespace BitSharp.Node.Workers
                 await ConnectAndHandshake(peer);
 
                 PeerHandshakeCompleted?.Invoke(peer);
+
+                this.pendingPeers.TryRemove(peer);
+                this.connectedPeers.TryAdd(peer);
             }
             catch (Exception e)
             {
@@ -223,6 +226,9 @@ namespace BitSharp.Node.Workers
 
                     PeerHandshakeCompleted?.Invoke(peer);
 
+                    this.pendingPeers.TryRemove(peer);
+                    this.connectedPeers.TryAdd(peer);
+
                     return peer;
                 }
                 catch (Exception ex)
@@ -249,9 +255,6 @@ namespace BitSharp.Node.Workers
 
             // connect
             await peer.ConnectAsync();
-
-            this.pendingPeers.TryRemove(peer);
-            this.connectedPeers.TryAdd(peer);
 
             // notify peer is connected
             PeerConnected?.Invoke(peer);
