@@ -127,13 +127,13 @@ namespace BitSharp.Core.Test.Storage
                 blockTxesStorage.TryAddBlockTransactions(block.Hash, block.BlockTxes);
 
                 // block should be present
-                Assert.IsTrue(blockTxesStorage.ContainsBlock(block.Hash)); ;
+                Assert.IsTrue(blockTxesStorage.ContainsBlock(block.Hash));
 
                 // remove the block
                 blockTxesStorage.TryRemoveBlockTransactions(block.Hash);
 
                 // block should not be present
-                Assert.IsFalse(blockTxesStorage.ContainsBlock(block.Hash)); ;
+                Assert.IsFalse(blockTxesStorage.ContainsBlock(block.Hash));
             }
         }
 

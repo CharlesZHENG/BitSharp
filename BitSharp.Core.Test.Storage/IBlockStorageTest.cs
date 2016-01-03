@@ -73,13 +73,13 @@ namespace BitSharp.Core.Test.Storage
                 blockStorage.TryAddChainedHeader(chainedHeader);
 
                 // header should be present
-                Assert.IsTrue(blockStorage.ContainsChainedHeader(chainedHeader.Hash)); ;
+                Assert.IsTrue(blockStorage.ContainsChainedHeader(chainedHeader.Hash));
 
                 // remove the header
                 blockStorage.TryRemoveChainedHeader(chainedHeader.Hash);
 
                 // header should not be present
-                Assert.IsFalse(blockStorage.ContainsChainedHeader(chainedHeader.Hash)); ;
+                Assert.IsFalse(blockStorage.ContainsChainedHeader(chainedHeader.Hash));
             }
         }
 

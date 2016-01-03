@@ -266,7 +266,7 @@ namespace BitSharp.Core.Test
             var expectedMerkleRoot = MerkleTree.PairHashes(depth1Hash1, depth1Hash2);
 
             var hashes = new List<UInt256> { node1.Hash, node2.Hash, node3.Hash };
-            var actualMerkleRoot = MerkleTree.CalculateMerkleRoot(hashes); ;
+            var actualMerkleRoot = MerkleTree.CalculateMerkleRoot(hashes);
 
             Assert.AreEqual(expectedMerkleRoot, actualMerkleRoot);
         }
