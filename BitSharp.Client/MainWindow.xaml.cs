@@ -3,6 +3,7 @@ using BitSharp.Core;
 using BitSharp.Core.Rules;
 using BitSharp.Core.Storage.Memory;
 using BitSharp.Esent;
+using BitSharp.LevelDb;
 using BitSharp.Lmdb;
 using BitSharp.Node;
 using BitSharp.Node.Storage.Memory;
@@ -49,6 +50,7 @@ namespace BitSharp.Client
                 var pruningMode = PruningMode.TxIndex | PruningMode.BlockSpentIndex | PruningMode.BlockTxesPreserveMerkle;
                 var enableDummyWallet = true;
 
+                var useLevelDb = true;
                 var useLmdb = false;
                 var runInMemory = false;
 
@@ -137,7 +139,14 @@ namespace BitSharp.Client
                 var modules = new List<INinjectModule>();
 
                 // add storage module
-                if (runInMemory)
+                if (useLevelDb)
+                {
+                    pruningMode &= ~PruningMode.BlockTxesPreserveMerkle;
+                    pruningMode &= ~PruningMode.BlockTxesDestroyMerkle;
+
+                    modules.Add(new LevelDbStorageModule(baseDirectory, chainType));
+                }
+                else if (runInMemory)
                 {
                     modules.Add(new MemoryStorageModule());
                     modules.Add(new NodeMemoryStorageModule());

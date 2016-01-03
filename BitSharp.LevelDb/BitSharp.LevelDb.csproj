@@ -1,21 +1,16 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="14.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{B0699775-A157-48AA-A62D-2CB18930D6FF}</ProjectGuid>
+    <ProjectGuid>{5F7C08AD-AD61-416C-9A45-462347633059}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>BitSharp.Core.Test.Storage</RootNamespace>
-    <AssemblyName>BitSharp.Core.Test.Storage</AssemblyName>
+    <RootNamespace>BitSharp.LevelDb</RootNamespace>
+    <AssemblyName>BitSharp.LevelDb</AssemblyName>
     <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
-    <ProjectTypeGuids>{3AC096D0-A1C2-E12C-1390-A8335801FDAB};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
-    <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">10.0</VisualStudioVersion>
-    <VSToolsPath Condition="'$(VSToolsPath)' == ''">$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)</VSToolsPath>
-    <ReferencePath>$(ProgramFiles)\Common Files\microsoft shared\VSTT\$(VisualStudioVersion)\UITestExtensionPackages</ReferencePath>
-    <IsCodedUITest>False</IsCodedUITest>
-    <TestProjectType>UnitTest</TestProjectType>
     <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\</SolutionDir>
     <RestorePackages>true</RestorePackages>
     <TargetFrameworkProfile />
@@ -28,6 +23,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <PlatformTarget>AnyCPU</PlatformTarget>
     <CodeAnalysisRuleSet>ExtendedCorrectnessRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
@@ -58,6 +54,10 @@
     <CodeAnalysisRuleSet>ExtendedCorrectnessRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="LevelDB.Net, Version=0.0.0.0, Culture=neutral, processorArchitecture=AMD64">
+      <HintPath>..\packages\LevelDB.Net.1.1.2\lib\net40\LevelDB.Net.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Ninject, Version=3.2.0.0, Culture=neutral, PublicKeyToken=c7192dc5380945e7, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\Ninject.3.2.2.0\lib\net45-full\Ninject.dll</HintPath>
@@ -71,6 +71,7 @@
       <HintPath>..\packages\System.Collections.Immutable.1.1.37\lib\dotnet\System.Collections.Immutable.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="System.Core" />
     <Reference Include="System.Numerics" />
     <Reference Include="System.Reactive.Core">
       <HintPath>..\packages\Rx-Core.2.2.5\lib\net45\System.Reactive.Core.dll</HintPath>
@@ -88,81 +89,44 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\Microsoft.Tpl.Dataflow.4.5.24\lib\portable-net45+win8+wpa81\System.Threading.Tasks.Dataflow.dll</HintPath>
     </Reference>
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Xml" />
   </ItemGroup>
-  <Choose>
-    <When Condition="('$(VisualStudioVersion)' == '10.0' or '$(VisualStudioVersion)' == '') and '$(TargetFrameworkVersion)' == 'v3.5'">
-      <ItemGroup>
-        <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTestFramework, Version=10.1.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL" />
-      </ItemGroup>
-    </When>
-    <Otherwise>
-      <ItemGroup>
-        <Reference Include="Microsoft.VisualStudio.QualityTools.UnitTestFramework" />
-      </ItemGroup>
-    </Otherwise>
-  </Choose>
   <ItemGroup>
-    <Compile Include="IStorageManagerTest.cs" />
-    <Compile Include="IChainStateCursorTest.cs" />
-    <Compile Include="IBlockTxesStorageTest.cs" />
-    <Compile Include="IBlockStorageTest.cs" />
-    <Compile Include="StorageIntegrationTest.cs" />
-    <Compile Include="StorageProviderTest.cs" />
+    <Compile Include="DbEncoder.cs" />
+    <Compile Include="ExtensionMethods.cs" />
+    <Compile Include="MerkleTreePruningCursor.cs" />
+    <Compile Include="LevelDbBlockStorage.cs" />
+    <Compile Include="LevelDbBlockTxesStorage.cs" />
+    <Compile Include="ChainState\LevelDbChainStateManager.cs" />
+    <Compile Include="LevelDbStorageManager.cs" />
+    <Compile Include="NetworkPeerStorage.cs" />
+    <Compile Include="LevelDbStorageModule.cs" />
+    <Compile Include="ChainState\LevelDbChainStateCursor.cs" />
+    <Compile Include="PersistentObjectDictonary.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\BitSharp.Common.Test\BitSharp.Common.Test.csproj">
-      <Project>{299d32ed-61a5-4c8d-8ae1-8f502cfa6b99}</Project>
-      <Name>BitSharp.Common.Test</Name>
-    </ProjectReference>
     <ProjectReference Include="..\BitSharp.Common\BitSharp.Common.csproj">
       <Project>{b8d21dec-5370-4194-9e6d-2f620804a892}</Project>
       <Name>BitSharp.Common</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\BitSharp.Core.Test\BitSharp.Core.Test.csproj">
-      <Project>{91e24b6f-6864-49f4-b6d7-2ad25d514cb6}</Project>
-      <Name>BitSharp.Core.Test</Name>
     </ProjectReference>
     <ProjectReference Include="..\BitSharp.Core\BitSharp.Core.csproj">
       <Project>{2ecfa6c0-46b6-4587-a662-3f61c7efbc44}</Project>
       <Name>BitSharp.Core</Name>
     </ProjectReference>
-    <ProjectReference Include="..\BitSharp.Esent.Test\BitSharp.Esent.Test.csproj">
-      <Project>{b016a5bb-b387-4a0d-8dba-6f670f25235f}</Project>
-      <Name>BitSharp.Esent.Test</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\BitSharp.LevelDb.Test\BitSharp.LevelDb.Test.csproj">
-      <Project>{a96b3f05-1b64-44db-83bf-5da761261834}</Project>
-      <Name>BitSharp.LevelDb.Test</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\BitSharp.Lmdb.Test\BitSharp.Lmdb.Test.csproj">
-      <Project>{0d4f870a-a895-44ed-a56a-63bf242ad7ce}</Project>
-      <Name>BitSharp.Lmdb.Test</Name>
+    <ProjectReference Include="..\BitSharp.Node\BitSharp.Node.csproj">
+      <Project>{b76235bf-6037-45b8-9341-957e6407f8e1}</Project>
+      <Name>BitSharp.Node</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />
     <None Include="packages.config" />
   </ItemGroup>
-  <Choose>
-    <When Condition="'$(VisualStudioVersion)' == '10.0' And '$(IsCodedUITest)' == 'True'">
-      <ItemGroup>
-        <Reference Include="Microsoft.VisualStudio.QualityTools.CodedUITestFramework, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="Microsoft.VisualStudio.TestTools.UITest.Common, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="Microsoft.VisualStudio.TestTools.UITest.Extension, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-          <Private>False</Private>
-        </Reference>
-        <Reference Include="Microsoft.VisualStudio.TestTools.UITesting, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
-          <Private>False</Private>
-        </Reference>
-      </ItemGroup>
-    </When>
-  </Choose>
-  <Import Project="$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets" Condition="Exists('$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets')" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

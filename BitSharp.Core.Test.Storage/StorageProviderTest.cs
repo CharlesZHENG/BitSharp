@@ -1,4 +1,5 @@
 ﻿using BitSharp.Esent.Test;
+using BitSharp.LevelDb.Test;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System;
 using System.Collections.Generic;
@@ -12,9 +13,10 @@ namespace BitSharp.Core.Test.Storage
         private readonly List<ITestStorageProvider> testStorageProviders =
             new List<ITestStorageProvider>
             {
-                new MemoryTestStorageProvider(),
-                new EsentTestStorageProvider(),
+                //new MemoryTestStorageProvider(),
+                //new EsentTestStorageProvider(),
                 //new LmdbTestStorageProvider(),
+                new LevelDbTestStorageProvider(),
             };
 
         // Run the specified test method against all providers

@@ -3,11 +3,11 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{B0699775-A157-48AA-A62D-2CB18930D6FF}</ProjectGuid>
+    <ProjectGuid>{A96B3F05-1B64-44DB-83BF-5DA761261834}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>BitSharp.Core.Test.Storage</RootNamespace>
-    <AssemblyName>BitSharp.Core.Test.Storage</AssemblyName>
+    <RootNamespace>BitSharp.LevelDb.Test</RootNamespace>
+    <AssemblyName>BitSharp.LevelDb.Test</AssemblyName>
     <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <ProjectTypeGuids>{3AC096D0-A1C2-E12C-1390-A8335801FDAB};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
@@ -58,6 +58,14 @@
     <CodeAnalysisRuleSet>ExtendedCorrectnessRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="LevelDB.Net, Version=0.0.0.0, Culture=neutral, processorArchitecture=AMD64">
+      <HintPath>..\packages\LevelDB.Net.1.1.2\lib\net40\LevelDB.Net.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Moq, Version=4.2.1510.2205, Culture=neutral, PublicKeyToken=69f491c39445e920, processorArchitecture=MSIL">
+      <HintPath>..\packages\Moq.4.2.1510.2205\lib\net40\Moq.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="Ninject, Version=3.2.0.0, Culture=neutral, PublicKeyToken=c7192dc5380945e7, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\Ninject.3.2.2.0\lib\net45-full\Ninject.dll</HintPath>
@@ -102,19 +110,14 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
-    <Compile Include="IStorageManagerTest.cs" />
-    <Compile Include="IChainStateCursorTest.cs" />
-    <Compile Include="IBlockTxesStorageTest.cs" />
-    <Compile Include="IBlockStorageTest.cs" />
-    <Compile Include="StorageIntegrationTest.cs" />
-    <Compile Include="StorageProviderTest.cs" />
+    <Compile Include="LevelDbTestStorageProvider.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\BitSharp.Common.Test\BitSharp.Common.Test.csproj">
-      <Project>{299d32ed-61a5-4c8d-8ae1-8f502cfa6b99}</Project>
-      <Name>BitSharp.Common.Test</Name>
-    </ProjectReference>
+    <None Include="app.config" />
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\BitSharp.Common\BitSharp.Common.csproj">
       <Project>{b8d21dec-5370-4194-9e6d-2f620804a892}</Project>
       <Name>BitSharp.Common</Name>
@@ -127,22 +130,10 @@
       <Project>{2ecfa6c0-46b6-4587-a662-3f61c7efbc44}</Project>
       <Name>BitSharp.Core</Name>
     </ProjectReference>
-    <ProjectReference Include="..\BitSharp.Esent.Test\BitSharp.Esent.Test.csproj">
-      <Project>{b016a5bb-b387-4a0d-8dba-6f670f25235f}</Project>
-      <Name>BitSharp.Esent.Test</Name>
+    <ProjectReference Include="..\BitSharp.LevelDb\BitSharp.LevelDb.csproj">
+      <Project>{5f7c08ad-ad61-416c-9a45-462347633059}</Project>
+      <Name>BitSharp.LevelDb</Name>
     </ProjectReference>
-    <ProjectReference Include="..\BitSharp.LevelDb.Test\BitSharp.LevelDb.Test.csproj">
-      <Project>{a96b3f05-1b64-44db-83bf-5da761261834}</Project>
-      <Name>BitSharp.LevelDb.Test</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\BitSharp.Lmdb.Test\BitSharp.Lmdb.Test.csproj">
-      <Project>{0d4f870a-a895-44ed-a56a-63bf242ad7ce}</Project>
-      <Name>BitSharp.Lmdb.Test</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="app.config" />
-    <None Include="packages.config" />
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '10.0' And '$(IsCodedUITest)' == 'True'">
