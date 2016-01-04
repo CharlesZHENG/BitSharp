@@ -64,6 +64,9 @@ namespace BitSharp.Node.Workers
 
         public Task SendGetHeaders(Peer peer)
         {
+            if (!IsStarted)
+                return Task.CompletedTask;
+
             var targetChainLocal = this.coreDaemon.TargetChain;
             if (targetChainLocal == null)
                 return Task.CompletedTask;
