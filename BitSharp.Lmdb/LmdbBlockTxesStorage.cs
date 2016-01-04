@@ -167,7 +167,7 @@ namespace BitSharp.Lmdb
                     if (blockHash != recordBlockHash)
                         yield break;
 
-                    var blockTx = DataEncoder.DecodeBlockTxNode(kvPair.Value.Value);
+                    var blockTx = DataDecoder.DecodeBlockTxNode(kvPair.Value.Value);
 
                     if (requireTx && blockTx.Pruned)
                         throw new MissingDataException(blockHash);
@@ -185,7 +185,7 @@ namespace BitSharp.Lmdb
                 byte[] blockTxBytes;
                 if (txn.TryGet(blocksTableId, DbEncoder.EncodeBlockHashTxIndex(blockHash, txIndex), out blockTxBytes))
                 {
-                    var blockTxNode = DataEncoder.DecodeBlockTxNode(blockTxBytes);
+                    var blockTxNode = DataDecoder.DecodeBlockTxNode(blockTxBytes);
                     if (!blockTxNode.Pruned)
                     {
                         transaction = blockTxNode.ToBlockTx();

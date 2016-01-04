@@ -16,7 +16,7 @@ namespace BitSharp.Core.Test
         [TestMethod]
         public void TestWireDecodeBlockHeader()
         {
-            var actual = DataEncoder.EncodeBlockHeader(DataEncoder.DecodeBlockHeader(BLOCK_HEADER_1_BYTES.ToArray()));
+            var actual = DataEncoder.EncodeBlockHeader(DataDecoder.DecodeBlockHeader(BLOCK_HEADER_1_BYTES.ToArray()));
             CollectionAssert.AreEqual(BLOCK_HEADER_1_BYTES.ToList(), actual.ToList());
         }
 
@@ -30,7 +30,7 @@ namespace BitSharp.Core.Test
         [TestMethod]
         public void TestWireDecodeBlock()
         {
-            var actual = DataEncoder.EncodeBlock(DataEncoder.DecodeBlock(BLOCK_1_BYTES.ToArray()));
+            var actual = DataEncoder.EncodeBlock(DataDecoder.DecodeBlock(BLOCK_1_BYTES.ToArray()));
             CollectionAssert.AreEqual(BLOCK_1_BYTES.ToList(), actual.ToList());
         }
 
@@ -44,7 +44,7 @@ namespace BitSharp.Core.Test
         [TestMethod]
         public void TestWireDecodeTransactionIn()
         {
-            var actual = DataEncoder.EncodeTxInput(DataEncoder.DecodeTxInput(TRANSACTION_INPUT_1_BYTES.ToArray()));
+            var actual = DataEncoder.EncodeTxInput(DataDecoder.DecodeTxInput(TRANSACTION_INPUT_1_BYTES.ToArray()));
             CollectionAssert.AreEqual(TRANSACTION_INPUT_1_BYTES.ToList(), actual.ToList());
         }
 
@@ -58,7 +58,7 @@ namespace BitSharp.Core.Test
         [TestMethod]
         public void TestWireDecodeTransactionOut()
         {
-            var actual = DataEncoder.EncodeTxOutput(DataEncoder.DecodeTxOutput(TRANSACTION_OUTPUT_1_BYTES.ToArray()));
+            var actual = DataEncoder.EncodeTxOutput(DataDecoder.DecodeTxOutput(TRANSACTION_OUTPUT_1_BYTES.ToArray()));
             CollectionAssert.AreEqual(TRANSACTION_OUTPUT_1_BYTES.ToList(), actual.ToList());
         }
 
@@ -72,8 +72,9 @@ namespace BitSharp.Core.Test
         [TestMethod]
         public void TestWireDecodeTransaction()
         {
-            var actual = DataEncoder.EncodeTransaction(DataEncoder.DecodeTransaction(TRANSACTION_1_BYTES.ToArray()).Transaction).TxBytes;
-            CollectionAssert.AreEqual(TRANSACTION_1_BYTES.ToList(), actual.ToList());
+            var actual = DataDecoder.DecodeTransaction(TRANSACTION_1_BYTES.ToArray());
+            var actualBytes = DataEncoder.EncodeTransaction(actual).TxBytes;
+            CollectionAssert.AreEqual(TRANSACTION_1_BYTES.ToList(), actualBytes.ToList());
         }
     }
 }

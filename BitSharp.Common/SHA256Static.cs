@@ -16,7 +16,7 @@ namespace BitSharp.Common
             var sha256 = GetSHA256();
             return sha256.ComputeHash(buffer);
         }
-        
+
         public static byte[] ComputeHash(ImmutableArray<byte> buffer)
         {
             var sha256 = GetSHA256();
@@ -27,6 +27,12 @@ namespace BitSharp.Common
         {
             var sha256 = GetSHA256();
             return sha256.ComputeHash(sha256.ComputeHash(buffer));
+        }
+
+        public static byte[] ComputeDoubleHash(byte[] buffer, int offset, int count)
+        {
+            var sha256 = GetSHA256();
+            return sha256.ComputeHash(sha256.ComputeHash(buffer, offset, count));
         }
 
         public static byte[] ComputeDoubleHash(Stream inputStream)

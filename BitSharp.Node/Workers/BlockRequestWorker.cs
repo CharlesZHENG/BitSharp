@@ -468,7 +468,7 @@ namespace BitSharp.Node.Workers
                 using (var stream = new FileStream(blockFile.FullName, FileMode.Open))
                 using (var reader = new BinaryReader(stream))
                 {
-                    var block = DataEncoder.DecodeBlock(reader);
+                    var block = DataDecoder.DecodeBlock(reader);
                     if (block.Hash == blockHash)
                         return block;
                     else

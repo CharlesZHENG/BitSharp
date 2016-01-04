@@ -183,7 +183,7 @@ namespace BitSharp.Node
             var command = reader.ReadFixedString(12);
             var payloadSize = reader.ReadUInt32();
             var payloadChecksum = reader.ReadUInt32();
-            var payload = reader.ReadBytes(payloadSize.ToIntChecked()).ToImmutableArray();
+            var payload = reader.ReadExactly(payloadSize.ToIntChecked()).ToImmutableArray();
 
             return new Message
             (
@@ -228,7 +228,7 @@ namespace BitSharp.Node
             return new NetworkAddress
             (
                 Services: reader.ReadUInt64(),
-                IPv6Address: reader.ReadBytes(16).ToImmutableArray(),
+                IPv6Address: reader.ReadExactly(16).ToImmutableArray(),
                 Port: reader.ReadUInt16BE()
             );
         }

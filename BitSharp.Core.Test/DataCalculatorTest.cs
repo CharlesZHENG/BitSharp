@@ -52,7 +52,7 @@ namespace BitSharp.Core.Test
         public void TestCalculateBlockHash()
         {
             var expectedHash = UInt256.ParseHex("000000000019d6689c085ae165831e934ff763ae46a2a6c172b3f1b60a8ce26f");
-            var blockHeader = new BlockHeader
+            var blockHeader = BlockHeader.Create
             (
                 version: 1,
                 previousBlock: UInt256.Zero,

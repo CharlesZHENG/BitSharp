@@ -65,7 +65,7 @@ namespace BitSharp.Lmdb
 
                 byte[] value;
                 if (this.txn.TryGet(globalsTableId, chainTipKey, out value))
-                    return value != null ? DataEncoder.DecodeChainedHeader(value) : null;
+                    return value != null ? DataDecoder.DecodeChainedHeader(value) : null;
                 else
                     return null;
             }
@@ -197,7 +197,7 @@ namespace BitSharp.Lmdb
             byte[] headerBytes;
             if (this.txn.TryGet(headersTableId, DbEncoder.EncodeUInt256(blockHash), out headerBytes))
             {
-                header = DataEncoder.DecodeChainedHeader(headerBytes);
+                header = DataDecoder.DecodeChainedHeader(headerBytes);
                 return true;
             }
             else
@@ -257,7 +257,7 @@ namespace BitSharp.Lmdb
             byte[] unspentTxBytes;
             if (this.txn.TryGet(unspentTxTableId, DbEncoder.EncodeUInt256(txHash), out unspentTxBytes))
             {
-                unspentTx = DataEncoder.DecodeUnspentTx(unspentTxBytes);
+                unspentTx = DataDecoder.DecodeUnspentTx(unspentTxBytes);
                 return true;
             }
             else
@@ -335,7 +335,7 @@ namespace BitSharp.Lmdb
                 var kvPair = cursor.MoveToFirst();
                 while (kvPair != null)
                 {
-                    var unspentTx = DataEncoder.DecodeUnspentTx(kvPair.Value.Value);
+                    var unspentTx = DataDecoder.DecodeUnspentTx(kvPair.Value.Value);
                     yield return unspentTx;
 
                     kvPair = cursor.MoveNext();
@@ -357,12 +357,7 @@ namespace BitSharp.Lmdb
             byte[] spentTxesBytes;
             if (this.txn.TryGet(blockSpentTxesTableId, DbEncoder.EncodeInt32(blockIndex), out spentTxesBytes))
             {
-                using (var stream = new MemoryStream(spentTxesBytes))
-                using (var reader = new BinaryReader(stream))
-                {
-                    spentTxes = BlockSpentTxes.CreateRange(reader.ReadList(() => DataEncoder.DecodeSpentTx(reader)));
-                }
-
+                spentTxes = DataDecoder.DecodeBlockSpentTxes(spentTxesBytes);
                 return true;
             }
             else
@@ -428,12 +423,7 @@ namespace BitSharp.Lmdb
             byte[] unmintedTxesBytes;
             if (this.txn.TryGet(blockUnmintedTxesTableId, DbEncoder.EncodeUInt256(blockHash), out unmintedTxesBytes))
             {
-                using (var stream = new MemoryStream(unmintedTxesBytes))
-                using (var reader = new BinaryReader(stream))
-                {
-                    unmintedTxes = ImmutableList.CreateRange(reader.ReadList(() => DataEncoder.DecodeUnmintedTx(reader)));
-                }
-
+                unmintedTxes = DataDecoder.DecodeUnmintedTxList(unmintedTxesBytes);
                 return true;
             }
             else

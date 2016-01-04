@@ -417,8 +417,10 @@ namespace BitSharp.Core.Builders
             unspentTxes.WarmupValue(txHash, () =>
             {
                 UnspentTx unspentTx;
-                chainState.TryGetUnspentTx(txHash, out unspentTx);
-                return unspentTx;
+                if (chainState.TryGetUnspentTx(txHash, out unspentTx))
+                    return unspentTx;
+                else
+                    return null;
             });
         }
 

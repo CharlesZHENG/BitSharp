@@ -126,7 +126,7 @@ namespace BitSharp.Esent
                 Api.MakeKey(cursor.jetSession, cursor.blockHeadersTableId, DbEncoder.EncodeUInt256(blockHash), MakeKeyGrbit.NewKey);
                 if (Api.TrySeek(cursor.jetSession, cursor.blockHeadersTableId, SeekGrbit.SeekEQ))
                 {
-                    chainedHeader = DataEncoder.DecodeChainedHeader(Api.RetrieveColumn(cursor.jetSession, cursor.blockHeadersTableId, cursor.blockHeaderBytesColumnId));
+                    chainedHeader = DataDecoder.DecodeChainedHeader(Api.RetrieveColumn(cursor.jetSession, cursor.blockHeadersTableId, cursor.blockHeaderBytesColumnId));
                     return true;
                 }
                 else
@@ -185,7 +185,7 @@ namespace BitSharp.Esent
                         if (valid == null || valid.Value)
                         {
                             // decode chained header
-                            var chainedHeader = DataEncoder.DecodeChainedHeader(Api.RetrieveColumn(cursor.jetSession, cursor.blockHeadersTableId, cursor.blockHeaderBytesColumnId));
+                            var chainedHeader = DataDecoder.DecodeChainedHeader(Api.RetrieveColumn(cursor.jetSession, cursor.blockHeadersTableId, cursor.blockHeaderBytesColumnId));
 
                             // initialize max total work, if it isn't yet
                             if (maxTotalWork == BigInteger.Zero)
@@ -223,7 +223,7 @@ namespace BitSharp.Esent
                     do
                     {
                         // decode chained header and return
-                        var chainedHeader = DataEncoder.DecodeChainedHeader(Api.RetrieveColumn(cursor.jetSession, cursor.blockHeadersTableId, cursor.blockHeaderBytesColumnId));
+                        var chainedHeader = DataDecoder.DecodeChainedHeader(Api.RetrieveColumn(cursor.jetSession, cursor.blockHeadersTableId, cursor.blockHeaderBytesColumnId));
                         yield return chainedHeader;
                     }
                     while (Api.TryMoveNext(cursor.jetSession, cursor.blockHeadersTableId));

@@ -122,6 +122,7 @@
     <Compile Include="BlockProvider.cs" />
     <Compile Include="BlockReplayer.cs" />
     <Compile Include="Builders\ChainStateBuilderStats.cs" />
+    <Compile Include="DataDecoder.cs" />
     <Compile Include="Domain\IUnconfirmedTxes.cs" />
     <Compile Include="Domain\UnconfirmedTxes.cs" />
     <Compile Include="Storage\IUnconfirmedTxesCursor.cs" />

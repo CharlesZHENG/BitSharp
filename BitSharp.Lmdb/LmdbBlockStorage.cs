@@ -109,7 +109,7 @@ namespace BitSharp.Lmdb
                 byte[] chainedHeaderBytes;
                 if (txn.TryGet(blockHeadersTableId, DbEncoder.EncodeUInt256(blockHash), out chainedHeaderBytes))
                 {
-                    chainedHeader = DataEncoder.DecodeChainedHeader(chainedHeaderBytes);
+                    chainedHeader = DataDecoder.DecodeChainedHeader(chainedHeaderBytes);
                     return true;
                 }
                 else
@@ -165,7 +165,7 @@ namespace BitSharp.Lmdb
                 var kvPair = cursor.MoveToFirst();
                 while (kvPair != null)
                 {
-                    var chainedHeader = DataEncoder.DecodeChainedHeader(kvPair.Value.Value);
+                    var chainedHeader = DataDecoder.DecodeChainedHeader(kvPair.Value.Value);
                     yield return chainedHeader;
 
                     kvPair = cursor.MoveNext();

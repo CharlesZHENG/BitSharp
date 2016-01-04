@@ -34,7 +34,7 @@ namespace BitSharp.Core.Test
 
         public static BlockHeader RandomBlockHeader(RandomDataOptions options = default(RandomDataOptions))
         {
-            return new BlockHeader
+            return BlockHeader.Create
             (
                 version: random.NextUInt32(),
                 previousBlock: random.NextUInt256(),

@@ -66,7 +66,7 @@ namespace BitSharp.Lmdb
             if (this.blockHash != recordBlockHash)
                 throw new InvalidOperationException();
 
-            return DataEncoder.DecodeBlockTxNode(kvPair.Value, skipTxBytes: true);
+            return DataDecoder.DecodeBlockTxNode(kvPair.Value, skipTxBytes: true);
         }
 
         public void WriteNode(BlockTxNode node)

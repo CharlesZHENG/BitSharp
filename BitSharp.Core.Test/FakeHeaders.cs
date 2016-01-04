@@ -54,7 +54,7 @@ namespace BitSharp.Core.Test
             if (this.blockHeaders.Count > 0)
                 throw new InvalidOperationException();
 
-            var blockHeader = new BlockHeader(0, UInt256.Zero, UInt256.Zero, 0, this.bits, this.nonce);
+            var blockHeader = BlockHeader.Create(0, UInt256.Zero, UInt256.Zero, 0, this.bits, this.nonce);
             this.totalWork = blockHeader.CalculateWork();
 
             var chainedHeader = new ChainedHeader(blockHeader, 0, this.totalWork, DateTime.MinValue);
@@ -75,7 +75,7 @@ namespace BitSharp.Core.Test
 
             var prevBlockHeader = this.blockHeaders.Last();
 
-            var blockHeader = new BlockHeader(0, prevBlockHeader.Hash, UInt256.Zero, 0, bits ?? this.bits, this.nonce);
+            var blockHeader = BlockHeader.Create(0, prevBlockHeader.Hash, UInt256.Zero, 0, bits ?? this.bits, this.nonce);
             this.totalWork += blockHeader.CalculateWork();
 
             var chainedHeader = new ChainedHeader(blockHeader, this.blockHeaders.Count, this.totalWork, DateTime.Now);
