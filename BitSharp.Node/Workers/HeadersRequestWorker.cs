@@ -62,6 +62,31 @@ namespace BitSharp.Node.Workers
             this.flushWorker.Stop();
         }
 
+        public Task SendGetHeaders(Peer peer)
+        {
+            var targetChainLocal = this.coreDaemon.TargetChain;
+            if (targetChainLocal == null)
+                return Task.CompletedTask;
+
+            var blockLocatorHashes = CalculateBlockLocatorHashes(targetChainLocal.Blocks);
+
+            // remove an existing request for this peer if it's stale
+            var now = DateTime.UtcNow;
+            DateTime requestTime;
+            if (this.headersRequestsByPeer.TryGetValue(peer, out requestTime)
+                && (now - requestTime) > STALE_REQUEST_TIME)
+            {
+                this.headersRequestsByPeer.TryRemove(peer, out requestTime);
+            }
+
+            // determine if a new request can be made
+            if (this.headersRequestsByPeer.TryAdd(peer, now))
+                // send out the request for headers
+                return peer.Sender.SendGetHeaders(blockLocatorHashes, hashStop: UInt256.Zero);
+            else
+                return Task.CompletedTask;
+        }
+
         protected override Task WorkAction()
         {
             var now = DateTime.UtcNow;

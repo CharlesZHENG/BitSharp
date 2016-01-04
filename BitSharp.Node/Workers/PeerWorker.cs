@@ -27,6 +27,7 @@ namespace BitSharp.Node.Workers
         private readonly Random random = new Random();
         private readonly LocalClient localClient;
         private readonly CoreDaemon coreDaemon;
+        private readonly HeadersRequestWorker headersRequestWorker;
 
         private readonly SortedValueDictionary<IPEndPoint, CandidatePeer> unconnectedPeers = new SortedValueDictionary<IPEndPoint, CandidatePeer>();
         private readonly SemaphoreSlim unconnectedPeersLock = new SemaphoreSlim(1);
@@ -36,11 +37,12 @@ namespace BitSharp.Node.Workers
 
         private int incomingCount;
 
-        public PeerWorker(WorkerConfig workerConfig, LocalClient localClient, CoreDaemon coreDaemon)
+        internal PeerWorker(WorkerConfig workerConfig, LocalClient localClient, CoreDaemon coreDaemon, HeadersRequestWorker headersRequestWorker)
             : base("PeerWorker", workerConfig.initialNotify, workerConfig.minIdleTime, workerConfig.maxIdleTime)
         {
             this.localClient = localClient;
             this.coreDaemon = coreDaemon;
+            this.headersRequestWorker = headersRequestWorker;
         }
 
         public event Action<Peer> PeerConnected;
@@ -293,6 +295,7 @@ namespace BitSharp.Node.Workers
         private async Task PeerStartup(Peer peer)
         {
             await peer.Sender.RequestKnownAddressesAsync();
+            await headersRequestWorker.SendGetHeaders(peer);
         }
     }
 }

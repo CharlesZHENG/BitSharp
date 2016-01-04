@@ -19,17 +19,19 @@ namespace BitSharp.Node.Network
 {
     public class RemoteSender : IDisposable
     {
-        public event Action<Exception> OnFailed;
+        public event Action<Peer, Exception> OnFailed;
 
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly SemaphoreSlim semaphore = new SemaphoreSlim(1);
+        private readonly Peer owner;
         private readonly Socket socket;
 
         private bool isDisposed;
 
-        public RemoteSender(Socket socket)
+        public RemoteSender(Peer owner, Socket socket)
         {
+            this.owner = owner;
             this.socket = socket;
         }
 
@@ -43,15 +45,15 @@ namespace BitSharp.Node.Network
         {
             if (!isDisposed && disposing)
             {
-                this.semaphore.Dispose();
+                semaphore.Dispose();
 
                 isDisposed = true;
             }
         }
 
-        private void Fail(Exception e)
+        private void Fail(Exception ex)
         {
-            this.OnFailed?.Invoke(e);
+            OnFailed?.Invoke(owner, ex);
         }
 
         public async Task RequestKnownAddressesAsync()
@@ -171,7 +173,7 @@ namespace BitSharp.Node.Network
             {
                 await semaphore.DoAsync(async () =>
                 {
-                    using (var stream = new NetworkStream(this.socket))
+                    using (var stream = new NetworkStream(socket))
                     {
                         var stopwatch = Stopwatch.StartNew();
 
