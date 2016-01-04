@@ -457,13 +457,10 @@ namespace BitSharp.Common.ExtensionMethods
         public static IEnumerable<T> UsingAsEnumerable<T>(this IEnumerator<T> enumerator)
         {
             using (enumerator)
-                return UsingAsEnumerableInner(enumerator);
-        }
-
-        private static IEnumerable<T> UsingAsEnumerableInner<T>(IEnumerator<T> enumerator)
-        {
-            while (enumerator.MoveNext())
-                yield return enumerator.Current;
+            {
+                while (enumerator.MoveNext())
+                    yield return enumerator.Current;
+            }
         }
 
         public static bool AnyDuplicates<TSource, TKey>(this IEnumerable<TSource> source, Func<TSource, TKey> keySelector)
