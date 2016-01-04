@@ -136,8 +136,6 @@ namespace BitSharp.Core.Builders
                 else
                     updateLock.ExitWriteLock();
             }
-
-            throw new NotImplementedException();
         }
 
         public bool TryGetTransaction(UInt256 txHash, out UnconfirmedTx unconfirmedTx)
@@ -225,15 +223,52 @@ namespace BitSharp.Core.Builders
             }
             finally
             {
-                updateLock.ExitWriteLock();
+                if (storageManager.IsUnconfirmedTxesConcurrent)
+                    updateLock.ExitUpgradeableReadLock();
+                else
+                    updateLock.ExitWriteLock();
             }
         }
 
         public void RollbackBlock(ChainedHeader chainedHeader, IEnumerable<BlockTx> blockTxes)
         {
-            updateLock.DoWrite(() =>
+            if (storageManager.IsUnconfirmedTxesConcurrent)
+                updateLock.EnterUpgradeableReadLock();
+            else
+                updateLock.EnterWriteLock();
+            try
             {
-            });
+                using (var handle = storageManager.OpenUnconfirmedTxesCursor())
+                {
+                    var unconfirmedTxesCursor = handle.Item;
+
+                    unconfirmedTxesCursor.BeginTransaction();
+
+                    var newChain = chain.Value.ToBuilder().RemoveBlock(chainedHeader).ToImmutable();
+
+                    unconfirmedTxesCursor.ChainTip = chainedHeader;
+
+                    if (storageManager.IsUnconfirmedTxesConcurrent)
+                        updateLock.EnterWriteLock();
+                    try
+                    {
+                        unconfirmedTxesCursor.CommitTransaction();
+                        chain = new Lazy<Chain>(() => newChain).Force();
+                    }
+                    finally
+                    {
+                        if (storageManager.IsUnconfirmedTxesConcurrent)
+                            updateLock.ExitWriteLock();
+                    }
+                }
+            }
+            finally
+            {
+                if (storageManager.IsUnconfirmedTxesConcurrent)
+                    updateLock.ExitUpgradeableReadLock();
+                else
+                    updateLock.ExitWriteLock();
+            }
         }
 
         public UnconfirmedTxes ToImmutable()
