@@ -411,7 +411,7 @@ namespace BitSharp.Node.Workers
             logger.Info($"flushQueue.Count: {this.flushQueue.Count}");
             logger.Info($"flushBlocks.Count: {this.flushBlocks.Count}");
 
-            return Task.FromResult(false);
+            return Task.CompletedTask;
         }
 
         private void HandleBlock(Peer peer, Block block)

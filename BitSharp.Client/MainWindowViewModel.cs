@@ -91,7 +91,7 @@ namespace BitSharp.Client
                         this.BtcBalance = this.walletMonitor.BtcBalance;
                     }
 
-                    return Task.FromResult(false);
+                    return Task.CompletedTask;
                 },
                 initialNotify: true, minIdleTime: TimeSpan.FromSeconds(1), maxIdleTime: TimeSpan.FromSeconds(1));
             this.updateWorker.Start();

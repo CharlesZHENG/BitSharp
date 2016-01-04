@@ -134,7 +134,7 @@ namespace BitSharp.Node.Workers
         protected override Task WorkAction()
         {
             if (this.localClient.Type == ChainType.Regtest)
-                return Task.FromResult(false);
+                return Task.CompletedTask;
 
             foreach (var peer in this.connectedPeers)
             {
@@ -202,7 +202,7 @@ namespace BitSharp.Node.Workers
                 }
             }
 
-            return Task.FromResult(false);
+            return Task.CompletedTask;
         }
 
         private async Task<Peer> ConnectToPeer(IPEndPoint remoteEndPoint, bool isSeed)

@@ -85,7 +85,7 @@ namespace BitSharp.Core.Workers
         {
             UpdateTargetBlock();
             UpdateTargetChain();
-            return Task.FromResult(false);
+            return Task.CompletedTask;
         }
 
         private void UpdateTargetBlock()

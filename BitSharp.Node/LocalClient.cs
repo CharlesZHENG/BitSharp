@@ -600,7 +600,7 @@ namespace BitSharp.Node
                 $"MESSAGES/SEC: {this.messageRateMeasure.GetAverage(),6:N0}"
             ));
 
-            return Task.FromResult(false);
+            return Task.CompletedTask;
         }
     }
 

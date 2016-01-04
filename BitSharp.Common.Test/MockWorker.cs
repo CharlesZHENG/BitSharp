@@ -24,7 +24,7 @@ namespace BitSharp.Common.Test
             if (this.workAction != null)
                 return this.workAction();
             else
-                return Task.FromResult(false);
+                return Task.CompletedTask;
         }
 
         protected override void SubDispose()

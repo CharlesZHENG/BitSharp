@@ -96,7 +96,7 @@ namespace BitSharp.Node.Workers
             var targetChainLocal = this.coreDaemon.TargetChain;
 
             if (peerCount == 0 || targetChainLocal == null)
-                return Task.FromResult(false);
+                return Task.CompletedTask;
 
             var blockLocatorHashes = CalculateBlockLocatorHashes(targetChainLocal.Blocks);
 
@@ -122,7 +122,7 @@ namespace BitSharp.Node.Workers
                 }
             }
 
-            return Task.FromResult(false);
+            return Task.CompletedTask;
         }
 
         private Task FlushWorkerMethod(WorkerMethod instance)
@@ -143,7 +143,7 @@ namespace BitSharp.Node.Workers
                 this.headersRequestsByPeer.TryRemove(peer, out ignore);
             }
 
-            return Task.FromResult(false);
+            return Task.CompletedTask;
         }
 
         private void HandleBlockHeaders(Peer peer, IImmutableList<BlockHeader> blockHeaders)
