@@ -59,10 +59,8 @@ namespace BitSharp.Node.Network
                 {
                     while (true)
                     {
-                        var buffer = new byte[4];
-                        var bytesReceived = await Task.Factory.FromAsync<int>(this.socket.BeginReceive(buffer, 0, 4, SocketFlags.None, null, null), this.socket.EndReceive);
-
-                        HandleMessage(buffer, bytesReceived);
+                        var messageStart = await ReceiveExactly(4);
+                        await HandleMessage(messageStart);
                     }
                 }
                 catch (Exception e)
@@ -105,65 +103,42 @@ namespace BitSharp.Node.Network
             }
         }
 
-        private void HandleMessage(byte[] buffer, int bytesReceived)
+        private async Task HandleMessage(byte[] messageStart)
         {
             var stopwatch = Stopwatch.StartNew();
 
-            if (bytesReceived == 0)
-            {
-                Thread.Sleep(10);
-                return;
-            }
-            else if (bytesReceived < 4)
-            {
-                using (var stream = new NetworkStream(this.socket))
-                using (var reader = new BinaryReader(stream))
-                {
-                    Buffer.BlockCopy(reader.ReadBytes(4 - bytesReceived), 0, buffer, bytesReceived, 4 - bytesReceived);
-                }
-            }
-
-            var magic = Bits.ToUInt32(buffer);
+            var magic = Bits.ToUInt32(messageStart);
             if (magic != Messaging.Magic)
-                throw new Exception($"Unknown magic bytes {buffer.ToHexNumberString()}");
+                throw new Exception($"Unknown magic bytes {messageStart.ToHexNumberString()}");
 
-            using (var stream = new NetworkStream(this.socket))
-            {
-                var message = WireDecodeMessage(magic, stream);
+            var message = await WireDecodeMessage(magic);
 
-                this.OnMessage?.Invoke(message);
+            this.OnMessage?.Invoke(message);
 
-                stopwatch.Stop();
+            stopwatch.Stop();
 
-                if (logger.IsTraceEnabled)
-                    logger.Trace($"{this.socket.RemoteEndPoint,25} Received message {message.Command,12} in {stopwatch.ElapsedMilliseconds,6} ms");
-            }
+            if (logger.IsTraceEnabled)
+                logger.Trace($"{this.socket.RemoteEndPoint,25} Received message {message.Command,12} in {stopwatch.ElapsedMilliseconds,6} ms");
         }
 
-        private Message WireDecodeMessage(UInt32 magic, Stream stream)
+        private async Task<Message> WireDecodeMessage(UInt32 magic)
         {
-            byte[] payload;
-            Message message;
-            using (var reader = new BinaryReader(stream, Encoding.ASCII, leaveOpen: true))
-            {
-                var command = reader.ReadFixedString(12);
-                var payloadSize = reader.ReadUInt32();
-                var payloadChecksum = reader.ReadUInt32();
+            var command = DataDecoder.DecodeFixedString(await ReceiveExactly(12));
+            var payloadSize = DataDecoder.DecodeUInt32(await ReceiveExactly(4));
+            var payloadChecksum = DataDecoder.DecodeUInt32(await ReceiveExactly(4));
+            var payload = await ReceiveExactly(payloadSize.ToIntChecked());
 
-                payload = reader.ReadBytes(payloadSize.ToIntChecked());
+            if (!Messaging.VerifyPayloadChecksum(payloadChecksum, payload))
+                throw new Exception($"Checksum failed for {command}");
 
-                if (!Messaging.VerifyPayloadChecksum(payloadChecksum, payload))
-                    throw new Exception($"Checksum failed for {command}");
-
-                message = new Message
-                (
-                    Magic: magic,
-                    Command: command,
-                    PayloadSize: payloadSize,
-                    PayloadChecksum: payloadChecksum,
-                    Payload: payload.ToImmutableArray()
-                );
-            }
+            var message = new Message
+            (
+                Magic: magic,
+                Command: command,
+                PayloadSize: payloadSize,
+                PayloadChecksum: payloadChecksum,
+                Payload: payload.ToImmutableArray()
+            );
 
             switch (message.Command)
             {
@@ -183,7 +158,7 @@ namespace BitSharp.Node.Network
 
                 case "block":
                     {
-                        var block = DataEncoder.DecodeBlock(payload);
+                        var block = DataDecoder.DecodeBlock(payload);
 
                         this.OnBlock?.Invoke(this.owner, block);
                     }
@@ -217,19 +192,16 @@ namespace BitSharp.Node.Network
                     {
                         var blockHeaders = ImmutableList.CreateBuilder<BlockHeader>();
 
-                        using (var headerStream = new MemoryStream(payload))
-                        using (var reader = new BinaryReader(headerStream))
+                        var offset = 0;
+                        var headerCount = payload.ReadVarInt(ref offset).ToIntChecked();
+
+                        for (var i = 0; i < headerCount; i++)
                         {
-                            var headerCount = reader.ReadVarInt().ToIntChecked();
+                            var blockHeader = DataDecoder.DecodeBlockHeader(payload, ref offset);
+                            // ignore tx count var int
+                            payload.ReadVarInt(ref offset);
 
-                            for (var i = 0; i < headerCount; i++)
-                            {
-                                var blockHeader = DataEncoder.DecodeBlockHeader(reader);
-                                //TODO wiki says this is a byte and a var int, which is it?
-                                var txCount = reader.ReadVarInt();
-
-                                blockHeaders.Add(blockHeader);
-                            }
+                            blockHeaders.Add(blockHeader);
                         }
 
                         this.OnBlockHeaders?.Invoke(this.owner, blockHeaders.ToImmutable());
@@ -260,7 +232,7 @@ namespace BitSharp.Node.Network
 
                 case "tx":
                     {
-                        var tx = DataEncoder.DecodeTransaction(payload).Transaction;
+                        var tx = DataDecoder.DecodeTransaction(payload);
 
                         this.OnTransaction?.Invoke(tx);
                     }
@@ -296,6 +268,27 @@ namespace BitSharp.Node.Network
             //}
 
             return message;
+        }
+
+        private async Task<byte[]> ReceiveExactly(int count)
+        {
+            var buffer = new byte[count];
+            if (count == 0)
+                return buffer;
+
+            var readCount = 0;
+            while (readCount < count)
+            {
+                var remainingCount = count - readCount;
+
+                readCount += await Task.Factory.FromAsync<int>(
+                    this.socket.BeginReceive(buffer, readCount, remainingCount, SocketFlags.None, null, null), this.socket.EndReceive);
+            }
+
+            if (readCount != count)
+                throw new InvalidOperationException();
+
+            return buffer;
         }
     }
 }

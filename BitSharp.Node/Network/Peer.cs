@@ -16,7 +16,7 @@ namespace BitSharp.Node.Network
         public event Action<Peer, GetBlocksPayload> OnGetHeaders;
         public event Action<Peer, InventoryPayload> OnGetData;
         public event Action<Peer, ImmutableArray<byte>> OnPing;
-        public event Action<Peer> OnDisconnect;
+        public event Action<Peer, Exception> OnDisconnect;
 
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
@@ -154,7 +154,7 @@ namespace BitSharp.Node.Network
             catch (Exception ex)
             {
                 logger.Debug(ex, $"Error on connecting to {RemoteEndPoint}");
-                Disconnect();
+                Disconnect(ex);
 
                 throw;
             }
@@ -165,9 +165,9 @@ namespace BitSharp.Node.Network
             }
         }
 
-        public void Disconnect()
+        public void Disconnect(Exception ex = null)
         {
-            this.OnDisconnect?.Invoke(this);
+            this.OnDisconnect?.Invoke(this, ex);
 
             this.Dispose();
         }
@@ -199,7 +199,7 @@ namespace BitSharp.Node.Network
             else
                 logger.Debug($"Remote peer failed: {this.RemoteEndPoint}");
 
-            Disconnect();
+            Disconnect(ex);
         }
 
         private void HandleGetBlocks(GetBlocksPayload payload)

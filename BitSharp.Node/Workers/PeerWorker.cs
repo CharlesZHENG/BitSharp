@@ -94,13 +94,6 @@ namespace BitSharp.Node.Workers
             }
         }
 
-        //TODO if a peer is in use on another thread, it could get disconnected here
-        //TODO e.g. slow peers are detected and disconnected separately from the block requester using them
-        public void DisconnectPeer(Peer peer)
-        {
-            DisconnectPeer(peer, null);
-        }
-
         public void DisconnectPeer(Peer peer, Exception ex)
         {
             if (ex != null)
@@ -145,7 +138,7 @@ namespace BitSharp.Node.Workers
             {
                 // clear out any disconnected peers
                 if (!peer.IsConnected)
-                    DisconnectPeer(peer);
+                    DisconnectPeer(peer, null);
 
                 if (this.connectedPeers.Count < 3)
                     break;
