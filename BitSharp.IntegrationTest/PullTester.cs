@@ -25,10 +25,10 @@ namespace BitSharp.IntegrationTest
     public class PullTester
     {
         [TestMethod]
-        [Timeout(6 * /*minutes*/(60 * 1000))]
+        [Timeout(3 * /*minutes*/(60 * 1000))]
         public void TestPullTester()
         {
-            var javaTimeout = (int)TimeSpan.FromMinutes(5).TotalMilliseconds;
+            var javaTimeout = (int)TimeSpan.FromMinutes(2).TotalMilliseconds;
 
             // locate java.exe
             var javaPath = Path.Combine(Environment.GetEnvironmentVariable("JAVA_HOME"), "bin", "java.exe");
