@@ -20,14 +20,14 @@ namespace BitSharp.Core
 
         public static Block DecodeBlock(BinaryReader reader)
         {
-            var header = DecodeBlockHeader(reader.ReadExactly(80));
+            var header = DecodeBlockHeader(null, reader.ReadExactly(80));
 
             var blockTxesCount = reader.ReadVarInt().ToIntChecked();
             var blockTxes = ImmutableArray.CreateBuilder<BlockTx>(blockTxesCount);
             for (var i = 0; i < blockTxesCount; i++)
             {
                 var txBytes = ReadTransaction(reader);
-                var encodedTx = DecodeEncodedTx(txBytes);
+                var encodedTx = DecodeEncodedTx(null, txBytes);
                 var blockTx = new BlockTx(i, encodedTx);
 
                 blockTxes.Add(blockTx);
@@ -37,20 +37,20 @@ namespace BitSharp.Core
             return new Block(header, blockTxes.MoveToImmutable());
         }
 
-        public static Block DecodeBlock(byte[] buffer, int offset = 0)
+        public static Block DecodeBlock(UInt256 blockHash, byte[] buffer, int offset = 0)
         {
-            return DecodeBlock(buffer, ref offset);
+            return DecodeBlock(blockHash, buffer, ref offset);
         }
 
-        public static Block DecodeBlock(byte[] buffer, ref int offset)
+        public static Block DecodeBlock(UInt256 blockHash, byte[] buffer, ref int offset)
         {
-            var header = DecodeBlockHeader(buffer, ref offset);
+            var header = DecodeBlockHeader(blockHash, buffer, ref offset);
 
             var blockTxesCount = buffer.ReadVarInt(ref offset).ToIntChecked();
             var blockTxes = ImmutableArray.CreateBuilder<BlockTx>(blockTxesCount);
             for (var i = 0; i < blockTxesCount; i++)
             {
-                var encodedTx = DecodeEncodedTx(buffer, ref offset);
+                var encodedTx = DecodeEncodedTx(null, buffer, ref offset);
                 var blockTx = new BlockTx(i, encodedTx);
 
                 blockTxes.Add(blockTx);
@@ -60,12 +60,12 @@ namespace BitSharp.Core
             return new Block(header, blockTxes.MoveToImmutable());
         }
 
-        public static BlockHeader DecodeBlockHeader(byte[] buffer, int offset = 0, UInt256 blockHash = null)
+        public static BlockHeader DecodeBlockHeader(UInt256 blockHash, byte[] buffer, int offset = 0)
         {
-            return DecodeBlockHeader(buffer, ref offset, blockHash);
+            return DecodeBlockHeader(blockHash, buffer, ref offset);
         }
 
-        public static BlockHeader DecodeBlockHeader(byte[] buffer, ref int offset, UInt256 blockHash = null)
+        public static BlockHeader DecodeBlockHeader(UInt256 blockHash, byte[] buffer, ref int offset)
         {
             var initialOffset = offset;
 
@@ -93,7 +93,7 @@ namespace BitSharp.Core
         {
             var offset = 0;
             var blockHash = DecodeUInt256(buffer, ref offset);
-            var blockHeader = DecodeBlockHeader(buffer, ref offset, blockHash);
+            var blockHeader = DecodeBlockHeader(blockHash, buffer, ref offset);
             var height = DecodeInt32(buffer, ref offset);
             var totalWork = new BigInteger(buffer.ReadVarBytes(ref offset));
             var dateSeen = new DateTime(DecodeInt64(buffer, ref offset));
@@ -162,27 +162,27 @@ namespace BitSharp.Core
             return txBytes;
         }
 
-        public static DecodedTx DecodeEncodedTx(byte[] buffer, int offset = 0, UInt256 txHash = null)
+        public static DecodedTx DecodeEncodedTx(UInt256 txHash, byte[] buffer, int offset = 0)
         {
-            return DecodeEncodedTx(buffer, ref offset, txHash);
+            return DecodeEncodedTx(txHash, buffer, ref offset);
         }
 
-        public static DecodedTx DecodeEncodedTx(byte[] buffer, ref int offset, UInt256 txHash = null)
+        public static DecodedTx DecodeEncodedTx(UInt256 txHash, byte[] buffer, ref int offset)
         {
             var initialOffset = offset;
 
-            var tx = DecodeTransaction(buffer, ref offset, txHash);
+            var tx = DecodeTransaction(txHash, buffer, ref offset);
             var txBytes = ImmutableArray.Create(buffer, initialOffset, offset - initialOffset);
 
             return new DecodedTx(txBytes, tx);
         }
 
-        public static Transaction DecodeTransaction(byte[] buffer, int offset = 0, UInt256 txHash = null)
+        public static Transaction DecodeTransaction(UInt256 txHash, byte[] buffer, int offset = 0)
         {
-            return DecodeTransaction(buffer, ref offset, txHash);
+            return DecodeTransaction(txHash, buffer, ref offset);
         }
 
-        public static Transaction DecodeTransaction(byte[] buffer, ref int offset, UInt256 txHash = null)
+        public static Transaction DecodeTransaction(UInt256 txHash, byte[] buffer, ref int offset)
         {
             var initialOffset = offset;
 

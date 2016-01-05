@@ -156,7 +156,7 @@ namespace BitSharp.Node.Network
 
                 case "block":
                     {
-                        var block = DataDecoder.DecodeBlock(payload);
+                        var block = DataDecoder.DecodeBlock(null, payload);
 
                         OnBlock?.Invoke(owner, block);
                     }
@@ -195,7 +195,7 @@ namespace BitSharp.Node.Network
 
                         for (var i = 0; i < headerCount; i++)
                         {
-                            var blockHeader = DataDecoder.DecodeBlockHeader(payload, ref offset);
+                            var blockHeader = DataDecoder.DecodeBlockHeader(null, payload, ref offset);
                             // ignore tx count var int
                             payload.ReadVarInt(ref offset);
 
@@ -230,7 +230,7 @@ namespace BitSharp.Node.Network
 
                 case "tx":
                     {
-                        var tx = DataDecoder.DecodeTransaction(payload);
+                        var tx = DataDecoder.DecodeTransaction(null, payload);
 
                         OnTransaction?.Invoke(owner, tx);
                     }

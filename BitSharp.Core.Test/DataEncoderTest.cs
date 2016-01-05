@@ -16,7 +16,7 @@ namespace BitSharp.Core.Test
         [TestMethod]
         public void TestWireDecodeBlockHeader()
         {
-            var actual = DataEncoder.EncodeBlockHeader(DataDecoder.DecodeBlockHeader(BLOCK_HEADER_1_BYTES.ToArray()));
+            var actual = DataEncoder.EncodeBlockHeader(DataDecoder.DecodeBlockHeader(null, BLOCK_HEADER_1_BYTES.ToArray()));
             CollectionAssert.AreEqual(BLOCK_HEADER_1_BYTES.ToList(), actual.ToList());
         }
 
@@ -30,7 +30,7 @@ namespace BitSharp.Core.Test
         [TestMethod]
         public void TestWireDecodeBlock()
         {
-            var actual = DataEncoder.EncodeBlock(DataDecoder.DecodeBlock(BLOCK_1_BYTES.ToArray()));
+            var actual = DataEncoder.EncodeBlock(DataDecoder.DecodeBlock(null, BLOCK_1_BYTES.ToArray()));
             CollectionAssert.AreEqual(BLOCK_1_BYTES.ToList(), actual.ToList());
         }
 
@@ -72,7 +72,7 @@ namespace BitSharp.Core.Test
         [TestMethod]
         public void TestWireDecodeTransaction()
         {
-            var actual = DataDecoder.DecodeTransaction(TRANSACTION_1_BYTES.ToArray());
+            var actual = DataDecoder.DecodeTransaction(null, TRANSACTION_1_BYTES.ToArray());
             var actualBytes = DataEncoder.EncodeTransaction(actual).TxBytes;
             CollectionAssert.AreEqual(TRANSACTION_1_BYTES.ToList(), actualBytes.ToList());
         }
