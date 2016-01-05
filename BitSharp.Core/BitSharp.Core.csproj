@@ -125,6 +125,8 @@
     <Compile Include="DataDecoder.cs" />
     <Compile Include="Domain\IUnconfirmedTxes.cs" />
     <Compile Include="Domain\UnconfirmedTxes.cs" />
+    <Compile Include="EventArgs\TxesConfirmedEventArgs.cs" />
+    <Compile Include="EventArgs\UnconfirmedTxAddedEventArgs.cs" />
     <Compile Include="Storage\IUnconfirmedTxesCursor.cs" />
     <Compile Include="Domain\DecodedBlockTx.cs" />
     <Compile Include="Domain\BlockTxNode.cs" />

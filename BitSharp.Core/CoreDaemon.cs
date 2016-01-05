@@ -20,6 +20,10 @@ namespace BitSharp.Core
         public event EventHandler OnChainStateChanged;
         public event Action<UInt256> BlockMissed;
 
+        public event EventHandler<UnconfirmedTxAddedEventArgs> UnconfirmedTxAdded;
+        public event EventHandler<TxesConfirmedEventArgs> TxesConfirmed;
+
+
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly ReaderWriterLockSlim controlLock = new ReaderWriterLockSlim();
@@ -87,6 +91,8 @@ namespace BitSharp.Core
             targetChainWorker.OnTargetChainChanged += HandleTargetChainChanged;
             chainStateWorker.OnChainStateChanged += HandleChainStateChanged;
             pruningWorker.OnWorkFinished += defragWorker.NotifyWork;
+            unconfirmedTxesBuilder.UnconfirmedTxAdded += RaiseUnconfirmedTxAdded;
+            unconfirmedTxesBuilder.TxesConfirmed += RaiseTxesConfirmed;
         }
 
         public void Dispose()
@@ -104,6 +110,8 @@ namespace BitSharp.Core
                 targetChainWorker.OnTargetChainChanged -= HandleTargetChainChanged;
                 chainStateWorker.OnChainStateChanged -= HandleChainStateChanged;
                 pruningWorker.OnWorkFinished -= defragWorker.NotifyWork;
+                unconfirmedTxesBuilder.UnconfirmedTxAdded -= RaiseUnconfirmedTxAdded;
+                unconfirmedTxesBuilder.TxesConfirmed -= RaiseTxesConfirmed;
 
                 // cleanup workers
                 defragWorker.Dispose();
@@ -346,6 +354,16 @@ namespace BitSharp.Core
             utxoScanWorker.NotifyWork();
 
             OnChainStateChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void RaiseTxesConfirmed(object sender, TxesConfirmedEventArgs e)
+        {
+            TxesConfirmed?.Invoke(this, e);
+        }
+
+        private void RaiseUnconfirmedTxAdded(object sender, UnconfirmedTxAddedEventArgs e)
+        {
+            UnconfirmedTxAdded?.Invoke(this, e);
         }
     }
 }
