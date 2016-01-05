@@ -27,6 +27,7 @@ namespace BitSharp.Node.Workers
         private readonly Random random = new Random();
         private readonly LocalClient localClient;
         private readonly CoreDaemon coreDaemon;
+        private readonly HeadersRequestWorker headersRequestWorker;
 
         private readonly SortedValueDictionary<IPEndPoint, CandidatePeer> unconnectedPeers = new SortedValueDictionary<IPEndPoint, CandidatePeer>();
         private readonly SemaphoreSlim unconnectedPeersLock = new SemaphoreSlim(1);
@@ -36,11 +37,12 @@ namespace BitSharp.Node.Workers
 
         private int incomingCount;
 
-        public PeerWorker(WorkerConfig workerConfig, LocalClient localClient, CoreDaemon coreDaemon)
+        internal PeerWorker(WorkerConfig workerConfig, LocalClient localClient, CoreDaemon coreDaemon, HeadersRequestWorker headersRequestWorker)
             : base("PeerWorker", workerConfig.initialNotify, workerConfig.minIdleTime, workerConfig.maxIdleTime)
         {
             this.localClient = localClient;
             this.coreDaemon = coreDaemon;
+            this.headersRequestWorker = headersRequestWorker;
         }
 
         public event Action<Peer> PeerConnected;
@@ -94,13 +96,6 @@ namespace BitSharp.Node.Workers
             }
         }
 
-        //TODO if a peer is in use on another thread, it could get disconnected here
-        //TODO e.g. slow peers are detected and disconnected separately from the block requester using them
-        public void DisconnectPeer(Peer peer)
-        {
-            DisconnectPeer(peer, null);
-        }
-
         public void DisconnectPeer(Peer peer, Exception ex)
         {
             if (ex != null)
@@ -139,13 +134,13 @@ namespace BitSharp.Node.Workers
         protected override Task WorkAction()
         {
             if (this.localClient.Type == ChainType.Regtest)
-                return Task.FromResult(false);
+                return Task.CompletedTask;
 
             foreach (var peer in this.connectedPeers)
             {
                 // clear out any disconnected peers
                 if (!peer.IsConnected)
-                    DisconnectPeer(peer);
+                    DisconnectPeer(peer, null);
 
                 if (this.connectedPeers.Count < 3)
                     break;
@@ -207,7 +202,7 @@ namespace BitSharp.Node.Workers
                 }
             }
 
-            return Task.FromResult(false);
+            return Task.CompletedTask;
         }
 
         private async Task<Peer> ConnectToPeer(IPEndPoint remoteEndPoint, bool isSeed)
@@ -300,6 +295,7 @@ namespace BitSharp.Node.Workers
         private async Task PeerStartup(Peer peer)
         {
             await peer.Sender.RequestKnownAddressesAsync();
+            await headersRequestWorker.SendGetHeaders(peer);
         }
     }
 }

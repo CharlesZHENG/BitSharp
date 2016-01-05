@@ -136,7 +136,7 @@ namespace BitSharp.Esent
                 {
                     var chainTipBytes = Api.RetrieveColumn(this.jetSession, this.globalsTableId, this.chainTipColumnId);
                     if (chainTipBytes != null)
-                        return DataEncoder.DecodeChainedHeader(chainTipBytes);
+                        return DataDecoder.DecodeChainedHeader(chainTipBytes);
                     else
                         return null;
                 }
@@ -284,7 +284,7 @@ namespace BitSharp.Esent
                 {
                     var headerBytes = Api.RetrieveColumn(this.jetSession, this.headersTableId, this.headerBytesColumnId);
 
-                    header = DataEncoder.DecodeChainedHeader(headerBytes);
+                    header = DataDecoder.DecodeChainedHeader(headerBytes);
                     return true;
                 }
 
@@ -372,8 +372,8 @@ namespace BitSharp.Esent
                     var txIndex = txIndexColumn.Value.Value;
                     var txVersion = txVersionColumn.Value.Value;
                     var isCoinbase = isCoinbaseColumn.Value.Value;
-                    var outputStates = DataEncoder.DecodeOutputStates(outputStatesColumn.Value);
-                    var txOutputs = DataEncoder.DecodeTxOutputList(txOutputBytesColumn.Value);
+                    var outputStates = DataDecoder.DecodeOutputStates(outputStatesColumn.Value);
+                    var txOutputs = DataDecoder.DecodeTxOutputList(txOutputBytesColumn.Value);
 
                     unspentTx = new UnspentTx(txHash, blockIndex, txIndex, txVersion, isCoinbase, outputStates, txOutputs);
                     return true;
@@ -493,8 +493,8 @@ namespace BitSharp.Esent
                         var txIndex = txIndexColumn.Value.Value;
                         var txVersion = txVersionColumn.Value.Value;
                         var isCoinbase = isCoinbaseColumn.Value.Value;
-                        var outputStates = DataEncoder.DecodeOutputStates(outputStatesColumn.Value);
-                        var txOutputs = DataEncoder.DecodeTxOutputList(txOutputBytesColumn.Value);
+                        var outputStates = DataDecoder.DecodeOutputStates(outputStatesColumn.Value);
+                        var txOutputs = DataDecoder.DecodeTxOutputList(txOutputBytesColumn.Value);
 
                         yield return new UnspentTx(txHash, blockIndex, txIndex, txVersion, isCoinbase, outputStates, txOutputs);
                     }
@@ -529,12 +529,7 @@ namespace BitSharp.Esent
                 {
                     var spentTxesBytes = Api.RetrieveColumn(this.jetSession, this.spentTxTableId, this.spentDataColumnId);
 
-                    using (var stream = new MemoryStream(spentTxesBytes))
-                    using (var reader = new BinaryReader(stream))
-                    {
-                        spentTxes = BlockSpentTxes.CreateRange(reader.ReadList(() => DataEncoder.DecodeSpentTx(reader)));
-                    }
-
+                    spentTxes = DataDecoder.DecodeBlockSpentTxes(spentTxesBytes);
                     return true;
                 }
                 else
@@ -625,12 +620,7 @@ namespace BitSharp.Esent
                 {
                     var unmintedTxesBytes = Api.RetrieveColumn(this.jetSession, this.unmintedTxTableId, this.unmintedDataColumnId);
 
-                    using (var stream = new MemoryStream(unmintedTxesBytes))
-                    using (var reader = new BinaryReader(stream))
-                    {
-                        unmintedTxes = ImmutableList.CreateRange(reader.ReadList(() => DataEncoder.DecodeUnmintedTx(reader)));
-                    }
-
+                    unmintedTxes = DataDecoder.DecodeUnmintedTxList(unmintedTxesBytes);
                     return true;
                 }
                 else

@@ -12,11 +12,7 @@ namespace BitSharp.Node.Network
 {
     public class Peer : IDisposable
     {
-        public event Action<Peer, GetBlocksPayload> OnGetBlocks;
-        public event Action<Peer, GetBlocksPayload> OnGetHeaders;
-        public event Action<Peer, InventoryPayload> OnGetData;
-        public event Action<Peer, ImmutableArray<byte>> OnPing;
-        public event Action<Peer> OnDisconnect;
+        public event Action<Peer, Exception> OnDisconnect;
 
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
@@ -36,8 +32,8 @@ namespace BitSharp.Node.Network
             IsIncoming = isIncoming;
 
             this.socket = new Socket(remoteEndPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-            Receiver = new RemoteReceiver(this, this.socket, persistent: false);
-            Sender = new RemoteSender(this.socket);
+            Receiver = new RemoteReceiver(this, this.socket);
+            Sender = new RemoteSender(this, this.socket);
 
             this.blockMissCountMeasure = new CountMeasure(TimeSpan.FromMinutes(10));
 
@@ -53,8 +49,8 @@ namespace BitSharp.Node.Network
             LocalEndPoint = (IPEndPoint)socket.LocalEndPoint;
             RemoteEndPoint = (IPEndPoint)socket.RemoteEndPoint;
 
-            Receiver = new RemoteReceiver(this, this.socket, persistent: false);
-            Sender = new RemoteSender(this.socket);
+            Receiver = new RemoteReceiver(this, this.socket);
+            Sender = new RemoteSender(this, this.socket);
 
             this.blockMissCountMeasure = new CountMeasure(TimeSpan.FromMinutes(10));
 
@@ -154,7 +150,7 @@ namespace BitSharp.Node.Network
             catch (Exception ex)
             {
                 logger.Debug(ex, $"Error on connecting to {RemoteEndPoint}");
-                Disconnect();
+                Disconnect(ex);
 
                 throw;
             }
@@ -165,9 +161,9 @@ namespace BitSharp.Node.Network
             }
         }
 
-        public void Disconnect()
+        public void Disconnect(Exception ex = null)
         {
-            this.OnDisconnect?.Invoke(this);
+            this.OnDisconnect?.Invoke(this, ex);
 
             this.Dispose();
         }
@@ -176,50 +172,22 @@ namespace BitSharp.Node.Network
         {
             this.Receiver.OnFailed += HandleFailed;
             this.Sender.OnFailed += HandleFailed;
-            this.Receiver.OnGetBlocks += HandleGetBlocks;
-            this.Receiver.OnGetHeaders += HandleGetHeaders;
-            this.Receiver.OnGetData += HandleGetData;
-            this.Receiver.OnPing += HandlePing;
         }
 
         private void UnwireNode()
         {
             this.Receiver.OnFailed -= HandleFailed;
             this.Sender.OnFailed -= HandleFailed;
-            this.Receiver.OnGetBlocks -= HandleGetBlocks;
-            this.Receiver.OnGetHeaders -= HandleGetHeaders;
-            this.Receiver.OnGetData -= HandleGetData;
-            this.Receiver.OnPing -= HandlePing;
         }
 
-        private void HandleFailed(Exception ex)
+        private void HandleFailed(Peer peer, Exception ex)
         {
             if (ex != null)
                 logger.Debug(ex, $"Remote peer failed: {this.RemoteEndPoint}");
             else
                 logger.Debug($"Remote peer failed: {this.RemoteEndPoint}");
 
-            Disconnect();
-        }
-
-        private void HandleGetBlocks(GetBlocksPayload payload)
-        {
-            this.OnGetBlocks?.Invoke(this, payload);
-        }
-
-        private void HandleGetHeaders(GetBlocksPayload payload)
-        {
-            this.OnGetHeaders?.Invoke(this, payload);
-        }
-
-        private void HandleGetData(InventoryPayload payload)
-        {
-            this.OnGetData?.Invoke(this, payload);
-        }
-
-        private void HandlePing(ImmutableArray<byte> payload)
-        {
-            this.OnPing?.Invoke(this, payload);
+            Disconnect(ex);
         }
     }
 }

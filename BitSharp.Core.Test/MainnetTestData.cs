@@ -16,7 +16,7 @@ namespace BitSharp.Core.Test
 
         public static readonly Block GENESIS_BLOCK = Block.Create
         (
-            header: new BlockHeader
+            header: BlockHeader.Create
             (
                 version: 1,
                 previousBlock: UInt256.Zero,

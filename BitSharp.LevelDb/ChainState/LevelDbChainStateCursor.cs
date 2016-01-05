@@ -76,7 +76,7 @@ namespace BitSharp.LevelDb
 
                 Slice value;
                 if (CursorTryGet(MakeGlobalKey(GlobalValue.ChainTip), out value))
-                    return DataEncoder.DecodeChainedHeader(value.ToArray());
+                    return DataDecoder.DecodeChainedHeader(value.ToArray());
                 else
                     return null;
             }
@@ -206,7 +206,7 @@ namespace BitSharp.LevelDb
             Slice value;
             if (CursorTryGet(MakeHeaderKey(blockHash), out value))
             {
-                header = DataEncoder.DecodeChainedHeader(value.ToArray());
+                header = DataDecoder.DecodeChainedHeader(value.ToArray());
                 return true;
             }
             else
@@ -257,7 +257,7 @@ namespace BitSharp.LevelDb
             Slice value;
             if (CursorTryGet(MakeUnspentTxKey(txHash), out value))
             {
-                unspentTx = DataEncoder.DecodeUnspentTx(value.ToArray());
+                unspentTx = DataDecoder.DecodeUnspentTx(value.ToArray());
                 return true;
             }
             else
@@ -321,7 +321,7 @@ namespace BitSharp.LevelDb
                         if (readOnly || !txUpdates.ContainsKey(key))
                         {
                             var value = iterator.Value().ToArray();
-                            yield return DataEncoder.DecodeUnspentTx(value);
+                            yield return DataDecoder.DecodeUnspentTx(value);
                         }
                     }
                     else
@@ -342,7 +342,7 @@ namespace BitSharp.LevelDb
                         if (txUpdate.Value.Item1 == UpdateType.Put)
                         {
                             var value = txUpdate.Value.Item2.ToArray();
-                            yield return DataEncoder.DecodeUnspentTx(value);
+                            yield return DataDecoder.DecodeUnspentTx(value);
                         }
                     }
                     else
@@ -366,7 +366,7 @@ namespace BitSharp.LevelDb
             Slice value;
             if (CursorTryGet(MakeSpentTxesKey(blockIndex), out value))
             {
-                spentTxes = DataEncoder.DecodeBlockSpentTxes(value.ToArray());
+                spentTxes = DataDecoder.DecodeBlockSpentTxes(value.ToArray());
                 return true;
 
             }
@@ -414,7 +414,7 @@ namespace BitSharp.LevelDb
             Slice value;
             if (CursorTryGet(MakeUnmintedTxesKey(blockHash), out value))
             {
-                unmintedTxes = DataEncoder.DecodeUnmintedTxList(value.ToArray());
+                unmintedTxes = DataDecoder.DecodeUnmintedTxList(value.ToArray());
                 return true;
             }
             else

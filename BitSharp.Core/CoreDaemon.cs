@@ -283,7 +283,7 @@ namespace BitSharp.Core
                     new string('-', 80)
                 ));
 
-            return Task.FromResult(false);
+            return Task.CompletedTask;
         }
 
         private Task UtxoScanWorker(WorkerMethod instance)
@@ -327,7 +327,7 @@ namespace BitSharp.Core
             //    //});
             //}
 
-            return Task.FromResult(false);
+            return Task.CompletedTask;
         }
 
         private void HandleBlockMissed(UInt256 blockHash)

@@ -172,7 +172,7 @@ namespace BitSharp.LevelDb
 
                         var value = iterator.Value().ToArray();
 
-                        var blockTxNode = DataEncoder.DecodeBlockTxNode(value);
+                        var blockTxNode = DataDecoder.DecodeBlockTxNode(value);
 
                         if (blockTxNode.Pruned && requireTx)
                             throw new MissingDataException(blockHash);
@@ -190,7 +190,7 @@ namespace BitSharp.LevelDb
             Slice value;
             if (db.TryGet(new ReadOptions(), DbEncoder.EncodeBlockHashTxIndex(blockHash, txIndex), out value))
             {
-                var blockTxNode = DataEncoder.DecodeBlockTxNode(value.ToArray());
+                var blockTxNode = DataDecoder.DecodeBlockTxNode(value.ToArray());
                 if (!blockTxNode.Pruned)
                 {
                     transaction = blockTxNode.ToBlockTx();

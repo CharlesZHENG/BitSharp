@@ -35,13 +35,13 @@ namespace BitSharp.Common
             this.hashCode = this.part1.GetHashCode() ^ this.part2.GetHashCode() ^ this.part3.GetHashCode() ^ this.part4.GetHashCode();
         }
 
-        public UInt256(byte[] value, int startIndex)
+        public UInt256(byte[] value, int offset)
         {
             // convert parts and store
-            this.part1 = Bits.ToUInt64(value, startIndex + 24);
-            this.part2 = Bits.ToUInt64(value, startIndex + 16);
-            this.part3 = Bits.ToUInt64(value, startIndex + 8);
-            this.part4 = Bits.ToUInt64(value, startIndex + 0);
+            this.part1 = Bits.ToUInt64(value, offset + 24);
+            this.part2 = Bits.ToUInt64(value, offset + 16);
+            this.part3 = Bits.ToUInt64(value, offset + 8);
+            this.part4 = Bits.ToUInt64(value, offset + 0);
 
             this.hashCode = this.part1.GetHashCode() ^ this.part2.GetHashCode() ^ this.part3.GetHashCode() ^ this.part4.GetHashCode();
         }

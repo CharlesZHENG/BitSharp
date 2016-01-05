@@ -62,6 +62,11 @@ namespace BitSharp.Common
             return BitConverter.ToUInt32(Order(value), startIndex);
         }
 
+        public static Int64 ToInt64(byte[] value, int startIndex = 0)
+        {
+            return BitConverter.ToInt64(Order(value), startIndex);
+        }
+
         public static UInt64 ToUInt64(byte[] value, int startIndex = 0)
         {
             return BitConverter.ToUInt64(Order(value), startIndex);

@@ -151,7 +151,7 @@ namespace BitSharp.Core.Test
 
             var block = Block.Create
             (
-                header: new BlockHeader
+                header: BlockHeader.Create
                 (
                     version: 0,
                     previousBlock: previousBlockHash,

@@ -86,7 +86,7 @@ Verifying script for block {0}, transaction {1}, input {2}
                                     return false;
 
                                 var length = opReader.ReadByte();
-                                stack.PushBytes(opReader.ReadBytes(length));
+                                stack.PushBytes(opReader.ReadExactly(length));
                             }
                             break;
 
@@ -96,7 +96,7 @@ Verifying script for block {0}, transaction {1}, input {2}
                                     return false;
 
                                 var length = opReader.ReadUInt16();
-                                stack.PushBytes(opReader.ReadBytes(length));
+                                stack.PushBytes(opReader.ReadExactly(length));
                             }
                             break;
 
@@ -106,7 +106,7 @@ Verifying script for block {0}, transaction {1}, input {2}
                                     return false;
 
                                 var length = opReader.ReadUInt32();
-                                stack.PushBytes(opReader.ReadBytes(length.ToIntChecked()));
+                                stack.PushBytes(opReader.ReadExactly(length.ToIntChecked()));
                             }
                             break;
 
@@ -263,7 +263,7 @@ Verifying script for block {0}, transaction {1}, input {2}
                             //OP_PUSHBYTES1-75
                             if (opByte >= (int)ScriptOp.OP_PUSHBYTES1 && opByte <= (int)ScriptOp.OP_PUSHBYTES75)
                             {
-                                stack.PushBytes(opReader.ReadBytes(opByte));
+                                stack.PushBytes(opReader.ReadExactly(opByte));
 
                                 if (logger.IsTraceEnabled)
                                     logger.Trace("{0} loaded {1} bytes onto the stack: {2}", OpName(opByte), opByte, stack.PeekBytes());

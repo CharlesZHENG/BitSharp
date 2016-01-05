@@ -66,7 +66,7 @@ namespace BitSharp.LevelDb
             Slice value;
             if (db.TryGet(new ReadOptions(), DbEncoder.EncodeUInt256(blockHash), out value))
             {
-                chainedHeader = DataEncoder.DecodeChainedHeader(value.ToArray());
+                chainedHeader = DataDecoder.DecodeChainedHeader(value.ToArray());
                 return true;
             }
             else
@@ -107,7 +107,7 @@ namespace BitSharp.LevelDb
                         if (valid)
                         {
                             // decode chained header
-                            var chainedHeader = DataEncoder.DecodeChainedHeader(iterator.Value().ToArray());
+                            var chainedHeader = DataDecoder.DecodeChainedHeader(iterator.Value().ToArray());
 
                             // initialize max total work, if it isn't yet
                             if (maxTotalWork == BigInteger.Zero)
@@ -146,7 +146,7 @@ namespace BitSharp.LevelDb
                     iterator.SeekToFirst();
                     while (iterator.Valid())
                     {
-                        var chainedHeader = DataEncoder.DecodeChainedHeader(iterator.Value().ToArray());
+                        var chainedHeader = DataDecoder.DecodeChainedHeader(iterator.Value().ToArray());
                         yield return chainedHeader;
 
                         iterator.Next();

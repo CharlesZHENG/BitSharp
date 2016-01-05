@@ -16,7 +16,7 @@ namespace BitSharp.Core.Rules
         private readonly Block genesisBlock =
             Block.Create
             (
-                header: new BlockHeader
+                header: BlockHeader.Create
                 (
                     version: 1,
                     previousBlock: UInt256.Zero,

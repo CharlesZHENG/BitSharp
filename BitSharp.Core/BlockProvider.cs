@@ -96,7 +96,7 @@ namespace BitSharp.Core
             using (var blockStream = entry.Open())
             using (var blockReader = new BinaryReader(blockStream))
             {
-                block = DataEncoder.DecodeBlock(blockReader);
+                block = DataDecoder.DecodeBlock(blockReader);
             }
 
             blocks[name] = block;

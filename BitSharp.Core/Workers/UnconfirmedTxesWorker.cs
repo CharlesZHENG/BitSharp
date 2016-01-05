@@ -70,9 +70,8 @@ namespace BitSharp.Core.Workers
             chainStateWorker.OnChainStateChanged -= HandleChanged;
         }
 
-        protected override async Task WorkAction()
+        protected override Task WorkAction()
         {
-            await Task.Yield();
             using (updatedTracker.TryUpdate(staleAction: NotifyWork))
             {
                 try
@@ -115,6 +114,8 @@ namespace BitSharp.Core.Workers
                     HandleException(ex);
                 }
             }
+
+            return Task.CompletedTask;
         }
 
         private void HandleException(Exception ex)

@@ -30,7 +30,7 @@ namespace BitSharp.Core.Workers
                 chainStateCursor.Defragment();
             }
 
-            return Task.FromResult(false);
+            return Task.CompletedTask;
         }
     }
 }

@@ -85,7 +85,7 @@ namespace BitSharp.Common.Test
         {
             // prepare workAction call tracking
             var callEvent = new AutoResetEvent(false);
-            Func<Task> workAction = () => { callEvent.Set(); return Task.FromResult(false); };
+            Func<Task> workAction = () => { callEvent.Set(); return Task.CompletedTask; };
 
             // initialize worker
             using (var worker = new MockWorker(workAction))
@@ -122,7 +122,7 @@ namespace BitSharp.Common.Test
         {
             // prepare workAction call tracking
             var callEvent = new AutoResetEvent(false);
-            Func<Task> workAction = () => { callEvent.Set(); return Task.FromResult(false); };
+            Func<Task> workAction = () => { callEvent.Set(); return Task.CompletedTask; };
 
             // initialize worker
             using (var worker = new MockWorker(workAction))
@@ -159,7 +159,7 @@ namespace BitSharp.Common.Test
         {
             // prepare workAction call tracking
             var callEvent = new AutoResetEvent(false);
-            Func<Task> workAction = () => { callEvent.Set(); return Task.FromResult(false); };
+            Func<Task> workAction = () => { callEvent.Set(); return Task.CompletedTask; };
 
             // initialize worker
             using (var worker = new MockWorker(workAction))
@@ -202,7 +202,7 @@ namespace BitSharp.Common.Test
         {
             // prepare workAction call tracking
             var callEvent = new AutoResetEvent(false);
-            Func<Task> workAction = () => { callEvent.Set(); return Task.FromResult(false); };
+            Func<Task> workAction = () => { callEvent.Set(); return Task.CompletedTask; };
 
             // initialize worker
             using (var worker = new MockWorker(workAction))
@@ -254,7 +254,7 @@ namespace BitSharp.Common.Test
                         if (workCount == 1)
                             throw new OperationCanceledException();
 
-                        return Task.FromResult(false);
+                        return Task.CompletedTask;
                     }
                     finally
                     {

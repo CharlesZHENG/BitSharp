@@ -14,8 +14,23 @@ namespace BitSharp.Core.ExtensionMethods
         #region Reader Methods
         public static void ReadExactly(this BinaryReader reader, byte[] buffer, int index, int count)
         {
+            if (count == 0)
+                return;
+
             if (count != reader.Read(buffer, index, count))
                 throw new InvalidOperationException();
+        }
+
+        public static byte[] ReadExactly(this BinaryReader reader, int count)
+        {
+            var buffer = new byte[count];
+            if (count == 0)
+                return buffer;
+
+            if (count != reader.Read(buffer, 0, count))
+                throw new InvalidOperationException();
+
+            return buffer;
         }
 
         public static bool ReadBool(this BinaryReader reader)
@@ -31,7 +46,7 @@ namespace BitSharp.Core.ExtensionMethods
 
         public static UInt256 ReadUInt256(this BinaryReader reader)
         {
-            return new UInt256(reader.ReadBytes(32));
+            return new UInt256(reader.ReadExactly(32));
         }
 
         public static UInt64 ReadVarInt(this BinaryReader reader)
@@ -49,12 +64,12 @@ namespace BitSharp.Core.ExtensionMethods
                 throw new Exception();
         }
 
-        public static UInt64 ReadVarInt(this BinaryReader reader, ref byte[] bytes, ref int startIndex)
+        public static UInt64 ReadVarInt(this BinaryReader reader, ref byte[] bytes, ref int offset)
         {
-            DataEncoder.SizeAtLeast(ref bytes, startIndex + 1);
-            reader.ReadExactly(bytes, startIndex, 1);
-            UInt64 value = bytes[startIndex];
-            startIndex += 1;
+            DataDecoder.SizeAtLeast(ref bytes, offset + 1);
+            reader.ReadExactly(bytes, offset, 1);
+            UInt64 value = bytes[offset];
+            offset += 1;
 
             if (value < 0xFD)
             {
@@ -62,26 +77,57 @@ namespace BitSharp.Core.ExtensionMethods
             }
             else if (value == 0xFD)
             {
-                DataEncoder.SizeAtLeast(ref bytes, startIndex + 2);
-                reader.ReadExactly(bytes, startIndex, 2);
-                value = Bits.ToUInt16(bytes, startIndex);
-                startIndex += 2;
+                DataDecoder.SizeAtLeast(ref bytes, offset + 2);
+                reader.ReadExactly(bytes, offset, 2);
+                value = Bits.ToUInt16(bytes, offset);
+                offset += 2;
                 return value;
             }
             else if (value == 0xFE)
             {
-                DataEncoder.SizeAtLeast(ref bytes, startIndex + 4);
-                reader.ReadExactly(bytes, startIndex, 4);
-                value = Bits.ToUInt32(bytes, startIndex);
-                startIndex += 4;
+                DataDecoder.SizeAtLeast(ref bytes, offset + 4);
+                reader.ReadExactly(bytes, offset, 4);
+                value = Bits.ToUInt32(bytes, offset);
+                offset += 4;
                 return value;
             }
             else if (value == 0xFF)
             {
-                DataEncoder.SizeAtLeast(ref bytes, startIndex + 8);
-                reader.ReadExactly(bytes, startIndex, 8);
-                value = Bits.ToUInt64(bytes, startIndex);
-                startIndex += 8;
+                DataDecoder.SizeAtLeast(ref bytes, offset + 8);
+                reader.ReadExactly(bytes, offset, 8);
+                value = Bits.ToUInt64(bytes, offset);
+                offset += 8;
+                return value;
+            }
+            else
+                throw new Exception();
+        }
+
+        public static UInt64 ReadVarInt(this byte[] buffer, ref int offset)
+        {
+            UInt64 value = buffer[offset];
+            offset += 1;
+
+            if (value < 0xFD)
+            {
+                return value;
+            }
+            else if (value == 0xFD)
+            {
+                value = Bits.ToUInt16(buffer, offset);
+                offset += 2;
+                return value;
+            }
+            else if (value == 0xFE)
+            {
+                value = Bits.ToUInt32(buffer, offset);
+                offset += 4;
+                return value;
+            }
+            else if (value == 0xFF)
+            {
+                value = Bits.ToUInt64(buffer, offset);
+                offset += 8;
                 return value;
             }
             else
@@ -91,7 +137,28 @@ namespace BitSharp.Core.ExtensionMethods
         public static byte[] ReadVarBytes(this BinaryReader reader)
         {
             var length = reader.ReadVarInt().ToIntChecked();
-            return reader.ReadBytes(length);
+            return reader.ReadExactly(length);
+        }
+
+        public static byte[] ReadVarBytes(this byte[] buffer, ref int offset)
+        {
+            var length = buffer.ReadVarInt(ref offset).ToIntChecked();
+
+            var value = new byte[length];
+            Buffer.BlockCopy(buffer, offset, value, 0, length);
+            offset += length;
+
+            return value;
+        }
+
+        public static ImmutableArray<byte> ReadVarBytesImmutable(this byte[] buffer, ref int offset)
+        {
+            var length = buffer.ReadVarInt(ref offset).ToIntChecked();
+
+            var value = ImmutableArray.Create(buffer, offset, length);
+            offset += length;
+
+            return value;
         }
 
         public static string ReadVarString(this BinaryReader reader)
@@ -102,7 +169,7 @@ namespace BitSharp.Core.ExtensionMethods
 
         public static string ReadFixedString(this BinaryReader reader, int length)
         {
-            var encoded = reader.ReadBytes(length);
+            var encoded = reader.ReadExactly(length);
             // ignore trailing null bytes in a fixed length string
             var encodedTrimmed = encoded.TakeWhile(x => x != 0).ToArray();
             var decoded = Encoding.ASCII.GetString(encodedTrimmed);
@@ -138,7 +205,7 @@ namespace BitSharp.Core.ExtensionMethods
 
         private static BinaryReader ReverseRead(this BinaryReader reader, int length)
         {
-            var bytes = reader.ReadBytes(length);
+            var bytes = reader.ReadExactly(length);
             Array.Reverse(bytes);
 
             var stream = new MemoryStream(bytes);

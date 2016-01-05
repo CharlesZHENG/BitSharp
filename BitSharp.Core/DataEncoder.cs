@@ -17,40 +17,9 @@ namespace BitSharp.Core
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
-        public static UInt256 DecodeUInt256(BinaryReader reader)
-        {
-            return reader.ReadUInt256();
-        }
-
         public static void EncodeUInt256(BinaryWriter writer, UInt256 value)
         {
             writer.WriteUInt256(value);
-        }
-
-        public static Block DecodeBlock(BinaryReader reader)
-        {
-            var header = DecodeBlockHeader(reader);
-
-            var blockTxesCount = reader.ReadVarInt().ToIntChecked();
-            var blockTxes = ImmutableArray.CreateBuilder<BlockTx>(blockTxesCount);
-            for (var i = 0; i < blockTxesCount; i++)
-            {
-                var encodedTx = DecodeTransaction(reader);
-                var blockTx = new BlockTx(i, encodedTx);
-                blockTxes.Add(blockTx);
-
-            }
-
-            return new Block(header, blockTxes.MoveToImmutable());
-        }
-
-        public static Block DecodeBlock(byte[] bytes)
-        {
-            using (var stream = new MemoryStream(bytes))
-            using (var reader = new BinaryReader(stream))
-            {
-                return DecodeBlock(reader);
-            }
         }
 
         public static void EncodeBlock(BinaryWriter writer, Block block)
@@ -66,29 +35,6 @@ namespace BitSharp.Core
             {
                 EncodeBlock(writer, block);
                 return stream.ToArray();
-            }
-        }
-
-        public static BlockHeader DecodeBlockHeader(BinaryReader reader, UInt256 blockHash = null)
-        {
-            return new BlockHeader
-            (
-                version: reader.ReadUInt32(),
-                previousBlock: reader.ReadUInt256(),
-                merkleRoot: reader.ReadUInt256(),
-                time: reader.ReadUInt32(),
-                bits: reader.ReadUInt32(),
-                nonce: reader.ReadUInt32(),
-                hash: blockHash
-            );
-        }
-
-        public static BlockHeader DecodeBlockHeader(byte[] bytes, UInt256 blockHash = null)
-        {
-            using (var stream = new MemoryStream(bytes))
-            using (var reader = new BinaryReader(stream))
-            {
-                return DecodeBlockHeader(reader, blockHash);
             }
         }
 
@@ -128,22 +74,6 @@ namespace BitSharp.Core
             }
         }
 
-        public static BigInteger DecodeTotalWork(BinaryReader reader)
-        {
-            var totalWorkBytesBigEndian = reader.ReadBytes(64);
-            var totalWorkBytesLittleEndian = totalWorkBytesBigEndian.Reverse().ToArray();
-            return new BigInteger(totalWorkBytesLittleEndian);
-        }
-
-        public static BigInteger DecodeTotalWork(byte[] bytes)
-        {
-            using (var stream = new MemoryStream(bytes))
-            using (var reader = new BinaryReader(stream))
-            {
-                return DecodeTotalWork(reader);
-            }
-        }
-
         public static void EncodeTotalWork(BinaryWriter writer, BigInteger totalWork)
         {
             if (totalWork < 0)
@@ -172,27 +102,6 @@ namespace BitSharp.Core
             }
         }
 
-        public static ChainedHeader DecodeChainedHeader(BinaryReader reader)
-        {
-            var blockHash = reader.ReadUInt256();
-            return new ChainedHeader
-            (
-                blockHeader: DecodeBlockHeader(reader, blockHash),
-                height: reader.ReadInt32(),
-                totalWork: new BigInteger(reader.ReadVarBytes()),
-                dateSeen: new DateTime(reader.ReadInt64())
-            );
-        }
-
-        public static ChainedHeader DecodeChainedHeader(byte[] bytes)
-        {
-            using (var stream = new MemoryStream(bytes))
-            using (var reader = new BinaryReader(stream))
-            {
-                return DecodeChainedHeader(reader);
-            }
-        }
-
         public static void EncodeChainedHeader(BinaryWriter writer, ChainedHeader chainedHeader)
         {
             writer.WriteUInt256(chainedHeader.Hash);
@@ -209,101 +118,6 @@ namespace BitSharp.Core
             {
                 EncodeChainedHeader(writer, chainedHeader);
                 return stream.ToArray();
-            }
-        }
-
-        public static DecodedTx DecodeTransaction(BinaryReader reader, UInt256 txHash = null)
-        {
-            var txBytes = new byte[1024];
-            var startIndex = 0;
-
-            // read version
-            reader.ReadExactly(txBytes, startIndex, 4);
-            var version = Bits.ToUInt32(txBytes, startIndex);
-            startIndex += 4;
-
-            // read inputs
-            var inputCount = reader.ReadVarInt(ref txBytes, ref startIndex).ToIntChecked();
-            var inputs = ImmutableArray.CreateBuilder<TxInput>(inputCount);
-            for (var i = 0; i < inputCount; i++)
-            {
-                // read prevTxHash and prevTxOutputIndex
-                SizeAtLeast(ref txBytes, startIndex + 36);
-                reader.ReadExactly(txBytes, startIndex, 36);
-                var prevTxHash = Bits.ToUInt256(txBytes, startIndex);
-                var prevTxOutputIndex = Bits.ToUInt32(txBytes, startIndex + 32);
-                startIndex += 36;
-
-                // read scriptSignatureLength
-                var scriptSignatureLength = reader.ReadVarInt(ref txBytes, ref startIndex).ToIntChecked();
-
-                // read scriptSignature
-                SizeAtLeast(ref txBytes, startIndex + scriptSignatureLength);
-                reader.ReadExactly(txBytes, startIndex, scriptSignatureLength);
-                var scriptSignature = ImmutableArray.Create(txBytes, startIndex, scriptSignatureLength);
-                startIndex += scriptSignatureLength;
-
-                // read sequence
-                SizeAtLeast(ref txBytes, startIndex + 4);
-                reader.ReadExactly(txBytes, startIndex, 4);
-                var sequence = Bits.ToUInt32(txBytes, startIndex);
-                startIndex += 4;
-
-                var intput = new TxInput(prevTxHash, prevTxOutputIndex, scriptSignature, sequence);
-                inputs.Add(intput);
-            }
-
-            // read outputs
-            var outputCount = reader.ReadVarInt(ref txBytes, ref startIndex).ToIntChecked();
-            var outputs = ImmutableArray.CreateBuilder<TxOutput>(outputCount);
-            for (var i = 0; i < outputCount; i++)
-            {
-                // read value
-                SizeAtLeast(ref txBytes, startIndex + 8);
-                reader.ReadExactly(txBytes, startIndex, 8);
-                var value = Bits.ToUInt64(txBytes, startIndex);
-                startIndex += 8;
-
-                // read scriptPublicKeyLength
-                var scriptPublicKeyLength = reader.ReadVarInt(ref txBytes, ref startIndex).ToIntChecked();
-
-                // read scriptPublicKey
-                SizeAtLeast(ref txBytes, startIndex + scriptPublicKeyLength);
-                reader.ReadExactly(txBytes, startIndex, scriptPublicKeyLength);
-                var scriptPublicKey = ImmutableArray.Create(txBytes, startIndex, scriptPublicKeyLength);
-                startIndex += scriptPublicKeyLength;
-
-                var output = new TxOutput(value, scriptPublicKey);
-                outputs.Add(output);
-            }
-
-            // read lockTime
-            SizeAtLeast(ref txBytes, startIndex + 4);
-            reader.ReadExactly(txBytes, startIndex, 4);
-            var lockTime = Bits.ToUInt32(txBytes, startIndex);
-            startIndex += 4;
-
-            // resize raw tx bytes to final size
-            Array.Resize(ref txBytes, startIndex);
-
-            txHash = txHash ?? new UInt256(SHA256Static.ComputeDoubleHash(txBytes));
-
-            var tx = new Transaction(version, inputs.MoveToImmutable(), outputs.MoveToImmutable(), lockTime, txHash);
-            return new DecodedTx(txBytes.ToImmutableArray(), tx);
-        }
-
-        internal static void SizeAtLeast(ref byte[] bytes, int minLength)
-        {
-            if (bytes.Length < minLength)
-                Array.Resize(ref bytes, ((minLength + 1023) / 1024) * 1024);
-        }
-
-        public static DecodedTx DecodeTransaction(byte[] bytes, UInt256 txHash = null)
-        {
-            using (var stream = new MemoryStream(bytes))
-            using (var reader = new BinaryReader(stream))
-            {
-                return DecodeTransaction(reader, txHash);
             }
         }
 
@@ -346,26 +160,6 @@ namespace BitSharp.Core
             }
         }
 
-        public static TxInput DecodeTxInput(BinaryReader reader)
-        {
-            return new TxInput
-            (
-                prevTxHash: reader.ReadUInt256(),
-                prevTxOutputIndex: reader.ReadUInt32(),
-                scriptSignature: reader.ReadVarBytes().ToImmutableArray(),
-                sequence: reader.ReadUInt32()
-            );
-        }
-
-        public static TxInput DecodeTxInput(byte[] bytes)
-        {
-            using (var stream = new MemoryStream(bytes))
-            using (var reader = new BinaryReader(stream))
-            {
-                return DecodeTxInput(reader);
-            }
-        }
-
         public static void EncodeTxInput(BinaryWriter writer, TxInput txInput)
         {
             writer.WriteUInt256(txInput.PrevTxOutputKey.TxHash);
@@ -381,24 +175,6 @@ namespace BitSharp.Core
             {
                 EncodeTxInput(writer, txInput);
                 return stream.ToArray();
-            }
-        }
-
-        public static TxOutput DecodeTxOutput(BinaryReader reader)
-        {
-            return new TxOutput
-            (
-                value: reader.ReadUInt64(),
-                scriptPublicKey: reader.ReadVarBytes().ToImmutableArray()
-            );
-        }
-
-        public static TxOutput DecodeTxOutput(byte[] bytes)
-        {
-            using (var stream = new MemoryStream(bytes))
-            using (var reader = new BinaryReader(stream))
-            {
-                return DecodeTxOutput(reader);
             }
         }
 
@@ -418,20 +194,6 @@ namespace BitSharp.Core
             }
         }
 
-        public static ImmutableArray<TxOutput> DecodeTxOutputList(BinaryReader reader)
-        {
-            return reader.ReadList(() => DecodeTxOutput(reader));
-        }
-
-        public static ImmutableArray<TxOutput> DecodeTxOutputList(byte[] bytes)
-        {
-            using (var stream = new MemoryStream(bytes))
-            using (var reader = new BinaryReader(stream))
-            {
-                return DecodeTxOutputList(reader);
-            }
-        }
-
         public static void EncodeTxOutputList(BinaryWriter writer, ImmutableArray<TxOutput> txOutputs)
         {
             writer.WriteList(txOutputs, output => EncodeTxOutput(writer, output));
@@ -444,28 +206,6 @@ namespace BitSharp.Core
             {
                 EncodeTxOutputList(writer, txOutputs);
                 return stream.ToArray();
-            }
-        }
-
-        public static PrevTxOutput DecodePrevTxOutput(BinaryReader reader)
-        {
-            return new PrevTxOutput
-            (
-                value: reader.ReadUInt64(),
-                scriptPublicKey: reader.ReadVarBytes().ToImmutableArray(),
-                blockHeight: reader.ReadInt32(),
-                txIndex: reader.ReadInt32(),
-                txVersion: reader.ReadUInt32(),
-                isCoinbase: reader.ReadBool()
-            );
-        }
-
-        public static PrevTxOutput DecodePrevTxOutput(byte[] bytes)
-        {
-            using (var stream = new MemoryStream(bytes))
-            using (var reader = new BinaryReader(stream))
-            {
-                return DecodePrevTxOutput(reader);
             }
         }
 
@@ -489,20 +229,6 @@ namespace BitSharp.Core
             }
         }
 
-        public static ImmutableArray<PrevTxOutput> DecodePrevTxOutputList(BinaryReader reader)
-        {
-            return reader.ReadList(() => DecodePrevTxOutput(reader));
-        }
-
-        public static ImmutableArray<PrevTxOutput> DecodePrevTxOutputList(byte[] bytes)
-        {
-            using (var stream = new MemoryStream(bytes))
-            using (var reader = new BinaryReader(stream))
-            {
-                return DecodePrevTxOutputList(reader);
-            }
-        }
-
         public static void EncodePrevTxOutputList(BinaryWriter writer, ImmutableArray<PrevTxOutput> txOutputs)
         {
             writer.WriteList(txOutputs, output => EncodePrevTxOutput(writer, output));
@@ -515,28 +241,6 @@ namespace BitSharp.Core
             {
                 EncodePrevTxOutputList(writer, txOutputs);
                 return stream.ToArray();
-            }
-        }
-
-        public static UnspentTx DecodeUnspentTx(BinaryReader reader)
-        {
-            var txHash = reader.ReadUInt256();
-            var blockIndex = reader.ReadInt32();
-            var index = reader.ReadInt32();
-            var txVersion = reader.ReadUInt32();
-            var isCoinbase = reader.ReadBool();
-            var outputStates = new OutputStates(bytes: reader.ReadVarBytes(), length: reader.ReadInt32());
-            var txOutputs = DecodeTxOutputList(reader);
-
-            return new UnspentTx(txHash, blockIndex, index, txVersion, isCoinbase, outputStates, txOutputs);
-        }
-
-        public static UnspentTx DecodeUnspentTx(byte[] bytes)
-        {
-            using (var stream = new MemoryStream(bytes))
-            using (var reader = new BinaryReader(stream))
-            {
-                return DecodeUnspentTx(reader);
             }
         }
 
@@ -562,24 +266,6 @@ namespace BitSharp.Core
             }
         }
 
-        public static SpentTx DecodeSpentTx(BinaryReader reader)
-        {
-            return new SpentTx(
-                txHash: reader.ReadUInt256(),
-                confirmedBlockIndex: reader.ReadInt32(),
-                txIndex: reader.ReadInt32()
-            );
-        }
-
-        public static SpentTx DecodeSpentTx(byte[] bytes)
-        {
-            using (var stream = new MemoryStream(bytes))
-            using (var reader = new BinaryReader(stream))
-            {
-                return DecodeSpentTx(reader);
-            }
-        }
-
         public static void EncodeSpentTx(BinaryWriter writer, SpentTx spentTx)
         {
             writer.WriteUInt256(spentTx.TxHash);
@@ -594,23 +280,6 @@ namespace BitSharp.Core
             {
                 EncodeSpentTx(writer, spentTx);
                 return stream.ToArray();
-            }
-        }
-
-        public static TxLookupKey DecodeTxLookupKey(BinaryReader reader)
-        {
-            return new TxLookupKey(
-                blockHash: reader.ReadUInt256(),
-                txIndex: reader.ReadInt32()
-            );
-        }
-
-        public static TxLookupKey DecodeTxLookupKey(byte[] bytes)
-        {
-            using (var stream = new MemoryStream(bytes))
-            using (var reader = new BinaryReader(stream))
-            {
-                return DecodeTxLookupKey(reader);
             }
         }
 
@@ -630,23 +299,6 @@ namespace BitSharp.Core
             }
         }
 
-        public static UnmintedTx DecodeUnmintedTx(BinaryReader reader)
-        {
-            var txHash = reader.ReadUInt256();
-            var prevTxOutputs = DecodePrevTxOutputList(reader);
-
-            return new UnmintedTx(txHash, prevTxOutputs);
-        }
-
-        public static UnmintedTx DecodeUnmintedTx(byte[] bytes)
-        {
-            using (var stream = new MemoryStream(bytes))
-            using (var reader = new BinaryReader(stream))
-            {
-                return DecodeUnmintedTx(reader);
-            }
-        }
-
         public static void EncodeUnmintedTx(BinaryWriter writer, UnmintedTx unmintedTx)
         {
             writer.WriteUInt256(unmintedTx.TxHash);
@@ -660,20 +312,6 @@ namespace BitSharp.Core
             {
                 EncodeUnmintedTx(writer, unmintedTx);
                 return stream.ToArray();
-            }
-        }
-
-        public static IImmutableList<UnmintedTx> DecodeUnmintedTxList(BinaryReader reader)
-        {
-            return reader.ReadList(() => DecodeUnmintedTx(reader));
-        }
-
-        public static IImmutableList<UnmintedTx> DecodeUnmintedTxList(byte[] bytes)
-        {
-            using (var stream = new MemoryStream(bytes))
-            using (var reader = new BinaryReader(stream))
-            {
-                return DecodeUnmintedTxList(reader);
             }
         }
 
@@ -692,15 +330,6 @@ namespace BitSharp.Core
             }
         }
 
-        public static OutputStates DecodeOutputStates(byte[] bytes)
-        {
-            var length = BitConverter.ToInt32(bytes, 0);
-            var outputStateBytes = new byte[bytes.Length - 4];
-            Buffer.BlockCopy(bytes, 4, outputStateBytes, 0, bytes.Length - 4);
-
-            return new OutputStates(outputStateBytes, length);
-        }
-
         public static byte[] EncodeOutputStates(OutputStates outputStates)
         {
             var outputStateBytes = outputStates.ToByteArray();
@@ -710,24 +339,6 @@ namespace BitSharp.Core
             Buffer.BlockCopy(outputStateBytes, 0, buffer, 4, outputStateBytes.Length);
 
             return buffer;
-        }
-
-        public static TxOutputKey DecodeTxOutputKey(BinaryReader reader)
-        {
-            return new TxOutputKey
-            (
-                txHash: reader.ReadUInt256(),
-                txOutputIndex: reader.ReadUInt32()
-            );
-        }
-
-        public static TxOutputKey DecodeTxOutputKey(byte[] bytes)
-        {
-            using (var stream = new MemoryStream(bytes))
-            using (var reader = new BinaryReader(stream))
-            {
-                return DecodeTxOutputKey(reader);
-            }
         }
 
         public static void EncodeTxOutputKey(BinaryWriter writer, TxOutputKey txOutputKey)
@@ -743,34 +354,6 @@ namespace BitSharp.Core
             {
                 EncodeTxOutputKey(writer, txOutputKey);
                 return stream.ToArray();
-            }
-        }
-
-        public static BlockTxNode DecodeBlockTxNode(MemoryStream stream, BinaryReader reader, bool skipTxBytes = false)
-        {
-            var index = reader.ReadInt32();
-            var depth = reader.ReadInt32();
-            var hash = reader.ReadUInt256();
-            var pruned = reader.ReadBool();
-
-            ImmutableArray<byte>? txBytes;
-            if (!skipTxBytes)
-            {
-                var bytesRemaining = (stream.Length - stream.Position).ToIntChecked();
-                txBytes = reader.ReadBytes(bytesRemaining).ToImmutableArray();
-            }
-            else
-                txBytes = null;
-
-            return new BlockTxNode(index, depth, hash, pruned, txBytes);
-        }
-
-        public static BlockTxNode DecodeBlockTxNode(byte[] bytes, bool skipTxBytes = false)
-        {
-            using (var stream = new MemoryStream(bytes))
-            using (var reader = new BinaryReader(stream))
-            {
-                return DecodeBlockTxNode(stream, reader, skipTxBytes);
             }
         }
 
@@ -794,25 +377,6 @@ namespace BitSharp.Core
             }
         }
 
-        public static BlockSpentTxes DecodeBlockSpentTxes(BinaryReader reader)
-        {
-            var blockSpentTxesBuilder = new BlockSpentTxesBuilder();
-
-            foreach (var spentTx in reader.ReadList(() => DecodeSpentTx(reader)))
-                blockSpentTxesBuilder.AddSpentTx(spentTx);
-
-            return blockSpentTxesBuilder.ToImmutable();
-        }
-
-        public static BlockSpentTxes DecodeBlockSpentTxes(byte[] bytes)
-        {
-            using (var stream = new MemoryStream(bytes))
-            using (var reader = new BinaryReader(stream))
-            {
-                return DecodeBlockSpentTxes(reader);
-            }
-        }
-
         public static void EncodeBlockSpentTxes(BinaryWriter writer, BlockSpentTxes blockSpentTxes)
         {
             writer.WriteList(blockSpentTxes, spentTx => EncodeSpentTx(writer, spentTx));
@@ -825,20 +389,6 @@ namespace BitSharp.Core
             {
                 EncodeBlockSpentTxes(writer, blockSpentTxes);
                 return stream.ToArray();
-            }
-        }
-
-        public static string DecodeVarString(BinaryReader reader)
-        {
-            return reader.ReadVarString();
-        }
-
-        public static string DecodeVarString(byte[] bytes)
-        {
-            using (var stream = new MemoryStream(bytes))
-            using (var reader = new BinaryReader(stream))
-            {
-                return DecodeVarString(reader);
             }
         }
 

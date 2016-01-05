@@ -8,7 +8,7 @@ namespace BitSharp.Core.Domain
     {
         private readonly int hashCode;
 
-        public BlockHeader(UInt32 version, UInt256 previousBlock, UInt256 merkleRoot, UInt32 time, UInt32 bits, UInt32 nonce, UInt256 hash = null)
+        public BlockHeader(UInt32 version, UInt256 previousBlock, UInt256 merkleRoot, UInt32 time, UInt32 bits, UInt32 nonce, UInt256 hash)
         {
             Version = version;
             PreviousBlock = previousBlock;
@@ -16,8 +16,7 @@ namespace BitSharp.Core.Domain
             Time = time;
             Bits = bits;
             Nonce = nonce;
-
-            Hash = hash ?? DataCalculator.CalculateBlockHash(version, previousBlock, merkleRoot, time, bits, nonce);
+            Hash = hash;
 
             this.hashCode = this.Hash.GetHashCode();
         }
@@ -38,7 +37,7 @@ namespace BitSharp.Core.Domain
 
         public BlockHeader With(UInt32? Version = null, UInt256 PreviousBlock = null, UInt256 MerkleRoot = null, UInt32? Time = null, UInt32? Bits = null, UInt32? Nonce = null)
         {
-            return new BlockHeader
+            return BlockHeader.Create
             (
                 Version ?? this.Version,
                 PreviousBlock ?? this.PreviousBlock,
@@ -80,6 +79,12 @@ namespace BitSharp.Core.Domain
         public static bool operator !=(BlockHeader left, BlockHeader right)
         {
             return !(left == right);
+        }
+
+        public static BlockHeader Create(UInt32 version, UInt256 previousBlock, UInt256 merkleRoot, UInt32 time, UInt32 bits, UInt32 nonce)
+        {
+            var hash = DataCalculator.CalculateBlockHash(version, previousBlock, merkleRoot, time, bits, nonce);
+            return new BlockHeader(version, previousBlock, merkleRoot, time, bits, nonce, hash);
         }
     }
 }

@@ -411,7 +411,7 @@ namespace BitSharp.Node.Workers
             logger.Info($"flushQueue.Count: {this.flushQueue.Count}");
             logger.Info($"flushBlocks.Count: {this.flushBlocks.Count}");
 
-            return Task.FromResult(false);
+            return Task.CompletedTask;
         }
 
         private void HandleBlock(Peer peer, Block block)
@@ -468,7 +468,7 @@ namespace BitSharp.Node.Workers
                 using (var stream = new FileStream(blockFile.FullName, FileMode.Open))
                 using (var reader = new BinaryReader(stream))
                 {
-                    var block = DataEncoder.DecodeBlock(reader);
+                    var block = DataDecoder.DecodeBlock(reader);
                     if (block.Hash == blockHash)
                         return block;
                     else

@@ -70,12 +70,6 @@ namespace BitSharp.Node
 
             this.messageRateMeasure = new RateMeasure();
 
-            this.peerWorker = new PeerWorker(
-                new WorkerConfig(initialNotify: true, minIdleTime: TimeSpan.FromSeconds(1), maxIdleTime: TimeSpan.FromSeconds(1)),
-                this, this.coreDaemon);
-
-            this.listenWorker = new ListenWorker(this, this.peerWorker);
-
             this.headersRequestWorker = new HeadersRequestWorker(
                 new WorkerConfig(initialNotify: true, minIdleTime: TimeSpan.FromMilliseconds(50), maxIdleTime: TimeSpan.FromSeconds(5)),
                 this, this.coreDaemon);
@@ -84,9 +78,15 @@ namespace BitSharp.Node
                 new WorkerConfig(initialNotify: true, minIdleTime: TimeSpan.FromMilliseconds(50), maxIdleTime: TimeSpan.FromSeconds(30)),
                 this, this.coreDaemon);
 
+            this.peerWorker = new PeerWorker(
+                new WorkerConfig(initialNotify: true, minIdleTime: TimeSpan.FromSeconds(1), maxIdleTime: TimeSpan.FromSeconds(1)),
+                this, this.coreDaemon, this.headersRequestWorker);
+
+            this.listenWorker = new ListenWorker(this, this.peerWorker);
+
             this.statsWorker = new WorkerMethod("LocalClient.StatsWorker", StatsWorker, true, TimeSpan.FromSeconds(5), TimeSpan.FromMinutes(5));
 
-            this.peerWorker.PeerConnected += HandlePeerConnected;
+            this.peerWorker.PeerHandshakeCompleted += HandlePeerHandshakeCompleted;
             this.peerWorker.PeerDisconnected += HandlePeerDisconnected;
 
             this.blockRequestWorker.OnBlockFlushed += HandleBlockFlushed;
@@ -154,7 +154,7 @@ namespace BitSharp.Node
             {
                 this.shutdownToken.Cancel();
 
-                this.peerWorker.PeerConnected -= HandlePeerConnected;
+                this.peerWorker.PeerHandshakeCompleted -= HandlePeerHandshakeCompleted;
                 this.peerWorker.PeerDisconnected -= HandlePeerDisconnected;
 
                 this.blockRequestWorker.OnBlockFlushed -= HandleBlockFlushed;
@@ -263,7 +263,7 @@ namespace BitSharp.Node
             logger.Info($"LocalClients loaded {count} known peers from database");
         }
 
-        private void HandlePeerConnected(Peer peer)
+        private void HandlePeerHandshakeCompleted(Peer peer)
         {
             var remoteAddressWithTime = new NetworkAddressWithTime(DateTime.UtcNow.ToUnixTime(), peer.RemoteEndPoint.ToNetworkAddress(/*TODO*/services: 0));
             this.networkPeerStorage[remoteAddressWithTime.NetworkAddress.GetKey()] = remoteAddressWithTime;
@@ -325,10 +325,10 @@ namespace BitSharp.Node
             peer.Receiver.OnBlockHeaders += HandleBlockHeaders;
             peer.Receiver.OnTransaction += OnTransaction;
             peer.Receiver.OnReceivedAddresses += OnReceivedAddresses;
-            peer.OnGetBlocks += OnGetBlocks;
-            peer.OnGetHeaders += OnGetHeaders;
-            peer.OnGetData += OnGetData;
-            peer.OnPing += OnPing;
+            peer.Receiver.OnGetBlocks += OnGetBlocks;
+            peer.Receiver.OnGetHeaders += OnGetHeaders;
+            peer.Receiver.OnGetData += OnGetData;
+            peer.Receiver.OnPing += OnPing;
         }
 
         private void UnwirePeerEvents(Peer peer)
@@ -339,18 +339,18 @@ namespace BitSharp.Node
             peer.Receiver.OnBlockHeaders -= HandleBlockHeaders;
             peer.Receiver.OnTransaction -= OnTransaction;
             peer.Receiver.OnReceivedAddresses -= OnReceivedAddresses;
-            peer.OnGetBlocks -= OnGetBlocks;
-            peer.OnGetHeaders -= OnGetHeaders;
-            peer.OnGetData -= OnGetData;
-            peer.OnPing -= OnPing;
+            peer.Receiver.OnGetBlocks -= OnGetBlocks;
+            peer.Receiver.OnGetHeaders -= OnGetHeaders;
+            peer.Receiver.OnGetData -= OnGetData;
+            peer.Receiver.OnPing -= OnPing;
         }
 
-        private void OnMessage(Message message)
+        private void OnMessage(Peer peer, Message message)
         {
             this.messageRateMeasure.Tick();
         }
 
-        private void OnInventoryVectors(ImmutableArray<InventoryVector> invVectors)
+        private void OnInventoryVectors(Peer peer, ImmutableArray<InventoryVector> invVectors)
         {
             var connectedPeersLocal = this.ConnectedPeers.SafeToList();
             if (connectedPeersLocal.Count == 0)
@@ -373,12 +373,19 @@ namespace BitSharp.Node
                             //logger.Info($"Requesting transaction {invVector.Hash}");
                             responseInvVectors.Add(invVector);
                         }
+                        // check if this is a block we don't have yet
+                        else if (invVector.Type == InventoryVector.TYPE_MESSAGE_TRANSACTION
+                            && !coreStorage.ContainsChainedHeader(invVector.Hash))
+                        {
+                            // ask for headers on a new block
+                            headersRequestWorker.SendGetHeaders(peer);
+                        }
                     }
                 }
 
                 // request missing transactions
                 if (responseInvVectors.Count > 0)
-                    connectedPeersLocal[random.Next(connectedPeersLocal.Count)].Sender.SendGetData(responseInvVectors.ToImmutable()).Wait();
+                    peer.Sender.SendGetData(responseInvVectors.ToImmutable()).Wait();
             }
             else
             {
@@ -421,14 +428,14 @@ namespace BitSharp.Node
             this.OnBlockHeaders?.Invoke(peer, blockHeaders);
         }
 
-        private void OnTransaction(Transaction transaction)
+        private void OnTransaction(Peer peer, Transaction transaction)
         {
             var result = coreDaemon.TryAddUnconfirmedTx(transaction);
 
             //logger.Info($"Received transaction {transaction.Hash}: {result}");
         }
 
-        private void OnReceivedAddresses(ImmutableArray<NetworkAddressWithTime> addresses)
+        private void OnReceivedAddresses(Peer peer, ImmutableArray<NetworkAddressWithTime> addresses)
         {
             var ipEndpoints = new List<IPEndPoint>(addresses.Length);
             foreach (var address in addresses)
@@ -593,7 +600,7 @@ namespace BitSharp.Node
                 $"MESSAGES/SEC: {this.messageRateMeasure.GetAverage(),6:N0}"
             ));
 
-            return Task.FromResult(false);
+            return Task.CompletedTask;
         }
     }
 

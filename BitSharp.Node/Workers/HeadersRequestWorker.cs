@@ -62,6 +62,34 @@ namespace BitSharp.Node.Workers
             this.flushWorker.Stop();
         }
 
+        public Task SendGetHeaders(Peer peer)
+        {
+            if (!IsStarted)
+                return Task.CompletedTask;
+
+            var targetChainLocal = this.coreDaemon.TargetChain;
+            if (targetChainLocal == null)
+                return Task.CompletedTask;
+
+            var blockLocatorHashes = CalculateBlockLocatorHashes(targetChainLocal.Blocks);
+
+            // remove an existing request for this peer if it's stale
+            var now = DateTime.UtcNow;
+            DateTime requestTime;
+            if (this.headersRequestsByPeer.TryGetValue(peer, out requestTime)
+                && (now - requestTime) > STALE_REQUEST_TIME)
+            {
+                this.headersRequestsByPeer.TryRemove(peer, out requestTime);
+            }
+
+            // determine if a new request can be made
+            if (this.headersRequestsByPeer.TryAdd(peer, now))
+                // send out the request for headers
+                return peer.Sender.SendGetHeaders(blockLocatorHashes, hashStop: UInt256.Zero);
+            else
+                return Task.CompletedTask;
+        }
+
         protected override Task WorkAction()
         {
             var now = DateTime.UtcNow;
@@ -71,7 +99,7 @@ namespace BitSharp.Node.Workers
             var targetChainLocal = this.coreDaemon.TargetChain;
 
             if (peerCount == 0 || targetChainLocal == null)
-                return Task.FromResult(false);
+                return Task.CompletedTask;
 
             var blockLocatorHashes = CalculateBlockLocatorHashes(targetChainLocal.Blocks);
 
@@ -97,7 +125,7 @@ namespace BitSharp.Node.Workers
                 }
             }
 
-            return Task.FromResult(false);
+            return Task.CompletedTask;
         }
 
         private Task FlushWorkerMethod(WorkerMethod instance)
@@ -118,7 +146,7 @@ namespace BitSharp.Node.Workers
                 this.headersRequestsByPeer.TryRemove(peer, out ignore);
             }
 
-            return Task.FromResult(false);
+            return Task.CompletedTask;
         }
 
         private void HandleBlockHeaders(Peer peer, IImmutableList<BlockHeader> blockHeaders)

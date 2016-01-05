@@ -11,7 +11,7 @@ namespace BitSharp.Core.Test.Domain
         {
             var randomBlockHeader = RandomData.RandomBlockHeader();
 
-            var sameBlockHeader = new BlockHeader(randomBlockHeader.Version, randomBlockHeader.PreviousBlock, randomBlockHeader.MerkleRoot, randomBlockHeader.Time, randomBlockHeader.Bits, randomBlockHeader.Nonce);
+            var sameBlockHeader = BlockHeader.Create(randomBlockHeader.Version, randomBlockHeader.PreviousBlock, randomBlockHeader.MerkleRoot, randomBlockHeader.Time, randomBlockHeader.Bits, randomBlockHeader.Nonce);
 
             var differentBlockHeaderVersion = randomBlockHeader.With(Version: ~randomBlockHeader.Version);
             var differentBlockHeaderPreviousBlock = randomBlockHeader.With(PreviousBlock: ~randomBlockHeader.PreviousBlock);
