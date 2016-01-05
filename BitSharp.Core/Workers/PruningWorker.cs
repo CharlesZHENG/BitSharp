@@ -223,42 +223,46 @@ namespace BitSharp.Core.Workers
 
         private async Task PruneBlockTxesAsync(PruningMode mode, Chain chain, ChainedHeader pruneBlock, BlockSpentTxes spentTxes)
         {
-            if (!mode.HasFlag(PruningMode.BlockTxesPreserveMerkle) && !mode.HasFlag(PruningMode.BlockTxesDestroyMerkle))
-                return;
+            if (mode.HasFlag(PruningMode.BlockTxesDelete))
+            {
+                storageManager.BlockTxesStorage.TryRemoveBlockTransactions(pruneBlock.Hash);
+            }
+            else if (mode.HasFlag(PruningMode.BlockTxesPreserveMerkle) || mode.HasFlag(PruningMode.BlockTxesDestroyMerkle))
+            {
+                // create a source of txes to prune sources, for each block
+                var pruningQueue = new BufferBlock<Tuple<int, List<int>>>();
 
-            // create a source of txes to prune sources, for each block
-            var pruningQueue = new BufferBlock<Tuple<int, List<int>>>();
-
-            // prepare tx pruner, to prune a txes source for a given block
-            var txPruner = new ActionBlock<Tuple<int, List<int>>>(
-                blockWorkItem =>
-                {
-                    var blockIndex = blockWorkItem.Item1;
-                    var blockHash = chain.Blocks[blockIndex].Hash;
-                    var spentTxIndices = blockWorkItem.Item2;
-                    var pruneWorkItem = new KeyValuePair<UInt256, IEnumerable<int>>(blockHash, spentTxIndices);
-
-                    if (mode.HasFlag(PruningMode.BlockTxesPreserveMerkle))
-                        this.storageManager.BlockTxesStorage.PruneElements(new[] { pruneWorkItem });
-                    else
-                        this.storageManager.BlockTxesStorage.DeleteElements(new[] { pruneWorkItem });
-                },
-                new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = Environment.ProcessorCount });
-
-            pruningQueue.LinkTo(txPruner, new DataflowLinkOptions { PropagateCompletion = true });
-
-            // queue spent txes, grouped by block
-            await pruningQueue.SendAndCompleteAsync(
-                spentTxes.ReadByBlock().Select(
-                    spentTxesByBlock =>
+                // prepare tx pruner, to prune a txes source for a given block
+                var txPruner = new ActionBlock<Tuple<int, List<int>>>(
+                    blockWorkItem =>
                     {
-                        var blockIndex = spentTxesByBlock.Item1;
-                        var txIndices = spentTxesByBlock.Item2.Select(x => x.TxIndex).ToList();
+                        var blockIndex = blockWorkItem.Item1;
+                        var blockHash = chain.Blocks[blockIndex].Hash;
+                        var spentTxIndices = blockWorkItem.Item2;
+                        var pruneWorkItem = new KeyValuePair<UInt256, IEnumerable<int>>(blockHash, spentTxIndices);
 
-                        return Tuple.Create(blockIndex, txIndices);
-                    }));
+                        if (mode.HasFlag(PruningMode.BlockTxesPreserveMerkle))
+                            this.storageManager.BlockTxesStorage.PruneElements(new[] { pruneWorkItem });
+                        else
+                            this.storageManager.BlockTxesStorage.DeleteElements(new[] { pruneWorkItem });
+                    },
+                    new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = Environment.ProcessorCount });
 
-            await txPruner.Completion;
+                pruningQueue.LinkTo(txPruner, new DataflowLinkOptions { PropagateCompletion = true });
+
+                // queue spent txes, grouped by block
+                await pruningQueue.SendAndCompleteAsync(
+                    spentTxes.ReadByBlock().Select(
+                        spentTxesByBlock =>
+                        {
+                            var blockIndex = spentTxesByBlock.Item1;
+                            var txIndices = spentTxesByBlock.Item2.Select(x => x.TxIndex).ToList();
+
+                            return Tuple.Create(blockIndex, txIndices);
+                        }));
+
+                await txPruner.Completion;
+            }
         }
 
         private async Task PruneTxIndexAsync(PruningMode mode, Chain chain, ChainedHeader pruneBlock, BlockSpentTxes spentTxes)

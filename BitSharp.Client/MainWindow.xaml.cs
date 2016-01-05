@@ -46,7 +46,7 @@ namespace BitSharp.Client
 
                 var ignoreScripts = false;
 
-                var pruningMode = PruningMode.TxIndex | PruningMode.BlockSpentIndex | PruningMode.BlockTxesPreserveMerkle;
+                var pruningMode = PruningMode.TxIndex | PruningMode.BlockSpentIndex | PruningMode.BlockTxesDelete;
                 var enableDummyWallet = true;
 
                 var useLmdb = false;
