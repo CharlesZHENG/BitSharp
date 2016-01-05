@@ -18,7 +18,10 @@ namespace BitSharp.Common.ExtensionMethods
                     if (target.Completion.IsFaulted)
                         throw target.Completion.Exception;
 
-                    await target.SendAsync(item, cancelToken);
+                    if (!await target.SendAsync(item, cancelToken))
+                        throw new InvalidOperationException();
+
+                    cancelToken.ThrowIfCancellationRequested();
                 }
 
                 target.Complete();
@@ -36,7 +39,9 @@ namespace BitSharp.Common.ExtensionMethods
             {
                 foreach (var item in items)
                 {
-                    target.Post(item);
+                    if (!target.Post(item))
+                        throw new InvalidOperationException();
+
                     cancelToken.ThrowIfCancellationRequested();
                 }
 
