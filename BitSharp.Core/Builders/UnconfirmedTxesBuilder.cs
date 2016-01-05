@@ -167,11 +167,7 @@ namespace BitSharp.Core.Builders
 
         public void AddBlock(ChainedHeader chainedHeader, IEnumerable<BlockTx> blockTxes, CancellationToken cancelToken = default(CancellationToken))
         {
-            if (storageManager.IsUnconfirmedTxesConcurrent)
-                updateLock.EnterUpgradeableReadLock();
-            else
-                updateLock.EnterWriteLock();
-            try
+            updateLock.DoWrite(() =>
             {
                 using (var handle = storageManager.OpenUnconfirmedTxesCursor())
                 {
@@ -207,36 +203,18 @@ namespace BitSharp.Core.Builders
 
                     unconfirmedTxesCursor.ChainTip = chainedHeader;
 
-                    if (storageManager.IsUnconfirmedTxesConcurrent)
-                        updateLock.EnterWriteLock();
-                    try
+                    commitLock.DoWrite(() =>
                     {
                         unconfirmedTxesCursor.CommitTransaction();
                         chain = new Lazy<Chain>(() => newChain).Force();
-                    }
-                    finally
-                    {
-                        if (storageManager.IsUnconfirmedTxesConcurrent)
-                            updateLock.ExitWriteLock();
-                    }
+                    });
                 }
-            }
-            finally
-            {
-                if (storageManager.IsUnconfirmedTxesConcurrent)
-                    updateLock.ExitUpgradeableReadLock();
-                else
-                    updateLock.ExitWriteLock();
-            }
+            });
         }
 
         public void RollbackBlock(ChainedHeader chainedHeader, IEnumerable<BlockTx> blockTxes)
         {
-            if (storageManager.IsUnconfirmedTxesConcurrent)
-                updateLock.EnterUpgradeableReadLock();
-            else
-                updateLock.EnterWriteLock();
-            try
+            updateLock.DoWrite(() =>
             {
                 using (var handle = storageManager.OpenUnconfirmedTxesCursor())
                 {
@@ -248,32 +226,18 @@ namespace BitSharp.Core.Builders
 
                     unconfirmedTxesCursor.ChainTip = chainedHeader;
 
-                    if (storageManager.IsUnconfirmedTxesConcurrent)
-                        updateLock.EnterWriteLock();
-                    try
+                    commitLock.DoWrite(() =>
                     {
                         unconfirmedTxesCursor.CommitTransaction();
                         chain = new Lazy<Chain>(() => newChain).Force();
-                    }
-                    finally
-                    {
-                        if (storageManager.IsUnconfirmedTxesConcurrent)
-                            updateLock.ExitWriteLock();
-                    }
+                    });
                 }
-            }
-            finally
-            {
-                if (storageManager.IsUnconfirmedTxesConcurrent)
-                    updateLock.ExitUpgradeableReadLock();
-                else
-                    updateLock.ExitWriteLock();
-            }
+            });
         }
 
         public UnconfirmedTxes ToImmutable()
         {
-            return updateLock.DoRead(() =>
+            return commitLock.DoRead(() =>
                 new UnconfirmedTxes(chain.Value, storageManager));
         }
 
