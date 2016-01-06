@@ -11,7 +11,7 @@ namespace BitSharp.Core.Workers
 {
     internal class StatsWorker : Worker
     {
-        private const int REORG_BUFFER = 0;
+        private const int REORG_BUFFER = 6;
 
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
