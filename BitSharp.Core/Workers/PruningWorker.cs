@@ -204,6 +204,13 @@ namespace BitSharp.Core.Workers
                 pruneSpentTxesStopwatch.Time(() =>
                     PruneBlockSpentTxes(mode, chain, pruneBlock));
             }
+            // if spent txes aren't available, block txes can still be deleted entirely for that pruning style
+            else if (mode.HasFlag(PruningMode.BlockTxesDelete))
+            {
+                pruneBlockTxesStopwatch.Start();
+                await PruneBlockTxesAsync(mode, chain, pruneBlock, null);
+                pruneBlockTxesStopwatch.Stop();
+            }
             else //if (pruneBlock.Height > 0)
             {
                 //TODO can't throw an exception unless the pruned chain is persisted
