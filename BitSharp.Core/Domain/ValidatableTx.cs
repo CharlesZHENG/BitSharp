@@ -13,8 +13,6 @@ namespace BitSharp.Core.Domain
         {
             if (blockTx == null)
                 throw new ArgumentNullException(nameof(blockTx));
-            if (chainedHeader == null)
-                throw new ArgumentNullException(nameof(chainedHeader));
 
             BlockTx = blockTx;
             ChainedHeader = chainedHeader;

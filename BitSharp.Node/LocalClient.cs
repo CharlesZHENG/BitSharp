@@ -428,11 +428,11 @@ namespace BitSharp.Node
             this.OnBlockHeaders?.Invoke(peer, blockHeaders);
         }
 
-        private void OnTransaction(Peer peer, Transaction transaction)
+        private void OnTransaction(Peer peer, DecodedTx decodedTx)
         {
-            var result = coreDaemon.TryAddUnconfirmedTx(transaction);
+            var result = coreDaemon.TryAddUnconfirmedTx(decodedTx);
 
-            //logger.Info($"Received transaction {transaction.Hash}: {result}");
+            //logger.Info($"Received transaction {decodedTx.Hash}: {result}");
         }
 
         private void OnReceivedAddresses(Peer peer, ImmutableArray<NetworkAddressWithTime> addresses)

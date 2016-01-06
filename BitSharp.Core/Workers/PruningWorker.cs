@@ -91,7 +91,7 @@ namespace BitSharp.Core.Workers
                 maxHeight = Math.Min(maxHeight, this.PrunableHeight);
 
                 // check if this block is safe to prune
-                if (chainedHeader.Height > maxHeight)
+                if (chainedHeader.Height == 0 || chainedHeader.Height > maxHeight)
                     break;
 
                 if (direction > 0)
@@ -204,6 +204,13 @@ namespace BitSharp.Core.Workers
                 pruneSpentTxesStopwatch.Time(() =>
                     PruneBlockSpentTxes(mode, chain, pruneBlock));
             }
+            // if spent txes aren't available, block txes can still be deleted entirely for that pruning style
+            else if (mode.HasFlag(PruningMode.BlockTxesDelete))
+            {
+                pruneBlockTxesStopwatch.Start();
+                await PruneBlockTxesAsync(mode, chain, pruneBlock, null);
+                pruneBlockTxesStopwatch.Stop();
+            }
             else //if (pruneBlock.Height > 0)
             {
                 //TODO can't throw an exception unless the pruned chain is persisted
@@ -223,42 +230,46 @@ namespace BitSharp.Core.Workers
 
         private async Task PruneBlockTxesAsync(PruningMode mode, Chain chain, ChainedHeader pruneBlock, BlockSpentTxes spentTxes)
         {
-            if (!mode.HasFlag(PruningMode.BlockTxesPreserveMerkle) && !mode.HasFlag(PruningMode.BlockTxesDestroyMerkle))
-                return;
+            if (mode.HasFlag(PruningMode.BlockTxesDelete))
+            {
+                storageManager.BlockTxesStorage.TryRemoveBlockTransactions(pruneBlock.Hash);
+            }
+            else if (mode.HasFlag(PruningMode.BlockTxesPreserveMerkle) || mode.HasFlag(PruningMode.BlockTxesDestroyMerkle))
+            {
+                // create a source of txes to prune sources, for each block
+                var pruningQueue = new BufferBlock<Tuple<int, List<int>>>();
 
-            // create a source of txes to prune sources, for each block
-            var pruningQueue = new BufferBlock<Tuple<int, List<int>>>();
-
-            // prepare tx pruner, to prune a txes source for a given block
-            var txPruner = new ActionBlock<Tuple<int, List<int>>>(
-                blockWorkItem =>
-                {
-                    var blockIndex = blockWorkItem.Item1;
-                    var blockHash = chain.Blocks[blockIndex].Hash;
-                    var spentTxIndices = blockWorkItem.Item2;
-                    var pruneWorkItem = new KeyValuePair<UInt256, IEnumerable<int>>(blockHash, spentTxIndices);
-
-                    if (mode.HasFlag(PruningMode.BlockTxesPreserveMerkle))
-                        this.storageManager.BlockTxesStorage.PruneElements(new[] { pruneWorkItem });
-                    else
-                        this.storageManager.BlockTxesStorage.DeleteElements(new[] { pruneWorkItem });
-                },
-                new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = Environment.ProcessorCount });
-
-            pruningQueue.LinkTo(txPruner, new DataflowLinkOptions { PropagateCompletion = true });
-
-            // queue spent txes, grouped by block
-            await pruningQueue.SendAndCompleteAsync(
-                spentTxes.ReadByBlock().Select(
-                    spentTxesByBlock =>
+                // prepare tx pruner, to prune a txes source for a given block
+                var txPruner = new ActionBlock<Tuple<int, List<int>>>(
+                    blockWorkItem =>
                     {
-                        var blockIndex = spentTxesByBlock.Item1;
-                        var txIndices = spentTxesByBlock.Item2.Select(x => x.TxIndex).ToList();
+                        var blockIndex = blockWorkItem.Item1;
+                        var blockHash = chain.Blocks[blockIndex].Hash;
+                        var spentTxIndices = blockWorkItem.Item2;
+                        var pruneWorkItem = new KeyValuePair<UInt256, IEnumerable<int>>(blockHash, spentTxIndices);
 
-                        return Tuple.Create(blockIndex, txIndices);
-                    }));
+                        if (mode.HasFlag(PruningMode.BlockTxesPreserveMerkle))
+                            this.storageManager.BlockTxesStorage.PruneElements(new[] { pruneWorkItem });
+                        else
+                            this.storageManager.BlockTxesStorage.DeleteElements(new[] { pruneWorkItem });
+                    },
+                    new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = Environment.ProcessorCount });
 
-            await txPruner.Completion;
+                pruningQueue.LinkTo(txPruner, new DataflowLinkOptions { PropagateCompletion = true });
+
+                // queue spent txes, grouped by block
+                await pruningQueue.SendAndCompleteAsync(
+                    spentTxes.ReadByBlock().Select(
+                        spentTxesByBlock =>
+                        {
+                            var blockIndex = spentTxesByBlock.Item1;
+                            var txIndices = spentTxesByBlock.Item2.Select(x => x.TxIndex).ToList();
+
+                            return Tuple.Create(blockIndex, txIndices);
+                        }));
+
+                await txPruner.Completion;
+            }
         }
 
         private async Task PruneTxIndexAsync(PruningMode mode, Chain chain, ChainedHeader pruneBlock, BlockSpentTxes spentTxes)

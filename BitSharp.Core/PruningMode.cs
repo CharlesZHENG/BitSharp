@@ -19,6 +19,9 @@ namespace BitSharp.Core
         BlockTxesPreserveMerkle = 4,
 
         // remove fully spent transactions from block storage, without preserving the merkle tree
-        BlockTxesDestroyMerkle = 8
+        BlockTxesDestroyMerkle = 8,
+
+        // remove blocks in their entirety
+        BlockTxesDelete = 16,
     }
 }

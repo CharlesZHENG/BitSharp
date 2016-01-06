@@ -197,10 +197,10 @@ namespace BitSharp.Core.Builders
                     if (consumed)
                         throw new InvalidOperationException();
 
-                    consumeAction(operation, key, value);
-
                     consumed = true;
                 }
+
+                consumeAction(operation, key, value);
             }
         }
     }

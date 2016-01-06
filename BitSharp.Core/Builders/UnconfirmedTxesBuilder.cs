@@ -15,6 +15,10 @@ namespace BitSharp.Core.Builders
 {
     internal class UnconfirmedTxesBuilder : IDisposable
     {
+        public event EventHandler<UnconfirmedTxAddedEventArgs> UnconfirmedTxAdded;
+        public event EventHandler<TxesConfirmedEventArgs> TxesConfirmed;
+        public event EventHandler<TxesUnconfirmedEventArgs> TxesUnconfirmed;
+
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly ICoreDaemon coreDaemon;
@@ -67,11 +71,14 @@ namespace BitSharp.Core.Builders
             }
         }
 
-        public bool TryAddTransaction(Transaction tx)
+        public bool TryAddTransaction(DecodedTx decodedTx)
         {
-            if (ContainsTransaction(tx.Hash))
+            if (ContainsTransaction(decodedTx.Hash))
                 // unconfirmed tx already exists
                 return false;
+
+            var tx = decodedTx.Transaction;
+            UnconfirmedTx unconfirmedTx;
 
             // allow concurrent transaction adds if underlying storage supports it
             // in either case, lock waits for block add/rollback to finish
@@ -85,6 +92,8 @@ namespace BitSharp.Core.Builders
                 {
                     // verify each input is available to spend
                     var prevTxOutputKeys = new HashSet<TxOutputKey>();
+                    var prevTxOutputs = ImmutableArray.CreateBuilder<PrevTxOutput>(tx.Inputs.Length);
+                    var inputValue = 0UL;
                     for (var inputIndex = 0; inputIndex < tx.Inputs.Length; inputIndex++)
                     {
                         var input = tx.Inputs[inputIndex];
@@ -105,12 +114,29 @@ namespace BitSharp.Core.Builders
                         if (unspentTx.OutputStates[(int)input.PrevTxOutputIndex] != OutputState.Unspent)
                             // input's prev output has already been spent
                             return false;
+
+                        var prevTxOutput = unspentTx.GetPrevTxOutput(input.PrevTxOutputKey);
+                        prevTxOutputs.Add(prevTxOutput);
+                        checked { inputValue += prevTxOutput.Value; }
                     }
+
+                    var outputValue = 0UL;
+                    for (var outputIndex = 0; outputIndex < tx.Outputs.Length; outputIndex++)
+                    {
+                        var output = tx.Outputs[outputIndex];
+                        checked { outputValue += output.Value; }
+                    }
+
+                    if (outputValue > inputValue)
+                        // transaction spends more than its inputs
+                        return false;
 
                     // validation passed
 
                     // create the unconfirmed tx
-                    var unconfirmedTx = new UnconfirmedTx(tx);
+                    var blockTx = new DecodedBlockTx(-1, decodedTx);
+                    var validatableTx = new ValidatableTx(blockTx, null, prevTxOutputs.ToImmutable());
+                    unconfirmedTx = new UnconfirmedTx(validatableTx, DateTime.UtcNow);
 
                     // add the unconfirmed tx
                     using (var handle = storageManager.OpenUnconfirmedTxesCursor())
@@ -121,7 +147,6 @@ namespace BitSharp.Core.Builders
                         if (unconfirmedTxesCursor.TryAddTransaction(unconfirmedTx))
                         {
                             unconfirmedTxesCursor.CommitTransaction();
-                            return true;
                         }
                         else
                             // unconfirmed tx already exists
@@ -136,6 +161,9 @@ namespace BitSharp.Core.Builders
                 else
                     updateLock.ExitWriteLock();
             }
+
+            UnconfirmedTxAdded?.Invoke(this, new UnconfirmedTxAddedEventArgs(unconfirmedTx));
+            return true;
         }
 
         public bool TryGetTransaction(UInt256 txHash, out UnconfirmedTx unconfirmedTx)
@@ -167,11 +195,9 @@ namespace BitSharp.Core.Builders
 
         public void AddBlock(ChainedHeader chainedHeader, IEnumerable<BlockTx> blockTxes, CancellationToken cancelToken = default(CancellationToken))
         {
-            if (storageManager.IsUnconfirmedTxesConcurrent)
-                updateLock.EnterUpgradeableReadLock();
-            else
-                updateLock.EnterWriteLock();
-            try
+            var confirmedTxes = ImmutableDictionary.CreateBuilder<UInt256, UnconfirmedTx>();
+
+            updateLock.DoWrite(() =>
             {
                 using (var handle = storageManager.OpenUnconfirmedTxesCursor())
                 {
@@ -184,59 +210,51 @@ namespace BitSharp.Core.Builders
                     foreach (var blockTx in blockTxes)
                     {
                         // remove any txes confirmed in the block from the list of unconfirmed txes
-                        if (!unconfirmedTxesCursor.TryRemoveTransaction(blockTx.Hash))
+                        UnconfirmedTx unconfirmedTx;
+                        if (unconfirmedTxesCursor.TryGetTransaction(blockTx.Hash, out unconfirmedTx))
                         {
-                            var confirmedTx = blockTx.EncodedTx.Decode().Transaction;
+                            // track confirmed txes
+                            confirmedTxes.Add(unconfirmedTx.Hash, unconfirmedTx);
 
-                            // check for and remove any unconfirmed txes that conflict with the confirmed tx
-                            foreach (var input in confirmedTx.Inputs)
+                            if (!unconfirmedTxesCursor.TryRemoveTransaction(blockTx.Hash))
+                                throw new InvalidOperationException();
+                        }
+
+                        // check for and remove any unconfirmed txes that conflict with the confirmed tx
+                        var confirmedTx = blockTx.EncodedTx.Decode().Transaction;
+                        foreach (var input in confirmedTx.Inputs)
+                        {
+                            var conflictingTxes = unconfirmedTxesCursor.GetTransactionsSpending(input.PrevTxOutputKey);
+                            if (conflictingTxes.Count > 0)
                             {
-                                var conflictingTxes = unconfirmedTxesCursor.GetTransactionsSpending(input.PrevTxOutputKey);
-                                if (conflictingTxes.Count > 0)
-                                {
-                                    logger.Warn($"Removing {conflictingTxes.Count} conflicting txes from the unconfirmed transaction pool");
+                                logger.Warn($"Removing {conflictingTxes.Count} conflicting txes from the unconfirmed transaction pool");
 
-                                    // remove the conflicting unconfirmed txes
-                                    foreach (var conflictingTx in conflictingTxes.Keys)
-                                        if (!unconfirmedTxesCursor.TryRemoveTransaction(conflictingTx))
-                                            throw new StorageCorruptException(StorageType.UnconfirmedTxes, $"{conflictingTx} is indexed but not present");
-                                }
+                                // remove the conflicting unconfirmed txes
+                                foreach (var conflictingTx in conflictingTxes.Keys)
+                                    if (!unconfirmedTxesCursor.TryRemoveTransaction(conflictingTx))
+                                        throw new StorageCorruptException(StorageType.UnconfirmedTxes, $"{conflictingTx} is indexed but not present");
                             }
                         }
                     }
 
                     unconfirmedTxesCursor.ChainTip = chainedHeader;
 
-                    if (storageManager.IsUnconfirmedTxesConcurrent)
-                        updateLock.EnterWriteLock();
-                    try
+                    commitLock.DoWrite(() =>
                     {
                         unconfirmedTxesCursor.CommitTransaction();
                         chain = new Lazy<Chain>(() => newChain).Force();
-                    }
-                    finally
-                    {
-                        if (storageManager.IsUnconfirmedTxesConcurrent)
-                            updateLock.ExitWriteLock();
-                    }
+                    });
                 }
-            }
-            finally
-            {
-                if (storageManager.IsUnconfirmedTxesConcurrent)
-                    updateLock.ExitUpgradeableReadLock();
-                else
-                    updateLock.ExitWriteLock();
-            }
+            });
+
+            TxesConfirmed?.Invoke(this, new TxesConfirmedEventArgs(chainedHeader, confirmedTxes.ToImmutable()));
         }
 
         public void RollbackBlock(ChainedHeader chainedHeader, IEnumerable<BlockTx> blockTxes)
         {
-            if (storageManager.IsUnconfirmedTxesConcurrent)
-                updateLock.EnterUpgradeableReadLock();
-            else
-                updateLock.EnterWriteLock();
-            try
+            var unconfirmedTxes = ImmutableDictionary.CreateBuilder<UInt256, BlockTx>();
+
+            updateLock.DoWrite(() =>
             {
                 using (var handle = storageManager.OpenUnconfirmedTxesCursor())
                 {
@@ -246,34 +264,27 @@ namespace BitSharp.Core.Builders
 
                     var newChain = chain.Value.ToBuilder().RemoveBlock(chainedHeader).ToImmutable();
 
+                    foreach (var blockTx in blockTxes)
+                    {
+                        unconfirmedTxes.Add(blockTx.Hash, blockTx);
+                    }
+
                     unconfirmedTxesCursor.ChainTip = chainedHeader;
 
-                    if (storageManager.IsUnconfirmedTxesConcurrent)
-                        updateLock.EnterWriteLock();
-                    try
+                    commitLock.DoWrite(() =>
                     {
                         unconfirmedTxesCursor.CommitTransaction();
                         chain = new Lazy<Chain>(() => newChain).Force();
-                    }
-                    finally
-                    {
-                        if (storageManager.IsUnconfirmedTxesConcurrent)
-                            updateLock.ExitWriteLock();
-                    }
+                    });
                 }
-            }
-            finally
-            {
-                if (storageManager.IsUnconfirmedTxesConcurrent)
-                    updateLock.ExitUpgradeableReadLock();
-                else
-                    updateLock.ExitWriteLock();
-            }
+            });
+
+            TxesUnconfirmed?.Invoke(this, new TxesUnconfirmedEventArgs(chainedHeader, unconfirmedTxes.ToImmutable()));
         }
 
         public UnconfirmedTxes ToImmutable()
         {
-            return updateLock.DoRead(() =>
+            return commitLock.DoRead(() =>
                 new UnconfirmedTxes(chain.Value, storageManager));
         }
 

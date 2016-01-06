@@ -41,11 +41,12 @@ namespace BitSharp.Core.Test.Builders
         public void TestUnconfTxAdded()
         {
             // create tx spending a previous output that exists
-            var tx = Transaction.Create(
+            var decodedTx = Transaction.Create(
                 0,
                 ImmutableArray.Create(new TxInput(UInt256.One, 0, ImmutableArray<byte>.Empty, 0)),
                 ImmutableArray.Create(new TxOutput(0, ImmutableArray<byte>.Empty)),
-                0).Transaction;
+                0);
+            var tx = decodedTx.Transaction;
 
             // create prev output tx
             var unspentTx = new UnspentTx(tx.Inputs[0].PrevTxHash, 0, 1, 0, false, new OutputStates(1, OutputState.Unspent), ImmutableArray<TxOutput>.Empty);
@@ -61,7 +62,7 @@ namespace BitSharp.Core.Test.Builders
             using (var unconfirmedTxesBuilder = new UnconfirmedTxesBuilder(coreDaemon.Object, Mock.Of<ICoreStorage>(), storageManager))
             {
                 // try to add the tx
-                Assert.IsTrue(unconfirmedTxesBuilder.TryAddTransaction(tx));
+                Assert.IsTrue(unconfirmedTxesBuilder.TryAddTransaction(decodedTx));
 
                 // verify unconfirmed tx was added
                 UnconfirmedTx unconfirmedTx;
@@ -79,11 +80,12 @@ namespace BitSharp.Core.Test.Builders
         public void TestUnconfTxMissingPrevOutput()
         {
             // create tx spending a previous output that doesn't exist
-            var tx = Transaction.Create(
+            var decodedTx = Transaction.Create(
                 0,
                 ImmutableArray.Create(new TxInput(UInt256.One, 0, ImmutableArray<byte>.Empty, 0)),
                 ImmutableArray.Create(new TxOutput(0, ImmutableArray<byte>.Empty)),
-                0).Transaction;
+                0);
+            var tx = decodedTx.Transaction;
 
             // mock empty chain state
             var chainState = new Mock<IChainState>();
@@ -95,7 +97,7 @@ namespace BitSharp.Core.Test.Builders
             using (var unconfirmedTxesBuilder = new UnconfirmedTxesBuilder(coreDaemon.Object, Mock.Of<ICoreStorage>(), storageManager))
             {
                 // try to add the tx
-                Assert.IsFalse(unconfirmedTxesBuilder.TryAddTransaction(tx));
+                Assert.IsFalse(unconfirmedTxesBuilder.TryAddTransaction(decodedTx));
 
                 // verify unconfirmed tx was not added
                 UnconfirmedTx unconfirmedTx;
@@ -111,11 +113,12 @@ namespace BitSharp.Core.Test.Builders
         public void TestUnconfTxPrevOutputSpent()
         {
             // create tx spending a previous output that exists, but is spent
-            var tx = Transaction.Create(
+            var decodedTx = Transaction.Create(
                 0,
                 ImmutableArray.Create(new TxInput(UInt256.One, 0, ImmutableArray<byte>.Empty, 0)),
                 ImmutableArray.Create(new TxOutput(0, ImmutableArray<byte>.Empty)),
-                0).Transaction;
+                0);
+            var tx = decodedTx.Transaction;
 
             // create prev output tx
             var unspentTx = new UnspentTx(tx.Inputs[0].PrevTxHash, 0, 1, 0, false, new OutputStates(1, OutputState.Spent), ImmutableArray<TxOutput>.Empty);
@@ -131,7 +134,7 @@ namespace BitSharp.Core.Test.Builders
             using (var unconfirmedTxesBuilder = new UnconfirmedTxesBuilder(coreDaemon.Object, Mock.Of<ICoreStorage>(), storageManager))
             {
                 // try to add the tx
-                Assert.IsFalse(unconfirmedTxesBuilder.TryAddTransaction(tx));
+                Assert.IsFalse(unconfirmedTxesBuilder.TryAddTransaction(decodedTx));
 
                 // verify unconfirmed tx was not added
                 UnconfirmedTx unconfirmedTx;
@@ -147,11 +150,12 @@ namespace BitSharp.Core.Test.Builders
         public void TestAddBlockConfirmingTx()
         {
             // create tx spending a previous output that exists
-            var tx = Transaction.Create(
+            var decodedTx = Transaction.Create(
                 0,
                 ImmutableArray.Create(new TxInput(UInt256.One, 0, ImmutableArray<byte>.Empty, 0)),
                 ImmutableArray.Create(new TxOutput(0, ImmutableArray<byte>.Empty)),
-                0).Transaction;
+                0);
+            var tx = decodedTx.Transaction;
 
             // create prev output tx
             var unspentTx = new UnspentTx(tx.Inputs[0].PrevTxHash, 0, 1, 0, false, new OutputStates(1, OutputState.Unspent), ImmutableArray<TxOutput>.Empty);
@@ -181,7 +185,7 @@ namespace BitSharp.Core.Test.Builders
             using (var unconfirmedTxesBuilder = new UnconfirmedTxesBuilder(coreDaemon.Object, coreStorage.Object, storageManager))
             {
                 // add the tx
-                Assert.IsTrue(unconfirmedTxesBuilder.TryAddTransaction(tx));
+                Assert.IsTrue(unconfirmedTxesBuilder.TryAddTransaction(decodedTx));
 
                 // add the block
                 unconfirmedTxesBuilder.AddBlock(genesisHeader, Enumerable.Empty<BlockTx>());
