@@ -26,7 +26,7 @@ namespace BitSharp.Node.Network
         public event Action<Peer, ImmutableArray<InventoryVector>> OnNotFound;
         public event Action<Peer, Block> OnBlock;
         public event Action<Peer, IImmutableList<BlockHeader>> OnBlockHeaders;
-        public event Action<Peer, Transaction> OnTransaction;
+        public event Action<Peer, DecodedTx> OnTransaction;
         public event Action<Peer, ImmutableArray<NetworkAddressWithTime>> OnReceivedAddresses;
         public event Action<Peer, GetBlocksPayload> OnGetBlocks;
         public event Action<Peer, GetBlocksPayload> OnGetHeaders;
@@ -61,9 +61,12 @@ namespace BitSharp.Node.Network
                         await HandleMessage(messageStart);
                     }
                 }
-                catch (Exception e)
+                catch (Exception ex)
                 {
-                    Fail(e);
+                    if (!(ex is ObjectDisposedException))
+                        logger.Error(ex, "Peer failed handling message.");
+
+                    Fail(ex);
                 }
             }, TaskCreationOptions.LongRunning);
         }
@@ -230,7 +233,7 @@ namespace BitSharp.Node.Network
 
                 case "tx":
                     {
-                        var tx = DataDecoder.DecodeTransaction(null, payload);
+                        var tx = DataDecoder.DecodeEncodedTx(null, payload);
 
                         OnTransaction?.Invoke(owner, tx);
                     }

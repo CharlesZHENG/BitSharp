@@ -125,6 +125,7 @@
     <Compile Include="DataDecoder.cs" />
     <Compile Include="Domain\IUnconfirmedTxes.cs" />
     <Compile Include="Domain\UnconfirmedTxes.cs" />
+    <Compile Include="EventArgs\TxesUnconfirmedEventArgs.cs" />
     <Compile Include="EventArgs\TxesConfirmedEventArgs.cs" />
     <Compile Include="EventArgs\UnconfirmedTxAddedEventArgs.cs" />
     <Compile Include="Storage\IUnconfirmedTxesCursor.cs" />
@@ -231,6 +232,7 @@
     <Compile Include="Builders\UnconfirmedTxesBuilder.cs" />
     <Compile Include="UpdatedTracker.cs" />
     <Compile Include="ValidationException.cs" />
+    <Compile Include="Workers\StatsWorker.cs" />
     <Compile Include="Workers\UnconfirmedTxesWorker.cs" />
     <Compile Include="Workers\ChainStateWorker.cs" />
     <Compile Include="Workers\DefragWorker.cs" />

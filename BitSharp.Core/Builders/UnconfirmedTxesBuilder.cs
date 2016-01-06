@@ -17,6 +17,7 @@ namespace BitSharp.Core.Builders
     {
         public event EventHandler<UnconfirmedTxAddedEventArgs> UnconfirmedTxAdded;
         public event EventHandler<TxesConfirmedEventArgs> TxesConfirmed;
+        public event EventHandler<TxesUnconfirmedEventArgs> TxesUnconfirmed;
 
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
@@ -70,12 +71,13 @@ namespace BitSharp.Core.Builders
             }
         }
 
-        public bool TryAddTransaction(Transaction tx)
+        public bool TryAddTransaction(DecodedTx decodedTx)
         {
-            if (ContainsTransaction(tx.Hash))
+            if (ContainsTransaction(decodedTx.Hash))
                 // unconfirmed tx already exists
                 return false;
 
+            var tx = decodedTx.Transaction;
             UnconfirmedTx unconfirmedTx;
 
             // allow concurrent transaction adds if underlying storage supports it
@@ -90,6 +92,8 @@ namespace BitSharp.Core.Builders
                 {
                     // verify each input is available to spend
                     var prevTxOutputKeys = new HashSet<TxOutputKey>();
+                    var prevTxOutputs = ImmutableArray.CreateBuilder<PrevTxOutput>(tx.Inputs.Length);
+                    var inputValue = 0UL;
                     for (var inputIndex = 0; inputIndex < tx.Inputs.Length; inputIndex++)
                     {
                         var input = tx.Inputs[inputIndex];
@@ -110,12 +114,29 @@ namespace BitSharp.Core.Builders
                         if (unspentTx.OutputStates[(int)input.PrevTxOutputIndex] != OutputState.Unspent)
                             // input's prev output has already been spent
                             return false;
+
+                        var prevTxOutput = unspentTx.GetPrevTxOutput(input.PrevTxOutputKey);
+                        prevTxOutputs.Add(prevTxOutput);
+                        checked { inputValue += prevTxOutput.Value; }
                     }
+
+                    var outputValue = 0UL;
+                    for (var outputIndex = 0; outputIndex < tx.Outputs.Length; outputIndex++)
+                    {
+                        var output = tx.Outputs[outputIndex];
+                        checked { outputValue += output.Value; }
+                    }
+
+                    if (outputValue > inputValue)
+                        // transaction spends more than its inputs
+                        return false;
 
                     // validation passed
 
                     // create the unconfirmed tx
-                    unconfirmedTx = new UnconfirmedTx(tx);
+                    var blockTx = new DecodedBlockTx(-1, decodedTx);
+                    var validatableTx = new ValidatableTx(blockTx, null, prevTxOutputs.ToImmutable());
+                    unconfirmedTx = new UnconfirmedTx(validatableTx, DateTime.UtcNow);
 
                     // add the unconfirmed tx
                     using (var handle = storageManager.OpenUnconfirmedTxesCursor())
@@ -231,6 +252,8 @@ namespace BitSharp.Core.Builders
 
         public void RollbackBlock(ChainedHeader chainedHeader, IEnumerable<BlockTx> blockTxes)
         {
+            var unconfirmedTxes = ImmutableDictionary.CreateBuilder<UInt256, BlockTx>();
+
             updateLock.DoWrite(() =>
             {
                 using (var handle = storageManager.OpenUnconfirmedTxesCursor())
@@ -241,6 +264,11 @@ namespace BitSharp.Core.Builders
 
                     var newChain = chain.Value.ToBuilder().RemoveBlock(chainedHeader).ToImmutable();
 
+                    foreach (var blockTx in blockTxes)
+                    {
+                        unconfirmedTxes.Add(blockTx.Hash, blockTx);
+                    }
+
                     unconfirmedTxesCursor.ChainTip = chainedHeader;
 
                     commitLock.DoWrite(() =>
@@ -250,6 +278,8 @@ namespace BitSharp.Core.Builders
                     });
                 }
             });
+
+            TxesUnconfirmed?.Invoke(this, new TxesUnconfirmedEventArgs(chainedHeader, unconfirmedTxes.ToImmutable()));
         }
 
         public UnconfirmedTxes ToImmutable()
