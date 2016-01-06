@@ -18,6 +18,8 @@ namespace BitSharp.Core
         /// </summary>
         Chain CurrentChain { get; }
 
+        Chain UnconfirmedTxesChain { get; }
+
         IChainState GetChainState();
     }
 }
