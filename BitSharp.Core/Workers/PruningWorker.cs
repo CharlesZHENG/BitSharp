@@ -91,7 +91,7 @@ namespace BitSharp.Core.Workers
                 maxHeight = Math.Min(maxHeight, this.PrunableHeight);
 
                 // check if this block is safe to prune
-                if (chainedHeader.Height > maxHeight)
+                if (chainedHeader.Height == 0 || chainedHeader.Height > maxHeight)
                     break;
 
                 if (direction > 0)
