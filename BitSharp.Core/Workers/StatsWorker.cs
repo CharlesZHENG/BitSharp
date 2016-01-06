@@ -39,7 +39,7 @@ namespace BitSharp.Core.Workers
 
         protected override Task WorkAction()
         {
-            var currentChain = coreDaemon.CurrentChain;
+            var currentChain = coreDaemon.UnconfirmedTxesChain;
             if (currentChain == null)
                 return Task.CompletedTask;
 

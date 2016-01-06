@@ -49,7 +49,8 @@ namespace BitSharp.Core.Test.Builders
             var tx = decodedTx.Transaction;
 
             // create prev output tx
-            var unspentTx = new UnspentTx(tx.Inputs[0].PrevTxHash, 0, 1, 0, false, new OutputStates(1, OutputState.Unspent), ImmutableArray<TxOutput>.Empty);
+            var unspentTx = new UnspentTx(tx.Inputs[0].PrevTxHash, 0, 1, 0, false, new OutputStates(1, OutputState.Unspent),
+                ImmutableArray.Create(new TxOutput(0, ImmutableArray<byte>.Empty)));
 
             // mock chain state with prev output
             var chainState = new Mock<IChainState>();
@@ -158,7 +159,8 @@ namespace BitSharp.Core.Test.Builders
             var tx = decodedTx.Transaction;
 
             // create prev output tx
-            var unspentTx = new UnspentTx(tx.Inputs[0].PrevTxHash, 0, 1, 0, false, new OutputStates(1, OutputState.Unspent), ImmutableArray<TxOutput>.Empty);
+            var unspentTx = new UnspentTx(tx.Inputs[0].PrevTxHash, 0, 1, 0, false, new OutputStates(1, OutputState.Unspent),
+                ImmutableArray.Create(new TxOutput(0, ImmutableArray<byte>.Empty)));
 
             // create a fake chain
             var fakeHeaders = new FakeHeaders();

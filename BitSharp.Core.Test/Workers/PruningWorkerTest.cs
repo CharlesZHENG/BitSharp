@@ -25,14 +25,18 @@ namespace BitSharp.Core.Test.Workers
         {
             var logger = LogManager.CreateNullLogger();
 
+            // create genesis block
+            var genesisblock = CreateFakeBlock(1);
+            var genesisHeader = new ChainedHeader(genesisblock.Header, height: 0, totalWork: genesisblock.Header.CalculateWork(), dateSeen: DateTime.Now);
+
             // create a block
             var txCount = 100;
-            var block = CreateFakeBlock(txCount);
-            var chainedHeader = new ChainedHeader(block.Header, height: 0, totalWork: block.Header.CalculateWork(), dateSeen: DateTime.Now);
+            var block = CreateFakeBlock(txCount, genesisblock.Hash);
+            var chainedHeader = ChainedHeader.CreateFromPrev(genesisHeader, block.Header, dateSeen: DateTime.Now);
 
             // create a long chain based off the block, to account for pruning buffer
-            var fakeHeaders = new FakeHeaders(new[] { chainedHeader });
-            var chain = new ChainBuilder(Enumerable.Concat(new[] { chainedHeader }, Enumerable.Range(0, 2000).Select(x => fakeHeaders.NextChained()))).ToImmutable();
+            var fakeHeaders = new FakeHeaders(new[] { genesisHeader, chainedHeader });
+            var chain = new ChainBuilder(Enumerable.Concat(new[] { genesisHeader, chainedHeader }, Enumerable.Range(0, 2000).Select(x => fakeHeaders.NextChained()))).ToImmutable();
 
             // mock core daemon to return the chain
             var coreDaemon = new Mock<ICoreDaemon>();
@@ -82,7 +86,7 @@ namespace BitSharp.Core.Test.Workers
                 for (var txIndex = 0; txIndex < block.Transactions.Length; txIndex++)
                 {
                     var tx = block.Transactions[txIndex];
-                    var unspentTx = new UnspentTx(tx.Hash, blockIndex: 0, txIndex: txIndex, txVersion: tx.Version, isCoinbase: txIndex == 0, outputStates: new OutputStates(1, OutputState.Spent), txOutputs: ImmutableArray<TxOutput>.Empty);
+                    var unspentTx = new UnspentTx(tx.Hash, blockIndex: 1, txIndex: txIndex, txVersion: tx.Version, isCoinbase: txIndex == 0, outputStates: new OutputStates(1, OutputState.Spent), txOutputs: ImmutableArray<TxOutput>.Empty);
                     unspentTxes[txIndex] = unspentTx;
                     chainStateCursor.TryAddUnspentTx(unspentTx);
                 }
@@ -92,7 +96,7 @@ namespace BitSharp.Core.Test.Workers
                 var pruneCursor = new MemoryMerkleTreePruningCursor<BlockTxNode>(block.BlockTxes.Select(x => (BlockTxNode)x));
 
                 // prune each transaction in random order
-                var pruneHeight = -1;
+                var pruneHeight = 0;
                 foreach (var pruneTxIndex in pruneOrder)
                 {
                     // create a spent tx to prune the transaction
@@ -151,10 +155,10 @@ namespace BitSharp.Core.Test.Workers
         }
 
         //TODO copy pasted
-        private Block CreateFakeBlock(int txCount)
+        private Block CreateFakeBlock(int txCount, UInt256 prevBlockHash = null)
         {
             var transactions = Enumerable.Range(0, txCount).Select(x => RandomData.RandomTransaction()).ToImmutableArray();
-            var blockHeader = RandomData.RandomBlockHeader().With(MerkleRoot: MerkleTree.CalculateMerkleRoot(transactions), Bits: DataCalculator.TargetToBits(UnitTestParams.Target0));
+            var blockHeader = RandomData.RandomBlockHeader().With(PreviousBlock: prevBlockHash, MerkleRoot: MerkleTree.CalculateMerkleRoot(transactions), Bits: DataCalculator.TargetToBits(UnitTestParams.Target0));
             var block = Block.Create(blockHeader, transactions);
 
             return block;

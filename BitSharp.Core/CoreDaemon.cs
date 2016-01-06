@@ -148,6 +148,8 @@ namespace BitSharp.Core
 
         public Chain CurrentChain => chainStateWorker.CurrentChain;
 
+        public Chain UnconfirmedTxesChain => unconfirmedTxesWorker.CurrentChain;
+
         public int? MaxHeight
         {
             get { return chainStateWorker.MaxHeight; }
