@@ -39,7 +39,7 @@ namespace BitSharp.Core.Test
                 version: random.NextUInt32(),
                 previousBlock: random.NextUInt256(),
                 merkleRoot: random.NextUInt256(),
-                time: random.NextUInt32(),
+                time: DateTimeOffset.FromUnixTimeSeconds(random.NextUInt32()),
                 bits: random.NextUInt32(),
                 nonce: random.NextUInt32()
             );
@@ -95,7 +95,7 @@ namespace BitSharp.Core.Test
                 blockHeader: RandomBlockHeader(options),
                 height: Math.Abs(random.Next()),
                 totalWork: random.NextUBigIntegerBytes(64),
-                dateSeen: new DateTime(random.NextInt64())
+                dateSeen: new DateTimeOffset(random.NextInt64(), TimeSpan.Zero)
             );
         }
 

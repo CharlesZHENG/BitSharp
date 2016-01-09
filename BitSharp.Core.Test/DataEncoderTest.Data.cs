@@ -1,5 +1,6 @@
 ﻿using BitSharp.Common;
 using BitSharp.Core.Domain;
+using System;
 using System.Collections.Immutable;
 
 namespace BitSharp.Core.Test
@@ -39,7 +40,7 @@ namespace BitSharp.Core.Test
             version: 0x01,
             previousBlock: UInt256.ParseHex("00112233445566778899aabbccddeeff00112233445566778899aabbccddeeff"),
             merkleRoot: UInt256.ParseHex("ffeeddccbbaa99887766554433221100ffeeddccbbaa99887766554433221100"),
-            time: 0x02,
+            time: DateTimeOffset.FromUnixTimeSeconds(0x02),
             bits: 0x03,
             nonce: 0x04
         );

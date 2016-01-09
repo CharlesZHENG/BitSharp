@@ -21,7 +21,7 @@ namespace BitSharp.Client
         private readonly CoreStorage coreStorage;
         private readonly LocalClient localClient;
 
-        private readonly DateTime startTime;
+        private readonly DateTimeOffset startTime;
         private string runningTime;
         private readonly DispatcherTimer runningTimeTimer;
         private readonly WorkerMethod updateWorker;
@@ -53,11 +53,11 @@ namespace BitSharp.Client
             this.localClient = kernel.Get<LocalClient>();
             this.walletMonitor = walletMonitor;
 
-            this.startTime = DateTime.UtcNow;
+            this.startTime = DateTimeOffset.Now;
             this.runningTimeTimer = new DispatcherTimer();
             runningTimeTimer.Tick += (sender, e) =>
             {
-                var runningTime = (DateTime.UtcNow - this.startTime);
+                var runningTime = (DateTimeOffset.Now - this.startTime);
                 this.RunningTime = $"{Math.Floor(runningTime.TotalHours):#,#00}:{runningTime:mm':'ss}";
             };
             runningTimeTimer.Interval = TimeSpan.FromMilliseconds(100);

@@ -72,7 +72,7 @@ namespace BitSharp.Core
             var version = DecodeUInt32(buffer, ref offset);
             var previousBlock = DecodeUInt256(buffer, ref offset);
             var merkleRoot = DecodeUInt256(buffer, ref offset);
-            var time = DecodeUInt32(buffer, ref offset);
+            var time = DateTimeOffset.FromUnixTimeSeconds(DecodeUInt32(buffer, ref offset));
             var bits = DecodeUInt32(buffer, ref offset);
             var nonce = DecodeUInt32(buffer, ref offset);
 
@@ -96,7 +96,7 @@ namespace BitSharp.Core
             var blockHeader = DecodeBlockHeader(blockHash, buffer, ref offset);
             var height = DecodeInt32(buffer, ref offset);
             var totalWork = new BigInteger(buffer.ReadVarBytes(ref offset));
-            var dateSeen = new DateTime(DecodeInt64(buffer, ref offset));
+            var dateSeen = new DateTimeOffset(DecodeInt64(buffer, ref offset), TimeSpan.Zero);
 
             return new ChainedHeader(blockHeader, height, totalWork, dateSeen);
         }

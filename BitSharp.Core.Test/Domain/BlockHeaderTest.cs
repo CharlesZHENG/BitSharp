@@ -1,5 +1,6 @@
 ﻿using BitSharp.Core.Domain;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+using System;
 
 namespace BitSharp.Core.Test.Domain
 {
@@ -16,7 +17,7 @@ namespace BitSharp.Core.Test.Domain
             var differentBlockHeaderVersion = randomBlockHeader.With(Version: ~randomBlockHeader.Version);
             var differentBlockHeaderPreviousBlock = randomBlockHeader.With(PreviousBlock: ~randomBlockHeader.PreviousBlock);
             var differentBlockHeaderMerkleRoot = randomBlockHeader.With(MerkleRoot: ~randomBlockHeader.MerkleRoot);
-            var differentBlockHeaderTime = randomBlockHeader.With(Time: ~randomBlockHeader.Time);
+            var differentBlockHeaderTime = randomBlockHeader.With(Time: randomBlockHeader.Time + TimeSpan.FromSeconds(1));
             var differentBlockHeaderBits = randomBlockHeader.With(Bits: ~randomBlockHeader.Bits);
             var differentBlockHeaderNonce = randomBlockHeader.With(Nonce: ~randomBlockHeader.Nonce);
 

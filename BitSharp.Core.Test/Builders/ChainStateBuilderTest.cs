@@ -154,7 +154,7 @@ namespace BitSharp.Core.Test.Builders
             var chainedHeader = testBlocks.Chain.LastBlock;
 
             // create an invalid version of the header where the merkle root is incorrect
-            var invalidChainedHeader = ChainedHeader.CreateFromPrev(rules.ChainParams.GenesisChainedHeader, block.Header.With(MerkleRoot: UInt256.Zero), DateTime.Now);
+            var invalidChainedHeader = ChainedHeader.CreateFromPrev(rules.ChainParams.GenesisChainedHeader, block.Header.With(MerkleRoot: UInt256.Zero), DateTimeOffset.Now);
 
             // mock genesis block & chain tip
             var genesisHeader = rules.ChainParams.GenesisChainedHeader;

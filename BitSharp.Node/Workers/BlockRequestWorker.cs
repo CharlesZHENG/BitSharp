@@ -38,7 +38,7 @@ namespace BitSharp.Node.Workers
         private readonly CoreStorage coreStorage;
 
         private readonly ConcurrentDictionary<UInt256, BlockRequest> allBlockRequests;
-        private readonly ConcurrentDictionary<Peer, ConcurrentDictionary<UInt256, DateTime>> blockRequestsByPeer;
+        private readonly ConcurrentDictionary<Peer, ConcurrentDictionary<UInt256, DateTimeOffset>> blockRequestsByPeer;
         private readonly ConcurrentDictionary<UInt256, BlockRequest> missedBlockRequests;
 
         private int targetChainLookAhead;
@@ -63,7 +63,7 @@ namespace BitSharp.Node.Workers
             this.coreStorage = coreDaemon.CoreStorage;
 
             this.allBlockRequests = new ConcurrentDictionary<UInt256, BlockRequest>();
-            this.blockRequestsByPeer = new ConcurrentDictionary<Peer, ConcurrentDictionary<UInt256, DateTime>>();
+            this.blockRequestsByPeer = new ConcurrentDictionary<Peer, ConcurrentDictionary<UInt256, DateTimeOffset>>();
             this.missedBlockRequests = new ConcurrentDictionary<UInt256, BlockRequest>();
 
             this.localClient.OnBlock += HandleBlock;
@@ -190,7 +190,7 @@ namespace BitSharp.Node.Workers
             if (this.targetChainQueue.Count == 0)
                 return;
 
-            var now = DateTime.UtcNow;
+            var now = DateTimeOffset.Now;
             var requestTasks = new List<Task>();
 
             // take and remove any missed block requests that are now stale
@@ -217,7 +217,7 @@ namespace BitSharp.Node.Workers
             {
                 if (!this.localClient.ConnectedPeers.Contains(peer))
                 {
-                    ConcurrentDictionary<UInt256, DateTime> remove;
+                    ConcurrentDictionary<UInt256, DateTimeOffset> remove;
                     blockRequestsByPeer.TryRemove(peer, out remove);
                 }
             }
@@ -273,7 +273,7 @@ namespace BitSharp.Node.Workers
                 // retrieve the peer's currently requested blocks
                 var peerBlockRequests = this.blockRequestsByPeer.AddOrUpdate(
                     peer,
-                    addKey => new ConcurrentDictionary<UInt256, DateTime>(),
+                    addKey => new ConcurrentDictionary<UInt256, DateTimeOffset>(),
                     (existingKey, existingValue) => existingValue);
 
                 // remove any stale requests from the peer's list of requests
@@ -322,7 +322,7 @@ namespace BitSharp.Node.Workers
                 this.NotifyWork();
         }
 
-        private IEnumerable<UInt256> GetRequestBlocksForPeer(int count, ConcurrentDictionary<UInt256, DateTime> peerBlockRequests)
+        private IEnumerable<UInt256> GetRequestBlocksForPeer(int count, ConcurrentDictionary<UInt256, DateTimeOffset> peerBlockRequests)
         {
             if (count < 0)
                 throw new ArgumentOutOfRangeException("count");
@@ -381,12 +381,12 @@ namespace BitSharp.Node.Workers
 
                 if (peer != null)
                 {
-                    DateTime requestTime;
-                    ConcurrentDictionary<UInt256, DateTime> peerBlockRequests;
+                    DateTimeOffset requestTime;
+                    ConcurrentDictionary<UInt256, DateTimeOffset> peerBlockRequests;
                     if (this.blockRequestsByPeer.TryGetValue(peer, out peerBlockRequests)
                         && peerBlockRequests.TryRemove(block.Hash, out requestTime))
                     {
-                        this.blockRequestDurationMeasure.Tick(DateTime.UtcNow - requestTime);
+                        this.blockRequestDurationMeasure.Tick(DateTimeOffset.Now - requestTime);
                     }
                 }
             }
@@ -517,7 +517,7 @@ namespace BitSharp.Node.Workers
 
         private sealed class BlockRequest
         {
-            public BlockRequest(Peer peer, DateTime requestTime)
+            public BlockRequest(Peer peer, DateTimeOffset requestTime)
             {
                 Peer = peer;
                 RequestTime = requestTime;
@@ -525,7 +525,7 @@ namespace BitSharp.Node.Workers
 
             public Peer Peer { get; }
 
-            public DateTime RequestTime { get; }
+            public DateTimeOffset RequestTime { get; }
         }
 
         private sealed class FlushBlock

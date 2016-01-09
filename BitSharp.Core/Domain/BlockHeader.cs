@@ -8,7 +8,7 @@ namespace BitSharp.Core.Domain
     {
         private readonly int hashCode;
 
-        public BlockHeader(UInt32 version, UInt256 previousBlock, UInt256 merkleRoot, UInt32 time, UInt32 bits, UInt32 nonce, UInt256 hash)
+        public BlockHeader(UInt32 version, UInt256 previousBlock, UInt256 merkleRoot, DateTimeOffset time, UInt32 bits, UInt32 nonce, UInt256 hash)
         {
             Version = version;
             PreviousBlock = previousBlock;
@@ -27,7 +27,7 @@ namespace BitSharp.Core.Domain
 
         public UInt256 MerkleRoot { get; }
 
-        public UInt32 Time { get; }
+        public DateTimeOffset Time { get; }
 
         public UInt32 Bits { get; }
 
@@ -35,7 +35,7 @@ namespace BitSharp.Core.Domain
 
         public UInt256 Hash { get; }
 
-        public BlockHeader With(UInt32? Version = null, UInt256 PreviousBlock = null, UInt256 MerkleRoot = null, UInt32? Time = null, UInt32? Bits = null, UInt32? Nonce = null)
+        public BlockHeader With(UInt32? Version = null, UInt256 PreviousBlock = null, UInt256 MerkleRoot = null, DateTimeOffset? Time = null, UInt32? Bits = null, UInt32? Nonce = null)
         {
             return BlockHeader.Create
             (
@@ -81,7 +81,7 @@ namespace BitSharp.Core.Domain
             return !(left == right);
         }
 
-        public static BlockHeader Create(UInt32 version, UInt256 previousBlock, UInt256 merkleRoot, UInt32 time, UInt32 bits, UInt32 nonce)
+        public static BlockHeader Create(UInt32 version, UInt256 previousBlock, UInt256 merkleRoot, DateTimeOffset time, UInt32 bits, UInt32 nonce)
         {
             var hash = DataCalculator.CalculateBlockHash(version, previousBlock, merkleRoot, time, bits, nonce);
             return new BlockHeader(version, previousBlock, merkleRoot, time, bits, nonce, hash);

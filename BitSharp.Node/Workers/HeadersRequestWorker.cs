@@ -23,7 +23,7 @@ namespace BitSharp.Node.Workers
         private readonly CoreDaemon coreDaemon;
         private readonly CoreStorage coreStorage;
 
-        private readonly ConcurrentDictionary<Peer, DateTime> headersRequestsByPeer;
+        private readonly ConcurrentDictionary<Peer, DateTimeOffset> headersRequestsByPeer;
 
         private readonly WorkerMethod flushWorker;
         private readonly ConcurrentQueue<FlushHeaders> flushQueue;
@@ -35,7 +35,7 @@ namespace BitSharp.Node.Workers
             this.coreDaemon = coreDaemon;
             this.coreStorage = coreDaemon.CoreStorage;
 
-            this.headersRequestsByPeer = new ConcurrentDictionary<Peer, DateTime>();
+            this.headersRequestsByPeer = new ConcurrentDictionary<Peer, DateTimeOffset>();
 
             this.localClient.OnBlockHeaders += HandleBlockHeaders;
             this.coreDaemon.OnTargetChainChanged += HandleTargetChainChanged;
@@ -74,8 +74,8 @@ namespace BitSharp.Node.Workers
             var blockLocatorHashes = CalculateBlockLocatorHashes(targetChainLocal.Blocks);
 
             // remove an existing request for this peer if it's stale
-            var now = DateTime.UtcNow;
-            DateTime requestTime;
+            var now = DateTimeOffset.Now;
+            DateTimeOffset requestTime;
             if (this.headersRequestsByPeer.TryGetValue(peer, out requestTime)
                 && (now - requestTime) > STALE_REQUEST_TIME)
             {
@@ -92,7 +92,7 @@ namespace BitSharp.Node.Workers
 
         protected override Task WorkAction()
         {
-            var now = DateTime.UtcNow;
+            var now = DateTimeOffset.Now;
             var requestTasks = new List<Task>();
 
             var peerCount = this.localClient.ConnectedPeers.Count;
@@ -142,7 +142,7 @@ namespace BitSharp.Node.Workers
                 // chain the downloaded headers
                 this.coreStorage.ChainHeaders(blockHeaders);
 
-                DateTime ignore;
+                DateTimeOffset ignore;
                 this.headersRequestsByPeer.TryRemove(peer, out ignore);
             }
 
@@ -158,7 +158,7 @@ namespace BitSharp.Node.Workers
             }
             else
             {
-                DateTime ignore;
+                DateTimeOffset ignore;
                 this.headersRequestsByPeer.TryRemove(peer, out ignore);
             }
         }

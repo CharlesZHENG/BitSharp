@@ -87,13 +87,13 @@ namespace BitSharp.Core.Test
 
         public UnitTestParams ChainParams => rules.ChainParams;
 
-        public Block CreateBlock(UInt256 previousBlockHash, int txCount, UInt256 target = null, DateTime? time = null)
+        public Block CreateBlock(UInt256 previousBlockHash, int txCount, UInt256 target = null, DateTimeOffset? time = null)
         {
             // get the previous block's time, or 1 second ago if there is none
-            var prevBlockTime = blocks.LastOrDefault()?.Header?.Time ?? (uint)DateTimeOffset.UtcNow.ToUnixTimeSeconds() - 1;
+            var prevBlockTime = blocks.LastOrDefault()?.Header?.Time ?? DateTimeOffset.Now - TimeSpan.FromSeconds(1);
 
             // use the previous block's time + 1 second as the new block time, or the manually specified time
-            var thisBlockTime = time != null ? (uint)new DateTimeOffset(time.Value).ToUnixTimeSeconds() : prevBlockTime + 1;
+            var thisBlockTime = time ?? prevBlockTime + TimeSpan.FromSeconds(1);
 
             var coinbaseTx = Transaction.Create
             (
@@ -166,7 +166,7 @@ namespace BitSharp.Core.Test
             return block;
         }
 
-        public Block CreateEmptyBlock(UInt256 prevBlockHash, UInt256 target = null, DateTime? time = null)
+        public Block CreateEmptyBlock(UInt256 prevBlockHash, UInt256 target = null, DateTimeOffset? time = null)
         {
             return CreateBlock(prevBlockHash, 0, target, time);
         }
@@ -182,17 +182,17 @@ namespace BitSharp.Core.Test
             return block;
         }
 
-        public Block MineBlock(UInt256 prevBlockHash, int txCount, UInt256 target = null, DateTime? time = null)
+        public Block MineBlock(UInt256 prevBlockHash, int txCount, UInt256 target = null, DateTimeOffset? time = null)
         {
             return MineBlock(CreateBlock(prevBlockHash, txCount, target, time));
         }
 
-        public Block MineEmptyBlock(UInt256 prevBlockHash, UInt256 target = null, DateTime? time = null)
+        public Block MineEmptyBlock(UInt256 prevBlockHash, UInt256 target = null, DateTimeOffset? time = null)
         {
             return MineBlock(CreateBlock(prevBlockHash, 0, target, time));
         }
 
-        public Block MineAndAddEmptyBlock(UInt256 target = null, DateTime? time = null)
+        public Block MineAndAddEmptyBlock(UInt256 target = null, DateTimeOffset? time = null)
         {
             var prevBlockHash = blocks.Last().Hash;
             var block = MineBlock(prevBlockHash, 0, target, time);
@@ -200,7 +200,7 @@ namespace BitSharp.Core.Test
             return block;
         }
 
-        public Block MineAndAddBlock(int txCount, UInt256 target = null, DateTime? time = null)
+        public Block MineAndAddBlock(int txCount, UInt256 target = null, DateTimeOffset? time = null)
         {
             var prevBlockHash = blocks.Last().Hash;
             var block = MineBlock(prevBlockHash, txCount, target, time);
@@ -218,7 +218,7 @@ namespace BitSharp.Core.Test
         public void AddBlock(Block block)
         {
             blocks.Add(block);
-            chain.AddBlock(ChainedHeader.CreateFromPrev(chain.LastBlock, block.Header, DateTime.Now));
+            chain.AddBlock(ChainedHeader.CreateFromPrev(chain.LastBlock, block.Header, DateTimeOffset.Now));
 
             Debug.Assert(chain.Height == blocks.Count - 1);
         }

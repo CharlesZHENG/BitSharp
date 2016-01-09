@@ -195,7 +195,7 @@ namespace BitSharp.Node
             NetworkAddressWithTime address;
             if (this.networkPeerStorage.TryGetValue(peerEndPoint.ToNetworkAddressKey(), out address))
             {
-                var newTime = (address.Time.UnixTimeToDateTime() - TimeSpan.FromDays(7)).ToUnixTime();
+                var newTime = address.Time - TimeSpan.FromDays(7);
                 this.networkPeerStorage[address.NetworkAddress.GetKey()] = address.With(Time: newTime);
             }
         }
@@ -215,7 +215,7 @@ namespace BitSharp.Node
                             new CandidatePeer
                             (
                                 ipEndPoint: new IPEndPoint(ipAddress, Messaging.Port),
-                                time: DateTime.MinValue,
+                                time: DateTimeOffset.MinValue,
                                 isSeed: this.Type == ChainType.MainNet ? true : false
                             ));
                     }
@@ -254,7 +254,7 @@ namespace BitSharp.Node
                     new CandidatePeer
                     (
                         ipEndPoint: knownAddress.Value.NetworkAddress.ToIPEndPoint(),
-                        time: knownAddress.Value.Time.UnixTimeToDateTime() + TimeSpan.FromDays(random.NextDouble(-2, +2)),
+                        time: knownAddress.Value.Time + TimeSpan.FromDays(random.NextDouble(-2, +2)),
                         isSeed: false
                     ));
                 count++;
@@ -265,7 +265,7 @@ namespace BitSharp.Node
 
         private void HandlePeerHandshakeCompleted(Peer peer)
         {
-            var remoteAddressWithTime = new NetworkAddressWithTime(DateTime.UtcNow.ToUnixTime(), peer.RemoteEndPoint.ToNetworkAddress(/*TODO*/services: 0));
+            var remoteAddressWithTime = new NetworkAddressWithTime(DateTimeOffset.Now, peer.RemoteEndPoint.ToNetworkAddress(/*TODO*/services: 0));
             this.networkPeerStorage[remoteAddressWithTime.NetworkAddress.GetKey()] = remoteAddressWithTime;
 
             WirePeerEvents(peer);
@@ -608,7 +608,7 @@ namespace BitSharp.Node
     {
         private readonly string ipEndPointString;
 
-        public CandidatePeer(IPEndPoint ipEndPoint, DateTime time, bool isSeed)
+        public CandidatePeer(IPEndPoint ipEndPoint, DateTimeOffset time, bool isSeed)
         {
             IPEndPoint = ipEndPoint;
             Time = time;
@@ -618,7 +618,7 @@ namespace BitSharp.Node
 
         public IPEndPoint IPEndPoint { get; }
 
-        public DateTime Time { get; }
+        public DateTimeOffset Time { get; }
 
         public bool IsSeed { get; }
 
@@ -682,7 +682,7 @@ namespace BitSharp.Node
 
             public static CandidatePeer ToCandidatePeer(this NetworkAddressWithTime address)
             {
-                return new CandidatePeer(address.NetworkAddress.ToIPEndPoint(), address.Time.UnixTimeToDateTime(), isSeed: false);
+                return new CandidatePeer(address.NetworkAddress.ToIPEndPoint(), address.Time, isSeed: false);
             }
         }
     }

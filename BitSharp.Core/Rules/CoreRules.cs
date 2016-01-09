@@ -69,13 +69,13 @@ namespace BitSharp.Core.Rules
 
             //TODO
             // calculate adjusted time
-            var adjustedTime = DateTimeOffset.UtcNow;
+            var adjustedTime = DateTimeOffset.Now;
 
             // calculate max block time
             var maxBlockTime = adjustedTime + TimeSpan.FromHours(2);
 
             // verify max block time
-            var blockTime = DateTimeOffset.FromUnixTimeSeconds(chainedHeader.Time);
+            var blockTime = chainedHeader.Time;
             if (blockTime > maxBlockTime)
                 throw new ValidationException(chainedHeader.Hash);
 
@@ -88,8 +88,7 @@ namespace BitSharp.Core.Rules
                     //TODO pull tester doesn't fail if the sort step is missed
                     .OrderBy(x => x.Time).ToList();
 
-                var medianPrevHeaderTime = DateTimeOffset.FromUnixTimeSeconds(
-                    GetMedianPrevHeaderTime(newChain, chainedHeader.Height));
+                var medianPrevHeaderTime = GetMedianPrevHeaderTime(newChain, chainedHeader.Height);
 
                 if (blockTime <= medianPrevHeaderTime)
                 {
@@ -111,8 +110,8 @@ namespace BitSharp.Core.Rules
 
                 var lockTimeFlags = 0; // TODO why is this used here?
                 var lockTimeCutoff = ((lockTimeFlags & LOCKTIME_MEDIAN_TIME_PAST) != 0)
-                                      ? GetMedianPrevHeaderTime(newChain, chainedHeader.Height)
-                                      : chainedHeader.Time;
+                                      ? GetMedianPrevHeaderTime(newChain, chainedHeader.Height).ToUnixTimeSeconds()
+                                      : chainedHeader.Time.ToUnixTimeSeconds();
 
                 runningTally = new BlockTally { BlockSize = 80, LockTimeCutoff = lockTimeCutoff };
             }
@@ -123,7 +122,7 @@ namespace BitSharp.Core.Rules
             var txIndex = validatableTx.Index;
 
             // BIP16 didn't become active until Apr 1 2012
-            var nBIP16SwitchTime = 1333238400U;
+            var nBIP16SwitchTime = DateTimeOffset.FromUnixTimeSeconds(1333238400U);
             var strictPayToScriptHash = chainedHeader.Time >= nBIP16SwitchTime;
 
             // first transaction must be coinbase
@@ -264,7 +263,7 @@ namespace BitSharp.Core.Rules
             var chainedHeader = newChain.LastBlock;
 
             // BIP16 didn't become active until Apr 1 2012
-            var nBIP16SwitchTime = 1333238400U;
+            var nBIP16SwitchTime = DateTimeOffset.FromUnixTimeSeconds(1333238400U);
             var strictPayToScriptHash = chainedHeader.Time >= nBIP16SwitchTime;
 
             var flags = strictPayToScriptHash ? verify_flags_type.verify_flags_p2sh : verify_flags_type.verify_flags_none;
@@ -382,7 +381,7 @@ namespace BitSharp.Core.Rules
                     // If the new block's timestamp is more than 2* 10 minutes
                     // then allow mining of a min-difficulty block.
                     var currentHeader = chain.LastBlock;
-                    if (currentHeader.Time > prevHeader.Time + ChainParams.PowTargetSpacing * 2)
+                    if (currentHeader.Time > prevHeader.Time + TimeSpan.FromTicks(ChainParams.PowTargetSpacing.Ticks * 2))
                         return powLimitCompact;
                     else
                     {
@@ -405,8 +404,8 @@ namespace BitSharp.Core.Rules
                 var prevIntervalHeight = prevHeader.Height - (ChainParams.DifficultyInterval - 1);
                 var prevIntervalHeader = chain.Blocks[prevIntervalHeight];
 
-                var actualTimespan = prevHeader.Time - prevIntervalHeader.Time;
-                var targetTimespan = (uint)ChainParams.DifficultyTargetTimespan;
+                var actualTimespan = (uint)(prevHeader.Time - prevIntervalHeader.Time).TotalSeconds;
+                var targetTimespan = (uint)(ChainParams.DifficultyTargetTimespan).TotalSeconds;
 
                 // limit adjustment to 4x or 1/4x
                 if (actualTimespan < targetTimespan / 4)
@@ -579,10 +578,10 @@ namespace BitSharp.Core.Rules
             return true;
         }
 
-        private uint GetMedianPrevHeaderTime(Chain chain, int height)
+        private DateTimeOffset GetMedianPrevHeaderTime(Chain chain, int height)
         {
             if (height == 0)
-                return 0;
+                return DateTimeOffset.FromUnixTimeSeconds(0);
 
             var medianTimeSpan = Math.Min(11, height);
 

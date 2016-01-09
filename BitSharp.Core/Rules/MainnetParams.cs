@@ -30,15 +30,13 @@ namespace BitSharp.Core.Rules
         // 2 weeks in blocks
         public int DifficultyInterval { get; } = 2016;
 
-        // 2 weeks in seconds
-        public int DifficultyTargetTimespan { get; } = 14 * 24 * 60 * 60;
+        public TimeSpan DifficultyTargetTimespan { get; } = TimeSpan.FromDays(14);
 
         public bool AllowMininimumDifficultyBlocks { get; } = false;
 
         public bool PowNoRetargeting { get; } = false;
 
-        // 10 minutes in seconds
-        public int PowTargetSpacing { get; } = 10 * 60;
+        public TimeSpan PowTargetSpacing { get; } = TimeSpan.FromMinutes(10);
 
         public int MajorityWindow { get; } = 1000;
 

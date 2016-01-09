@@ -168,7 +168,7 @@ namespace BitSharp.Core.Test.Builders
 
             // create a block confirming the tx
             var block = Block.Create(RandomData.RandomBlockHeader().With(PreviousBlock: genesisHeader.Hash), ImmutableArray.Create(tx));
-            var chainedHeader = new ChainedHeader(block.Header, 1, 0, DateTime.Now);
+            var chainedHeader = new ChainedHeader(block.Header, 1, 0, DateTimeOffset.Now);
 
             // mock core storage with chained header
             var coreStorage = new Mock<ICoreStorage>();

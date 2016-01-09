@@ -27,12 +27,12 @@ namespace BitSharp.Core.Test.Workers
 
             // create genesis block
             var genesisblock = CreateFakeBlock(1);
-            var genesisHeader = new ChainedHeader(genesisblock.Header, height: 0, totalWork: genesisblock.Header.CalculateWork(), dateSeen: DateTime.Now);
+            var genesisHeader = new ChainedHeader(genesisblock.Header, height: 0, totalWork: genesisblock.Header.CalculateWork(), dateSeen: DateTimeOffset.Now);
 
             // create a block
             var txCount = 100;
             var block = CreateFakeBlock(txCount, genesisblock.Hash);
-            var chainedHeader = ChainedHeader.CreateFromPrev(genesisHeader, block.Header, dateSeen: DateTime.Now);
+            var chainedHeader = ChainedHeader.CreateFromPrev(genesisHeader, block.Header, dateSeen: DateTimeOffset.Now);
 
             // create a long chain based off the block, to account for pruning buffer
             var fakeHeaders = new FakeHeaders(new[] { genesisHeader, chainedHeader });

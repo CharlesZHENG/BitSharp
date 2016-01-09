@@ -16,7 +16,7 @@ namespace BitSharp.Core
             return new UInt256(SHA256Static.ComputeDoubleHash(DataEncoder.EncodeBlockHeader(blockHeader)));
         }
 
-        public static UInt256 CalculateBlockHash(UInt32 Version, UInt256 PreviousBlock, UInt256 MerkleRoot, UInt32 Time, UInt32 Bits, UInt32 Nonce)
+        public static UInt256 CalculateBlockHash(UInt32 Version, UInt256 PreviousBlock, UInt256 MerkleRoot, DateTimeOffset Time, UInt32 Bits, UInt32 Nonce)
         {
             return new UInt256(SHA256Static.ComputeDoubleHash(DataEncoder.EncodeBlockHeader(Version, PreviousBlock, MerkleRoot, Time, Bits, Nonce)));
         }
