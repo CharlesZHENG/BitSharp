@@ -1,5 +1,6 @@
 ﻿using BitSharp.Common;
 using BitSharp.Core.Domain;
+using Newtonsoft.Json;
 using NLog;
 using System;
 using System.Collections.Generic;
@@ -62,19 +63,30 @@ namespace BitSharp.Core.Workers
                         var confirmTime = confirmedBlockStats.ConfirmTime;
 
                         // don't log stats on initial sync, only log blocks that have been processed within an hour of their header time
-                        var blockTime = DateTimeOffset.FromUnixTimeSeconds(currentChain.Blocks[nextLogHeight].Time);
+                        var blockTime = currentChain.Blocks[nextLogHeight].Time;
                         if (confirmTime - blockTime <= TimeSpan.FromHours(1))
                         {
                             // log confirmed txes stats
                             var statsString = new StringBuilder();
                             statsString.AppendLine($"[StatsWorker] Block {chainedHeader.Height}, {chainedHeader.Hash} confirmed at: {confirmTime}");
-                            foreach (var confirmedTxStats in confirmedTxesStats)
-                            {
-                                statsString.AppendLine(
-                                    string.Format(@"{{ ""hash"": ""{0}"", ""confirmationMilliseconds"": {1}, ""fee"": {2}, ""txByteSize"": {3} }}",
-                                        confirmedTxStats.Hash, (int)confirmedTxStats.ConfirmationTimeSpan.TotalMilliseconds,
-                                        confirmedTxStats.Fee, confirmedTxStats.TxByteSize));
-                            }
+
+                            var blockJsonStats = JsonConvert.SerializeObject(
+                                new
+                                {
+                                    blockHash = chainedHeader.Hash.ToString(),
+                                    blockHeight = chainedHeader.Height,
+                                    confirmTimeUnixMilliseconds = confirmTime.ToUnixTimeMilliseconds(),
+                                    txes =
+                                        from confirmedTxStats in confirmedTxesStats
+                                        select new
+                                        {
+                                            hash = confirmedTxStats.Hash.ToString(),
+                                            confirmationMilliseconds = (int)confirmedTxStats.ConfirmationTimeSpan.TotalMilliseconds,
+                                            fee = confirmedTxStats.Fee,
+                                            txByteSize = confirmedTxStats.TxByteSize
+                                        }
+                                }, Formatting.Indented);
+                            statsString.AppendLine(blockJsonStats);
 
                             logger.Info(statsString);
                         }
@@ -99,16 +111,18 @@ namespace BitSharp.Core.Workers
 
         private void OnTxesConfirmed(object sender, TxesConfirmedEventArgs e)
         {
-            var now = DateTime.UtcNow;
+            var confirmTime = e.ConfirmBlock.DateSeen;
 
             // collect the stats on the confirmed txes
-            var confirmedTxes = e.ConfirmedTxes.Values.Select(
-                confirmedTx => new ConfirmedTxStats(confirmedTx.Hash, now - confirmedTx.DateSeen, confirmedTx.Fee, confirmedTx.TxByteSize))
+            var confirmedTxes = e.ConfirmedTxes.Values
+                .Where(confirmedTx => confirmTime >= confirmedTx.DateSeen)
+                .Select(
+                    confirmedTx => new ConfirmedTxStats(confirmedTx.Hash, confirmTime - confirmedTx.DateSeen, confirmedTx.Fee, confirmedTx.TxByteSize))
                 .ToList();
 
             // keep track of the stats for logging
             lock (confirmedBlockStatsByHeight)
-                confirmedBlockStatsByHeight[e.ConfirmBlock.Height] = new ConfirmedBlockStats(e.ConfirmBlock, confirmedTxes, now);
+                confirmedBlockStatsByHeight[e.ConfirmBlock.Height] = new ConfirmedBlockStats(e.ConfirmBlock, confirmedTxes, confirmTime);
 
             NotifyWork();
         }
@@ -126,7 +140,7 @@ namespace BitSharp.Core.Workers
 
         private class ConfirmedBlockStats
         {
-            public ConfirmedBlockStats(ChainedHeader chainedHeader, List<ConfirmedTxStats> confirmedTxesStats, DateTime confirmTime)
+            public ConfirmedBlockStats(ChainedHeader chainedHeader, List<ConfirmedTxStats> confirmedTxesStats, DateTimeOffset confirmTime)
             {
                 ChainedHeader = chainedHeader;
                 ConfirmedTxesStats = confirmedTxesStats;
@@ -137,7 +151,7 @@ namespace BitSharp.Core.Workers
 
             public List<ConfirmedTxStats> ConfirmedTxesStats { get; }
 
-            public DateTime ConfirmTime { get; }
+            public DateTimeOffset ConfirmTime { get; }
         }
 
         private class ConfirmedTxStats
