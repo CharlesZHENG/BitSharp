@@ -1,4 +1,5 @@
-﻿using BitSharp.Core.Rules;
+﻿using BitSharp.Common.ExtensionMethods;
+using BitSharp.Core.Rules;
 using BitSharp.Core.Storage;
 using BitSharp.Node.Storage;
 using Ninject;
@@ -32,12 +33,15 @@ namespace BitSharp.LevelDb
             dataDirectory = Path.Combine(baseDirectory, "Data", rulesType.ToString());
             peersDirectory = Path.Combine(baseDirectory, "Peers", rulesType.ToString());
             chainType = rulesType;
+
             this.blocksCacheSize = blocksCacheSize;
             this.blocksWriteCacheSize = blocksWriteCacheSize;
-            this.blockTxesCacheSize = blockTxesCacheSize;
-            this.blockTxesWriteCacheSize = blockTxesWriteCacheSize;
-            this.chainStateCacheSize = chainStateCacheSize;
-            this.chainStateWriteCacheSize = chainStateWriteCacheSize;
+
+            this.blockTxesCacheSize = blockTxesCacheSize ?? (ulong)128.MEBIBYTE();
+            this.blockTxesWriteCacheSize = blockTxesWriteCacheSize ?? (ulong)32.MEBIBYTE();
+
+            this.chainStateCacheSize = chainStateCacheSize ?? (ulong)512.MEBIBYTE();
+            this.chainStateWriteCacheSize = chainStateWriteCacheSize ?? (ulong)128.MEBIBYTE();
         }
 
         public override void Load()

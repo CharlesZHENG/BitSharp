@@ -147,11 +147,11 @@ namespace BitSharp.Client
                     ulong? blocksCacheSize = null;
                     ulong? blocksWriteCacheSize = null;
 
-                    ulong? blockTxesCacheSize = (ulong)128.MEBIBYTE();
-                    ulong? blockTxesWriteCacheSize = (ulong)32.MEBIBYTE();
+                    ulong? blockTxesCacheSize = null;
+                    ulong? blockTxesWriteCacheSize = null;
 
-                    ulong? chainStateCacheSize = (ulong)512.MEBIBYTE();
-                    ulong? chainStateWriteCacheSize = (ulong)128.MEBIBYTE();
+                    ulong? chainStateCacheSize = null;
+                    ulong? chainStateWriteCacheSize = null;
 
                     modules.Add(new LevelDbStorageModule(baseDirectory, chainType,
                         blocksCacheSize, blocksWriteCacheSize,
