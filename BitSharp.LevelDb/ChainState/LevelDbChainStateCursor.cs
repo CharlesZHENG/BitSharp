@@ -614,7 +614,7 @@ namespace BitSharp.LevelDb
             unspentTxes.WarmupValue(txHash);
         }
 
-        public Task ApplyChangesAsync()
+        public async Task ApplyChangesAsync()
         {
             unspentTxes.WorkQueue.Complete();
             globals.WorkQueue.Complete();
@@ -622,7 +622,11 @@ namespace BitSharp.LevelDb
             spentTxes.WorkQueue.Complete();
             unmintedTxes.WorkQueue.Complete();
 
-            return Task.CompletedTask;
+            await unspentTxesApplier.Completion;
+            await globalsApplier.Completion;
+            await headersApplier.Completion;
+            await spentTxesApplier.Completion;
+            await unmintedTxesApplier.Completion;
         }
 
         private void InitWorkQueueDictionaries()
