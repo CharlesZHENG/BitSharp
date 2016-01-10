@@ -232,30 +232,37 @@ namespace BitSharp.LevelDb
                 return false;
 
             var writeBatch = new WriteBatch();
-
-            using (var snapshot = db.GetSnapshot())
+            try
             {
-                var readOptions = new ReadOptions { Snapshot = snapshot };
-
-                var txIndex = 0;
-                foreach (var tx in blockTxes)
+                using (var snapshot = db.GetSnapshot())
                 {
-                    var key = DbEncoder.EncodeBlockHashTxIndex(blockHash, txIndex);
+                    var readOptions = new ReadOptions { Snapshot = snapshot };
 
-                    Slice existingValue;
-                    if (db.TryGet(readOptions, key, out existingValue))
-                        return false;
+                    var txIndex = 0;
+                    foreach (var tx in blockTxes)
+                    {
+                        var key = DbEncoder.EncodeBlockHashTxIndex(blockHash, txIndex);
 
-                    var blockTx = new BlockTx(txIndex, tx);
-                    var value = DataEncoder.EncodeBlockTxNode(blockTx);
+                        Slice existingValue;
+                        if (db.TryGet(readOptions, key, out existingValue))
+                            return false;
 
-                    writeBatch.Put(key, value);
+                        var blockTx = new BlockTx(txIndex, tx);
+                        var value = DataEncoder.EncodeBlockTxNode(blockTx);
 
-                    txIndex++;
+                        writeBatch.Put(key, value);
+
+                        txIndex++;
+                    }
                 }
+
+                db.Write(new WriteOptions(), writeBatch);
+            }
+            finally
+            {
+                writeBatch.Dispose();
             }
 
-            db.Write(new WriteOptions(), writeBatch);
             return true;
         }
 
@@ -265,31 +272,38 @@ namespace BitSharp.LevelDb
                 return false;
 
             var writeBatch = new WriteBatch();
-
-            using (var snapshot = db.GetSnapshot())
+            try
             {
-                var readOptions = new ReadOptions { Snapshot = snapshot };
-                using (var iterator = db.NewIterator(readOptions))
+                using (var snapshot = db.GetSnapshot())
                 {
-                    iterator.Seek(DbEncoder.EncodeBlockHashTxIndex(blockHash, 0));
-                    while (iterator.Valid())
+                    var readOptions = new ReadOptions { Snapshot = snapshot };
+                    using (var iterator = db.NewIterator(readOptions))
                     {
-                        var key = iterator.Key().ToArray();
+                        iterator.Seek(DbEncoder.EncodeBlockHashTxIndex(blockHash, 0));
+                        while (iterator.Valid())
+                        {
+                            var key = iterator.Key().ToArray();
 
-                        UInt256 iteratorBlockHash; int txIndex;
-                        DbEncoder.DecodeBlockHashTxIndex(key, out iteratorBlockHash, out txIndex);
+                            UInt256 iteratorBlockHash; int txIndex;
+                            DbEncoder.DecodeBlockHashTxIndex(key, out iteratorBlockHash, out txIndex);
 
-                        if (iteratorBlockHash != blockHash)
-                            break;
+                            if (iteratorBlockHash != blockHash)
+                                break;
 
-                        writeBatch.Delete(key);
+                            writeBatch.Delete(key);
 
-                        iterator.Next();
+                            iterator.Next();
+                        }
                     }
                 }
+
+                db.Write(new WriteOptions(), writeBatch);
+            }
+            finally
+            {
+                writeBatch.Dispose();
             }
 
-            db.Write(new WriteOptions(), writeBatch);
             return true;
         }
 

@@ -67,11 +67,18 @@ namespace BitSharp.LevelDb
                 return false;
 
             var writeBatch = new WriteBatch();
+            try
+            {
+                writeBatch.Put(key, DataEncoder.EncodeChainedHeader(chainedHeader));
+                writeBatch.Put(MakeTotalWorkKey(chainedHeader.Hash, chainedHeader.TotalWork), new byte[1]);
 
-            writeBatch.Put(key, DataEncoder.EncodeChainedHeader(chainedHeader));
-            writeBatch.Put(MakeTotalWorkKey(chainedHeader.Hash, chainedHeader.TotalWork), new byte[1]);
+                db.Write(WriteOptions.Default, writeBatch);
+            }
+            finally
+            {
+                writeBatch.Dispose();
+            }
 
-            db.Write(WriteOptions.Default, writeBatch);
             return true;
         }
 
@@ -103,11 +110,17 @@ namespace BitSharp.LevelDb
             var chainedHeader = DataDecoder.DecodeChainedHeader(existingValue.ToArray());
 
             var writeBatch = new WriteBatch();
+            try
+            {
+                writeBatch.Delete(key);
+                writeBatch.Delete(MakeTotalWorkKey(blockHash, chainedHeader.TotalWork));
 
-            writeBatch.Delete(key);
-            writeBatch.Delete(MakeTotalWorkKey(blockHash, chainedHeader.TotalWork));
-
-            db.Write(WriteOptions.Default, writeBatch);
+                db.Write(WriteOptions.Default, writeBatch);
+            }
+            finally
+            {
+                writeBatch.Dispose();
+            }
 
             return true;
         }
