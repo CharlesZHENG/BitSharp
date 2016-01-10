@@ -22,12 +22,12 @@ namespace BitSharp.LevelDb
 
         private bool isDisposed;
 
-        public LevelDbBlockTxesStorage(string baseDirectory)
+        public LevelDbBlockTxesStorage(string baseDirectory, ulong? cacheSize, ulong? writeCacheSize)
         {
             dbDirectory = Path.Combine(baseDirectory, "BlockTxes");
             dbFile = Path.Combine(dbDirectory, "BlockTxes.edb");
 
-            db = DB.Open(dbFile);
+            db = DB.Open(dbFile, cacheSize ?? 0, writeCacheSize ?? 0);
         }
 
         public void Dispose()

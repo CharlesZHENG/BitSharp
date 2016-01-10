@@ -14,37 +14,51 @@ namespace BitSharp.LevelDb
         private readonly string dataDirectory;
         private readonly string peersDirectory;
         private readonly ChainType chainType;
-        private readonly long? cacheSizeMinBytes;
-        private readonly long? cacheSizeMaxBytes;
-        private readonly bool blockStorage;
+        private readonly ulong? blocksCacheSize;
+        private readonly ulong? blocksWriteCacheSize;
+        private readonly ulong? blockTxesCacheSize;
+        private readonly ulong? blockTxesWriteCacheSize;
+        private readonly ulong? chainStateCacheSize;
+        private readonly ulong? chainStateWriteCacheSize;
 
-        public LevelDbStorageModule(string baseDirectory, ChainType rulesType, bool blockStorage = true, long? cacheSizeMinBytes = null, long? cacheSizeMaxBytes = null, string[] blockTxesStorageLocations = null)
+        public LevelDbStorageModule(string baseDirectory, ChainType rulesType,
+            ulong? blocksCacheSize, ulong? blocksWriteCacheSize,
+            ulong? blockTxesCacheSize, ulong? blockTxesWriteCacheSize,
+            ulong? chainStateCacheSize, ulong? chainStateWriteCacheSize,
+            string[] blockTxesStorageLocations = null)
         {
             this.baseDirectory = baseDirectory;
             this.blockTxesStorageLocations = blockTxesStorageLocations;
             dataDirectory = Path.Combine(baseDirectory, "Data", rulesType.ToString());
             peersDirectory = Path.Combine(baseDirectory, "Peers", rulesType.ToString());
             chainType = rulesType;
-            this.cacheSizeMinBytes = cacheSizeMinBytes;
-            this.cacheSizeMaxBytes = cacheSizeMaxBytes;
-            this.blockStorage = blockStorage;
+            this.blocksCacheSize = blocksCacheSize;
+            this.blocksWriteCacheSize = blocksWriteCacheSize;
+            this.blockTxesCacheSize = blockTxesCacheSize;
+            this.blockTxesWriteCacheSize = blockTxesWriteCacheSize;
+            this.chainStateCacheSize = chainStateCacheSize;
+            this.chainStateWriteCacheSize = chainStateWriteCacheSize;
         }
 
         public override void Load()
         {
             // bind concrete storage providers
-            if (blockStorage)
-                Bind<LevelDbStorageManager>().ToSelf().InSingletonScope()
-                    .WithConstructorArgument("baseDirectory", dataDirectory)
-                    .WithConstructorArgument("blockTxesStorageLocations", blockTxesStorageLocations);
+            Bind<LevelDbStorageManager>().ToSelf().InSingletonScope()
+                .WithConstructorArgument("baseDirectory", dataDirectory)
+                .WithConstructorArgument("blocksCacheSize", blocksCacheSize)
+                .WithConstructorArgument("blocksWriteCacheSize", blocksWriteCacheSize)
+                .WithConstructorArgument("blockTxesCacheSize", blockTxesCacheSize)
+                .WithConstructorArgument("blockTxesWriteCacheSize", blockTxesWriteCacheSize)
+                .WithConstructorArgument("chainStateCacheSize", chainStateCacheSize)
+                .WithConstructorArgument("chainStateWriteCacheSize", chainStateWriteCacheSize)
+                .WithConstructorArgument("blockTxesStorageLocations", blockTxesStorageLocations);
 
             Bind<NetworkPeerStorage>().ToSelf().InSingletonScope()
                 .WithConstructorArgument("baseDirectory", peersDirectory)
                 .WithConstructorArgument("chainType", chainType);
 
             // bind storage providers interfaces
-            if (blockStorage)
-                Bind<IStorageManager>().ToMethod(x => Kernel.Get<LevelDbStorageManager>()).InSingletonScope();
+            Bind<IStorageManager>().ToMethod(x => Kernel.Get<LevelDbStorageManager>()).InSingletonScope();
             Bind<INetworkPeerStorage>().ToMethod(x => Kernel.Get<NetworkPeerStorage>()).InSingletonScope();
         }
     }

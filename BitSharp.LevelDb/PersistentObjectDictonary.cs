@@ -27,7 +27,7 @@ namespace BitSharp.LevelDb
             this.keyDecoder = keyDecoder;
             this.valueEncoder = valueEncoder;
             this.valueDecoder = valueDecoder;
-            db = DB.Open(dbFile);
+            db = DB.Open(dbFile, 0, 0);
         }
 
         public void Dispose()

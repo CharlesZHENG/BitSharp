@@ -27,22 +27,26 @@ namespace BitSharp.LevelDb
 
         private bool isDisposed;
 
-        public LevelDbStorageManager(string baseDirectory, string[] blockTxesStorageLocations = null)
+        public LevelDbStorageManager(string baseDirectory,
+            ulong? blocksCacheSize = null, ulong? blocksWriteCacheSize = null,
+            ulong? blockTxesCacheSize = null, ulong? blockTxesWriteCacheSize = null,
+            ulong? chainStateCacheSize = null, ulong? chainStateWriteCacheSize = null,
+            string[] blockTxesStorageLocations = null)
         {
             this.baseDirectory = baseDirectory;
             this.blockTxesStorageLocations = blockTxesStorageLocations;
 
-            blockStorage = new Lazy<LevelDb.LevelDbBlockStorage>(() => new LevelDbBlockStorage(this.baseDirectory));
+            blockStorage = new Lazy<LevelDb.LevelDbBlockStorage>(() => new LevelDbBlockStorage(this.baseDirectory, blocksCacheSize, blocksWriteCacheSize));
 
             blockTxesStorage = new Lazy<IBlockTxesStorage>(() =>
             {
                 if (blockTxesStorageLocations == null)
-                    return new LevelDbBlockTxesStorage(this.baseDirectory);
+                    return new LevelDbBlockTxesStorage(this.baseDirectory, blockTxesCacheSize, blockTxesWriteCacheSize);
                 else
-                    return new SplitBlockTxesStorage(blockTxesStorageLocations, path => new LevelDbBlockTxesStorage(path));
+                    return new SplitBlockTxesStorage(blockTxesStorageLocations, path => new LevelDbBlockTxesStorage(path, blockTxesCacheSize, blockTxesWriteCacheSize));
             });
 
-            chainStateManager = new Lazy<LevelDbChainStateManager>(() => new LevelDbChainStateManager(this.baseDirectory));
+            chainStateManager = new Lazy<LevelDbChainStateManager>(() => new LevelDbChainStateManager(this.baseDirectory, chainStateCacheSize, chainStateWriteCacheSize));
             this.memoryStorageManager = new Lazy<MemoryStorageManager>(() =>
             {
                 // create memory storage with the unconfirmed txes chain tip already in sync with chain state

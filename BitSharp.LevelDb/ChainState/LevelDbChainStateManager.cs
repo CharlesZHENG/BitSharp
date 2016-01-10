@@ -20,13 +20,13 @@ namespace BitSharp.LevelDb
         private readonly DisposableCache<IChainStateCursor> cursorCache;
         private readonly DisposableCache<IDeferredChainStateCursor> deferredCursorCache;
 
-        public LevelDbChainStateManager(string baseDirectory)
+        public LevelDbChainStateManager(string baseDirectory, ulong? cacheSize, ulong? writeCacheSize)
         {
             this.baseDirectory = baseDirectory;
             dbDirectory = Path.Combine(baseDirectory, "ChainState");
             dbFile = Path.Combine(dbDirectory, "ChainState.edb");
 
-            db = DB.Open(dbFile);
+            db = DB.Open(dbFile, cacheSize ?? 0, writeCacheSize ?? 0);
 
             cursorCache = new DisposableCache<IChainStateCursor>(1024,
                 createFunc: () => new LevelDbChainStateCursor(dbFile, db, isDeferred: false),

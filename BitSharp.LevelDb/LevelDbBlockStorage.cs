@@ -26,12 +26,12 @@ namespace BitSharp.LevelDb
         private const byte BLOCK_INVALID_PREFIX = 1;
         private const byte TOTAL_WORK_PREFIX = 2;
 
-        public LevelDbBlockStorage(string baseDirectory)
+        public LevelDbBlockStorage(string baseDirectory, ulong? cacheSize, ulong? writeCacheSize)
         {
             dbDirectory = Path.Combine(baseDirectory, "Blocks");
             dbFile = Path.Combine(dbDirectory, "Blocks.edb");
 
-            db = DB.Open(dbFile);
+            db = DB.Open(dbFile, cacheSize ?? 0, writeCacheSize ?? 0);
         }
 
         public void Dispose()

@@ -270,6 +270,21 @@ namespace BitSharp.Common.ExtensionMethods
             return value * 1000 * 1000 * 1000;
         }
 
+        public static int KIBIBYTE(this int value)
+        {
+            return value * 1024;
+        }
+
+        public static int MEBIBYTE(this int value)
+        {
+            return value * 1024 * 1024;
+        }
+
+        public static long GIBIBYTE(this int value)
+        {
+            return value * 1024 * 1024 * 1024;
+        }
+
         public static void DisposeList(this IEnumerable<IDisposable> disposables)
         {
             foreach (var item in disposables.Where(x => x != null))

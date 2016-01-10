@@ -63,7 +63,7 @@ namespace BitSharp.Client
                 //      It will see the data is missing, but won't redownload the blocks.
                 //**************************************************************
 
-                int? cacheSizeMaxBytes = 500.MILLION();
+                long? cacheSizeMaxBytes = 512.MEBIBYTE();
 
                 // directories
                 var baseDirectory = Config.LocalStoragePath;
@@ -96,7 +96,7 @@ namespace BitSharp.Client
                 {
                     //Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.BelowNormal;
 
-                    cacheSizeMaxBytes = (int)2.BILLION();
+                    cacheSizeMaxBytes = (int)2.GIBIBYTE();
 
                     // location to store a copy of raw blocks to avoid redownload
                     BlockRequestWorker.SecondaryBlockFolder = Path.Combine(baseDirectory, "RawBlocks");
@@ -144,7 +144,22 @@ namespace BitSharp.Client
                     pruningMode &= ~PruningMode.BlockTxesPreserveMerkle;
                     pruningMode &= ~PruningMode.BlockTxesDestroyMerkle;
 
-                    modules.Add(new LevelDbStorageModule(baseDirectory, chainType));
+                    ulong? blocksCacheSize = null;
+                    ulong? blocksWriteCacheSize = null;
+
+                    ulong? blockTxesCacheSize = (ulong)128.MEBIBYTE();
+                    ulong? blockTxesWriteCacheSize = (ulong)32.MEBIBYTE();
+
+                    ulong? chainStateCacheSize = (ulong)512.MEBIBYTE();
+                    ulong? chainStateWriteCacheSize = (ulong)128.MEBIBYTE();
+
+                    modules.Add(new LevelDbStorageModule(baseDirectory, chainType,
+                        blocksCacheSize, blocksWriteCacheSize,
+                        blockTxesCacheSize, blockTxesWriteCacheSize,
+                        chainStateCacheSize, chainStateWriteCacheSize));
+
+                    long? writeCacheSizeMaxBytes = 128.MEBIBYTE();
+
                 }
                 else if (runInMemory)
                 {
