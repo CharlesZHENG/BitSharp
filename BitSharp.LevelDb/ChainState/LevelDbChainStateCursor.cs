@@ -433,8 +433,6 @@ namespace BitSharp.LevelDb
 
             if (!readOnly)
             {
-                var stopwatch = new Stopwatch();
-
                 unspentTxes.WorkQueue.Complete();
                 globals.WorkQueue.Complete();
                 headers.WorkQueue.Complete();
@@ -447,13 +445,8 @@ namespace BitSharp.LevelDb
                 await spentTxesApplier.Completion;
                 await unmintedTxesApplier.Completion;
 
-                stopwatch.Start();
                 db.Write(new WriteOptions(), txWriteBatch);
-                stopwatch.Stop();
                 txWriteBatch.Dispose();
-
-                if (stopwatch.ElapsedMilliseconds >= 400)
-                    logger.Info($"{stopwatch.Elapsed.TotalMilliseconds:N3}ms");
             }
 
             txSnapshot.Dispose();
