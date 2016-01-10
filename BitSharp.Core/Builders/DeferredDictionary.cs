@@ -19,7 +19,7 @@ namespace BitSharp.Core.Builders
         private readonly Func<TKey, Tuple<bool, TValue>> parentTryGetValue;
         private readonly Func<IEnumerable<KeyValuePair<TKey, TValue>>> parentEnumerator;
 
-        private ConcurrentDictionary<TKey, Lazy<TValue>> parentValues = new ConcurrentDictionary<TKey, Lazy<TValue>>();
+        private ConcurrentDictionary<TKey, Lazy<Tuple<bool, TValue>>> parentValues = new ConcurrentDictionary<TKey, Lazy<Tuple<bool, TValue>>>();
 
         public DeferredDictionary(Func<TKey, Tuple<bool, TValue>> parentTryGetValue, Func<IEnumerable<KeyValuePair<TKey, TValue>>> parentEnumerator = null)
         {
@@ -32,6 +32,22 @@ namespace BitSharp.Core.Builders
         public IDictionary<TKey, TValue> Added => added;
 
         public ISet<TKey> Deleted => deleted;
+
+        public TValue this[TKey key]
+        {
+            get
+            {
+                TValue value;
+                if (TryGetValue(key, out value))
+                    return value;
+                else
+                    throw new KeyNotFoundException();
+            }
+            set
+            {
+                AddOrUpdate(key, value);
+            }
+        }
 
         public bool ContainsKey(TKey key)
         {
@@ -135,6 +151,14 @@ namespace BitSharp.Core.Builders
                 return false;
         }
 
+        public void Remove(TKey key)
+        {
+            deleted.Add(key);
+            read.Remove(key);
+            updated.Remove(key);
+            added.Remove(key);
+        }
+
         public bool TryUpdate(TKey key, TValue value)
         {
             TValue ignore;
@@ -225,18 +249,19 @@ namespace BitSharp.Core.Builders
             return GetEnumerator();
         }
 
-        public void WarmupValue(TKey key, Func<TValue> valueFunc)
+        public void WarmupValue(TKey key)
         {
-            parentValues.GetOrAdd(key, _ => new Lazy<TValue>(valueFunc)).Force();
+            var lazyValue = parentValues.GetOrAdd(key, _ => new Lazy<Tuple<bool, TValue>>(() => parentTryGetValue(key)));
+            lazyValue.Force();
         }
 
         private bool TryGetParentValue(TKey key, out TValue value)
         {
-            Lazy<TValue> lazyValue;
+            Lazy<Tuple<bool, TValue>> lazyValue;
             if (parentValues.TryGetValue(key, out lazyValue))
             {
-                value = lazyValue.Value;
-                return value != null;
+                value = lazyValue.Value.Item2;
+                return lazyValue.Value.Item1;
             }
             else
             {
@@ -247,7 +272,7 @@ namespace BitSharp.Core.Builders
                     value = default(TValue);
 
                 var valueLocal = value;
-                parentValues.TryAdd(key, new Lazy<TValue>(() => valueLocal));
+                parentValues.TryAdd(key, new Lazy<Tuple<bool, TValue>>(() => result));
 
                 return result.Item1;
             }

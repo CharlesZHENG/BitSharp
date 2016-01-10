@@ -1,4 +1,5 @@
 ﻿using BitSharp.Common;
+using BitSharp.Core.Builders;
 using BitSharp.Core.Storage;
 using LevelDB;
 using NLog;
@@ -17,6 +18,7 @@ namespace BitSharp.LevelDb
         private readonly DB db;
 
         private readonly DisposableCache<IChainStateCursor> cursorCache;
+        private readonly DisposableCache<IDeferredChainStateCursor> deferredCursorCache;
 
         public LevelDbChainStateManager(string baseDirectory)
         {
@@ -27,7 +29,16 @@ namespace BitSharp.LevelDb
             db = DB.Open(dbFile);
 
             cursorCache = new DisposableCache<IChainStateCursor>(1024,
-                createFunc: () => new LevelDbChainStateCursor(dbFile, db),
+                createFunc: () => new LevelDbChainStateCursor(dbFile, db, isDeferred: false),
+                prepareAction: cursor =>
+                {
+                    // rollback any open transaction before returning the cursor to the cache
+                    if (cursor.InTransaction)
+                        cursor.RollbackTransaction();
+                });
+
+            deferredCursorCache = new DisposableCache<IDeferredChainStateCursor>(1,
+                createFunc: () => new LevelDbChainStateCursor(dbFile, db, isDeferred: true),
                 prepareAction: cursor =>
                 {
                     // rollback any open transaction before returning the cursor to the cache
@@ -39,12 +50,18 @@ namespace BitSharp.LevelDb
         public void Dispose()
         {
             cursorCache.Dispose();
+            deferredCursorCache.Dispose();
             db.Dispose();
         }
 
         public DisposeHandle<IChainStateCursor> OpenChainStateCursor()
         {
             return cursorCache.TakeItem();
+        }
+
+        public DisposeHandle<IDeferredChainStateCursor> OpenDeferredChainStateCursor()
+        {
+            return deferredCursorCache.TakeItem();
         }
     }
 }

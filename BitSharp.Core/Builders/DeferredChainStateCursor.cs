@@ -124,9 +124,12 @@ namespace BitSharp.Core.Builders
             }
         }
 
-        public IDataflowBlock UtxoWorkQueue => unspentTxes.WorkQueue;
-
-        public IDataflowBlock UtxoApplierBlock => utxoApplier;
+        public IDataflowBlock[] DataFlowBlocks =>
+            new IDataflowBlock[]
+            {
+                unspentTxes.WorkQueue,
+                utxoApplier,
+            };
 
         public int CursorCount => chainState.CursorCount;
 
@@ -179,12 +182,17 @@ namespace BitSharp.Core.Builders
 
         public void CommitTransaction()
         {
+            CommitTransactionAsync().Wait();
+        }
+
+        public async Task CommitTransactionAsync()
+        {
             CheckTransaction();
 
-            utxoApplier.Completion.Wait();
+            await utxoApplier.Completion;
 
             if (!readOnly)
-                parentCursor.CommitTransaction();
+                await parentCursor.CommitTransactionAsync();
             else
                 parentCursor.RollbackTransaction();
             parentHandle.Dispose();
@@ -343,6 +351,12 @@ namespace BitSharp.Core.Builders
             return unspentTxes.TryRemove(txHash);
         }
 
+        public void RemoveUnspentTx(UInt256 txHash)
+        {
+            CheckWriteTransaction();
+            unspentTxes.Remove(txHash);
+        }
+
         public bool TryUpdateUnspentTx(UnspentTx unspentTx)
         {
             CheckWriteTransaction();
@@ -414,14 +428,7 @@ namespace BitSharp.Core.Builders
 
         public void WarmUnspentTx(UInt256 txHash)
         {
-            unspentTxes.WarmupValue(txHash, () =>
-            {
-                UnspentTx unspentTx;
-                if (chainState.TryGetUnspentTx(txHash, out unspentTx))
-                    return unspentTx;
-                else
-                    return null;
-            });
+            unspentTxes.WarmupValue(txHash);
         }
 
         // TODO - the way this operates is specific to the block validation pipeline, this should be more apparent

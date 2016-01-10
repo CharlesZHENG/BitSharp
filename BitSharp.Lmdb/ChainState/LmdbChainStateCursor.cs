@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace BitSharp.Lmdb
 {
@@ -303,6 +304,11 @@ namespace BitSharp.Lmdb
             }
         }
 
+        public void RemoveUnspentTx(UInt256 txHash)
+        {
+            TryRemoveUnspentTx(txHash);
+        }
+
         public bool TryUpdateUnspentTx(UnspentTx unspentTx)
         {
             CheckWriteTransaction();
@@ -490,6 +496,12 @@ namespace BitSharp.Lmdb
             this.txn.Commit();
             this.txn.Dispose();
             this.txn = null;
+        }
+
+        public Task CommitTransactionAsync()
+        {
+            CommitTransaction();
+            return Task.CompletedTask;
         }
 
         public void RollbackTransaction()

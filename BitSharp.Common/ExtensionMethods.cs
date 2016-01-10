@@ -454,6 +454,40 @@ namespace BitSharp.Common.ExtensionMethods
             }
         }
 
+        [DebuggerStepThrough]
+        public static async Task TimeAsync(this Stopwatch stopwatch, Task task)
+        {
+            if (stopwatch.IsRunning)
+                throw new InvalidOperationException();
+
+            stopwatch.Start();
+            try
+            {
+                await task;
+            }
+            finally
+            {
+                stopwatch.Stop();
+            }
+        }
+
+        [DebuggerStepThrough]
+        public static async Task TimeAsync(this Stopwatch stopwatch, Func<Task> action)
+        {
+            if (stopwatch.IsRunning)
+                throw new InvalidOperationException();
+
+            stopwatch.Start();
+            try
+            {
+                await action();
+            }
+            finally
+            {
+                stopwatch.Stop();
+            }
+        }
+
         public static IEnumerable<T> UsingAsEnumerable<T>(this IEnumerator<T> enumerator)
         {
             using (enumerator)

@@ -1,22 +1,22 @@
 ﻿using BitSharp.Common;
-using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core;
 using BitSharp.Core.Builders;
 using BitSharp.Core.Domain;
-using BitSharp.Core.ExtensionMethods;
 using BitSharp.Core.Storage;
 using LevelDB;
 using NLog;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.IO;
-using System.Reactive.Disposables;
+using System.Diagnostics;
+using System.Reflection;
 using System.Threading;
+using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 
 namespace BitSharp.LevelDb
 {
-    internal class LevelDbChainStateCursor : IChainStateCursor
+    internal class LevelDbChainStateCursor : IChainStateCursor, IDeferredChainStateCursor
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
@@ -26,11 +26,23 @@ namespace BitSharp.LevelDb
 
         private readonly string jetDatabase;
         private readonly DB db;
+        private readonly bool isDeferred;
 
         private Snapshot txSnapshot;
         private ReadOptions txReadOptions;
         private WriteBatch txWriteBatch;
-        private SortedDictionary<Slice, Tuple<UpdateType, Slice>> txUpdates;
+
+        private WorkQueueDictionary<UInt256, UnspentTx> unspentTxes;
+        private WorkQueueDictionary<GlobalValue, Slice> globals;
+        private WorkQueueDictionary<UInt256, ChainedHeader> headers;
+        private WorkQueueDictionary<int, BlockSpentTxes> spentTxes;
+        private WorkQueueDictionary<UInt256, IImmutableList<UnmintedTx>> unmintedTxes;
+
+        private ActionBlock<WorkQueueDictionary<UInt256, UnspentTx>.WorkItem> unspentTxesApplier;
+        private ActionBlock<WorkQueueDictionary<GlobalValue, Slice>.WorkItem> globalsApplier;
+        private ActionBlock<WorkQueueDictionary<UInt256, ChainedHeader>.WorkItem> headersApplier;
+        private ActionBlock<WorkQueueDictionary<int, BlockSpentTxes>.WorkItem> spentTxesApplier;
+        private ActionBlock<WorkQueueDictionary<UInt256, IImmutableList<UnmintedTx>>.WorkItem> unmintedTxesApplier;
 
         private const byte UNSPENT_TX_PREFIX = 0; // place unspent txes first so they can be iterated over without skipping other data
         private const byte GLOBAL_PREFIX = 1;
@@ -43,10 +55,11 @@ namespace BitSharp.LevelDb
 
         private bool disposed;
 
-        public LevelDbChainStateCursor(string jetDatabase, DB db)
+        public LevelDbChainStateCursor(string jetDatabase, DB db, bool isDeferred)
         {
             this.jetDatabase = jetDatabase;
             this.db = db;
+            this.isDeferred = isDeferred;
         }
 
         public void Dispose()
@@ -60,7 +73,7 @@ namespace BitSharp.LevelDb
             if (!disposed && disposing)
             {
                 txSnapshot?.Dispose();
-                //txWriteBatch.Dispose();
+                txWriteBatch?.Dispose();
 
                 disposed = true;
             }
@@ -75,7 +88,7 @@ namespace BitSharp.LevelDb
                 CheckTransaction();
 
                 Slice value;
-                if (CursorTryGet(MakeGlobalKey(GlobalValue.ChainTip), out value))
+                if (CursorTryGet(GlobalValue.ChainTip, out value, globals, MakeGlobalKey, x => x))
                     return DataDecoder.DecodeChainedHeader(value.ToArray());
                 else
                     return null;
@@ -85,9 +98,9 @@ namespace BitSharp.LevelDb
                 CheckWriteTransaction();
 
                 if (value != null)
-                    CursorPut(MakeGlobalKey(GlobalValue.ChainTip), DataEncoder.EncodeChainedHeader(value));
+                    globals[GlobalValue.ChainTip] = DataEncoder.EncodeChainedHeader(value);
                 else
-                    CursorDelete(MakeGlobalKey(GlobalValue.ChainTip));
+                    globals.TryRemove(GlobalValue.ChainTip);
             }
         }
 
@@ -98,7 +111,7 @@ namespace BitSharp.LevelDb
                 CheckTransaction();
 
                 Slice value;
-                if (CursorTryGet(MakeGlobalKey(GlobalValue.UnspentTxCount), out value))
+                if (CursorTryGet(GlobalValue.UnspentTxCount, out value, globals, MakeGlobalKey, x => x))
                     return value.ToInt32();
                 else
                     return 0;
@@ -107,7 +120,7 @@ namespace BitSharp.LevelDb
             {
                 CheckWriteTransaction();
 
-                CursorPut(MakeGlobalKey(GlobalValue.UnspentTxCount), value);
+                globals[GlobalValue.UnspentTxCount] = value;
             }
         }
 
@@ -118,7 +131,7 @@ namespace BitSharp.LevelDb
                 CheckTransaction();
 
                 Slice value;
-                if (CursorTryGet(MakeGlobalKey(GlobalValue.UnspentOutputCount), out value))
+                if (CursorTryGet(GlobalValue.UnspentOutputCount, out value, globals, MakeGlobalKey, x => x))
                     return value.ToInt32();
                 else
                     return 0;
@@ -127,7 +140,7 @@ namespace BitSharp.LevelDb
             {
                 CheckWriteTransaction();
 
-                CursorPut(MakeGlobalKey(GlobalValue.UnspentOutputCount), value);
+                globals[GlobalValue.UnspentOutputCount] = value;
             }
         }
 
@@ -138,7 +151,7 @@ namespace BitSharp.LevelDb
                 CheckTransaction();
 
                 Slice value;
-                if (CursorTryGet(MakeGlobalKey(GlobalValue.TotalTxCount), out value))
+                if (CursorTryGet(GlobalValue.TotalTxCount, out value, globals, MakeGlobalKey, x => x))
                     return value.ToInt32();
                 else
                     return 0;
@@ -147,7 +160,7 @@ namespace BitSharp.LevelDb
             {
                 CheckWriteTransaction();
 
-                CursorPut(MakeGlobalKey(GlobalValue.TotalTxCount), value);
+                globals[GlobalValue.TotalTxCount] = value;
             }
         }
 
@@ -158,7 +171,7 @@ namespace BitSharp.LevelDb
                 CheckTransaction();
 
                 Slice value;
-                if (CursorTryGet(MakeGlobalKey(GlobalValue.TotalInputCount), out value))
+                if (CursorTryGet(GlobalValue.TotalInputCount, out value, globals, MakeGlobalKey, x => x))
                     return value.ToInt32();
                 else
                     return 0;
@@ -167,7 +180,7 @@ namespace BitSharp.LevelDb
             {
                 CheckWriteTransaction();
 
-                CursorPut(MakeGlobalKey(GlobalValue.TotalInputCount), value);
+                globals[GlobalValue.TotalInputCount] = value;
             }
         }
 
@@ -178,7 +191,7 @@ namespace BitSharp.LevelDb
                 CheckTransaction();
 
                 Slice value;
-                if (CursorTryGet(MakeGlobalKey(GlobalValue.TotalOutputCount), out value))
+                if (CursorTryGet(GlobalValue.TotalOutputCount, out value, globals, MakeGlobalKey, x => x))
                     return value.ToInt32();
                 else
                     return 0;
@@ -187,117 +200,101 @@ namespace BitSharp.LevelDb
             {
                 CheckWriteTransaction();
 
-                CursorPut(MakeGlobalKey(GlobalValue.TotalOutputCount), value);
+                globals[GlobalValue.TotalOutputCount] = value;
             }
         }
+
+        public int CursorCount
+        {
+            get
+            {
+                return int.MaxValue;
+            }
+        }
+
+        public IDataflowBlock[] DataFlowBlocks =>
+            new IDataflowBlock[]
+            {
+                unspentTxes.WorkQueue,
+                globals.WorkQueue,
+                headers.WorkQueue,
+                spentTxes.WorkQueue,
+                unmintedTxes.WorkQueue,
+                unspentTxesApplier,
+                globalsApplier,
+                headersApplier,
+                spentTxesApplier,
+                unmintedTxesApplier,
+            };
 
         public bool ContainsHeader(UInt256 blockHash)
         {
             CheckTransaction();
 
-            Slice value;
-            return CursorTryGet(MakeHeaderKey(blockHash), out value);
+            return CursorContains(blockHash, headers, MakeHeaderKey);
         }
 
         public bool TryGetHeader(UInt256 blockHash, out ChainedHeader header)
         {
             CheckTransaction();
 
-            Slice value;
-            if (CursorTryGet(MakeHeaderKey(blockHash), out value))
-            {
-                header = DataDecoder.DecodeChainedHeader(value.ToArray());
-                return true;
-            }
-            else
-            {
-                header = default(ChainedHeader);
-                return false;
-            }
+            return CursorTryGet(blockHash, out header, headers, MakeHeaderKey, x => DataDecoder.DecodeChainedHeader(x));
         }
 
         public bool TryAddHeader(ChainedHeader header)
         {
             CheckWriteTransaction();
 
-            if (ContainsHeader(header.Hash))
-                return false;
-
-            CursorPut(MakeHeaderKey(header.Hash), DataEncoder.EncodeChainedHeader(header));
-            return true;
+            return headers.TryAdd(header.Hash, header);
         }
 
         public bool TryRemoveHeader(UInt256 blockHash)
         {
             CheckWriteTransaction();
 
-            if (ContainsHeader(blockHash))
-            {
-                CursorDelete(MakeHeaderKey(blockHash));
-                return true;
-            }
-            else
-            {
-                return false;
-            }
+            return headers.TryRemove(blockHash);
         }
 
         public bool ContainsUnspentTx(UInt256 txHash)
         {
             CheckTransaction();
 
-            Slice value;
-            return CursorTryGet(MakeUnspentTxKey(txHash), out value);
+            return CursorContains(txHash, unspentTxes, MakeUnspentTxKey);
         }
 
         public bool TryGetUnspentTx(UInt256 txHash, out UnspentTx unspentTx)
         {
             CheckTransaction();
 
-            Slice value;
-            if (CursorTryGet(MakeUnspentTxKey(txHash), out value))
-            {
-                unspentTx = DataDecoder.DecodeUnspentTx(value.ToArray());
-                return true;
-            }
-            else
-            {
-                unspentTx = default(UnspentTx);
-                return false;
-            }
+            return CursorTryGet(txHash, out unspentTx, unspentTxes, MakeUnspentTxKey, x => DataDecoder.DecodeUnspentTx(x));
         }
 
         public bool TryAddUnspentTx(UnspentTx unspentTx)
         {
             CheckWriteTransaction();
 
-            if (ContainsUnspentTx(unspentTx.TxHash))
-                return false;
-
-            CursorPut(MakeUnspentTxKey(unspentTx.TxHash), DataEncoder.EncodeUnspentTx(unspentTx));
-            return true;
+            return unspentTxes.TryAdd(unspentTx.TxHash, unspentTx);
         }
 
         public bool TryRemoveUnspentTx(UInt256 txHash)
         {
             CheckWriteTransaction();
 
-            if (!ContainsUnspentTx(txHash))
-                return false;
+            return unspentTxes.TryRemove(txHash);
+        }
 
-            CursorDelete(MakeUnspentTxKey(txHash));
-            return true;
+        public void RemoveUnspentTx(UInt256 txHash)
+        {
+            CheckWriteTransaction();
+
+            unspentTxes.Remove(txHash);
         }
 
         public bool TryUpdateUnspentTx(UnspentTx unspentTx)
         {
             CheckWriteTransaction();
 
-            if (!ContainsUnspentTx(unspentTx.TxHash))
-                return false;
-
-            CursorPut(MakeUnspentTxKey(unspentTx.TxHash), DataEncoder.EncodeUnspentTx(unspentTx));
-            return true;
+            return unspentTxes.TryUpdate(unspentTx.TxHash, unspentTx);
         }
 
         public IEnumerable<UnspentTx> ReadUnspentTransactions()
@@ -310,6 +307,9 @@ namespace BitSharp.LevelDb
         {
             CheckTransaction();
 
+            if (!readOnly)
+                throw new InvalidOperationException();
+
             using (var iterator = db.NewIterator(txReadOptions))
             {
                 iterator.SeekToFirst();
@@ -318,35 +318,13 @@ namespace BitSharp.LevelDb
                     var key = iterator.Key().ToArray();
                     if (key[0] == UNSPENT_TX_PREFIX)
                     {
-                        if (readOnly || !txUpdates.ContainsKey(key))
-                        {
-                            var value = iterator.Value().ToArray();
-                            yield return DataDecoder.DecodeUnspentTx(value);
-                        }
+                        var value = iterator.Value().ToArray();
+                        yield return DataDecoder.DecodeUnspentTx(value);
                     }
                     else
                         break;
 
                     iterator.Next();
-                }
-            }
-
-            //TODO the txUpdate unspent txes will always come at the end, not in order
-            if (!readOnly)
-            {
-                foreach (var txUpdate in txUpdates)
-                {
-                    var key = txUpdate.Key.ToArray();
-                    if (key[0] == UNSPENT_TX_PREFIX)
-                    {
-                        if (txUpdate.Value.Item1 == UpdateType.Put)
-                        {
-                            var value = txUpdate.Value.Item2.ToArray();
-                            yield return DataDecoder.DecodeUnspentTx(value);
-                        }
-                    }
-                    else
-                        break;
                 }
             }
         }
@@ -355,95 +333,56 @@ namespace BitSharp.LevelDb
         {
             CheckTransaction();
 
-            Slice value;
-            return CursorTryGet(MakeSpentTxesKey(blockIndex), out value);
+            return CursorContains(blockIndex, spentTxes, MakeSpentTxesKey);
         }
 
         public bool TryGetBlockSpentTxes(int blockIndex, out BlockSpentTxes spentTxes)
         {
             CheckTransaction();
 
-            Slice value;
-            if (CursorTryGet(MakeSpentTxesKey(blockIndex), out value))
-            {
-                spentTxes = DataDecoder.DecodeBlockSpentTxes(value.ToArray());
-                return true;
-
-            }
-            else
-            {
-                spentTxes = default(BlockSpentTxes);
-                return false;
-            }
+            return CursorTryGet(blockIndex, out spentTxes, this.spentTxes, MakeSpentTxesKey, x => DataDecoder.DecodeBlockSpentTxes(x));
         }
 
         public bool TryAddBlockSpentTxes(int blockIndex, BlockSpentTxes spentTxes)
         {
             CheckWriteTransaction();
 
-            if (ContainsBlockSpentTxes(blockIndex))
-                return false;
-
-            CursorPut(MakeSpentTxesKey(blockIndex), DataEncoder.EncodeBlockSpentTxes(spentTxes));
-            return true;
+            return this.spentTxes.TryAdd(blockIndex, spentTxes);
         }
 
         public bool TryRemoveBlockSpentTxes(int blockIndex)
         {
             CheckWriteTransaction();
 
-            if (!ContainsBlockSpentTxes(blockIndex))
-                return false;
-
-            CursorDelete(MakeSpentTxesKey(blockIndex));
-            return true;
+            return spentTxes.TryRemove(blockIndex);
         }
 
         public bool ContainsBlockUnmintedTxes(UInt256 blockHash)
         {
             CheckTransaction();
 
-            Slice value;
-            return CursorTryGet(MakeUnmintedTxesKey(blockHash), out value);
+            return CursorContains(blockHash, unmintedTxes, MakeUnmintedTxesKey);
         }
 
         public bool TryGetBlockUnmintedTxes(UInt256 blockHash, out IImmutableList<UnmintedTx> unmintedTxes)
         {
             CheckTransaction();
 
-            Slice value;
-            if (CursorTryGet(MakeUnmintedTxesKey(blockHash), out value))
-            {
-                unmintedTxes = DataDecoder.DecodeUnmintedTxList(value.ToArray());
-                return true;
-            }
-            else
-            {
-                unmintedTxes = default(IImmutableList<UnmintedTx>);
-                return false;
-            }
+            return CursorTryGet(blockHash, out unmintedTxes, this.unmintedTxes, MakeUnmintedTxesKey, x => DataDecoder.DecodeUnmintedTxList(x));
         }
 
         public bool TryAddBlockUnmintedTxes(UInt256 blockHash, IImmutableList<UnmintedTx> unmintedTxes)
         {
             CheckWriteTransaction();
 
-            if (ContainsBlockUnmintedTxes(blockHash))
-                return false;
-
-            CursorPut(MakeUnmintedTxesKey(blockHash), DataEncoder.EncodeUnmintedTxList(unmintedTxes));
-            return true;
+            return this.unmintedTxes.TryAdd(blockHash, unmintedTxes);
         }
 
         public bool TryRemoveBlockUnmintedTxes(UInt256 blockHash)
         {
             CheckWriteTransaction();
 
-            if (!ContainsBlockUnmintedTxes(blockHash))
-                return false;
-
-            CursorDelete(MakeUnmintedTxesKey(blockHash));
-            return true;
+            return unmintedTxes.TryRemove(blockHash);
         }
 
         public void BeginTransaction(bool readOnly, bool pruneOnly)
@@ -453,16 +392,30 @@ namespace BitSharp.LevelDb
 
             txSnapshot = db.GetSnapshot();
             txReadOptions = new ReadOptions { Snapshot = txSnapshot };
+
             if (!readOnly)
-            {
                 txWriteBatch = new WriteBatch();
-                txUpdates = new SortedDictionary<Slice, Tuple<UpdateType, Slice>>();
+            else
+                txWriteBatch = null;
+
+            if (!readOnly || isDeferred)
+            {
+                InitWorkQueueDictionaries();
             }
             else
             {
-                txWriteBatch = null;
-                txUpdates = null;
+                unspentTxes = null;
+                globals = null;
+                headers = null;
+                spentTxes = null;
+                unmintedTxes = null;
+                unspentTxesApplier = null;
+                globalsApplier = null;
+                headersApplier = null;
+                spentTxesApplier = null;
+                unmintedTxesApplier = null;
             }
+
 
             inTransaction = true;
             this.readOnly = readOnly;
@@ -470,18 +423,54 @@ namespace BitSharp.LevelDb
 
         public void CommitTransaction()
         {
+            CommitTransactionAsync().Wait();
+        }
+
+        public async Task CommitTransactionAsync()
+        {
             if (!inTransaction)
                 throw new InvalidOperationException();
 
             if (!readOnly)
+            {
+                var stopwatch = new Stopwatch();
+
+                unspentTxes.WorkQueue.Complete();
+                globals.WorkQueue.Complete();
+                headers.WorkQueue.Complete();
+                spentTxes.WorkQueue.Complete();
+                unmintedTxes.WorkQueue.Complete();
+
+                await unspentTxesApplier.Completion;
+                await globalsApplier.Completion;
+                await headersApplier.Completion;
+                await spentTxesApplier.Completion;
+                await unmintedTxesApplier.Completion;
+
+                stopwatch.Start();
                 db.Write(new WriteOptions(), txWriteBatch);
+                stopwatch.Stop();
+                txWriteBatch.Dispose();
+
+                if (stopwatch.ElapsedMilliseconds >= 400)
+                    logger.Info($"{stopwatch.Elapsed.TotalMilliseconds:N3}ms");
+            }
 
             txSnapshot.Dispose();
 
             txSnapshot = null;
             txReadOptions = null;
             txWriteBatch = null;
-            txUpdates = null;
+            unspentTxes = null;
+            globals = null;
+            headers = null;
+            spentTxes = null;
+            unmintedTxes = null;
+            unspentTxesApplier = null;
+            globalsApplier = null;
+            headersApplier = null;
+            spentTxesApplier = null;
+            unmintedTxesApplier = null;
 
             inTransaction = false;
         }
@@ -491,12 +480,36 @@ namespace BitSharp.LevelDb
             if (!inTransaction)
                 throw new InvalidOperationException();
 
+            if (!readOnly || isDeferred)
+            {
+                unspentTxes.WorkQueue.Complete();
+                globals.WorkQueue.Complete();
+                headers.WorkQueue.Complete();
+                spentTxes.WorkQueue.Complete();
+                unmintedTxes.WorkQueue.Complete();
+                unspentTxesApplier.Complete();
+                globalsApplier.Complete();
+                headersApplier.Complete();
+                spentTxesApplier.Complete();
+                unmintedTxesApplier.Complete();
+            }
+
             txSnapshot.Dispose();
+            txWriteBatch?.Dispose();
 
             txSnapshot = null;
             txReadOptions = null;
             txWriteBatch = null;
-            txUpdates = null;
+            unspentTxes = null;
+            globals = null;
+            headers = null;
+            spentTxes = null;
+            unmintedTxes = null;
+            unspentTxesApplier = null;
+            globalsApplier = null;
+            headersApplier = null;
+            spentTxesApplier = null;
+            unmintedTxesApplier = null;
 
             inTransaction = false;
         }
@@ -568,44 +581,133 @@ namespace BitSharp.LevelDb
             return key;
         }
 
-        private void CursorPut(Slice key, Slice value)
-        {
-            CheckWriteTransaction();
-
-            txWriteBatch.Put(key, value);
-            txUpdates[key] = Tuple.Create(UpdateType.Put, value);
-        }
-
-        private void CursorDelete(Slice key)
-        {
-            CheckWriteTransaction();
-
-            txWriteBatch.Delete(key);
-            txUpdates[key] = Tuple.Create(UpdateType.Delete, default(Slice));
-        }
-
-        private bool CursorTryGet(Slice key, out Slice value)
+        private bool CursorContains<TKey, TValue>(TKey key, WorkQueueDictionary<TKey, TValue> dict, Func<TKey, byte[]> encodeKey)
         {
             CheckTransaction();
 
-            Tuple<UpdateType, Slice> txUpdateValue;
-            if (!readOnly && txUpdates.TryGetValue(key, out txUpdateValue))
+            if (dict != null)
+                return dict.ContainsKey(key);
+            else
             {
-                if (txUpdateValue.Item1 == UpdateType.Put)
+                var keySlice = encodeKey(key);
+                Slice valueSlice;
+                return db.TryGet(txReadOptions, keySlice, out valueSlice);
+            }
+        }
+
+        private bool CursorTryGet<TKey, TValue>(TKey key, out TValue value, WorkQueueDictionary<TKey, TValue> dict, Func<TKey, byte[]> encodeKey, Func<byte[], TValue> decodeValue)
+        {
+            CheckTransaction();
+
+            if (dict != null)
+                return dict.TryGetValue(key, out value);
+            else
+            {
+                var keySlice = encodeKey(key);
+                Slice valueSlice;
+                if (db.TryGet(txReadOptions, keySlice, out valueSlice))
                 {
-                    value = txUpdateValue.Item2;
+                    value = decodeValue(valueSlice.ToArray());
                     return true;
                 }
                 else
                 {
-                    value = default(Slice);
+                    value = default(TValue);
                     return false;
                 }
             }
-            else
-            {
-                return db.TryGet(txReadOptions, key, out value);
-            }
+        }
+
+        public void WarmUnspentTx(UInt256 txHash)
+        {
+            unspentTxes.WarmupValue(txHash);
+        }
+
+        public Task ApplyChangesAsync()
+        {
+            unspentTxes.WorkQueue.Complete();
+            globals.WorkQueue.Complete();
+            headers.WorkQueue.Complete();
+            spentTxes.WorkQueue.Complete();
+            unmintedTxes.WorkQueue.Complete();
+
+            return Task.CompletedTask;
+        }
+
+        private void InitWorkQueueDictionaries()
+        {
+            unspentTxes = CreateWorkQueueDictionary<UInt256, UnspentTx>(MakeUnspentTxKey, x => DataDecoder.DecodeUnspentTx(x));
+            unspentTxesApplier = CreateApplier<UInt256, UnspentTx>(MakeUnspentTxKey, x => DataEncoder.EncodeUnspentTx(x));
+            unspentTxes.WorkQueue.LinkTo(unspentTxesApplier, new DataflowLinkOptions { PropagateCompletion = true });
+
+            globals = CreateWorkQueueDictionary<GlobalValue, Slice>(MakeGlobalKey, x => x);
+            globalsApplier = CreateApplier<GlobalValue, Slice>(MakeGlobalKey, x => x.ToArray());
+            globals.WorkQueue.LinkTo(globalsApplier, new DataflowLinkOptions { PropagateCompletion = true });
+
+            headers = CreateWorkQueueDictionary<UInt256, ChainedHeader>(MakeHeaderKey, x => DataDecoder.DecodeChainedHeader(x));
+            headersApplier = CreateApplier<UInt256, ChainedHeader>(MakeHeaderKey, x => DataEncoder.EncodeChainedHeader(x));
+            headers.WorkQueue.LinkTo(headersApplier, new DataflowLinkOptions { PropagateCompletion = true });
+
+            spentTxes = CreateWorkQueueDictionary<int, BlockSpentTxes>(MakeSpentTxesKey, x => DataDecoder.DecodeBlockSpentTxes(x));
+            spentTxesApplier = CreateApplier<int, BlockSpentTxes>(MakeSpentTxesKey, x => DataEncoder.EncodeBlockSpentTxes(x));
+            spentTxes.WorkQueue.LinkTo(spentTxesApplier, new DataflowLinkOptions { PropagateCompletion = true });
+
+            unmintedTxes = CreateWorkQueueDictionary<UInt256, IImmutableList<UnmintedTx>>(MakeUnmintedTxesKey, x => DataDecoder.DecodeUnmintedTxList(x));
+            unmintedTxesApplier = CreateApplier<UInt256, IImmutableList<UnmintedTx>>(MakeUnmintedTxesKey, x => DataEncoder.EncodeUnmintedTxList(x));
+            unmintedTxes.WorkQueue.LinkTo(unmintedTxesApplier, new DataflowLinkOptions { PropagateCompletion = true });
+        }
+
+        private WorkQueueDictionary<TKey, TValue> CreateWorkQueueDictionary<TKey, TValue>(Func<TKey, byte[]> encodeKey, Func<byte[], TValue> decodeValue)
+        {
+            return new WorkQueueDictionary<TKey, TValue>(
+                 key =>
+                 {
+                     var keySlice = (Slice)encodeKey(key);
+
+                     Slice value;
+                     if (db.TryGet(txReadOptions, keySlice, out value))
+                         return Tuple.Create(true, decodeValue(value.ToArray()));
+                     else
+                         return Tuple.Create(false, default(TValue));
+                 });
+        }
+
+        private ActionBlock<WorkQueueDictionary<TKey, TValue>.WorkItem> CreateApplier<TKey, TValue>(Func<TKey, byte[]> encodeKey, Func<TValue, byte[]> encodeValue)
+        {
+            return new ActionBlock<WorkQueueDictionary<TKey, TValue>.WorkItem>(
+                workItem =>
+                {
+                    workItem.Consume(
+                        (operation, key, value) =>
+                        {
+                            switch (operation)
+                            {
+                                case WorkQueueOperation.Nothing:
+                                    break;
+
+                                case WorkQueueOperation.Add:
+                                case WorkQueueOperation.Update:
+                                    {
+                                        var keySlice = encodeKey(key);
+                                        var valueSlice = encodeValue(value);
+                                        lock (txWriteBatch)
+                                            txWriteBatch.Put(keySlice, valueSlice);
+                                    }
+                                    break;
+
+                                case WorkQueueOperation.Remove:
+                                    {
+                                        var keySlice = encodeKey(key);
+                                        lock (txWriteBatch)
+                                            txWriteBatch.Delete(keySlice);
+                                    }
+                                    break;
+
+                                default:
+                                    throw new InvalidOperationException();
+                            }
+                        });
+                });
         }
     }
 
@@ -617,11 +719,5 @@ namespace BitSharp.LevelDb
         TotalTxCount,
         TotalInputCount,
         TotalOutputCount,
-    }
-
-    public enum UpdateType
-    {
-        Put,
-        Delete
     }
 }

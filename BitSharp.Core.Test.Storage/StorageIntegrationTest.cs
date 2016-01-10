@@ -28,7 +28,7 @@ namespace BitSharp.Core.Test.Storage
             var logger = LogManager.CreateNullLogger();
 
             var blockCount = 10.THOUSAND();
-            var checkUtxoHashFrequencey = 100;
+            var checkUtxoHashFrequencey = 1000;
 
             var blockProvider = new TestNet3BlockProvider();
             var blocks = blockProvider.ReadBlocks().Take(blockCount).ToList();

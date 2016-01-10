@@ -17,6 +17,7 @@ using System.IO;
 using System.Linq;
 using System.Reactive.Disposables;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace BitSharp.Esent
 {
@@ -436,6 +437,11 @@ namespace BitSharp.Esent
             }
         }
 
+        public void RemoveUnspentTx(UInt256 txHash)
+        {
+            TryRemoveUnspentTx(txHash);
+        }
+
         public bool TryUpdateUnspentTx(UnspentTx unspentTx)
         {
             CheckWriteTransaction();
@@ -709,6 +715,12 @@ namespace BitSharp.Esent
                     Api.JetRollback(this.jetSession, RollbackTransactionGrbit.None);
 
             this.inTransaction = false;
+        }
+
+        public Task CommitTransactionAsync()
+        {
+            CommitTransaction();
+            return Task.CompletedTask;
         }
 
         public void RollbackTransaction()

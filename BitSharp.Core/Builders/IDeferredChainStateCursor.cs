@@ -11,9 +11,7 @@ namespace BitSharp.Core.Builders
 
         void WarmUnspentTx(UInt256 txHash);
 
-        IDataflowBlock UtxoWorkQueue { get; }
-
-        IDataflowBlock UtxoApplierBlock { get; }
+        IDataflowBlock[] DataFlowBlocks { get; }
 
         Task ApplyChangesAsync();
     }

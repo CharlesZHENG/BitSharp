@@ -45,7 +45,7 @@ namespace BitSharp.Client
                 var useTestNet = false;
                 var connectToPeers = true;
 
-                var ignoreScripts = false;
+                var ignoreScripts = true;
 
                 var pruningMode = PruningMode.TxIndex | PruningMode.BlockSpentIndex | PruningMode.BlockTxesDelete;
                 var enableDummyWallet = true;

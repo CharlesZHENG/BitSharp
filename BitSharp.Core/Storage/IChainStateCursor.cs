@@ -3,6 +3,7 @@ using BitSharp.Core.Domain;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Threading.Tasks;
 
 namespace BitSharp.Core.Storage
 {
@@ -27,6 +28,8 @@ namespace BitSharp.Core.Storage
         /// Commit the current transaction.
         /// </summary>
         void CommitTransaction();
+
+        Task CommitTransactionAsync();
 
         /// <summary>
         /// Rollback the current transaction
@@ -89,6 +92,8 @@ namespace BitSharp.Core.Storage
         /// <param name="txHash">The transaction's hash.</param>
         /// <returns>true if the transaction was removed; otherwise, false</returns>
         bool TryRemoveUnspentTx(UInt256 txHash);
+
+        void RemoveUnspentTx(UInt256 txHash);
 
         /// <summary>
         /// Update an unspent transaction.

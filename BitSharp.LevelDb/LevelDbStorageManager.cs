@@ -102,9 +102,7 @@ namespace BitSharp.LevelDb
 
         public DisposeHandle<IDeferredChainStateCursor> OpenDeferredChainStateCursor(IChainState chainState)
         {
-            var cursor = new DeferredChainStateCursor(chainState, this);
-            return new DisposeHandle<IDeferredChainStateCursor>(
-                _ => cursor.Dispose(), cursor);
+            return chainStateManager.Value.OpenDeferredChainStateCursor();
         }
 
         //TODO should be true once its not backed by memory

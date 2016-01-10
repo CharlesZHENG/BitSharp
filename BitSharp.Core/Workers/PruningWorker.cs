@@ -194,16 +194,16 @@ namespace BitSharp.Core.Workers
                 await Task.WhenAll(
                     // prune block txes (either merkle prune or delete)
                     PruneBlockTxesAsync(mode, chain, pruneBlock, spentTxes)
-                        .ContinueWith(task => { pruneBlockTxesStopwatch.Stop(); task.Wait(); }),
+                        .ContinueWith(_ => pruneBlockTxesStopwatch.Stop()),
                     // prune tx index
                     PruneTxIndexAsync(mode, chain, pruneBlock, spentTxes)
-                        .ContinueWith(task => { pruneTxIndexStopwatch.Stop(); task.Wait(); })
+                        .ContinueWith(_ => pruneTxIndexStopwatch.Stop())
                     );
 
                 // remove block spent txes information
                 //TODO should have a buffer on removing this, block txes pruning may need it again if flush doesn't happen
-                pruneSpentTxesStopwatch.Time(() =>
-                    PruneBlockSpentTxes(mode, chain, pruneBlock));
+                var pruneSpentTxesTask = PruneBlockSpentTxes(mode, chain, pruneBlock);
+                await pruneSpentTxesStopwatch.TimeAsync(pruneSpentTxesTask);
             }
             // if spent txes aren't available, block txes can still be deleted entirely for that pruning style
             else if (mode.HasFlag(PruningMode.BlockTxesDelete))
@@ -300,7 +300,7 @@ namespace BitSharp.Core.Workers
                         {
                             var chainStateCursor = handle.Item.Item;
 
-                            chainStateCursor.TryRemoveUnspentTx(spentTx.TxHash);
+                            chainStateCursor.RemoveUnspentTx(spentTx.TxHash);
                         }
                     },
                     new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = maxParallelism });
@@ -312,12 +312,22 @@ namespace BitSharp.Core.Workers
                 await pruneTxIndex.Completion;
 
                 // commit all opened cursors on success
-                Parallel.ForEach(openedCursors, cursor =>
-                    cursor.CommitTransaction());
+                var stopwatch = Stopwatch.StartNew();
+                var commitTasks = new Task[openedCursors.Count];
+                var i = 0;
+                foreach (var cursor in openedCursors)
+                    commitTasks[i++] = cursor.CommitTransactionAsync();
+
+                await Task.WhenAll(commitTasks);
+
+                //Parallel.ForEach(openedCursors, cursor =>
+                //    cursor.CommitTransaction());
+                stopwatch.Stop();
+                //logger.Info($"{stopwatch.Elapsed.TotalMilliseconds:N3}ms");
             }
         }
 
-        private void PruneBlockSpentTxes(PruningMode mode, Chain chain, ChainedHeader pruneBlock)
+        private async Task PruneBlockSpentTxes(PruningMode mode, Chain chain, ChainedHeader pruneBlock)
         {
             if (!mode.HasFlag(PruningMode.BlockSpentIndex))
                 return;
@@ -334,7 +344,7 @@ namespace BitSharp.Core.Workers
                 //      the block txes pruning to be performed again
                 chainStateCursor.TryRemoveBlockSpentTxes(pruneBlock.Height);
 
-                chainStateCursor.CommitTransaction();
+                await chainStateCursor.CommitTransactionAsync();
             }
         }
     }

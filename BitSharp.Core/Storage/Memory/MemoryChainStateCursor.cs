@@ -3,6 +3,7 @@ using BitSharp.Core.Domain;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Threading.Tasks;
 
 namespace BitSharp.Core.Storage.Memory
 {
@@ -107,6 +108,12 @@ namespace BitSharp.Core.Storage.Memory
 
             if (!readOnly)
                 chainStateStorage.WriteTxLock.Release();
+        }
+
+        public Task CommitTransactionAsync()
+        {
+            CommitTransaction();
+            return Task.CompletedTask;
         }
 
         public void RollbackTransaction()
@@ -279,6 +286,11 @@ namespace BitSharp.Core.Storage.Memory
         {
             CheckWriteTransaction();
             return this.unspentTransactions.TryModify(x => x.Remove(txHash));
+        }
+
+        public void RemoveUnspentTx(UInt256 txHash)
+        {
+            TryRemoveUnspentTx(txHash);
         }
 
         public bool TryUpdateUnspentTx(UnspentTx unspentTx)
