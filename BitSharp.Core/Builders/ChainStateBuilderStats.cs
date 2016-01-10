@@ -97,8 +97,9 @@ namespace BitSharp.Core.Builders
             statString.AppendLine(GetPipelineStat("UTXO Look-ahead", lookAheadDuration, txesDecodeDuration));
             statString.AppendLine(GetPipelineStat("UTXO Calculation", calculateUtxoDuration, lookAheadDuration));
             statString.AppendLine(GetPipelineStat("UTXO Application", applyUtxoDuration, calculateUtxoDuration));
-            statString.AppendLine(GetPipelineStat("Block Validation", validateDuration, applyUtxoDuration));
-            statString.AppendLine(GetPipelineStat("UTXO Commit", commitUtxoDuration, validateDuration));
+            statString.AppendLine(GetPipelineStat("Block Validation", validateDuration, calculateUtxoDuration));
+            statString.AppendLine(GetPipelineStat("UTXO Commit", commitUtxoDuration,
+                TimeSpan.FromTicks(Math.Max(applyUtxoDuration.Ticks, validateDuration.Ticks))));
             statString.Append(GetPipelineStat("AddBlock Total", addBlockDuration, null));
 
             return statString.ToString();
