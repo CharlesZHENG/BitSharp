@@ -415,15 +415,15 @@ namespace BitSharp.Core
             }
             else if (value <= 0xFFFF)
             {
-                return 2;
+                return 3;
             }
             else if (value <= 0xFFFFFFFF)
             {
-                return 4;
+                return 5;
             }
             else
             {
-                return 8;
+                return 9;
             }
         }
     }
