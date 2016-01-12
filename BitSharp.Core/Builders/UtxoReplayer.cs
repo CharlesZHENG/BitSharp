@@ -123,7 +123,11 @@ namespace BitSharp.Core.Builders
                             if (!chainState.TryGetUnspentTx(input.PrevTxOutputKey.TxHash, out unspentTx))
                                 throw new MissingDataException(replayBlock.Hash);
 
-                            prevTxOutputs.Add(unspentTx.GetPrevTxOutput(input.PrevTxOutputKey));
+                            TxOutput txOutput;
+                            if (!chainState.TryGetUnspentTxOutput(input.PrevTxOutputKey, out txOutput))
+                                throw new MissingDataException(replayBlock.Hash);
+
+                            prevTxOutputs.Add(new PrevTxOutput(txOutput, unspentTx));
                         }
                     }
 

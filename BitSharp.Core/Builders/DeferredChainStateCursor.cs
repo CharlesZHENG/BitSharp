@@ -495,5 +495,35 @@ namespace BitSharp.Core.Builders
             if (!inTransaction || readOnly)
                 throw new InvalidOperationException();
         }
+
+        public void WarmUnspentTxOutput(TxOutputKey txOutputKey)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool ContainsUnspentTxOutput(TxOutputKey txOutputKey)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool TryGetUnspentTxOutput(TxOutputKey txOutputKey, out TxOutput txOutput)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool TryAddUnspentTxOutput(TxOutputKey txOutputKey, TxOutput txOutput)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool TryRemoveUnspentTxOutput(TxOutputKey txOutputKey)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void RemoveUnspentTxOutput(TxOutputKey txOutputKey)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

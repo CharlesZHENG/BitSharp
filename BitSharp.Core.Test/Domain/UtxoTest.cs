@@ -20,7 +20,7 @@ namespace BitSharp.Core.Test.Domain
 
             // prepare unspent output
             var txHash = new UInt256(0);
-            unspentTransactions.Add(txHash, new UnspentTx(txHash, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, length: 1, state: OutputState.Unspent, txOutputs: ImmutableArray.Create(RandomData.RandomTxOutput())));
+            unspentTransactions.Add(txHash, new UnspentTx(txHash, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, length: 1, state: OutputState.Unspent));
 
             // prepare utxo
             var memoryStorage = new MemoryStorageManager(unspentTransactions: unspentTransactions.ToImmutable());
@@ -49,7 +49,7 @@ namespace BitSharp.Core.Test.Domain
 
             // prepare spent output
             var txHash = new UInt256(0);
-            unspentTransactions.Add(txHash, new UnspentTx(txHash, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, length: 1, state: OutputState.Spent, txOutputs: ImmutableArray.Create(RandomData.RandomTxOutput())));
+            unspentTransactions.Add(txHash, new UnspentTx(txHash, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, length: 1, state: OutputState.Spent));
 
             // prepare utxo
             var memoryStorage = new MemoryStorageManager(unspentTransactions: unspentTransactions.ToImmutable());
@@ -100,7 +100,7 @@ namespace BitSharp.Core.Test.Domain
 
             // prepare unspent output
             var txHash = new UInt256(0);
-            unspentTransactions.Add(txHash, new UnspentTx(txHash, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, length: 1, state: OutputState.Unspent, txOutputs: ImmutableArray.Create(RandomData.RandomTxOutput())));
+            unspentTransactions.Add(txHash, new UnspentTx(txHash, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, length: 1, state: OutputState.Unspent));
 
             // prepare utxo
             var memoryStorage = new MemoryStorageManager(unspentTransactions: unspentTransactions.ToImmutable());
@@ -129,7 +129,7 @@ namespace BitSharp.Core.Test.Domain
 
             // prepare unspent output
             var txHash = new UInt256(0);
-            unspentTransactions.Add(txHash, new UnspentTx(txHash, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, length: 1, state: OutputState.Unspent, txOutputs: ImmutableArray.Create(RandomData.RandomTxOutput())));
+            unspentTransactions.Add(txHash, new UnspentTx(txHash, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, length: 1, state: OutputState.Unspent));
 
             // prepare utxo
             var memoryStorage = new MemoryStorageManager(unspentTransactions: unspentTransactions.ToImmutable());

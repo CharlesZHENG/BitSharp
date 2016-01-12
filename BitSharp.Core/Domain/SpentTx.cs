@@ -9,11 +9,12 @@ namespace BitSharp.Core.Domain
     /// </summary>
     public class SpentTx
     {
-        public SpentTx(UInt256 txHash, int confirmedBlockIndex, int txIndex)
+        public SpentTx(UInt256 txHash, int confirmedBlockIndex, int txIndex, int outputCount)
         {
             TxHash = txHash;
             ConfirmedBlockIndex = confirmedBlockIndex;
             TxIndex = txIndex;
+            OutputCount = outputCount;
         }
 
         /// <summary>
@@ -30,6 +31,8 @@ namespace BitSharp.Core.Domain
         /// The transaction's index within its confirming block.
         /// </summary>
         public int TxIndex { get; }
+
+        public int OutputCount { get; }
 
         public override bool Equals(object obj)
         {

@@ -110,9 +110,7 @@ namespace BitSharp.Core.Test
                 txIndex: random.Next(),
                 txVersion: random.NextUInt32(),
                 isCoinbase: random.NextBool(),
-                outputStates: new OutputStates(options.TxOutputCount.Value, random.NextBool() ? OutputState.Spent : OutputState.Unspent),
-                txOutputs: Enumerable.Range(0, options.TxOutputCount.Value)
-                    .Select(x => RandomTxOutput()).ToImmutableArray()
+                outputStates: new OutputStates(options.TxOutputCount.Value, random.NextBool() ? OutputState.Spent : OutputState.Unspent)
             );
         }
 

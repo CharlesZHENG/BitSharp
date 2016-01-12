@@ -399,5 +399,30 @@ namespace BitSharp.Core.Storage.Memory
             if (!this.inTransaction || this.readOnly)
                 throw new InvalidOperationException();
         }
+
+        public bool ContainsUnspentTxOutput(TxOutputKey txOutputKey)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool TryGetUnspentTxOutput(TxOutputKey txOutputKey, out TxOutput txOutput)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool TryAddUnspentTxOutput(TxOutputKey txOutputKey, TxOutput txOutput)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool TryRemoveUnspentTxOutput(TxOutputKey txOutputKey)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void RemoveUnspentTxOutput(TxOutputKey txOutputKey)
+        {
+            throw new NotImplementedException();
+        }
     }
 }

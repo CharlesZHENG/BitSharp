@@ -301,6 +301,8 @@ namespace BitSharp.Core.Workers
                             var chainStateCursor = handle.Item.Item;
 
                             chainStateCursor.RemoveUnspentTx(spentTx.TxHash);
+                            for (var outputIndex = 0; outputIndex < spentTx.OutputCount; outputIndex++)
+                                chainStateCursor.RemoveUnspentTxOutput(new TxOutputKey(spentTx.TxHash, (uint)outputIndex));
                         }
                     },
                     new ExecutionDataflowBlockOptions { MaxDegreeOfParallelism = maxParallelism });
@@ -312,18 +314,12 @@ namespace BitSharp.Core.Workers
                 await pruneTxIndex.Completion;
 
                 // commit all opened cursors on success
-                var stopwatch = Stopwatch.StartNew();
                 var commitTasks = new Task[openedCursors.Count];
                 var i = 0;
                 foreach (var cursor in openedCursors)
                     commitTasks[i++] = cursor.CommitTransactionAsync();
 
                 await Task.WhenAll(commitTasks);
-
-                //Parallel.ForEach(openedCursors, cursor =>
-                //    cursor.CommitTransaction());
-                stopwatch.Stop();
-                //logger.Info($"{stopwatch.Elapsed.TotalMilliseconds:N3}ms");
             }
         }
 

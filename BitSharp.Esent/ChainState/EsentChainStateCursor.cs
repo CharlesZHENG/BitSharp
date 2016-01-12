@@ -374,9 +374,8 @@ namespace BitSharp.Esent
                     var txVersion = txVersionColumn.Value.Value;
                     var isCoinbase = isCoinbaseColumn.Value.Value;
                     var outputStates = DataDecoder.DecodeOutputStates(outputStatesColumn.Value);
-                    var txOutputs = DataDecoder.DecodeTxOutputList(txOutputBytesColumn.Value);
 
-                    unspentTx = new UnspentTx(txHash, blockIndex, txIndex, txVersion, isCoinbase, outputStates, txOutputs);
+                    unspentTx = new UnspentTx(txHash, blockIndex, txIndex, txVersion, isCoinbase, outputStates);
                     return true;
                 }
 
@@ -401,8 +400,7 @@ namespace BitSharp.Esent
                             new Int32ColumnValue { Columnid = this.txIndexColumnId, Value = unspentTx.TxIndex },
                             new UInt32ColumnValue { Columnid = this.txVersionColumnId, Value = unspentTx.TxVersion },
                             new BoolColumnValue { Columnid = this.isCoinbaseColumnId, Value = unspentTx.IsCoinbase },
-                            new BytesColumnValue { Columnid = this.outputStatesColumnId, Value = DataEncoder.EncodeOutputStates(unspentTx.OutputStates) },
-                            new BytesColumnValue { Columnid = this.txOutputBytesColumnId, Value = DataEncoder.EncodeTxOutputList(unspentTx.TxOutputs) });
+                            new BytesColumnValue { Columnid = this.outputStatesColumnId, Value = DataEncoder.EncodeOutputStates(unspentTx.OutputStates) });
 
                         jetUpdate.Save();
                     }
@@ -500,9 +498,8 @@ namespace BitSharp.Esent
                         var txVersion = txVersionColumn.Value.Value;
                         var isCoinbase = isCoinbaseColumn.Value.Value;
                         var outputStates = DataDecoder.DecodeOutputStates(outputStatesColumn.Value);
-                        var txOutputs = DataDecoder.DecodeTxOutputList(txOutputBytesColumn.Value);
 
-                        yield return new UnspentTx(txHash, blockIndex, txIndex, txVersion, isCoinbase, outputStates, txOutputs);
+                        yield return new UnspentTx(txHash, blockIndex, txIndex, txVersion, isCoinbase, outputStates);
                     }
                     while (Api.TryMoveNext(this.jetSession, this.unspentTxTableId));
                 }
@@ -872,6 +869,31 @@ namespace BitSharp.Esent
             Api.JetSetSessionContext(this.jetSession, cursorContext);
             return Disposable.Create(() =>
                 Api.JetResetSessionContext(this.jetSession));
+        }
+
+        public bool ContainsUnspentTxOutput(TxOutputKey txOutputKey)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool TryGetUnspentTxOutput(TxOutputKey txOutputKey, out TxOutput txOutput)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool TryAddUnspentTxOutput(TxOutputKey txOutputKey, TxOutput txOutput)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool TryRemoveUnspentTxOutput(TxOutputKey txOutputKey)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void RemoveUnspentTxOutput(TxOutputKey txOutputKey)
+        {
+            throw new NotImplementedException();
         }
     }
 }

@@ -115,7 +115,12 @@ namespace BitSharp.Core.Builders
                             // input's prev output has already been spent
                             return false;
 
-                        var prevTxOutput = unspentTx.GetPrevTxOutput(input.PrevTxOutputKey);
+                        TxOutput txOutput;
+                        if (!chainState.TryGetUnspentTxOutput(input.PrevTxOutputKey, out txOutput))
+                            // input's prev output does not exist
+                            return false;
+
+                        var prevTxOutput = new PrevTxOutput(txOutput, unspentTx);
                         prevTxOutputs.Add(prevTxOutput);
                         checked { inputValue += prevTxOutput.Value; }
                     }

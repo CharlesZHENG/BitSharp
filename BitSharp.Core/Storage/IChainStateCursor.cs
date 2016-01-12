@@ -63,7 +63,6 @@ namespace BitSharp.Core.Storage
 
         bool TryRemoveHeader(UInt256 txHash);
 
-
         /// <summary>
         /// Determine whether an unspent transaction is present.
         /// </summary>
@@ -104,6 +103,16 @@ namespace BitSharp.Core.Storage
 
         //TODO
         IEnumerable<UnspentTx> ReadUnspentTransactions();
+
+        bool ContainsUnspentTxOutput(TxOutputKey txOutputKey);
+
+        bool TryGetUnspentTxOutput(TxOutputKey txOutputKey, out TxOutput txOutput);
+
+        bool TryAddUnspentTxOutput(TxOutputKey txOutputKey, TxOutput txOutput);
+
+        bool TryRemoveUnspentTxOutput(TxOutputKey txOutputKey);
+
+        void RemoveUnspentTxOutput(TxOutputKey txOutputKey);
 
         /// <summary>
         /// Determine whether spent transactions are present for a block.

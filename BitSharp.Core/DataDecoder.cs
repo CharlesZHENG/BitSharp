@@ -325,9 +325,7 @@ namespace BitSharp.Core
             var outputStateLength = DecodeInt32(buffer, ref offset);
             var outputStates = new OutputStates(outputStateBits, outputStateLength);
 
-            var txOutputs = DecodeTxOutputList(buffer, ref offset);
-
-            return new UnspentTx(txHash, blockIndex, index, txVersion, isCoinbase, outputStates, txOutputs);
+            return new UnspentTx(txHash, blockIndex, index, txVersion, isCoinbase, outputStates);
         }
 
         public static SpentTx DecodeSpentTx(byte[] buffer, int offset = 0)
@@ -340,8 +338,9 @@ namespace BitSharp.Core
             var txHash = DecodeUInt256(buffer, ref offset);
             var confirmedBlockIndex = DecodeInt32(buffer, ref offset);
             var txIndex = DecodeInt32(buffer, ref offset);
+            var outputCount = DecodeInt32(buffer, ref offset);
 
-            return new SpentTx(txHash, confirmedBlockIndex, txIndex);
+            return new SpentTx(txHash, confirmedBlockIndex, txIndex, outputCount);
         }
 
         public static UnmintedTx DecodeUnmintedTx(byte[] buffer, int offset = 0)

@@ -17,7 +17,6 @@ namespace BitSharp.LevelDb
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         private readonly string dbDirectory;
-        private readonly string dbFile;
         private readonly DB db;
 
         private bool isDisposed;
@@ -25,9 +24,8 @@ namespace BitSharp.LevelDb
         public LevelDbBlockTxesStorage(string baseDirectory, ulong? cacheSize, ulong? writeCacheSize)
         {
             dbDirectory = Path.Combine(baseDirectory, "BlockTxes");
-            dbFile = Path.Combine(dbDirectory, "BlockTxes.edb");
 
-            db = DB.Open(dbFile, cacheSize ?? 0, writeCacheSize ?? 0);
+            db = DB.Open(dbDirectory, cacheSize ?? 0, writeCacheSize ?? 0);
         }
 
         public void Dispose()
