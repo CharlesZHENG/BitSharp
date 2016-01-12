@@ -226,6 +226,13 @@ namespace BitSharp.Core.Builders
             {
                 throw new ValidationException(chainedHeader.Hash);
             }
+
+            // remove the tx outputs
+            for (var outputIndex = 0; outputIndex < tx.Outputs.Length; outputIndex++)
+            {
+                if (!chainStateCursor.TryRemoveUnspentTxOutput(new TxOutputKey(tx.Hash, (uint)outputIndex)))
+                    throw new ValidationException(chainedHeader.Hash);
+            }
         }
 
         private PrevTxOutput Unspend(IChainStateCursor chainStateCursor, TxInput input, ChainedHeader chainedHeader)

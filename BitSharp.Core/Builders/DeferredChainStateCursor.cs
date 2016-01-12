@@ -26,6 +26,7 @@ namespace BitSharp.Core.Builders
 
         private DeferredDictionary<UInt256, ChainedHeader> headers;
         private WorkQueueDictionary<UInt256, UnspentTx> unspentTxes;
+        private WorkQueueDictionary<TxOutputKey, TxOutput> unspentTxOutputs;
         private DeferredDictionary<int, BlockSpentTxes> blockSpentTxes;
         private DeferredDictionary<UInt256, IImmutableList<UnmintedTx>> blockUnmintedTxes;
 
@@ -36,6 +37,7 @@ namespace BitSharp.Core.Builders
         private DisposeHandle<IChainStateCursor> parentHandle;
         private IChainStateCursor parentCursor;
         private ActionBlock<WorkQueueDictionary<UInt256, UnspentTx>.WorkItem> utxoApplier;
+        private ActionBlock<WorkQueueDictionary<TxOutputKey, TxOutput>.WorkItem> utxoApplier2;
         private bool changesApplied;
 
         public DeferredChainStateCursor(IChainState chainState, IStorageManager storageManager)
@@ -55,6 +57,13 @@ namespace BitSharp.Core.Builders
                 {
                     UnspentTx unspentTx;
                     return Tuple.Create(chainState.TryGetUnspentTx(txHash, out unspentTx), unspentTx);
+                });
+
+            unspentTxOutputs = new WorkQueueDictionary<TxOutputKey, TxOutput>(
+                txOutputKey =>
+                {
+                    TxOutput txOutput;
+                    return Tuple.Create(chainState.TryGetUnspentTxOutput(txOutputKey, out txOutput), txOutput);
                 });
 
             blockSpentTxes = new DeferredDictionary<int, BlockSpentTxes>(
@@ -77,33 +86,67 @@ namespace BitSharp.Core.Builders
                     workItem.Consume(
                         (operation, unspentTxHash, unspentTx) =>
                         {
-                            switch (operation)
-                            {
-                                case WorkQueueOperation.Nothing:
-                                    break;
+                            lock (parentCursor)
+                                switch (operation)
+                                {
+                                    case WorkQueueOperation.Nothing:
+                                        break;
 
-                                case WorkQueueOperation.Add:
-                                    if (!parentCursor.TryAddUnspentTx(unspentTx))
+                                    case WorkQueueOperation.Add:
+                                        if (!parentCursor.TryAddUnspentTx(unspentTx))
+                                            throw new InvalidOperationException();
+                                        break;
+
+                                    case WorkQueueOperation.Update:
+                                        if (!parentCursor.TryUpdateUnspentTx(unspentTx))
+                                            throw new InvalidOperationException();
+                                        break;
+
+                                    case WorkQueueOperation.Remove:
+                                        if (!parentCursor.TryRemoveUnspentTx(unspentTxHash))
+                                            throw new InvalidOperationException();
+                                        break;
+
+                                    default:
                                         throw new InvalidOperationException();
-                                    break;
-
-                                case WorkQueueOperation.Update:
-                                    if (!parentCursor.TryUpdateUnspentTx(unspentTx))
-                                        throw new InvalidOperationException();
-                                    break;
-
-                                case WorkQueueOperation.Remove:
-                                    if (!parentCursor.TryRemoveUnspentTx(unspentTxHash))
-                                        throw new InvalidOperationException();
-                                    break;
-
-                                default:
-                                    throw new InvalidOperationException();
-                            }
+                                }
                         });
                 });
 
             unspentTxes.WorkQueue.LinkTo(utxoApplier, new DataflowLinkOptions { PropagateCompletion = true });
+
+            utxoApplier2 = new ActionBlock<WorkQueueDictionary<TxOutputKey, TxOutput>.WorkItem>(
+                workItem =>
+                {
+                    workItem.Consume(
+                        (operation, txOutputKey, txOutput) =>
+                        {
+                            lock (parentCursor)
+                                switch (operation)
+                                {
+                                    case WorkQueueOperation.Nothing:
+                                        break;
+
+                                    case WorkQueueOperation.Add:
+                                        if (!parentCursor.TryAddUnspentTxOutput(txOutputKey, txOutput))
+                                            throw new InvalidOperationException();
+                                        break;
+
+                                    case WorkQueueOperation.Update:
+                                        throw new InvalidOperationException();
+
+                                    case WorkQueueOperation.Remove:
+                                        if (!parentCursor.TryRemoveUnspentTxOutput(txOutputKey))
+                                            throw new InvalidOperationException();
+                                        break;
+
+                                    default:
+                                        throw new InvalidOperationException();
+                                }
+                        });
+                });
+
+            unspentTxOutputs.WorkQueue.LinkTo(utxoApplier2, new DataflowLinkOptions { PropagateCompletion = true });
         }
 
         public void Dispose()
@@ -121,6 +164,11 @@ namespace BitSharp.Core.Builders
                 ((IDataflowBlock)utxoApplier).Fault(ex);
                 try { utxoApplier.Completion.Wait(); }
                 catch (Exception) { }
+
+                ((IDataflowBlock)unspentTxOutputs.WorkQueue).Fault(ex);
+                ((IDataflowBlock)utxoApplier2).Fault(ex);
+                try { utxoApplier2.Completion.Wait(); }
+                catch (Exception) { }
             }
         }
 
@@ -128,7 +176,9 @@ namespace BitSharp.Core.Builders
             new IDataflowBlock[]
             {
                 unspentTxes.WorkQueue,
+                unspentTxOutputs.WorkQueue,
                 utxoApplier,
+                utxoApplier2,
             };
 
         public int CursorCount => chainState.CursorCount;
@@ -168,6 +218,11 @@ namespace BitSharp.Core.Builders
                 ((IDataflowBlock)unspentTxes.WorkQueue).Fault(ex);
                 ((IDataflowBlock)utxoApplier).Fault(ex);
                 try { utxoApplier.Completion.Wait(); }
+                catch (Exception) { }
+
+                ((IDataflowBlock)unspentTxOutputs.WorkQueue).Fault(ex);
+                ((IDataflowBlock)utxoApplier2).Fault(ex);
+                try { utxoApplier2.Completion.Wait(); }
                 catch (Exception) { }
 
                 parentHandle.Dispose();
@@ -368,6 +423,36 @@ namespace BitSharp.Core.Builders
             throw new NotSupportedException();
         }
 
+        public bool ContainsUnspentTxOutput(TxOutputKey txOutputKey)
+        {
+            CheckTransaction();
+            return unspentTxOutputs.ContainsKey(txOutputKey);
+        }
+
+        public bool TryGetUnspentTxOutput(TxOutputKey txOutputKey, out TxOutput txOutput)
+        {
+            CheckTransaction();
+            return unspentTxOutputs.TryGetValue(txOutputKey, out txOutput);
+        }
+
+        public bool TryAddUnspentTxOutput(TxOutputKey txOutputKey, TxOutput txOutput)
+        {
+            CheckWriteTransaction();
+            return unspentTxOutputs.TryAdd(txOutputKey, txOutput);
+        }
+
+        public bool TryRemoveUnspentTxOutput(TxOutputKey txOutputKey)
+        {
+            CheckWriteTransaction();
+            return unspentTxOutputs.TryRemove(txOutputKey);
+        }
+
+        public void RemoveUnspentTxOutput(TxOutputKey txOutputKey)
+        {
+            CheckWriteTransaction();
+            unspentTxOutputs.TryRemove(txOutputKey);
+        }
+
         public bool ContainsBlockSpentTxes(int blockIndex)
         {
             CheckTransaction();
@@ -431,6 +516,11 @@ namespace BitSharp.Core.Builders
             unspentTxes.WarmupValue(txHash);
         }
 
+        public void WarmUnspentTxOutput(TxOutputKey txOutputKey)
+        {
+            unspentTxOutputs.WarmupValue(txOutputKey);
+        }
+
         // TODO - the way this operates is specific to the block validation pipeline, this should be more apparent
         public async Task ApplyChangesAsync()
         {
@@ -439,7 +529,9 @@ namespace BitSharp.Core.Builders
                 throw new InvalidOperationException();
 
             unspentTxes.WorkQueue.Complete();
+            unspentTxOutputs.WorkQueue.Complete();
             await utxoApplier.Completion;
+            await utxoApplier2.Completion;
 
             parentCursor.ChainTip = chainTip;
             parentCursor.UnspentOutputCount = unspentOutputCount;
@@ -494,36 +586,6 @@ namespace BitSharp.Core.Builders
         {
             if (!inTransaction || readOnly)
                 throw new InvalidOperationException();
-        }
-
-        public void WarmUnspentTxOutput(TxOutputKey txOutputKey)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool ContainsUnspentTxOutput(TxOutputKey txOutputKey)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool TryGetUnspentTxOutput(TxOutputKey txOutputKey, out TxOutput txOutput)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool TryAddUnspentTxOutput(TxOutputKey txOutputKey, TxOutput txOutput)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool TryRemoveUnspentTxOutput(TxOutputKey txOutputKey)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void RemoveUnspentTxOutput(TxOutputKey txOutputKey)
-        {
-            throw new NotImplementedException();
         }
     }
 }

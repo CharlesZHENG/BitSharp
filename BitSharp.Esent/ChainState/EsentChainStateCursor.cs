@@ -57,6 +57,9 @@ namespace BitSharp.Esent
         public readonly JET_COLUMNID txVersionColumnId;
         public readonly JET_COLUMNID isCoinbaseColumnId;
         public readonly JET_COLUMNID outputStatesColumnId;
+
+        public readonly JET_TABLEID unspentTxOutputTableId;
+        public readonly JET_COLUMNID txOutputKeyColumnId;
         public readonly JET_COLUMNID txOutputBytesColumnId;
 
         public readonly JET_TABLEID spentTxTableId;
@@ -99,6 +102,8 @@ namespace BitSharp.Esent
                     out this.txVersionColumnId,
                     out this.isCoinbaseColumnId,
                     out this.outputStatesColumnId,
+                out this.unspentTxOutputTableId,
+                    out this.txOutputKeyColumnId,
                     out this.txOutputBytesColumnId,
                 out spentTxTableId,
                     out spentSpentBlockIndexColumnId,
@@ -506,6 +511,92 @@ namespace BitSharp.Esent
             }
         }
 
+        public bool ContainsUnspentTxOutput(TxOutputKey txOutputKey)
+        {
+            CheckTransaction();
+
+            using (SetSessionContext())
+            {
+                Api.JetSetCurrentIndex(this.jetSession, this.unspentTxOutputTableId, "IX_TxOutputKey");
+                Api.MakeKey(this.jetSession, this.unspentTxOutputTableId, DbEncoder.EncodeTxOutputKey(txOutputKey), MakeKeyGrbit.NewKey);
+                return Api.TrySeek(this.jetSession, this.unspentTxOutputTableId, SeekGrbit.SeekEQ);
+            }
+        }
+
+        public bool TryGetUnspentTxOutput(TxOutputKey txOutputKey, out TxOutput txOutput)
+        {
+            CheckTransaction();
+
+            using (SetSessionContext())
+            {
+                Api.JetSetCurrentIndex(this.jetSession, this.unspentTxOutputTableId, "IX_TxOutputKey");
+                Api.MakeKey(this.jetSession, this.unspentTxOutputTableId, DbEncoder.EncodeTxOutputKey(txOutputKey), MakeKeyGrbit.NewKey);
+                if (Api.TrySeek(this.jetSession, this.unspentTxOutputTableId, SeekGrbit.SeekEQ))
+                {
+                    var txOutputBytesColumn = new BytesColumnValue { Columnid = this.txOutputBytesColumnId };
+                    Api.RetrieveColumns(this.jetSession, this.unspentTxOutputTableId, txOutputBytesColumn);
+
+                    txOutput = DataDecoder.DecodeTxOutput(txOutputBytesColumn.Value);
+                    return true;
+                }
+
+                txOutput = default(TxOutput);
+                return false;
+            }
+        }
+
+        public bool TryAddUnspentTxOutput(TxOutputKey txOutputKey, TxOutput txOutput)
+        {
+            CheckWriteTransaction();
+
+            using (SetSessionContext())
+            {
+                try
+                {
+                    using (var jetUpdate = this.jetSession.BeginUpdate(this.unspentTxOutputTableId, JET_prep.Insert))
+                    {
+                        Api.SetColumns(this.jetSession, this.unspentTxOutputTableId,
+                            new BytesColumnValue { Columnid = this.txOutputKeyColumnId, Value = DbEncoder.EncodeTxOutputKey(txOutputKey) },
+                            new BytesColumnValue { Columnid = this.txOutputBytesColumnId, Value = DataEncoder.EncodeTxOutput(txOutput) });
+
+                        jetUpdate.Save();
+                    }
+
+                    return true;
+                }
+                catch (EsentKeyDuplicateException)
+                {
+                    return false;
+                }
+            }
+        }
+
+        public bool TryRemoveUnspentTxOutput(TxOutputKey txOutputKey)
+        {
+            CheckWriteTransaction();
+
+            using (SetSessionContext())
+            {
+                Api.JetSetCurrentIndex(this.jetSession, this.unspentTxOutputTableId, "IX_TxOutputKey");
+                Api.MakeKey(this.jetSession, this.unspentTxOutputTableId, DbEncoder.EncodeTxOutputKey(txOutputKey), MakeKeyGrbit.NewKey);
+                if (Api.TrySeek(this.jetSession, this.unspentTxOutputTableId, SeekGrbit.SeekEQ))
+                {
+                    Api.JetDelete(this.jetSession, this.unspentTxOutputTableId);
+
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
+        }
+
+        public void RemoveUnspentTxOutput(TxOutputKey txOutputKey)
+        {
+            TryRemoveUnspentTxOutput(txOutputKey);
+        }
+
         public bool ContainsBlockSpentTxes(int blockIndex)
         {
             CheckTransaction();
@@ -773,31 +864,33 @@ namespace BitSharp.Esent
             out Session jetSession,
             out JET_DBID chainStateDbId,
             out JET_TABLEID globalsTableId,
-            out JET_COLUMNID chainTipColumnId,
-            out JET_COLUMNID unspentTxCountColumnId,
-            out JET_COLUMNID unspentOutputCountColumnId,
-            out JET_COLUMNID totalTxCountColumnId,
-            out JET_COLUMNID totalInputCountColumnId,
-            out JET_COLUMNID totalOutputCountColumnId,
+                out JET_COLUMNID chainTipColumnId,
+                out JET_COLUMNID unspentTxCountColumnId,
+                out JET_COLUMNID unspentOutputCountColumnId,
+                out JET_COLUMNID totalTxCountColumnId,
+                out JET_COLUMNID totalInputCountColumnId,
+                out JET_COLUMNID totalOutputCountColumnId,
             out JET_TABLEID flushTableId,
-            out JET_COLUMNID flushColumnId,
+                out JET_COLUMNID flushColumnId,
             out JET_TABLEID headersTableId,
-            out JET_COLUMNID headerBlockHashColumnId,
-            out JET_COLUMNID headerBytesColumnId,
+                out JET_COLUMNID headerBlockHashColumnId,
+                out JET_COLUMNID headerBytesColumnId,
             out JET_TABLEID unspentTxTableId,
-            out JET_COLUMNID txHashColumnId,
-            out JET_COLUMNID blockIndexColumnId,
-            out JET_COLUMNID txIndexColumnId,
-            out JET_COLUMNID txVersionColumnId,
-            out JET_COLUMNID isCoinbaseColumnId,
-            out JET_COLUMNID outputStatesColumnId,
-            out JET_COLUMNID txOutputBytesColumnId,
+                out JET_COLUMNID txHashColumnId,
+                out JET_COLUMNID blockIndexColumnId,
+                out JET_COLUMNID txIndexColumnId,
+                out JET_COLUMNID txVersionColumnId,
+                out JET_COLUMNID isCoinbaseColumnId,
+                out JET_COLUMNID outputStatesColumnId,
+            out JET_TABLEID unspentTxOutputTableId,
+                out JET_COLUMNID txOutputKeyColumnId,
+                out JET_COLUMNID txOutputBytesColumnId,
             out JET_TABLEID spentTxTableId,
-            out JET_COLUMNID spentSpentBlockIndexColumnId,
-            out JET_COLUMNID spentDataColumnId,
+                out JET_COLUMNID spentSpentBlockIndexColumnId,
+                out JET_COLUMNID spentDataColumnId,
             out JET_TABLEID unmintedTxTableId,
-            out JET_COLUMNID unmintedBlockHashColumnId,
-            out JET_COLUMNID unmintedDataColumnId)
+                out JET_COLUMNID unmintedBlockHashColumnId,
+                out JET_COLUMNID unmintedDataColumnId)
         {
             var success = false;
             jetSession = new Session(jetInstance);
@@ -833,7 +926,10 @@ namespace BitSharp.Esent
                 txVersionColumnId = Api.GetTableColumnid(jetSession, unspentTxTableId, "TxVersion");
                 isCoinbaseColumnId = Api.GetTableColumnid(jetSession, unspentTxTableId, "IsCoinbase");
                 outputStatesColumnId = Api.GetTableColumnid(jetSession, unspentTxTableId, "OutputStates");
-                txOutputBytesColumnId = Api.GetTableColumnid(jetSession, unspentTxTableId, "TxOutputBytes");
+
+                Api.JetOpenTable(jetSession, chainStateDbId, "UnspentTxOutput", null, 0, OpenTableGrbit.None, out unspentTxOutputTableId);
+                txOutputKeyColumnId = Api.GetTableColumnid(jetSession, unspentTxOutputTableId, "TxOutputKey");
+                txOutputBytesColumnId = Api.GetTableColumnid(jetSession, unspentTxOutputTableId, "TxOutputBytes");
 
                 Api.JetOpenTable(jetSession, chainStateDbId, "SpentTx", null, 0, OpenTableGrbit.None, out spentTxTableId);
                 spentSpentBlockIndexColumnId = Api.GetTableColumnid(jetSession, spentTxTableId, "SpentBlockIndex");
@@ -869,31 +965,6 @@ namespace BitSharp.Esent
             Api.JetSetSessionContext(this.jetSession, cursorContext);
             return Disposable.Create(() =>
                 Api.JetResetSessionContext(this.jetSession));
-        }
-
-        public bool ContainsUnspentTxOutput(TxOutputKey txOutputKey)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool TryGetUnspentTxOutput(TxOutputKey txOutputKey, out TxOutput txOutput)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool TryAddUnspentTxOutput(TxOutputKey txOutputKey, TxOutput txOutput)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool TryRemoveUnspentTxOutput(TxOutputKey txOutputKey)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void RemoveUnspentTxOutput(TxOutputKey txOutputKey)
-        {
-            throw new NotImplementedException();
         }
     }
 }

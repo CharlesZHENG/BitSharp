@@ -19,6 +19,7 @@ namespace BitSharp.Core.Storage.Memory
         private CommittedRecord<int> totalOutputCount;
         private CommittedRecord<ImmutableSortedDictionary<UInt256, ChainedHeader>.Builder> headers;
         private CommittedRecord<ImmutableSortedDictionary<UInt256, UnspentTx>.Builder> unspentTransactions;
+        private CommittedRecord<ImmutableSortedDictionary<TxOutputKey, TxOutput>.Builder> unspentTxOutputs;
         private CommittedRecord<ImmutableDictionary<int, BlockSpentTxes>.Builder> blockSpentTxes;
         private CommittedRecord<ImmutableDictionary<UInt256, IImmutableList<UnmintedTx>>.Builder> blockUnmintedTxes;
 
@@ -34,6 +35,8 @@ namespace BitSharp.Core.Storage.Memory
                 headers?.ToBuilder() ?? ImmutableSortedDictionary.CreateBuilder<UInt256, ChainedHeader>());
             this.unspentTransactions = CommittedRecord<ImmutableSortedDictionary<UInt256, UnspentTx>.Builder>.Initial(
                 unspentTransactions?.ToBuilder() ?? ImmutableSortedDictionary.CreateBuilder<UInt256, UnspentTx>());
+            this.unspentTxOutputs = CommittedRecord<ImmutableSortedDictionary<TxOutputKey, TxOutput>.Builder>.Initial(
+                ImmutableSortedDictionary.CreateBuilder<TxOutputKey, TxOutput>());
             this.blockSpentTxes = CommittedRecord<ImmutableDictionary<int, BlockSpentTxes>.Builder>.Initial(
                 blockSpentTxes?.ToBuilder() ?? ImmutableDictionary.CreateBuilder<int, BlockSpentTxes>());
             this.blockUnmintedTxes = CommittedRecord<ImmutableDictionary<UInt256, IImmutableList<UnmintedTx>>.Builder>.Initial(
@@ -56,6 +59,7 @@ namespace BitSharp.Core.Storage.Memory
             out UncommittedRecord<int> totalOutputCount,
             out UncommittedRecord<ImmutableSortedDictionary<UInt256, ChainedHeader>.Builder> headers,
             out UncommittedRecord<ImmutableSortedDictionary<UInt256, UnspentTx>.Builder> unspentTransactions,
+            out UncommittedRecord<ImmutableSortedDictionary<TxOutputKey, TxOutput>.Builder> unspentTxOutputs,
             out UncommittedRecord<ImmutableDictionary<int, BlockSpentTxes>.Builder> blockSpentTxes,
             out UncommittedRecord<ImmutableDictionary<UInt256, IImmutableList<UnmintedTx>>.Builder> blockUnmintedTxes)
         {
@@ -69,6 +73,7 @@ namespace BitSharp.Core.Storage.Memory
                 totalOutputCount = this.totalOutputCount.AsUncommitted();
                 headers = this.headers.AsUncommitted(x => x.ToImmutable().ToBuilder());
                 unspentTransactions = this.unspentTransactions.AsUncommitted(x => x.ToImmutable().ToBuilder());
+                unspentTxOutputs = this.unspentTxOutputs.AsUncommitted(x => x.ToImmutable().ToBuilder());
                 blockSpentTxes = this.blockSpentTxes.AsUncommitted(x => x.ToImmutable().ToBuilder());
                 blockUnmintedTxes = this.blockUnmintedTxes.AsUncommitted(x => x.ToImmutable().ToBuilder());
             }
@@ -83,6 +88,7 @@ namespace BitSharp.Core.Storage.Memory
             UncommittedRecord<int> totalOutputCount,
             UncommittedRecord<ImmutableSortedDictionary<UInt256, ChainedHeader>.Builder> headers,
             UncommittedRecord<ImmutableSortedDictionary<UInt256, UnspentTx>.Builder> unspentTransactions,
+            UncommittedRecord<ImmutableSortedDictionary<TxOutputKey, TxOutput>.Builder> unspentTxOutputs,
             UncommittedRecord<ImmutableDictionary<int, BlockSpentTxes>.Builder> blockSpentTxes,
             UncommittedRecord<ImmutableDictionary<UInt256, IImmutableList<UnmintedTx>>.Builder> blockUnmintedTxes)
         {
@@ -96,6 +102,7 @@ namespace BitSharp.Core.Storage.Memory
                     || this.totalOutputCount.ConflictsWith(totalOutputCount)
                     || this.headers.ConflictsWith(headers)
                     || this.unspentTransactions.ConflictsWith(unspentTransactions)
+                    || this.unspentTxOutputs.ConflictsWith(unspentTxOutputs)
                     || this.blockSpentTxes.ConflictsWith(blockSpentTxes)
                     || this.blockUnmintedTxes.ConflictsWith(blockUnmintedTxes))
                     throw new InvalidOperationException();
@@ -108,6 +115,7 @@ namespace BitSharp.Core.Storage.Memory
                 this.totalOutputCount.Committ(totalOutputCount);
                 this.headers.Committ(headers, x => x.ToImmutable().ToBuilder());
                 this.unspentTransactions.Committ(unspentTransactions, x => x.ToImmutable().ToBuilder());
+                this.unspentTxOutputs.Committ(unspentTxOutputs, x => x.ToImmutable().ToBuilder());
                 this.blockSpentTxes.Committ(blockSpentTxes, x => x.ToImmutable().ToBuilder());
                 this.blockUnmintedTxes.Committ(blockUnmintedTxes, x => x.ToImmutable().ToBuilder());
             }

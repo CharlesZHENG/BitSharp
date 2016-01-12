@@ -22,6 +22,7 @@ namespace BitSharp.Core.Storage.Memory
         private UncommittedRecord<int> totalOutputCount;
         private UncommittedRecord<ImmutableSortedDictionary<UInt256, ChainedHeader>.Builder> headers;
         private UncommittedRecord<ImmutableSortedDictionary<UInt256, UnspentTx>.Builder> unspentTransactions;
+        private UncommittedRecord<ImmutableSortedDictionary<TxOutputKey, TxOutput>.Builder> unspentTxOutputs;
         private UncommittedRecord<ImmutableDictionary<int, BlockSpentTxes>.Builder> blockSpentTxes;
         private UncommittedRecord<ImmutableDictionary<UInt256, IImmutableList<UnmintedTx>>.Builder> blockUnmintedTxes;
 
@@ -42,69 +43,72 @@ namespace BitSharp.Core.Storage.Memory
         {
             if (!isDisposed && disposing)
             {
-                if (this.inTransaction)
-                    this.RollbackTransaction();
+                if (inTransaction)
+                    RollbackTransaction();
 
                 isDisposed = true;
             }
         }
 
-        public bool InTransaction => this.inTransaction;
+        public bool InTransaction => inTransaction;
 
         public void BeginTransaction(bool readOnly, bool pruneOnly)
         {
-            if (this.inTransaction)
+            if (inTransaction)
                 throw new InvalidOperationException();
 
             this.readOnly = readOnly;
             if (!readOnly)
                 chainStateStorage.WriteTxLock.Wait();
 
-            this.chainStateStorage.BeginTransaction(
-                out this.chainTip,
-                out this.unspentTxCount,
-                out this.unspentOutputCount,
-                out this.totalTxCount,
-                out this.totalInputCount,
-                out this.totalOutputCount,
-                out this.headers,
-                out this.unspentTransactions,
-                out this.blockSpentTxes,
-                out this.blockUnmintedTxes);
+            chainStateStorage.BeginTransaction(
+                out chainTip,
+                out unspentTxCount,
+                out unspentOutputCount,
+                out totalTxCount,
+                out totalInputCount,
+                out totalOutputCount,
+                out headers,
+                out unspentTransactions,
+                out unspentTxOutputs,
+                out blockSpentTxes,
+                out blockUnmintedTxes);
 
-            this.inTransaction = true;
+            inTransaction = true;
         }
 
         public void CommitTransaction()
         {
-            if (!this.inTransaction)
+            if (!inTransaction)
                 throw new InvalidOperationException();
 
-            this.chainStateStorage.CommitTransaction(
-                this.chainTip,
-                this.unspentTxCount,
-                this.unspentOutputCount,
-                this.totalTxCount,
-                this.totalInputCount,
-                this.totalOutputCount,
-                this.headers,
-                this.unspentTransactions,
-                this.blockSpentTxes,
-                this.blockUnmintedTxes);
+            chainStateStorage.CommitTransaction(
+                chainTip,
+                unspentTxCount,
+                unspentOutputCount,
+                totalTxCount,
+                totalInputCount,
+                totalOutputCount,
+                headers,
+                unspentTransactions,
+                unspentTxOutputs,
+                blockSpentTxes,
+                blockUnmintedTxes);
 
-            this.chainTip = null;
+            chainTip = null;
 
-            this.unspentTxCount = null;
-            this.unspentOutputCount = null;
-            this.totalTxCount = null;
-            this.totalInputCount = null;
-            this.totalOutputCount = null;
-            this.headers = null;
-            this.unspentTransactions = null;
-            this.blockSpentTxes = null;
-            this.blockUnmintedTxes = null;
+            unspentTxCount = null;
+            unspentOutputCount = null;
+            totalTxCount = null;
+            totalInputCount = null;
+            totalOutputCount = null;
+            headers = null;
+            unspentTransactions = null;
+            unspentTxOutputs = null;
+            blockSpentTxes = null;
+            blockUnmintedTxes = null;
 
-            this.inTransaction = false;
+            inTransaction = false;
 
             if (!readOnly)
                 chainStateStorage.WriteTxLock.Release();
@@ -118,21 +122,22 @@ namespace BitSharp.Core.Storage.Memory
 
         public void RollbackTransaction()
         {
-            if (!this.inTransaction)
+            if (!inTransaction)
                 throw new InvalidOperationException();
 
-            this.chainTip = null;
-            this.unspentTxCount = null;
-            this.unspentOutputCount = null;
-            this.totalTxCount = null;
-            this.totalInputCount = null;
-            this.totalOutputCount = null;
-            this.headers = null;
-            this.unspentTransactions = null;
-            this.blockSpentTxes = null;
-            this.blockUnmintedTxes = null;
+            chainTip = null;
+            unspentTxCount = null;
+            unspentOutputCount = null;
+            totalTxCount = null;
+            totalInputCount = null;
+            totalOutputCount = null;
+            headers = null;
+            unspentTransactions = null;
+            unspentTxOutputs = null;
+            blockSpentTxes = null;
+            blockUnmintedTxes = null;
 
-            this.inTransaction = false;
+            inTransaction = false;
 
             if (!readOnly)
                 chainStateStorage.WriteTxLock.Release();
@@ -143,12 +148,12 @@ namespace BitSharp.Core.Storage.Memory
             get
             {
                 CheckTransaction();
-                return this.chainTip.Value;
+                return chainTip.Value;
             }
             set
             {
                 CheckWriteTransaction();
-                this.chainTip.Value = value;
+                chainTip.Value = value;
             }
         }
 
@@ -157,12 +162,12 @@ namespace BitSharp.Core.Storage.Memory
             get
             {
                 CheckTransaction();
-                return this.unspentTxCount.Value;
+                return unspentTxCount.Value;
             }
             set
             {
                 CheckWriteTransaction();
-                this.unspentTxCount.Value = value;
+                unspentTxCount.Value = value;
             }
         }
 
@@ -171,12 +176,12 @@ namespace BitSharp.Core.Storage.Memory
             get
             {
                 CheckTransaction();
-                return this.unspentOutputCount.Value;
+                return unspentOutputCount.Value;
             }
             set
             {
                 CheckWriteTransaction();
-                this.unspentOutputCount.Value = value;
+                unspentOutputCount.Value = value;
             }
         }
 
@@ -185,12 +190,12 @@ namespace BitSharp.Core.Storage.Memory
             get
             {
                 CheckTransaction();
-                return this.totalTxCount.Value;
+                return totalTxCount.Value;
             }
             set
             {
                 CheckWriteTransaction();
-                this.totalTxCount.Value = value;
+                totalTxCount.Value = value;
             }
         }
 
@@ -199,12 +204,12 @@ namespace BitSharp.Core.Storage.Memory
             get
             {
                 CheckTransaction();
-                return this.totalInputCount.Value;
+                return totalInputCount.Value;
             }
             set
             {
                 CheckWriteTransaction();
-                this.totalInputCount.Value = value;
+                totalInputCount.Value = value;
             }
         }
 
@@ -213,25 +218,25 @@ namespace BitSharp.Core.Storage.Memory
             get
             {
                 CheckTransaction();
-                return this.totalOutputCount.Value;
+                return totalOutputCount.Value;
             }
             set
             {
                 CheckWriteTransaction();
-                this.totalOutputCount.Value = value;
+                totalOutputCount.Value = value;
             }
         }
 
         public bool ContainsHeader(UInt256 blockHash)
         {
             CheckTransaction();
-            return this.headers.Value.ContainsKey(blockHash);
+            return headers.Value.ContainsKey(blockHash);
         }
 
         public bool TryGetHeader(UInt256 blockHash, out ChainedHeader header)
         {
             CheckTransaction();
-            return this.headers.Value.TryGetValue(blockHash, out header);
+            return headers.Value.TryGetValue(blockHash, out header);
         }
 
         public bool TryAddHeader(ChainedHeader header)
@@ -240,7 +245,7 @@ namespace BitSharp.Core.Storage.Memory
 
             try
             {
-                this.headers.Modify(x => x.Add(header.Hash, header));
+                headers.Modify(x => x.Add(header.Hash, header));
                 return true;
             }
             catch (ArgumentException)
@@ -252,19 +257,19 @@ namespace BitSharp.Core.Storage.Memory
         public bool TryRemoveHeader(UInt256 blockHash)
         {
             CheckWriteTransaction();
-            return this.headers.TryModify(x => x.Remove(blockHash));
+            return headers.TryModify(x => x.Remove(blockHash));
         }
 
         public bool ContainsUnspentTx(UInt256 txHash)
         {
             CheckTransaction();
-            return this.unspentTransactions.Value.ContainsKey(txHash);
+            return unspentTransactions.Value.ContainsKey(txHash);
         }
 
         public bool TryGetUnspentTx(UInt256 txHash, out UnspentTx unspentTx)
         {
             CheckTransaction();
-            return this.unspentTransactions.Value.TryGetValue(txHash, out unspentTx);
+            return unspentTransactions.Value.TryGetValue(txHash, out unspentTx);
         }
 
         public bool TryAddUnspentTx(UnspentTx unspentTx)
@@ -273,7 +278,7 @@ namespace BitSharp.Core.Storage.Memory
 
             try
             {
-                this.unspentTransactions.Modify(x => x.Add(unspentTx.TxHash, unspentTx));
+                unspentTransactions.Modify(x => x.Add(unspentTx.TxHash, unspentTx));
                 return true;
             }
             catch (ArgumentException)
@@ -285,7 +290,7 @@ namespace BitSharp.Core.Storage.Memory
         public bool TryRemoveUnspentTx(UInt256 txHash)
         {
             CheckWriteTransaction();
-            return this.unspentTransactions.TryModify(x => x.Remove(txHash));
+            return unspentTransactions.TryModify(x => x.Remove(txHash));
         }
 
         public void RemoveUnspentTx(UInt256 txHash)
@@ -297,9 +302,9 @@ namespace BitSharp.Core.Storage.Memory
         {
             CheckWriteTransaction();
 
-            if (this.unspentTransactions.Value.ContainsKey(unspentTx.TxHash))
+            if (unspentTransactions.Value.ContainsKey(unspentTx.TxHash))
             {
-                this.unspentTransactions.Modify(x => x[unspentTx.TxHash] = unspentTx);
+                unspentTransactions.Modify(x => x[unspentTx.TxHash] = unspentTx);
                 return true;
             }
             else
@@ -311,19 +316,57 @@ namespace BitSharp.Core.Storage.Memory
         public IEnumerable<UnspentTx> ReadUnspentTransactions()
         {
             CheckTransaction();
-            return this.unspentTransactions.Value.Values;
+            return unspentTransactions.Value.Values;
+        }
+
+        public bool ContainsUnspentTxOutput(TxOutputKey txOutputKey)
+        {
+            CheckTransaction();
+            return unspentTxOutputs.Value.ContainsKey(txOutputKey);
+        }
+
+        public bool TryGetUnspentTxOutput(TxOutputKey txOutputKey, out TxOutput txOutput)
+        {
+            CheckTransaction();
+            return unspentTxOutputs.Value.TryGetValue(txOutputKey, out txOutput);
+        }
+
+        public bool TryAddUnspentTxOutput(TxOutputKey txOutputKey, TxOutput txOutput)
+        {
+            CheckWriteTransaction();
+
+            try
+            {
+                unspentTxOutputs.Modify(x => x.Add(txOutputKey, txOutput));
+                return true;
+            }
+            catch (ArgumentException)
+            {
+                return false;
+            }
+        }
+
+        public bool TryRemoveUnspentTxOutput(TxOutputKey txOutputKey)
+        {
+            CheckWriteTransaction();
+            return unspentTxOutputs.TryModify(x => x.Remove(txOutputKey));
+        }
+
+        public void RemoveUnspentTxOutput(TxOutputKey txOutputKey)
+        {
+            TryRemoveUnspentTxOutput(txOutputKey);
         }
 
         public bool ContainsBlockSpentTxes(int blockIndex)
         {
             CheckTransaction();
-            return this.blockSpentTxes.Value.ContainsKey(blockIndex);
+            return blockSpentTxes.Value.ContainsKey(blockIndex);
         }
 
         public bool TryGetBlockSpentTxes(int blockIndex, out BlockSpentTxes spentTxes)
         {
             CheckTransaction();
-            return this.blockSpentTxes.Value.TryGetValue(blockIndex, out spentTxes);
+            return blockSpentTxes.Value.TryGetValue(blockIndex, out spentTxes);
         }
 
         public bool TryAddBlockSpentTxes(int blockIndex, BlockSpentTxes spentTxes)
@@ -332,7 +375,7 @@ namespace BitSharp.Core.Storage.Memory
 
             try
             {
-                this.blockSpentTxes.Modify(x => x.Add(blockIndex, spentTxes));
+                blockSpentTxes.Modify(x => x.Add(blockIndex, spentTxes));
                 return true;
             }
             catch (ArgumentException)
@@ -344,19 +387,19 @@ namespace BitSharp.Core.Storage.Memory
         public bool TryRemoveBlockSpentTxes(int blockIndex)
         {
             CheckWriteTransaction();
-            return this.blockSpentTxes.TryModify(x => x.Remove(blockIndex));
+            return blockSpentTxes.TryModify(x => x.Remove(blockIndex));
         }
 
         public bool ContainsBlockUnmintedTxes(UInt256 blockHash)
         {
             CheckTransaction();
-            return this.blockUnmintedTxes.Value.ContainsKey(blockHash);
+            return blockUnmintedTxes.Value.ContainsKey(blockHash);
         }
 
         public bool TryGetBlockUnmintedTxes(UInt256 blockHash, out IImmutableList<UnmintedTx> unmintedTxes)
         {
             CheckTransaction();
-            return this.blockUnmintedTxes.Value.TryGetValue(blockHash, out unmintedTxes);
+            return blockUnmintedTxes.Value.TryGetValue(blockHash, out unmintedTxes);
         }
 
         public bool TryAddBlockUnmintedTxes(UInt256 blockHash, IImmutableList<UnmintedTx> unmintedTxes)
@@ -365,7 +408,7 @@ namespace BitSharp.Core.Storage.Memory
 
             try
             {
-                this.blockUnmintedTxes.Modify(x => x.Add(blockHash, unmintedTxes));
+                blockUnmintedTxes.Modify(x => x.Add(blockHash, unmintedTxes));
                 return true;
             }
             catch (ArgumentException)
@@ -377,7 +420,7 @@ namespace BitSharp.Core.Storage.Memory
         public bool TryRemoveBlockUnmintedTxes(UInt256 blockHash)
         {
             CheckWriteTransaction();
-            return this.blockUnmintedTxes.TryModify(x => x.Remove(blockHash));
+            return blockUnmintedTxes.TryModify(x => x.Remove(blockHash));
         }
 
         public void Flush()
@@ -390,39 +433,14 @@ namespace BitSharp.Core.Storage.Memory
 
         private void CheckTransaction()
         {
-            if (!this.inTransaction)
+            if (!inTransaction)
                 throw new InvalidOperationException();
         }
 
         private void CheckWriteTransaction()
         {
-            if (!this.inTransaction || this.readOnly)
+            if (!inTransaction || readOnly)
                 throw new InvalidOperationException();
-        }
-
-        public bool ContainsUnspentTxOutput(TxOutputKey txOutputKey)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool TryGetUnspentTxOutput(TxOutputKey txOutputKey, out TxOutput txOutput)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool TryAddUnspentTxOutput(TxOutputKey txOutputKey, TxOutput txOutput)
-        {
-            throw new NotImplementedException();
-        }
-
-        public bool TryRemoveUnspentTxOutput(TxOutputKey txOutputKey)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void RemoveUnspentTxOutput(TxOutputKey txOutputKey)
-        {
-            throw new NotImplementedException();
         }
     }
 }

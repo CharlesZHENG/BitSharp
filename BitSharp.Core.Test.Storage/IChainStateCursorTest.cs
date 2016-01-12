@@ -1,4 +1,5 @@
 ﻿using BitSharp.Common;
+using BitSharp.Common.ExtensionMethods;
 using BitSharp.Common.Test;
 using BitSharp.Core.Domain;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -89,6 +90,18 @@ namespace BitSharp.Core.Test.Storage
         public void TestReadUnspentTransactions()
         {
             RunTest(TestReadUnspentTransactions);
+        }
+
+        [TestMethod]
+        public void TestContainsUnspentTxOutput()
+        {
+            RunTest(TestContainsUnspentTxOutput);
+        }
+
+        [TestMethod]
+        public void TestTryAddGetRemoveUnspentTxOutput()
+        {
+            RunTest(TestTryAddGetRemoveUnspentTxOutput);
         }
 
         [TestMethod]
@@ -720,6 +733,113 @@ namespace BitSharp.Core.Test.Storage
 
                 // verify unspent txes
                 Assert.AreEqual(0, chainStateCursor.ReadUnspentTransactions().Count());
+            }
+        }
+
+        private void TestContainsUnspentTxOutput(ITestStorageProvider provider)
+        {
+            var random = new Random();
+
+            var txOutput0Key = new TxOutputKey(UInt256.Zero, 0);
+            var txOutput0 = new TxOutput(0, random.NextBytes(100).ToImmutableArray());
+            var txOutput1Key = new TxOutputKey(UInt256.One, 1);
+            var txOutput1 = new TxOutput(1, random.NextBytes(100).ToImmutableArray());
+
+            using (var storageManager = provider.OpenStorageManager())
+            using (var handle = storageManager.OpenChainStateCursor())
+            {
+                var chainStateCursor = handle.Item;
+
+                // begin transaction
+                chainStateCursor.BeginTransaction();
+
+                // verify presence
+                Assert.IsFalse(chainStateCursor.ContainsUnspentTxOutput(txOutput0Key));
+                Assert.IsFalse(chainStateCursor.ContainsUnspentTxOutput(txOutput1Key));
+
+                // add unspent tx 0
+                chainStateCursor.TryAddUnspentTxOutput(txOutput0Key, txOutput0);
+
+                // verify presence
+                Assert.IsTrue(chainStateCursor.ContainsUnspentTxOutput(txOutput0Key));
+                Assert.IsFalse(chainStateCursor.ContainsUnspentTxOutput(txOutput1Key));
+
+                // add unspent tx 1
+                chainStateCursor.TryAddUnspentTxOutput(txOutput1Key, txOutput1);
+
+                // verify presence
+                Assert.IsTrue(chainStateCursor.ContainsUnspentTxOutput(txOutput0Key));
+                Assert.IsTrue(chainStateCursor.ContainsUnspentTxOutput(txOutput1Key));
+
+                // remove unspent tx 1
+                chainStateCursor.TryRemoveUnspentTxOutput(txOutput1Key);
+
+                // verify presence
+                Assert.IsTrue(chainStateCursor.ContainsUnspentTxOutput(txOutput0Key));
+                Assert.IsFalse(chainStateCursor.ContainsUnspentTxOutput(txOutput1Key));
+
+                // remove unspent tx 0
+                chainStateCursor.TryRemoveUnspentTxOutput(txOutput0Key);
+
+                // verify presence
+                Assert.IsFalse(chainStateCursor.ContainsUnspentTxOutput(txOutput0Key));
+                Assert.IsFalse(chainStateCursor.ContainsUnspentTxOutput(txOutput1Key));
+            }
+        }
+
+        private void TestTryAddGetRemoveUnspentTxOutput(ITestStorageProvider provider)
+        {
+            var random = new Random();
+
+            var txOutput0Key = new TxOutputKey(UInt256.Zero, 0);
+            var txOutput0 = new TxOutput(0, random.NextBytes(100).ToImmutableArray());
+            var txOutput1Key = new TxOutputKey(UInt256.One, 1);
+            var txOutput1 = new TxOutput(1, random.NextBytes(100).ToImmutableArray());
+
+            using (var storageManager = provider.OpenStorageManager())
+            using (var handle = storageManager.OpenChainStateCursor())
+            {
+                var chainStateCursor = handle.Item;
+
+                // begin transaction
+                chainStateCursor.BeginTransaction();
+
+                // verify initial empty state
+                TxOutput actualTxOutput0, actualTxOutput1;
+                Assert.IsFalse(chainStateCursor.TryGetUnspentTxOutput(txOutput0Key, out actualTxOutput0));
+                Assert.IsFalse(chainStateCursor.TryGetUnspentTxOutput(txOutput1Key, out actualTxOutput1));
+
+                // add unspent tx 0
+                Assert.IsTrue(chainStateCursor.TryAddUnspentTxOutput(txOutput0Key, txOutput0));
+
+                // verify unspent txes
+                Assert.IsTrue(chainStateCursor.TryGetUnspentTxOutput(txOutput0Key, out actualTxOutput0));
+                Assert.AreEqual(txOutput0, actualTxOutput0);
+                Assert.IsFalse(chainStateCursor.TryGetUnspentTxOutput(txOutput1Key, out actualTxOutput1));
+
+                // add unspent tx 1
+                Assert.IsTrue(chainStateCursor.TryAddUnspentTxOutput(txOutput1Key, txOutput1));
+
+                // verify unspent txes
+                Assert.IsTrue(chainStateCursor.TryGetUnspentTxOutput(txOutput0Key, out actualTxOutput0));
+                Assert.AreEqual(txOutput0, actualTxOutput0);
+                Assert.IsTrue(chainStateCursor.TryGetUnspentTxOutput(txOutput1Key, out actualTxOutput1));
+                Assert.AreEqual(txOutput1, actualTxOutput1);
+
+                // remove unspent tx 1
+                Assert.IsTrue(chainStateCursor.TryRemoveUnspentTxOutput(txOutput1Key));
+
+                // verify unspent txes
+                Assert.IsTrue(chainStateCursor.TryGetUnspentTxOutput(txOutput0Key, out actualTxOutput0));
+                Assert.AreEqual(txOutput0, actualTxOutput0);
+                Assert.IsFalse(chainStateCursor.TryGetUnspentTxOutput(txOutput1Key, out actualTxOutput1));
+
+                // remove unspent tx 0
+                Assert.IsTrue(chainStateCursor.TryRemoveUnspentTxOutput(txOutput0Key));
+
+                // verify unspent txes
+                Assert.IsFalse(chainStateCursor.TryGetUnspentTxOutput(txOutput0Key, out actualTxOutput0));
+                Assert.IsFalse(chainStateCursor.TryGetUnspentTxOutput(txOutput1Key, out actualTxOutput1));
             }
         }
 

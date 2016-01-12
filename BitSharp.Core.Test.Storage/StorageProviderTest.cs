@@ -13,8 +13,8 @@ namespace BitSharp.Core.Test.Storage
         private readonly List<ITestStorageProvider> testStorageProviders =
             new List<ITestStorageProvider>
             {
-                //new MemoryTestStorageProvider(),
-                //new EsentTestStorageProvider(),
+                new EsentTestStorageProvider(),
+                new MemoryTestStorageProvider(),
                 //new LmdbTestStorageProvider(),
                 new LevelDbTestStorageProvider(),
             };
