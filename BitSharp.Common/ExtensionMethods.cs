@@ -73,17 +73,6 @@ namespace BitSharp.Common.ExtensionMethods
             return ToHexDataString(value.ToByteArray());
         }
 
-        private static readonly DateTime unixEpoch = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
-        public static UInt32 ToUnixTime(this DateTime value)
-        {
-            return (UInt32)((value - unixEpoch).TotalSeconds);
-        }
-
-        public static DateTime UnixTimeToDateTime(this UInt32 value)
-        {
-            return unixEpoch.AddSeconds(value);
-        }
-
         [DebuggerStepThrough]
         public static void Do(this SemaphoreSlim semaphore, Action action)
         {

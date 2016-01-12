@@ -10,7 +10,7 @@ namespace BitSharp.Core.Domain
 {
     public class UnconfirmedTx
     {
-        public UnconfirmedTx(ValidatableTx tx, DateTime dateSeen)
+        public UnconfirmedTx(ValidatableTx tx, DateTimeOffset dateSeen)
         {
             ValidatableTx = tx;
             DateSeen = dateSeen;
@@ -23,7 +23,7 @@ namespace BitSharp.Core.Domain
 
         public Transaction Transaction => ValidatableTx.Transaction;
 
-        public DateTime DateSeen { get; }
+        public DateTimeOffset DateSeen { get; }
 
         public ulong Fee { get; }
 

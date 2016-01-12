@@ -279,7 +279,7 @@ namespace BitSharp.Node.Workers
 
             var remoteAddressWithTime = new NetworkAddressWithTime
             (
-                Time: DateTime.UtcNow.ToUnixTime(),
+                Time: DateTimeOffset.Now,
                 NetworkAddress: new NetworkAddress
                 (
                     Services: versionPayload.LocalAddress.Services,

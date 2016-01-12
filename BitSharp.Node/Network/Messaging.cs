@@ -24,11 +24,11 @@ namespace BitSharp.Node.Network
 
         private static readonly Uri externalIPServiceUri = new Uri("http://icanhazip.com/");
         private static IPAddress externalIPAddress;
-        private static DateTime externalIPAddressTime;
+        private static DateTimeOffset externalIPAddressTime;
 
         public static IPAddress GetExternalIPAddress()
         {
-            if (externalIPAddress == null || (DateTime.UtcNow - externalIPAddressTime).TotalHours >= 1)
+            if (externalIPAddress == null || (DateTimeOffset.Now - externalIPAddressTime).TotalHours >= 1)
             {
                 using (var webClient = new WebClient())
                 {
@@ -36,7 +36,7 @@ namespace BitSharp.Node.Network
 
                     if (IPAddress.TryParse(ipString, out externalIPAddress))
                     {
-                        externalIPAddressTime = DateTime.UtcNow;
+                        externalIPAddressTime = DateTimeOffset.Now;
                     }
                 }
             }
@@ -101,11 +101,11 @@ namespace BitSharp.Node.Network
             );
         }
 
-        public static NetworkAddressWithTime ConstructNetworkAddressWithTime(DateTime time, IPAddress ip, int port)
+        public static NetworkAddressWithTime ConstructNetworkAddressWithTime(DateTimeOffset time, IPAddress ip, int port)
         {
             return new NetworkAddressWithTime
             (
-                Time: time.ToUnixTime(), //TODO is time LE or BE on network messages?
+                Time: time,
                 NetworkAddress: ConstructNetworkAddress(ip, port)
             );
         }
@@ -116,7 +116,7 @@ namespace BitSharp.Node.Network
             (
                 ProtocolVersion: PROTOCOL_VERSION,
                 ServicesBitfield: SERVICES_BITFIELD,
-                UnixTime: DateTime.UtcNow.ToUnixTime(), //TODO
+                Time: DateTimeOffset.Now, //TODO
                 RemoteAddress: ConstructNetworkAddress(remoteEndPoint.Address, remoteEndPoint.Port),
                 LocalAddress: ConstructNetworkAddress(localEndPoint.Address, port: localEndPoint.Port),
                 Nonce: nodeId,

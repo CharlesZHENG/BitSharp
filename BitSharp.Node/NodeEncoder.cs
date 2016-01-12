@@ -1,6 +1,7 @@
 ﻿using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.ExtensionMethods;
 using BitSharp.Node.Domain;
+using System;
 using System.Collections.Immutable;
 using System.IO;
 using System.Linq;
@@ -263,7 +264,7 @@ namespace BitSharp.Node
         {
             return new NetworkAddressWithTime
             (
-                Time: reader.ReadUInt32(),
+                Time: DateTimeOffset.FromUnixTimeSeconds(reader.ReadUInt32()),
                 NetworkAddress: DecodeNetworkAddress(reader)
             );
         }
@@ -279,7 +280,7 @@ namespace BitSharp.Node
 
         public static void EncodeNetworkAddressWithTime(BinaryWriter writer, NetworkAddressWithTime networkAddressWithTime)
         {
-            writer.WriteUInt32(networkAddressWithTime.Time);
+            writer.WriteUInt32((uint)networkAddressWithTime.Time.ToUnixTimeSeconds()); //TODO is time LE or BE on network messages?
             EncodeNetworkAddress(writer, networkAddressWithTime.NetworkAddress);
         }
 
@@ -301,7 +302,7 @@ namespace BitSharp.Node
             (
                 ProtocolVersion: reader.ReadUInt32(),
                 ServicesBitfield: reader.ReadUInt64(),
-                UnixTime: reader.ReadUInt64(),
+                Time: DateTimeOffset.FromUnixTimeSeconds((long)reader.ReadUInt64()),
                 RemoteAddress: DecodeNetworkAddress(reader),
                 LocalAddress: DecodeNetworkAddress(reader),
                 Nonce: reader.ReadUInt64(),
@@ -330,7 +331,7 @@ namespace BitSharp.Node
         {
             writer.WriteUInt32(versionPayload.ProtocolVersion);
             writer.WriteUInt64(versionPayload.ServicesBitfield);
-            writer.WriteUInt64(versionPayload.UnixTime);
+            writer.WriteUInt64((ulong)versionPayload.Time.ToUnixTimeSeconds());
             EncodeNetworkAddress(writer, versionPayload.RemoteAddress);
             EncodeNetworkAddress(writer, versionPayload.LocalAddress);
             writer.WriteUInt64(versionPayload.Nonce);

@@ -387,7 +387,7 @@ namespace BitSharp.Common
                 // stats
                 var totalTime = Stopwatch.StartNew();
                 var workerTime = new Stopwatch();
-                var lastReportTime = DateTime.Now;
+                var lastReportTime = DateTimeOffset.Now;
 
                 // continue running as long as the worker is alive
                 while (this.isAlive)
@@ -469,9 +469,9 @@ namespace BitSharp.Common
                     this.OnWorkFinished?.Invoke();
 
                     // log worker stats
-                    if (DateTime.Now - lastReportTime > TimeSpan.FromSeconds(30))
+                    if (DateTimeOffset.Now - lastReportTime > TimeSpan.FromSeconds(30))
                     {
-                        lastReportTime = DateTime.Now;
+                        lastReportTime = DateTimeOffset.Now;
                         var percentWorkerTime = workerTime.Elapsed.TotalSeconds / totalTime.Elapsed.TotalSeconds;
                         logger.Debug($"{this.Name,55} work time: {percentWorkerTime,10:##0.00%}");
                     }

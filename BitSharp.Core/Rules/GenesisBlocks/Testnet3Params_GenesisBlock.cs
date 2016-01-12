@@ -17,7 +17,7 @@ namespace BitSharp.Core.Rules
                     version: 1,
                     previousBlock: UInt256.Zero,
                     merkleRoot: UInt256.ParseHex("4a5e1e4baab89f3a32518a88c31bc87f618f76673e2cc77ab2127b7afdeda33b"),
-                    time: 1296688602,
+                    time: DateTimeOffset.FromUnixTimeSeconds(1296688602),
                     bits: 0x1D00FFFF,
                     nonce: 414098458
                 ),

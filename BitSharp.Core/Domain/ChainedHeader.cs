@@ -6,7 +6,7 @@ namespace BitSharp.Core.Domain
 {
     public class ChainedHeader
     {
-        public ChainedHeader(BlockHeader blockHeader, int height, BigInteger totalWork, DateTime dateSeen)
+        public ChainedHeader(BlockHeader blockHeader, int height, BigInteger totalWork, DateTimeOffset dateSeen)
         {
             BlockHeader = blockHeader;
             Height = height;
@@ -22,7 +22,7 @@ namespace BitSharp.Core.Domain
 
         public UInt256 MerkleRoot => this.BlockHeader.MerkleRoot;
 
-        public UInt32 Time => this.BlockHeader.Time;
+        public DateTimeOffset Time => this.BlockHeader.Time;
 
         public UInt32 Bits => this.BlockHeader.Bits;
 
@@ -34,7 +34,7 @@ namespace BitSharp.Core.Domain
 
         public BigInteger TotalWork { get; }
 
-        public DateTime DateSeen { get; }
+        public DateTimeOffset DateSeen { get; }
 
         public override bool Equals(object obj)
         {
@@ -71,11 +71,11 @@ namespace BitSharp.Core.Domain
                 blockHeader: genesisBlockHeader,
                 height: 0,
                 totalWork: genesisBlockHeader.CalculateWork(),
-                dateSeen: DateTime.MinValue
+                dateSeen: DateTimeOffset.MinValue
             );
         }
 
-        public static ChainedHeader CreateFromPrev(ChainedHeader prevChainedHeader, BlockHeader blockHeader, DateTime dateSeen)
+        public static ChainedHeader CreateFromPrev(ChainedHeader prevChainedHeader, BlockHeader blockHeader, DateTimeOffset dateSeen)
         {
             var headerWork = blockHeader.CalculateWork();
             if (headerWork < 0)

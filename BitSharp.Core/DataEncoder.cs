@@ -43,12 +43,12 @@ namespace BitSharp.Core
             writer.WriteUInt32(blockHeader.Version);
             writer.WriteUInt256(blockHeader.PreviousBlock);
             writer.WriteUInt256(blockHeader.MerkleRoot);
-            writer.WriteUInt32(blockHeader.Time);
+            writer.WriteUInt32((uint)blockHeader.Time.ToUnixTimeSeconds());
             writer.WriteUInt32(blockHeader.Bits);
             writer.WriteUInt32(blockHeader.Nonce);
         }
 
-        public static byte[] EncodeBlockHeader(UInt32 Version, UInt256 PreviousBlock, UInt256 MerkleRoot, UInt32 Time, UInt32 Bits, UInt32 Nonce)
+        public static byte[] EncodeBlockHeader(UInt32 Version, UInt256 PreviousBlock, UInt256 MerkleRoot, DateTimeOffset Time, UInt32 Bits, UInt32 Nonce)
         {
             using (var stream = new MemoryStream())
             using (var writer = new BinaryWriter(stream))
@@ -56,7 +56,7 @@ namespace BitSharp.Core
                 writer.WriteUInt32(Version);
                 writer.WriteUInt256(PreviousBlock);
                 writer.WriteUInt256(MerkleRoot);
-                writer.WriteUInt32(Time);
+                writer.WriteUInt32((uint)Time.ToUnixTimeSeconds());
                 writer.WriteUInt32(Bits);
                 writer.WriteUInt32(Nonce);
 
@@ -108,7 +108,7 @@ namespace BitSharp.Core
             EncodeBlockHeader(writer, chainedHeader.BlockHeader);
             writer.WriteInt32(chainedHeader.Height);
             writer.WriteVarBytes(chainedHeader.TotalWork.ToByteArray());
-            writer.WriteInt64(chainedHeader.DateSeen.Ticks);
+            writer.WriteInt64(chainedHeader.DateSeen.UtcTicks);
         }
 
         public static byte[] EncodeChainedHeader(ChainedHeader chainedHeader)

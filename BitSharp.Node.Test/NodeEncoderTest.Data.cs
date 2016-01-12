@@ -1,5 +1,6 @@
 ﻿using BitSharp.Common;
 using BitSharp.Node.Domain;
+using System;
 using System.Collections.Immutable;
 
 namespace BitSharp.Node.Test
@@ -17,7 +18,7 @@ namespace BitSharp.Node.Test
 
         public static readonly NetworkAddressWithTime NETWORK_ADDRESS_WITH_TIME_1 = new NetworkAddressWithTime
         (
-            Time: 0x01,
+            Time: DateTimeOffset.FromUnixTimeSeconds(0x01),
             NetworkAddress: NETWORK_ADDRESS_1
         );
 
@@ -77,7 +78,7 @@ namespace BitSharp.Node.Test
         (
             ProtocolVersion: 0x01,
             ServicesBitfield: 0x02,
-            UnixTime: 0x03,
+            Time: DateTimeOffset.FromUnixTimeSeconds(0x03),
             RemoteAddress: NETWORK_ADDRESS_1,
             LocalAddress: NETWORK_ADDRESS_1,
             Nonce: 0x04,
@@ -92,7 +93,7 @@ namespace BitSharp.Node.Test
         (
             ProtocolVersion: VersionPayload.RELAY_VERSION,
             ServicesBitfield: 0x02,
-            UnixTime: 0x03,
+            Time: DateTimeOffset.FromUnixTimeSeconds(0x03),
             RemoteAddress: NETWORK_ADDRESS_1,
             LocalAddress: NETWORK_ADDRESS_1,
             Nonce: 0x04,

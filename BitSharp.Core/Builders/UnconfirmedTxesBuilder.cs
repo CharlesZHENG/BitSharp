@@ -141,7 +141,7 @@ namespace BitSharp.Core.Builders
                     // create the unconfirmed tx
                     var blockTx = new DecodedBlockTx(-1, decodedTx);
                     var validatableTx = new ValidatableTx(blockTx, null, prevTxOutputs.ToImmutable());
-                    unconfirmedTx = new UnconfirmedTx(validatableTx, DateTime.UtcNow);
+                    unconfirmedTx = new UnconfirmedTx(validatableTx, DateTimeOffset.Now);
 
                     // add the unconfirmed tx
                     using (var handle = storageManager.OpenUnconfirmedTxesCursor())

@@ -1,5 +1,6 @@
 ﻿using BitSharp.Common;
 using BitSharp.Core.Domain;
+using System;
 
 namespace BitSharp.Core.Rules
 {
@@ -24,13 +25,13 @@ namespace BitSharp.Core.Rules
 
         public int DifficultyInterval => mainnetParams.DifficultyInterval;
 
-        public int DifficultyTargetTimespan => mainnetParams.DifficultyTargetTimespan;
+        public TimeSpan DifficultyTargetTimespan => mainnetParams.DifficultyTargetTimespan;
 
         public bool AllowMininimumDifficultyBlocks { get; } = true;
 
         public bool PowNoRetargeting => mainnetParams.PowNoRetargeting;
 
-        public int PowTargetSpacing => mainnetParams.PowTargetSpacing;
+        public TimeSpan PowTargetSpacing => mainnetParams.PowTargetSpacing;
 
         public int MajorityWindow { get; } = 100;
 
