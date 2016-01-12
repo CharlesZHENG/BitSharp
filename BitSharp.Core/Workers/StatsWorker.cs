@@ -85,7 +85,7 @@ namespace BitSharp.Core.Workers
                                             fee = confirmedTxStats.Fee,
                                             txByteSize = confirmedTxStats.TxByteSize
                                         }
-                                }, Formatting.Indented);
+                                });
                             statsString.AppendLine(blockJsonStats);
 
                             logger.Info(statsString);
