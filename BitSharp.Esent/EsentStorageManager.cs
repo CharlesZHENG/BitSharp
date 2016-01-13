@@ -156,13 +156,13 @@ namespace BitSharp.Esent
             instance.Parameters.NoInformationEvent = true;
             instance.Parameters.MaxSessions = 30000;
             instance.Parameters.MaxCursors = int.MaxValue;
-            instance.Parameters.MaxOpenTables = int.MaxValue;
+            instance.Parameters.MaxOpenTables = int.MaxValue / 2;
             instance.Parameters.MaxTemporaryTables = 16;
             instance.Parameters.CircularLog = true;
             instance.Parameters.CleanupMismatchedLogFiles = true;
 
             // unit is KiB
-            instance.Parameters.LogFileSize = _32MiB / KiB;
+            instance.Parameters.LogFileSize = _16MiB / KiB;
             // unit is 0.5KiB
             instance.Parameters.LogBuffers = _16MiB / _0_5KiB;
             // unit is bytes
