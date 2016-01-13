@@ -18,10 +18,6 @@ namespace BitSharp.LevelDb
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        // unique per-instance session context for JetSetSessionContext
-        private static int nextCursorContext;
-        private readonly IntPtr cursorContext = new IntPtr(Interlocked.Increment(ref nextCursorContext));
-
         private readonly DB db;
         private readonly bool isDeferred;
 

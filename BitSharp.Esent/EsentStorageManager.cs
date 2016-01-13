@@ -140,7 +140,6 @@ namespace BitSharp.Esent
             var _16KiB = 16 * KiB;
 
             var _16MiB = 16 * MiB;
-            var _32MiB = 32 * MiB;
             var _256MiB = 256 * MiB;
 
             var logFileCount = 32;
