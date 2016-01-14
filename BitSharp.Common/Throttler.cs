@@ -17,17 +17,22 @@ namespace BitSharp.Common
             var now = DateTimeOffset.Now;
             var lastTime = lastTimes.GetOrAdd(key, new[] { DateTimeOffset.MinValue });
 
+            bool elapsed;
             lock (lastTime)
             {
                 if (now - lastTime[0] >= interval)
                 {
                     lastTime[0] = now;
-                    action();
-                    return true;
+                    elapsed = true;
                 }
                 else
-                    return false;
+                    elapsed = false;
             }
+
+            if (elapsed)
+                action();
+
+            return elapsed;
         }
     }
 }
