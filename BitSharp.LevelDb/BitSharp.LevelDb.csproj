@@ -98,7 +98,7 @@
   <ItemGroup>
     <Compile Include="DbEncoder.cs" />
     <Compile Include="ExtensionMethods.cs" />
-    <Compile Include="MerkleTreePruningCursor.cs" />
+    <Compile Include="LevelDbMerkleTreePruningCursor.cs" />
     <Compile Include="LevelDbBlockStorage.cs" />
     <Compile Include="LevelDbBlockTxesStorage.cs" />
     <Compile Include="ChainState\LevelDbChainStateManager.cs" />

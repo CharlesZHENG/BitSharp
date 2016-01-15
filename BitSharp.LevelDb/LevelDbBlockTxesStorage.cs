@@ -52,73 +52,62 @@ namespace BitSharp.LevelDb
 
         public void PruneElements(IEnumerable<KeyValuePair<UInt256, IEnumerable<int>>> blockTxIndices)
         {
-            throw new NotImplementedException();
+            using (var snapshot = db.GetSnapshot())
+            {
+                var readOptions = new ReadOptions { Snapshot = snapshot };
+                using (var iterator = db.NewIterator(readOptions))
+                {
+                    foreach (var keyPair in blockTxIndices)
+                    {
+                        var blockHash = keyPair.Key;
+                        var txIndices = keyPair.Value;
 
-            //using (var handle = cursorCache.TakeItem())
-            //{
-            //    var cursor = handle.Item;
+                        var pruningCursor = new LevelDbMerkleTreePruningCursor(blockHash, iterator);
 
-            //    foreach (var keyPair in blockTxIndices)
-            //    {
-            //        var blockHash = keyPair.Key;
-            //        var txIndices = keyPair.Value;
+                        // prune the transactions
+                        foreach (var index in txIndices)
+                        {
+                            var cachedCursor = new CachedMerkleTreePruningCursor<BlockTxNode>(pruningCursor);
+                            MerkleTree.PruneNode(cachedCursor, index);
+                        }
 
-            //        using (var jetTx = cursor.jetSession.BeginTransaction())
-            //        {
-            //            int blockIndex;
-            //            if (!TryGetBlockIndex(cursor, blockHash, out blockIndex))
-            //                continue;
-
-            //            var pruningCursor = new MerkleTreePruningCursor(blockIndex, cursor);
-
-            //            // prune the transactions
-            //            foreach (var index in txIndices)
-            //            {
-            //                var cachedCursor = new CachedMerkleTreePruningCursor<BlockTxNode>(pruningCursor);
-            //                MerkleTree.PruneNode(cachedCursor, index);
-            //            }
-
-            //            jetTx.CommitLazy();
-            //        }
-            //    }
-            //}
+                        var writeBatch = pruningCursor.CreateWriteBatch();
+                        try
+                        {
+                            db.Write(new WriteOptions(), writeBatch);
+                        }
+                        finally
+                        {
+                            writeBatch.Dispose();
+                        }
+                    }
+                }
+            }
         }
 
         public void DeleteElements(IEnumerable<KeyValuePair<UInt256, IEnumerable<int>>> blockTxIndices)
         {
-            throw new NotImplementedException();
+            var writeBatch = new WriteBatch();
+            try
+            {
+                foreach (var keyPair in blockTxIndices)
+                {
+                    var blockHash = keyPair.Key;
+                    var txIndices = keyPair.Value;
 
-            //using (var handle = cursorCache.TakeItem())
-            //{
-            //    var cursor = handle.Item;
+                    // prune the transactions
+                    foreach (var index in txIndices)
+                    {
+                        writeBatch.Delete(DbEncoder.EncodeBlockHashTxIndex(blockHash, index));
+                    }
+                }
 
-            //    foreach (var keyPair in blockTxIndices)
-            //    {
-            //        var blockHash = keyPair.Key;
-            //        var txIndices = keyPair.Value;
-
-            //        using (var jetTx = cursor.jetSession.BeginTransaction())
-            //        {
-            //            int blockIndex;
-            //            if (!TryGetBlockIndex(cursor, blockHash, out blockIndex))
-            //                continue;
-
-            //            // prune the transactions
-            //            foreach (var index in txIndices)
-            //            {
-            //                // remove transactions
-            //                Api.JetSetCurrentIndex(cursor.jetSession, cursor.blocksTableId, "IX_BlockIndexTxIndex");
-            //                Api.MakeKey(cursor.jetSession, cursor.blocksTableId, blockIndex, MakeKeyGrbit.NewKey);
-            //                Api.MakeKey(cursor.jetSession, cursor.blocksTableId, index, MakeKeyGrbit.None);
-
-            //                if (Api.TrySeek(cursor.jetSession, cursor.blocksTableId, SeekGrbit.SeekEQ))
-            //                    Api.JetDelete(cursor.jetSession, cursor.blocksTableId);
-            //            }
-
-            //            jetTx.CommitLazy();
-            //        }
-            //    }
-            //}
+                db.Write(new WriteOptions(), writeBatch);
+            }
+            finally
+            {
+                writeBatch.Dispose();
+            }
         }
 
         public bool TryReadBlockTransactions(UInt256 blockHash, out IEnumerator<BlockTx> blockTxes)
