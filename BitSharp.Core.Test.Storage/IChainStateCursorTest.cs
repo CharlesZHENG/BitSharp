@@ -692,47 +692,70 @@ namespace BitSharp.Core.Test.Storage
             {
                 var chainStateCursor = handle.Item;
 
-                // begin transaction
-                chainStateCursor.BeginTransaction();
-
                 // verify initial empty state
+                chainStateCursor.BeginTransaction(readOnly: true);
                 Assert.AreEqual(0, chainStateCursor.ReadUnspentTransactions().Count());
+                chainStateCursor.RollbackTransaction();
 
                 // add unspent tx 0
+                chainStateCursor.BeginTransaction();
                 Assert.IsTrue(chainStateCursor.TryAddUnspentTx(unspentTx0));
+                chainStateCursor.CommitTransaction();
 
                 // verify unspent txes
+                chainStateCursor.BeginTransaction(readOnly: true);
                 CollectionAssert.AreEquivalent(new[] { unspentTx0 }, chainStateCursor.ReadUnspentTransactions().ToList());
+                chainStateCursor.RollbackTransaction();
 
                 // add unspent tx 1
+                chainStateCursor.BeginTransaction();
                 Assert.IsTrue(chainStateCursor.TryAddUnspentTx(unspentTx1));
+                chainStateCursor.CommitTransaction();
 
                 // verify unspent txes
+                chainStateCursor.BeginTransaction(readOnly: true);
                 CollectionAssert.AreEquivalent(new[] { unspentTx0, unspentTx1 }, chainStateCursor.ReadUnspentTransactions().ToList());
+                chainStateCursor.RollbackTransaction();
 
                 // add unspent tx 2
+                chainStateCursor.BeginTransaction();
                 Assert.IsTrue(chainStateCursor.TryAddUnspentTx(unspentTx2));
+                chainStateCursor.CommitTransaction();
 
                 // verify unspent txes
+                chainStateCursor.BeginTransaction(readOnly: true);
                 CollectionAssert.AreEquivalent(new[] { unspentTx0, unspentTx1, unspentTx2 }, chainStateCursor.ReadUnspentTransactions().ToList());
+                chainStateCursor.RollbackTransaction();
 
                 // remove unspent tx 2
+                chainStateCursor.BeginTransaction();
                 Assert.IsTrue(chainStateCursor.TryRemoveUnspentTx(unspentTx2.TxHash));
+                chainStateCursor.CommitTransaction();
 
                 // verify unspent txes
+                chainStateCursor.BeginTransaction(readOnly: true);
                 CollectionAssert.AreEquivalent(new[] { unspentTx0, unspentTx1 }, chainStateCursor.ReadUnspentTransactions().ToList());
+                chainStateCursor.RollbackTransaction();
 
                 // remove unspent tx 1
+                chainStateCursor.BeginTransaction();
                 Assert.IsTrue(chainStateCursor.TryRemoveUnspentTx(unspentTx1.TxHash));
+                chainStateCursor.CommitTransaction();
 
                 // verify unspent txes
+                chainStateCursor.BeginTransaction(readOnly: true);
                 CollectionAssert.AreEquivalent(new[] { unspentTx0 }, chainStateCursor.ReadUnspentTransactions().ToList());
+                chainStateCursor.RollbackTransaction();
 
                 // remove unspent tx 0
+                chainStateCursor.BeginTransaction();
                 Assert.IsTrue(chainStateCursor.TryRemoveUnspentTx(unspentTx0.TxHash));
+                chainStateCursor.CommitTransaction();
 
                 // verify unspent txes
+                chainStateCursor.BeginTransaction(readOnly: true);
                 Assert.AreEqual(0, chainStateCursor.ReadUnspentTransactions().Count());
+                chainStateCursor.RollbackTransaction();
             }
         }
 
