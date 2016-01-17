@@ -19,6 +19,11 @@ namespace BitSharp.LevelDb
         private readonly string dbDirectory;
         private readonly DB db;
 
+        private readonly object countLock = new object();
+
+        private readonly byte[] COUNT_KEY = new byte[] { 0 };
+        private readonly byte EXISTS_PREFIX = 1;
+
         private bool isDisposed;
 
         public LevelDbBlockTxesStorage(string baseDirectory, ulong? cacheSize, ulong? writeCacheSize)
@@ -47,7 +52,7 @@ namespace BitSharp.LevelDb
         public bool ContainsBlock(UInt256 blockHash)
         {
             Slice value;
-            return db.TryGet(new ReadOptions(), DbEncoder.EncodeBlockHashTxIndex(blockHash, 0), out value);
+            return db.TryGet(ReadOptions.Default, MakeExistsKey(blockHash), out value);
         }
 
         public void PruneElements(IEnumerable<KeyValuePair<UInt256, IEnumerable<int>>> blockTxIndices)
@@ -200,14 +205,11 @@ namespace BitSharp.LevelDb
         {
             get
             {
-                //TODO
-                return 0;
-                //using (var handle = cursorCache.TakeItem())
-                //{
-                //    var cursor = handle.Item;
-
-                //    return Api.RetrieveColumnAsInt32(cursor.jetSession, cursor.globalsTableId, cursor.blockCountColumnId).Value;
-                //}
+                Slice countSlice;
+                if (db.TryGet(ReadOptions.Default, COUNT_KEY, out countSlice))
+                    return countSlice.ToInt32();
+                else
+                    return 0;
             }
         }
 
@@ -221,6 +223,7 @@ namespace BitSharp.LevelDb
             var writeBatch = new WriteBatch();
             try
             {
+                int txCount;
                 using (var snapshot = db.GetSnapshot())
                 {
                     var readOptions = new ReadOptions { Snapshot = snapshot };
@@ -241,9 +244,11 @@ namespace BitSharp.LevelDb
 
                         txIndex++;
                     }
+
+                    txCount = txIndex;
                 }
 
-                db.Write(new WriteOptions(), writeBatch);
+                return TryAddBlockInner(blockHash, txCount, writeBatch);
             }
             finally
             {
@@ -284,7 +289,7 @@ namespace BitSharp.LevelDb
                     }
                 }
 
-                db.Write(new WriteOptions(), writeBatch);
+                return TryRemoveBlockInner(blockHash, writeBatch);
             }
             finally
             {
@@ -300,6 +305,77 @@ namespace BitSharp.LevelDb
 
         public void Defragment()
         {
+        }
+
+        private bool TryAddBlockInner(UInt256 blockHash, int blockTxesCount, WriteBatch writeBatch)
+        {
+            // lock all when performing the block write, so count update is thread-safe
+            lock (countLock)
+            {
+                // get the current count
+                int count;
+                Slice countSlice;
+                if (db.TryGet(ReadOptions.Default, COUNT_KEY, out countSlice))
+                    count = countSlice.ToInt32();
+                else
+                    count = 0;
+
+                // check if block exists before writing
+                var existsKey = MakeExistsKey(blockHash);
+                Slice existsSlice;
+                if (!db.TryGet(ReadOptions.Default, existsKey, out existsSlice))
+                {
+                    // update count and add block existence key
+                    writeBatch.Put(COUNT_KEY, count + 1);
+                    writeBatch.Put(existsKey, blockTxesCount);
+
+                    db.Write(WriteOptions.Default, writeBatch);
+
+                    return true;
+                }
+                else
+                    return false;
+            }
+        }
+
+        private bool TryRemoveBlockInner(UInt256 blockHash, WriteBatch writeBatch)
+        {
+            // lock all when performing the block write, so count update is thread-safe
+            lock (countLock)
+            {
+                // get the current count
+                int count;
+                Slice countSlice;
+                if (db.TryGet(ReadOptions.Default, COUNT_KEY, out countSlice))
+                    count = countSlice.ToInt32();
+                else
+                    count = 0;
+
+                // check if block exists before writing
+                var existsKey = MakeExistsKey(blockHash);
+                Slice existsSlice;
+                if (db.TryGet(ReadOptions.Default, existsKey, out existsSlice))
+                {
+                    // update count and remove block existence key
+                    writeBatch.Put(COUNT_KEY, count - 1);
+                    writeBatch.Delete(existsKey);
+
+                    db.Write(WriteOptions.Default, writeBatch);
+
+                    return true;
+                }
+                else
+                    return false;
+            }
+        }
+
+        private byte[] MakeExistsKey(UInt256 blockHash)
+        {
+            var key = new byte[33];
+            key[0] = EXISTS_PREFIX;
+            blockHash.ToByteArrayBE(key, 1);
+
+            return key;
         }
     }
 }
