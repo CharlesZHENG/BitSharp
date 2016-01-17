@@ -4,7 +4,6 @@ using BitSharp.Core.Rules;
 using BitSharp.Core.Storage.Memory;
 using BitSharp.Esent;
 using BitSharp.LevelDb;
-using BitSharp.Lmdb;
 using BitSharp.Node;
 using BitSharp.Node.Storage.Memory;
 using BitSharp.Node.Workers;
@@ -51,7 +50,6 @@ namespace BitSharp.Client
                 var enableDummyWallet = true;
 
                 var useLevelDb = false;
-                var useLmdb = false;
                 var runInMemory = false;
 
                 var cleanData = false;
@@ -165,9 +163,7 @@ namespace BitSharp.Client
                 }
                 else
                 {
-                    modules.Add(new EsentStorageModule(baseDirectory, chainType, blockStorage: !useLmdb, cacheSizeMaxBytes: cacheSizeMaxBytes, blockTxesStorageLocations: blockTxesStorageLocations));
-                    if (useLmdb)
-                        modules.Add(new LmdbStorageModule(baseDirectory, chainType, blockTxesStorageLocations));
+                    modules.Add(new EsentStorageModule(baseDirectory, chainType, cacheSizeMaxBytes: cacheSizeMaxBytes, blockTxesStorageLocations: blockTxesStorageLocations));
                 }
 
                 // add rules module
