@@ -15,7 +15,6 @@ namespace BitSharp.Core.Test.Storage
             {
                 new EsentTestStorageProvider(),
                 new MemoryTestStorageProvider(),
-                //new LmdbTestStorageProvider(),
                 new LevelDbTestStorageProvider(),
             };
 

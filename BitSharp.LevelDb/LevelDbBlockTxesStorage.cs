@@ -254,8 +254,6 @@ namespace BitSharp.LevelDb
             {
                 writeBatch.Dispose();
             }
-
-            return true;
         }
 
         public bool TryRemoveBlockTransactions(UInt256 blockHash)
@@ -295,8 +293,6 @@ namespace BitSharp.LevelDb
             {
                 writeBatch.Dispose();
             }
-
-            return true;
         }
 
         public void Flush()

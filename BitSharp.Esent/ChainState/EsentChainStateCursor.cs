@@ -779,7 +779,7 @@ namespace BitSharp.Esent
             }
         }
 
-        public void BeginTransaction(bool readOnly, bool pruneOnly)
+        public void BeginTransaction(bool readOnly)
         {
             if (this.inTransaction)
                 throw new InvalidOperationException();

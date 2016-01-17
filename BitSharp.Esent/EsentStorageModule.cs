@@ -16,9 +16,8 @@ namespace BitSharp.Esent
         private readonly ChainType chainType;
         private readonly long? cacheSizeMinBytes;
         private readonly long? cacheSizeMaxBytes;
-        private readonly bool blockStorage;
 
-        public EsentStorageModule(string baseDirectory, ChainType rulesType, bool blockStorage = true, long? cacheSizeMinBytes = null, long? cacheSizeMaxBytes = null, string[] blockTxesStorageLocations = null)
+        public EsentStorageModule(string baseDirectory, ChainType rulesType, long? cacheSizeMinBytes = null, long? cacheSizeMaxBytes = null, string[] blockTxesStorageLocations = null)
         {
             this.baseDirectory = baseDirectory;
             this.blockTxesStorageLocations = blockTxesStorageLocations;
@@ -27,7 +26,6 @@ namespace BitSharp.Esent
             this.chainType = rulesType;
             this.cacheSizeMinBytes = cacheSizeMinBytes;
             this.cacheSizeMaxBytes = cacheSizeMaxBytes;
-            this.blockStorage = blockStorage;
         }
 
         public override void Load()
@@ -35,18 +33,16 @@ namespace BitSharp.Esent
             EsentStorageManager.InitSystemParameters(cacheSizeMinBytes, cacheSizeMaxBytes);
 
             // bind concrete storage providers
-            if (blockStorage)
-                this.Bind<EsentStorageManager>().ToSelf().InSingletonScope()
-                    .WithConstructorArgument("baseDirectory", this.dataDirectory)
-                    .WithConstructorArgument("blockTxesStorageLocations", this.blockTxesStorageLocations);
+            this.Bind<EsentStorageManager>().ToSelf().InSingletonScope()
+                .WithConstructorArgument("baseDirectory", this.dataDirectory)
+                .WithConstructorArgument("blockTxesStorageLocations", this.blockTxesStorageLocations);
 
             this.Bind<NetworkPeerStorage>().ToSelf().InSingletonScope()
                 .WithConstructorArgument("baseDirectory", this.peersDirectory)
                 .WithConstructorArgument("chainType", this.chainType);
 
             // bind storage providers interfaces
-            if (blockStorage)
-                this.Bind<IStorageManager>().ToMethod(x => this.Kernel.Get<EsentStorageManager>()).InSingletonScope();
+            this.Bind<IStorageManager>().ToMethod(x => this.Kernel.Get<EsentStorageManager>()).InSingletonScope();
             this.Bind<INetworkPeerStorage>().ToMethod(x => this.Kernel.Get<NetworkPeerStorage>()).InSingletonScope();
         }
     }

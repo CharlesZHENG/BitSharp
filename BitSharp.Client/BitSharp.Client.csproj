@@ -166,10 +166,6 @@
       <Project>{5f7c08ad-ad61-416c-9a45-462347633059}</Project>
       <Name>BitSharp.LevelDb</Name>
     </ProjectReference>
-    <ProjectReference Include="..\BitSharp.Lmdb\BitSharp.Lmdb.csproj">
-      <Project>{218d1f77-ecd4-447c-b8a2-38ca43c7ccb4}</Project>
-      <Name>BitSharp.Lmdb</Name>
-    </ProjectReference>
     <ProjectReference Include="..\BitSharp.Node\BitSharp.Node.csproj">
       <Project>{b76235bf-6037-45b8-9341-957e6407f8e1}</Project>
       <Name>BitSharp.Node</Name>

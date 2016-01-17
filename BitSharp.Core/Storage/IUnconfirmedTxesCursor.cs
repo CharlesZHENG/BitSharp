@@ -13,7 +13,7 @@ namespace BitSharp.Core.Storage
     {
         bool InTransaction { get; }
 
-        void BeginTransaction(bool readOnly = false, bool pruneOnly = false);
+        void BeginTransaction(bool readOnly = false);
 
         void CommitTransaction();
 

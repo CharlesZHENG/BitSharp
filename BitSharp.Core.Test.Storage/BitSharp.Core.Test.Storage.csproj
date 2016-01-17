@@ -135,10 +135,6 @@
       <Project>{a96b3f05-1b64-44db-83bf-5da761261834}</Project>
       <Name>BitSharp.LevelDb.Test</Name>
     </ProjectReference>
-    <ProjectReference Include="..\BitSharp.Lmdb.Test\BitSharp.Lmdb.Test.csproj">
-      <Project>{0d4f870a-a895-44ed-a56a-63bf242ad7ce}</Project>
-      <Name>BitSharp.Lmdb.Test</Name>
-    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />

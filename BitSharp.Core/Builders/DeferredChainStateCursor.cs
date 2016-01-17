@@ -185,7 +185,7 @@ namespace BitSharp.Core.Builders
 
         public bool InTransaction => inTransaction;
 
-        public void BeginTransaction(bool readOnly, bool pruneOnly)
+        public void BeginTransaction(bool readOnly)
         {
             CheckNotInTransaction();
 

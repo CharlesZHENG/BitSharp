@@ -417,7 +417,7 @@ namespace BitSharp.LevelDb
             return unmintedTxes.TryRemove(blockHash);
         }
 
-        public void BeginTransaction(bool readOnly, bool pruneOnly)
+        public void BeginTransaction(bool readOnly)
         {
             if (inTransaction)
                 throw new InvalidOperationException();

@@ -22,7 +22,7 @@ namespace BitSharp.Core.Storage
         /// <summary>
         /// Begin a new transaction.
         /// </summary>
-        void BeginTransaction(bool readOnly = false, bool pruneOnly = false);
+        void BeginTransaction(bool readOnly = false);
 
         /// <summary>
         /// Commit the current transaction.

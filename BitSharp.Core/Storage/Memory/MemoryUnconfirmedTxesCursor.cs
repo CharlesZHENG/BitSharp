@@ -44,7 +44,7 @@ namespace BitSharp.Core.Storage.Memory
 
         public bool InTransaction => inTransaction;
 
-        public void BeginTransaction(bool readOnly, bool pruneOnly)
+        public void BeginTransaction(bool readOnly)
         {
             if (inTransaction)
                 throw new InvalidOperationException();

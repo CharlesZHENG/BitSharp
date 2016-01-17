@@ -2,7 +2,6 @@
 using BitSharp.Core.Domain;
 using BitSharp.Core.Rules;
 using BitSharp.Esent;
-using BitSharp.Lmdb;
 using BitSharp.Node;
 using Ninject.Modules;
 using NLog;
@@ -29,19 +28,13 @@ namespace BitSharp.Core.Test
             }
         }
 
-        public static IntegrationTestDaemon Create(Block genesisBlock = null, bool useLmdb = false)
+        public static IntegrationTestDaemon Create(Block genesisBlock = null)
         {
             var baseDirectory = TempDirectory.CreateTempDirectory();
 
             var loggingModule = new LoggingModule(baseDirectory, LogLevel.Info);
 
-            var storageModules = useLmdb ?
-                new INinjectModule[]
-                {
-                    new EsentStorageModule(baseDirectory, ChainType.Regtest, blockStorage: !useLmdb, cacheSizeMaxBytes: 500.MILLION()),
-                    new LmdbStorageModule(baseDirectory, ChainType.Regtest)
-                }
-                :
+            var storageModules =
                 new[] { new EsentStorageModule(baseDirectory, ChainType.Regtest, cacheSizeMaxBytes: 500.MILLION()) };
 
             return new IntegrationTestDaemon(genesisBlock, baseDirectory, loggingModule, storageModules);

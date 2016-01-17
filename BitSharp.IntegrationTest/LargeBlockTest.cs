@@ -13,7 +13,7 @@ namespace BitSharp.IntegrationTest
         [TestMethod]
         public void TestLargeBlocks()
         {
-            using (var daemon = IntegrationTestDaemon.Create(useLmdb: false))
+            using (var daemon = IntegrationTestDaemon.Create())
             {
                 //daemon.CoreDaemon.PruningMode = PruningMode.TxIndex | PruningMode.BlockSpentIndex | PruningMode.BlockTxesPreserveMerkle;
 
