@@ -35,8 +35,16 @@ namespace BitSharp.LevelDb
 
         public static void DecodeBlockHashTxIndex(byte[] bytes, out UInt256 blockHash, out int txIndex)
         {
-            blockHash = UInt256.FromByteArrayBE(bytes, 1);
-            txIndex = DecodeInt32(bytes, 33);
+            if (bytes[0] == BLOCK_TX_PREFIX)
+            {
+                blockHash = UInt256.FromByteArrayBE(bytes, 1);
+                txIndex = DecodeInt32(bytes, 33);
+            }
+            else
+            {
+                blockHash = UInt256.Zero;
+                txIndex = -1;
+            }
         }
 
         public static byte[] EncodeBlockHashTxIndex(UInt256 blockHash, int txIndex)
