@@ -141,9 +141,6 @@ namespace BitSharp.Client
                 // add storage module
                 if (useLevelDb)
                 {
-                    pruningMode &= ~PruningMode.BlockTxesPreserveMerkle;
-                    pruningMode &= ~PruningMode.BlockTxesDestroyMerkle;
-
                     ulong? blocksCacheSize = null;
                     ulong? blocksWriteCacheSize = null;
 
