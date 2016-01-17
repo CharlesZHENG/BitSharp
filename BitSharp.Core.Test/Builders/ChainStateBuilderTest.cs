@@ -143,8 +143,7 @@ namespace BitSharp.Core.Test.Builders
                 new DisposeHandle<IDeferredChainStateCursor>(_ => { }, chainStateCursor.Object));
 
             chainStateCursor.Setup(x => x.CursorCount).Returns(1);
-            chainStateCursor.Setup(x => x.UtxoWorkQueue).Returns(Mock.Of<IDataflowBlock>());
-            chainStateCursor.Setup(x => x.UtxoApplierBlock).Returns(Mock.Of<IDataflowBlock>());
+            chainStateCursor.Setup(x => x.DataFlowBlocks).Returns(new IDataflowBlock[0]);
 
             // prepare a test block
             var testBlocks = new TestBlocks();

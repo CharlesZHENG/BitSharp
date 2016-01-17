@@ -28,7 +28,7 @@ namespace BitSharp.Core.Test.Storage
             var logger = LogManager.CreateNullLogger();
 
             var blockCount = 10.THOUSAND();
-            var checkUtxoHashFrequencey = 100;
+            var checkUtxoHashFrequencey = 1000;
 
             var blockProvider = new TestNet3BlockProvider();
             var blocks = blockProvider.ReadBlocks().Take(blockCount).ToList();
@@ -76,7 +76,7 @@ namespace BitSharp.Core.Test.Storage
                 }
 
                 // verify the utxo state before rolling back
-                var expectedLastUtxoHash = UInt256.ParseHex("6d9f49d4750dec06536d05ff896d03ff8322ca4c72f6ef93c3c3d1afeb856905");
+                var expectedLastUtxoHash = UInt256.ParseHex("5f155c7d8a5c850d5fb2566aec5110caa40e270184126d17022ae9780fd65fd9");
                 Assert.AreEqual(expectedLastUtxoHash, expectedUtxoHashes.Last());
                 expectedUtxoHashes.RemoveAt(expectedUtxoHashes.Count - 1);
 

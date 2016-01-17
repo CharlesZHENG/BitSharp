@@ -8,6 +8,10 @@ namespace BitSharp.Core.Domain
 {
     public class PrevTxOutput
     {
+        public PrevTxOutput(TxOutput txOutput, UnspentTx unspentTx)
+            : this(txOutput, unspentTx.BlockIndex, unspentTx.TxIndex, unspentTx.TxVersion, unspentTx.IsCoinbase)
+        { }
+
         public PrevTxOutput(TxOutput txOutput, int blockHeight, int txIndex, uint txVersion, bool isCoinbase)
             : this(txOutput.Value, txOutput.ScriptPublicKey, blockHeight, txIndex, txVersion, isCoinbase)
         { }

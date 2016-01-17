@@ -3,6 +3,7 @@ using BitSharp.Core.Domain;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Threading.Tasks;
 
 namespace BitSharp.Core.Storage
 {
@@ -27,6 +28,8 @@ namespace BitSharp.Core.Storage
         /// Commit the current transaction.
         /// </summary>
         void CommitTransaction();
+
+        Task CommitTransactionAsync();
 
         /// <summary>
         /// Rollback the current transaction
@@ -60,7 +63,6 @@ namespace BitSharp.Core.Storage
 
         bool TryRemoveHeader(UInt256 txHash);
 
-
         /// <summary>
         /// Determine whether an unspent transaction is present.
         /// </summary>
@@ -90,6 +92,8 @@ namespace BitSharp.Core.Storage
         /// <returns>true if the transaction was removed; otherwise, false</returns>
         bool TryRemoveUnspentTx(UInt256 txHash);
 
+        void RemoveUnspentTx(UInt256 txHash);
+
         /// <summary>
         /// Update an unspent transaction.
         /// </summary>
@@ -99,6 +103,16 @@ namespace BitSharp.Core.Storage
 
         //TODO
         IEnumerable<UnspentTx> ReadUnspentTransactions();
+
+        bool ContainsUnspentTxOutput(TxOutputKey txOutputKey);
+
+        bool TryGetUnspentTxOutput(TxOutputKey txOutputKey, out TxOutput txOutput);
+
+        bool TryAddUnspentTxOutput(TxOutputKey txOutputKey, TxOutput txOutput);
+
+        bool TryRemoveUnspentTxOutput(TxOutputKey txOutputKey);
+
+        void RemoveUnspentTxOutput(TxOutputKey txOutputKey);
 
         /// <summary>
         /// Determine whether spent transactions are present for a block.

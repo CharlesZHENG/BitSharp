@@ -27,6 +27,22 @@ namespace BitSharp.Core.Builders
 
         public ISet<TKey> Deleted => parentDictionary.Deleted;
 
+        public TValue this[TKey key]
+        {
+            get
+            {
+                TValue value;
+                if (TryGetValue(key, out value))
+                    return value;
+                else
+                    throw new KeyNotFoundException();
+            }
+            set
+            {
+                AddOrUpdate(key, value);
+            }
+        }
+
         public bool ContainsKey(TKey key)
         {
             return parentDictionary.ContainsKey(key);
@@ -57,6 +73,12 @@ namespace BitSharp.Core.Builders
             }
             else
                 return false;
+        }
+
+        public void Remove(TKey key)
+        {
+            parentDictionary.Remove(key);
+            QueueRemove(key);
         }
 
         public bool TryUpdate(TKey key, TValue value)
@@ -116,7 +138,8 @@ namespace BitSharp.Core.Builders
             {
                 workItem = new WorkItem(operation, key, value);
                 workByKey[key] = workItem;
-                workQueue.Post(workItem);
+                if (!workQueue.Post(workItem))
+                    throw new InvalidOperationException();
             }
             else if (alreadyExists)
                 WorkChangeCount++;
@@ -127,9 +150,9 @@ namespace BitSharp.Core.Builders
             return GetEnumerator();
         }
 
-        public void WarmupValue(TKey key, Func<TValue> valueFunc)
+        public void WarmupValue(TKey key)
         {
-            parentDictionary.WarmupValue(key, valueFunc);
+            parentDictionary.WarmupValue(key);
         }
 
         public sealed class WorkItem
@@ -177,9 +200,14 @@ namespace BitSharp.Core.Builders
                         operation = WorkQueueOperation.Nothing;
                         value = default(TValue);
                     }
+                    // remove an existing update on delete
+                    else if (newOperation == WorkQueueOperation.Remove && operation == WorkQueueOperation.Update)
+                    {
+                        operation = WorkQueueOperation.Remove;
+                        value = default(TValue);
+                    }
                     // the remaining conditions are all invalid:
                     // - change an existing add to an update
-                    // - change an existing update to a delete
                     // - change an existing delete to an update
                     else
                     {

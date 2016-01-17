@@ -253,7 +253,6 @@ namespace BitSharp.Core
             writer.WriteBool(unspentTx.IsCoinbase);
             writer.WriteVarBytes(unspentTx.OutputStates.ToByteArray());
             writer.WriteInt32(unspentTx.OutputStates.Length);
-            EncodeTxOutputList(writer, unspentTx.TxOutputs);
         }
 
         public static byte[] EncodeUnspentTx(UnspentTx unspentTx)
@@ -271,6 +270,7 @@ namespace BitSharp.Core
             writer.WriteUInt256(spentTx.TxHash);
             writer.WriteInt32(spentTx.ConfirmedBlockIndex);
             writer.WriteInt32(spentTx.TxIndex);
+            writer.WriteInt32(spentTx.OutputCount);
         }
 
         public static byte[] EncodeSpentTx(SpentTx spentTx)
@@ -415,15 +415,15 @@ namespace BitSharp.Core
             }
             else if (value <= 0xFFFF)
             {
-                return 2;
+                return 3;
             }
             else if (value <= 0xFFFFFFFF)
             {
-                return 4;
+                return 5;
             }
             else
             {
-                return 8;
+                return 9;
             }
         }
     }

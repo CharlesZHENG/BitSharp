@@ -3,6 +3,7 @@ using BitSharp.Core;
 using BitSharp.Core.Rules;
 using BitSharp.Core.Storage.Memory;
 using BitSharp.Esent;
+using BitSharp.LevelDb;
 using BitSharp.Lmdb;
 using BitSharp.Node;
 using BitSharp.Node.Storage.Memory;
@@ -49,6 +50,7 @@ namespace BitSharp.Client
                 var pruningMode = PruningMode.TxIndex | PruningMode.BlockSpentIndex | PruningMode.BlockTxesDelete;
                 var enableDummyWallet = true;
 
+                var useLevelDb = false;
                 var useLmdb = false;
                 var runInMemory = false;
 
@@ -61,7 +63,7 @@ namespace BitSharp.Client
                 //      It will see the data is missing, but won't redownload the blocks.
                 //**************************************************************
 
-                int? cacheSizeMaxBytes = 500.MILLION();
+                long? cacheSizeMaxBytes = 512.MEBIBYTE();
 
                 // directories
                 var baseDirectory = Config.LocalStoragePath;
@@ -94,7 +96,7 @@ namespace BitSharp.Client
                 {
                     //Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.BelowNormal;
 
-                    cacheSizeMaxBytes = (int)2.BILLION();
+                    cacheSizeMaxBytes = (int)2.GIBIBYTE();
 
                     // location to store a copy of raw blocks to avoid redownload
                     BlockRequestWorker.SecondaryBlockFolder = Path.Combine(baseDirectory, "RawBlocks");
@@ -137,7 +139,26 @@ namespace BitSharp.Client
                 var modules = new List<INinjectModule>();
 
                 // add storage module
-                if (runInMemory)
+                if (useLevelDb)
+                {
+                    ulong? blocksCacheSize = null;
+                    ulong? blocksWriteCacheSize = null;
+
+                    ulong? blockTxesCacheSize = null;
+                    ulong? blockTxesWriteCacheSize = null;
+
+                    ulong? chainStateCacheSize = null;
+                    ulong? chainStateWriteCacheSize = null;
+
+                    modules.Add(new LevelDbStorageModule(baseDirectory, chainType,
+                        blocksCacheSize, blocksWriteCacheSize,
+                        blockTxesCacheSize, blockTxesWriteCacheSize,
+                        chainStateCacheSize, chainStateWriteCacheSize));
+
+                    long? writeCacheSizeMaxBytes = 128.MEBIBYTE();
+
+                }
+                else if (runInMemory)
                 {
                     modules.Add(new MemoryStorageModule());
                     modules.Add(new NodeMemoryStorageModule());

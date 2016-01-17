@@ -86,7 +86,7 @@ namespace BitSharp.Core.Test.Workers
                 for (var txIndex = 0; txIndex < block.Transactions.Length; txIndex++)
                 {
                     var tx = block.Transactions[txIndex];
-                    var unspentTx = new UnspentTx(tx.Hash, blockIndex: 1, txIndex: txIndex, txVersion: tx.Version, isCoinbase: txIndex == 0, outputStates: new OutputStates(1, OutputState.Spent), txOutputs: ImmutableArray<TxOutput>.Empty);
+                    var unspentTx = new UnspentTx(tx.Hash, blockIndex: 1, txIndex: txIndex, txVersion: tx.Version, isCoinbase: txIndex == 0, outputStates: new OutputStates(1, OutputState.Spent));
                     unspentTxes[txIndex] = unspentTx;
                     chainStateCursor.TryAddUnspentTx(unspentTx);
                 }
@@ -120,6 +120,10 @@ namespace BitSharp.Core.Test.Workers
                     // verify unspent tx is removed after pruning
                     chainStateCursor.BeginTransaction();
                     Assert.IsFalse(chainStateCursor.ContainsUnspentTx(pruneTx.Hash));
+
+                    // verify unspent tx outputs are removed after pruning
+                    for (var outputIndex = 0; outputIndex < pruneTx.Outputs.Length; outputIndex++)
+                        Assert.IsFalse(chainStateCursor.ContainsUnspentTxOutput(new TxOutputKey(pruneTx.Hash, (uint)outputIndex)));
 
                     // verify the spent txes were removed
                     Assert.IsFalse(chainStateCursor.ContainsBlockSpentTxes(pruneHeight));

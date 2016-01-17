@@ -14,10 +14,10 @@ namespace BitSharp.Core.Test.Domain
         [TestMethod]
         public void TestBlockSpentTxes()
         {
-            var spentTx0_0 = new SpentTx((UInt256)0, 0, 1);
-            var spentTx1_0 = new SpentTx((UInt256)1, 1, 0);
-            var spentTx1_1 = new SpentTx((UInt256)2, 1, 1);
-            var spentTx2_0 = new SpentTx((UInt256)3, 2, 0);
+            var spentTx0_0 = new SpentTx((UInt256)0, 0, 1, 0);
+            var spentTx1_0 = new SpentTx((UInt256)1, 1, 0, 0);
+            var spentTx1_1 = new SpentTx((UInt256)2, 1, 1, 0);
+            var spentTx2_0 = new SpentTx((UInt256)3, 2, 0, 0);
 
             var builder = new BlockSpentTxesBuilder();
             builder.AddSpentTx(spentTx1_0);
@@ -33,10 +33,10 @@ namespace BitSharp.Core.Test.Domain
         [TestMethod]
         public void TestReadByBlock()
         {
-            var spentTx0_0 = new SpentTx((UInt256)0, 0, 1);
-            var spentTx1_0 = new SpentTx((UInt256)1, 1, 0);
-            var spentTx1_1 = new SpentTx((UInt256)2, 1, 1);
-            var spentTx2_0 = new SpentTx((UInt256)3, 2, 0);
+            var spentTx0_0 = new SpentTx((UInt256)0, 0, 1, 0);
+            var spentTx1_0 = new SpentTx((UInt256)1, 1, 0, 0);
+            var spentTx1_1 = new SpentTx((UInt256)2, 1, 1, 0);
+            var spentTx2_0 = new SpentTx((UInt256)3, 2, 0, 0);
 
             var builder = new BlockSpentTxesBuilder();
             builder.AddSpentTx(spentTx1_0);
@@ -47,7 +47,7 @@ namespace BitSharp.Core.Test.Domain
             var spentTxes = builder.ToImmutable();
 
             var expectedByBlock = new[]
-            { 
+            {
                 Tuple.Create(0, (IImmutableList<SpentTx>)ImmutableList.Create(spentTx0_0)),
                 Tuple.Create(1, (IImmutableList<SpentTx>)ImmutableList.Create(spentTx1_0, spentTx1_1)),
                 Tuple.Create(2, (IImmutableList<SpentTx>)ImmutableList.Create(spentTx2_0)),

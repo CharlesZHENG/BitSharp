@@ -1,4 +1,5 @@
 ﻿using BitSharp.Common;
+using BitSharp.Common.ExtensionMethods;
 using BitSharp.Common.Test;
 using BitSharp.Core.Domain;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
@@ -89,6 +90,18 @@ namespace BitSharp.Core.Test.Storage
         public void TestReadUnspentTransactions()
         {
             RunTest(TestReadUnspentTransactions);
+        }
+
+        [TestMethod]
+        public void TestContainsUnspentTxOutput()
+        {
+            RunTest(TestContainsUnspentTxOutput);
+        }
+
+        [TestMethod]
+        public void TestTryAddGetRemoveUnspentTxOutput()
+        {
+            RunTest(TestTryAddGetRemoveUnspentTxOutput);
         }
 
         [TestMethod]
@@ -252,7 +265,7 @@ namespace BitSharp.Core.Test.Storage
         {
             var fakeHeaders = new FakeHeaders();
             var chainedHeader0 = fakeHeaders.GenesisChained();
-            var unspentTx = new UnspentTx(txHash: UInt256.Zero, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, outputStates: new OutputStates(1, OutputState.Spent), txOutputs: ImmutableArray<TxOutput>.Empty);
+            var unspentTx = new UnspentTx(txHash: UInt256.Zero, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, outputStates: new OutputStates(1, OutputState.Spent));
             var spentTxes = BlockSpentTxes.CreateRange(new[] { unspentTx.ToSpentTx() });
 
             using (var storageManager = provider.OpenStorageManager())
@@ -307,7 +320,7 @@ namespace BitSharp.Core.Test.Storage
             var chainedHeader1 = fakeHeaders.NextChained();
             var chainedHeader2 = fakeHeaders.NextChained();
 
-            var unspentTx = new UnspentTx(txHash: UInt256.Zero, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, outputStates: new OutputStates(1, OutputState.Spent), txOutputs: ImmutableArray<TxOutput>.Empty);
+            var unspentTx = new UnspentTx(txHash: UInt256.Zero, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, outputStates: new OutputStates(1, OutputState.Spent));
             var spentTxes = BlockSpentTxes.CreateRange(new[] { unspentTx.ToSpentTx() });
 
             using (var storageManager = provider.OpenStorageManager())
@@ -399,9 +412,9 @@ namespace BitSharp.Core.Test.Storage
 
         private void TestUnspentTxCount(ITestStorageProvider provider)
         {
-            var unspentTx0 = new UnspentTx(txHash: (UInt256)0, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, outputStates: new OutputStates(1, OutputState.Unspent), txOutputs: ImmutableArray<TxOutput>.Empty);
-            var unspentTx1 = new UnspentTx(txHash: (UInt256)1, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, outputStates: new OutputStates(1, OutputState.Unspent), txOutputs: ImmutableArray<TxOutput>.Empty);
-            var unspentTx2 = new UnspentTx(txHash: (UInt256)2, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, outputStates: new OutputStates(1, OutputState.Unspent), txOutputs: ImmutableArray<TxOutput>.Empty);
+            var unspentTx0 = new UnspentTx(txHash: (UInt256)0, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, outputStates: new OutputStates(1, OutputState.Unspent));
+            var unspentTx1 = new UnspentTx(txHash: (UInt256)1, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, outputStates: new OutputStates(1, OutputState.Unspent));
+            var unspentTx2 = new UnspentTx(txHash: (UInt256)2, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, outputStates: new OutputStates(1, OutputState.Unspent));
 
             using (var storageManager = provider.OpenStorageManager())
             using (var handle = storageManager.OpenChainStateCursor())
@@ -531,8 +544,8 @@ namespace BitSharp.Core.Test.Storage
 
         private void TestContainsUnspentTx(ITestStorageProvider provider)
         {
-            var unspentTx0 = new UnspentTx(txHash: (UInt256)0, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, outputStates: new OutputStates(1, OutputState.Unspent), txOutputs: ImmutableArray<TxOutput>.Empty);
-            var unspentTx1 = new UnspentTx(txHash: (UInt256)1, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, outputStates: new OutputStates(1, OutputState.Unspent), txOutputs: ImmutableArray<TxOutput>.Empty);
+            var unspentTx0 = new UnspentTx(txHash: (UInt256)0, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, outputStates: new OutputStates(1, OutputState.Unspent));
+            var unspentTx1 = new UnspentTx(txHash: (UInt256)1, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, outputStates: new OutputStates(1, OutputState.Unspent));
 
             using (var storageManager = provider.OpenStorageManager())
             using (var handle = storageManager.OpenChainStateCursor())
@@ -578,8 +591,8 @@ namespace BitSharp.Core.Test.Storage
 
         private void TestTryAddGetRemoveUnspentTx(ITestStorageProvider provider)
         {
-            var unspentTx0 = new UnspentTx(txHash: (UInt256)0, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, outputStates: new OutputStates(1, OutputState.Unspent), txOutputs: ImmutableArray<TxOutput>.Empty);
-            var unspentTx1 = new UnspentTx(txHash: (UInt256)1, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, outputStates: new OutputStates(1, OutputState.Unspent), txOutputs: ImmutableArray<TxOutput>.Empty);
+            var unspentTx0 = new UnspentTx(txHash: (UInt256)0, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, outputStates: new OutputStates(1, OutputState.Unspent));
+            var unspentTx1 = new UnspentTx(txHash: (UInt256)1, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, outputStates: new OutputStates(1, OutputState.Unspent));
 
             using (var storageManager = provider.OpenStorageManager())
             using (var handle = storageManager.OpenChainStateCursor())
@@ -630,7 +643,7 @@ namespace BitSharp.Core.Test.Storage
 
         private void TestTryUpdateUnspentTx(ITestStorageProvider provider)
         {
-            var unspentTx = new UnspentTx(txHash: UInt256.Zero, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, outputStates: new OutputStates(1, OutputState.Unspent), txOutputs: ImmutableArray<TxOutput>.Empty);
+            var unspentTx = new UnspentTx(txHash: UInt256.Zero, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, outputStates: new OutputStates(1, OutputState.Unspent));
             var unspentTxUpdated = unspentTx.SetOutputState(0, OutputState.Spent);
             Assert.AreNotEqual(unspentTx, unspentTxUpdated);
 
@@ -670,9 +683,141 @@ namespace BitSharp.Core.Test.Storage
 
         public void TestReadUnspentTransactions(ITestStorageProvider provider)
         {
-            var unspentTx0 = new UnspentTx(txHash: (UInt256)0, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, outputStates: new OutputStates(1, OutputState.Unspent), txOutputs: ImmutableArray<TxOutput>.Empty);
-            var unspentTx1 = new UnspentTx(txHash: (UInt256)1, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, outputStates: new OutputStates(1, OutputState.Unspent), txOutputs: ImmutableArray<TxOutput>.Empty);
-            var unspentTx2 = new UnspentTx(txHash: (UInt256)2, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, outputStates: new OutputStates(1, OutputState.Unspent), txOutputs: ImmutableArray<TxOutput>.Empty);
+            var unspentTx0 = new UnspentTx(txHash: (UInt256)0, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, outputStates: new OutputStates(1, OutputState.Unspent));
+            var unspentTx1 = new UnspentTx(txHash: (UInt256)1, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, outputStates: new OutputStates(1, OutputState.Unspent));
+            var unspentTx2 = new UnspentTx(txHash: (UInt256)2, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, outputStates: new OutputStates(1, OutputState.Unspent));
+
+            using (var storageManager = provider.OpenStorageManager())
+            using (var handle = storageManager.OpenChainStateCursor())
+            {
+                var chainStateCursor = handle.Item;
+
+                // verify initial empty state
+                chainStateCursor.BeginTransaction(readOnly: true);
+                Assert.AreEqual(0, chainStateCursor.ReadUnspentTransactions().Count());
+                chainStateCursor.RollbackTransaction();
+
+                // add unspent tx 0
+                chainStateCursor.BeginTransaction();
+                Assert.IsTrue(chainStateCursor.TryAddUnspentTx(unspentTx0));
+                chainStateCursor.CommitTransaction();
+
+                // verify unspent txes
+                chainStateCursor.BeginTransaction(readOnly: true);
+                CollectionAssert.AreEquivalent(new[] { unspentTx0 }, chainStateCursor.ReadUnspentTransactions().ToList());
+                chainStateCursor.RollbackTransaction();
+
+                // add unspent tx 1
+                chainStateCursor.BeginTransaction();
+                Assert.IsTrue(chainStateCursor.TryAddUnspentTx(unspentTx1));
+                chainStateCursor.CommitTransaction();
+
+                // verify unspent txes
+                chainStateCursor.BeginTransaction(readOnly: true);
+                CollectionAssert.AreEquivalent(new[] { unspentTx0, unspentTx1 }, chainStateCursor.ReadUnspentTransactions().ToList());
+                chainStateCursor.RollbackTransaction();
+
+                // add unspent tx 2
+                chainStateCursor.BeginTransaction();
+                Assert.IsTrue(chainStateCursor.TryAddUnspentTx(unspentTx2));
+                chainStateCursor.CommitTransaction();
+
+                // verify unspent txes
+                chainStateCursor.BeginTransaction(readOnly: true);
+                CollectionAssert.AreEquivalent(new[] { unspentTx0, unspentTx1, unspentTx2 }, chainStateCursor.ReadUnspentTransactions().ToList());
+                chainStateCursor.RollbackTransaction();
+
+                // remove unspent tx 2
+                chainStateCursor.BeginTransaction();
+                Assert.IsTrue(chainStateCursor.TryRemoveUnspentTx(unspentTx2.TxHash));
+                chainStateCursor.CommitTransaction();
+
+                // verify unspent txes
+                chainStateCursor.BeginTransaction(readOnly: true);
+                CollectionAssert.AreEquivalent(new[] { unspentTx0, unspentTx1 }, chainStateCursor.ReadUnspentTransactions().ToList());
+                chainStateCursor.RollbackTransaction();
+
+                // remove unspent tx 1
+                chainStateCursor.BeginTransaction();
+                Assert.IsTrue(chainStateCursor.TryRemoveUnspentTx(unspentTx1.TxHash));
+                chainStateCursor.CommitTransaction();
+
+                // verify unspent txes
+                chainStateCursor.BeginTransaction(readOnly: true);
+                CollectionAssert.AreEquivalent(new[] { unspentTx0 }, chainStateCursor.ReadUnspentTransactions().ToList());
+                chainStateCursor.RollbackTransaction();
+
+                // remove unspent tx 0
+                chainStateCursor.BeginTransaction();
+                Assert.IsTrue(chainStateCursor.TryRemoveUnspentTx(unspentTx0.TxHash));
+                chainStateCursor.CommitTransaction();
+
+                // verify unspent txes
+                chainStateCursor.BeginTransaction(readOnly: true);
+                Assert.AreEqual(0, chainStateCursor.ReadUnspentTransactions().Count());
+                chainStateCursor.RollbackTransaction();
+            }
+        }
+
+        private void TestContainsUnspentTxOutput(ITestStorageProvider provider)
+        {
+            var random = new Random();
+
+            var txOutput0Key = new TxOutputKey(UInt256.Zero, 0);
+            var txOutput0 = new TxOutput(0, random.NextBytes(100).ToImmutableArray());
+            var txOutput1Key = new TxOutputKey(UInt256.One, 1);
+            var txOutput1 = new TxOutput(1, random.NextBytes(100).ToImmutableArray());
+
+            using (var storageManager = provider.OpenStorageManager())
+            using (var handle = storageManager.OpenChainStateCursor())
+            {
+                var chainStateCursor = handle.Item;
+
+                // begin transaction
+                chainStateCursor.BeginTransaction();
+
+                // verify presence
+                Assert.IsFalse(chainStateCursor.ContainsUnspentTxOutput(txOutput0Key));
+                Assert.IsFalse(chainStateCursor.ContainsUnspentTxOutput(txOutput1Key));
+
+                // add unspent tx 0
+                chainStateCursor.TryAddUnspentTxOutput(txOutput0Key, txOutput0);
+
+                // verify presence
+                Assert.IsTrue(chainStateCursor.ContainsUnspentTxOutput(txOutput0Key));
+                Assert.IsFalse(chainStateCursor.ContainsUnspentTxOutput(txOutput1Key));
+
+                // add unspent tx 1
+                chainStateCursor.TryAddUnspentTxOutput(txOutput1Key, txOutput1);
+
+                // verify presence
+                Assert.IsTrue(chainStateCursor.ContainsUnspentTxOutput(txOutput0Key));
+                Assert.IsTrue(chainStateCursor.ContainsUnspentTxOutput(txOutput1Key));
+
+                // remove unspent tx 1
+                chainStateCursor.TryRemoveUnspentTxOutput(txOutput1Key);
+
+                // verify presence
+                Assert.IsTrue(chainStateCursor.ContainsUnspentTxOutput(txOutput0Key));
+                Assert.IsFalse(chainStateCursor.ContainsUnspentTxOutput(txOutput1Key));
+
+                // remove unspent tx 0
+                chainStateCursor.TryRemoveUnspentTxOutput(txOutput0Key);
+
+                // verify presence
+                Assert.IsFalse(chainStateCursor.ContainsUnspentTxOutput(txOutput0Key));
+                Assert.IsFalse(chainStateCursor.ContainsUnspentTxOutput(txOutput1Key));
+            }
+        }
+
+        private void TestTryAddGetRemoveUnspentTxOutput(ITestStorageProvider provider)
+        {
+            var random = new Random();
+
+            var txOutput0Key = new TxOutputKey(UInt256.Zero, 0);
+            var txOutput0 = new TxOutput(0, random.NextBytes(100).ToImmutableArray());
+            var txOutput1Key = new TxOutputKey(UInt256.One, 1);
+            var txOutput1 = new TxOutput(1, random.NextBytes(100).ToImmutableArray());
 
             using (var storageManager = provider.OpenStorageManager())
             using (var handle = storageManager.OpenChainStateCursor())
@@ -683,55 +828,53 @@ namespace BitSharp.Core.Test.Storage
                 chainStateCursor.BeginTransaction();
 
                 // verify initial empty state
-                Assert.AreEqual(0, chainStateCursor.ReadUnspentTransactions().Count());
+                TxOutput actualTxOutput0, actualTxOutput1;
+                Assert.IsFalse(chainStateCursor.TryGetUnspentTxOutput(txOutput0Key, out actualTxOutput0));
+                Assert.IsFalse(chainStateCursor.TryGetUnspentTxOutput(txOutput1Key, out actualTxOutput1));
 
                 // add unspent tx 0
-                Assert.IsTrue(chainStateCursor.TryAddUnspentTx(unspentTx0));
+                Assert.IsTrue(chainStateCursor.TryAddUnspentTxOutput(txOutput0Key, txOutput0));
 
                 // verify unspent txes
-                CollectionAssert.AreEquivalent(new[] { unspentTx0 }, chainStateCursor.ReadUnspentTransactions().ToList());
+                Assert.IsTrue(chainStateCursor.TryGetUnspentTxOutput(txOutput0Key, out actualTxOutput0));
+                Assert.AreEqual(txOutput0, actualTxOutput0);
+                Assert.IsFalse(chainStateCursor.TryGetUnspentTxOutput(txOutput1Key, out actualTxOutput1));
 
                 // add unspent tx 1
-                Assert.IsTrue(chainStateCursor.TryAddUnspentTx(unspentTx1));
+                Assert.IsTrue(chainStateCursor.TryAddUnspentTxOutput(txOutput1Key, txOutput1));
 
                 // verify unspent txes
-                CollectionAssert.AreEquivalent(new[] { unspentTx0, unspentTx1 }, chainStateCursor.ReadUnspentTransactions().ToList());
-
-                // add unspent tx 2
-                Assert.IsTrue(chainStateCursor.TryAddUnspentTx(unspentTx2));
-
-                // verify unspent txes
-                CollectionAssert.AreEquivalent(new[] { unspentTx0, unspentTx1, unspentTx2 }, chainStateCursor.ReadUnspentTransactions().ToList());
-
-                // remove unspent tx 2
-                Assert.IsTrue(chainStateCursor.TryRemoveUnspentTx(unspentTx2.TxHash));
-
-                // verify unspent txes
-                CollectionAssert.AreEquivalent(new[] { unspentTx0, unspentTx1 }, chainStateCursor.ReadUnspentTransactions().ToList());
+                Assert.IsTrue(chainStateCursor.TryGetUnspentTxOutput(txOutput0Key, out actualTxOutput0));
+                Assert.AreEqual(txOutput0, actualTxOutput0);
+                Assert.IsTrue(chainStateCursor.TryGetUnspentTxOutput(txOutput1Key, out actualTxOutput1));
+                Assert.AreEqual(txOutput1, actualTxOutput1);
 
                 // remove unspent tx 1
-                Assert.IsTrue(chainStateCursor.TryRemoveUnspentTx(unspentTx1.TxHash));
+                Assert.IsTrue(chainStateCursor.TryRemoveUnspentTxOutput(txOutput1Key));
 
                 // verify unspent txes
-                CollectionAssert.AreEquivalent(new[] { unspentTx0 }, chainStateCursor.ReadUnspentTransactions().ToList());
+                Assert.IsTrue(chainStateCursor.TryGetUnspentTxOutput(txOutput0Key, out actualTxOutput0));
+                Assert.AreEqual(txOutput0, actualTxOutput0);
+                Assert.IsFalse(chainStateCursor.TryGetUnspentTxOutput(txOutput1Key, out actualTxOutput1));
 
                 // remove unspent tx 0
-                Assert.IsTrue(chainStateCursor.TryRemoveUnspentTx(unspentTx0.TxHash));
+                Assert.IsTrue(chainStateCursor.TryRemoveUnspentTxOutput(txOutput0Key));
 
                 // verify unspent txes
-                Assert.AreEqual(0, chainStateCursor.ReadUnspentTransactions().Count());
+                Assert.IsFalse(chainStateCursor.TryGetUnspentTxOutput(txOutput0Key, out actualTxOutput0));
+                Assert.IsFalse(chainStateCursor.TryGetUnspentTxOutput(txOutput1Key, out actualTxOutput1));
             }
         }
 
         public void TestContainsBlockSpentTxes(ITestStorageProvider provider)
         {
             var spentTxes0 = BlockSpentTxes.CreateRange(new[] {
-                new SpentTx((UInt256)0, 0, 0),
-                new SpentTx((UInt256)1, 0, 1),
-                new SpentTx((UInt256)2, 0, 2)});
+                new SpentTx((UInt256)0, 0, 0, 0),
+                new SpentTx((UInt256)1, 0, 1, 0),
+                new SpentTx((UInt256)2, 0, 2, 0)});
             var spentTxes1 = BlockSpentTxes.CreateRange(new[] {
-                new SpentTx((UInt256)100, 0, 100),
-                new SpentTx((UInt256)101, 0, 101)});
+                new SpentTx((UInt256)100, 0, 100, 0),
+                new SpentTx((UInt256)101, 0, 101, 0)});
 
             using (var storageManager = provider.OpenStorageManager())
             using (var handle = storageManager.OpenChainStateCursor())
@@ -778,12 +921,12 @@ namespace BitSharp.Core.Test.Storage
         public void TestTryAddGetRemoveBlockSpentTxes(ITestStorageProvider provider)
         {
             var spentTxes0 = BlockSpentTxes.CreateRange(new[] {
-                new SpentTx((UInt256)0, 0, 0),
-                new SpentTx((UInt256)1, 0, 1),
-                new SpentTx((UInt256)2, 0, 2)});
+                new SpentTx((UInt256)0, 0, 0, 0),
+                new SpentTx((UInt256)1, 0, 1, 0),
+                new SpentTx((UInt256)2, 0, 2, 0)});
             var spentTxes1 = BlockSpentTxes.CreateRange(new[] {
-                new SpentTx((UInt256)100, 0, 100),
-                new SpentTx((UInt256)101, 0, 101)});
+                new SpentTx((UInt256)100, 0, 100, 0),
+                new SpentTx((UInt256)101, 0, 101, 0)});
 
             using (var storageManager = provider.OpenStorageManager())
             using (var handle = storageManager.OpenChainStateCursor())
@@ -985,7 +1128,7 @@ namespace BitSharp.Core.Test.Storage
         /// <param name="provider"></param>
         public void TestOperationOutsideTransaction(ITestStorageProvider provider)
         {
-            var unspentTx = new UnspentTx(txHash: UInt256.Zero, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, outputStates: new OutputStates(1, OutputState.Unspent), txOutputs: ImmutableArray<TxOutput>.Empty);
+            var unspentTx = new UnspentTx(txHash: UInt256.Zero, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, outputStates: new OutputStates(1, OutputState.Unspent));
 
             using (var storageManager = provider.OpenStorageManager())
             using (var handle = storageManager.OpenChainStateCursor())
@@ -1035,7 +1178,7 @@ namespace BitSharp.Core.Test.Storage
         /// <param name="provider"></param>
         public void TestWriteOperationInReadonlyTransaction(ITestStorageProvider provider)
         {
-            var unspentTx = new UnspentTx(txHash: UInt256.Zero, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, outputStates: new OutputStates(1, OutputState.Unspent), txOutputs: ImmutableArray<TxOutput>.Empty);
+            var unspentTx = new UnspentTx(txHash: UInt256.Zero, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, outputStates: new OutputStates(1, OutputState.Unspent));
 
             using (var storageManager = provider.OpenStorageManager())
             using (var handle = storageManager.OpenChainStateCursor())
@@ -1070,7 +1213,7 @@ namespace BitSharp.Core.Test.Storage
 
         public void TestAccessAcrossThreads(ITestStorageProvider provider)
         {
-            var unspentTx = new UnspentTx(txHash: UInt256.Zero, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, outputStates: new OutputStates(1, OutputState.Unspent), txOutputs: ImmutableArray<TxOutput>.Empty);
+            var unspentTx = new UnspentTx(txHash: UInt256.Zero, blockIndex: 0, txIndex: 0, txVersion: 0, isCoinbase: false, outputStates: new OutputStates(1, OutputState.Unspent));
 
             using (var storageManager = provider.OpenStorageManager())
             using (var handle = storageManager.OpenChainStateCursor())

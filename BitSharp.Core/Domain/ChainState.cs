@@ -185,6 +185,25 @@ namespace BitSharp.Core.Domain
             }
         }
 
+        public bool ContainsUnspentTxOutput(TxOutputKey txOutputKey)
+        {
+            using (var handle = this.cursorCache.TakeItem())
+            {
+                var cursor = handle.Item.Item;
+
+                return cursor.ContainsUnspentTxOutput(txOutputKey);
+            }
+        }
+
+        public bool TryGetUnspentTxOutput(TxOutputKey txOutputKey, out TxOutput txOutput)
+        {
+            using (var handle = this.cursorCache.TakeItem())
+            {
+                var cursor = handle.Item.Item;
+                return cursor.TryGetUnspentTxOutput(txOutputKey, out txOutput);
+            }
+        }
+
         public bool ContainsBlockSpentTxes(int blockIndex)
         {
             using (var handle = this.cursorCache.TakeItem())

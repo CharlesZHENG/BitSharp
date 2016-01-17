@@ -3,7 +3,7 @@ using System;
 
 namespace BitSharp.Core.Domain
 {
-    public class TxOutputKey
+    public class TxOutputKey : IComparable<TxOutputKey>
     {
         private readonly int hashCode;
 
@@ -30,6 +30,15 @@ namespace BitSharp.Core.Domain
         public override int GetHashCode()
         {
             return this.hashCode;
+        }
+
+        public int CompareTo(TxOutputKey other)
+        {
+            var result = TxHash.CompareTo(other.TxHash);
+            if (result != 0)
+                return result;
+            else
+                return TxOutputIndex.CompareTo(other.TxOutputIndex);
         }
 
         public static bool operator ==(TxOutputKey left, TxOutputKey right)

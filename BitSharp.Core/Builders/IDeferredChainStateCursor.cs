@@ -1,4 +1,5 @@
 ﻿using BitSharp.Common;
+using BitSharp.Core.Domain;
 using BitSharp.Core.Storage;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
@@ -11,9 +12,9 @@ namespace BitSharp.Core.Builders
 
         void WarmUnspentTx(UInt256 txHash);
 
-        IDataflowBlock UtxoWorkQueue { get; }
+        void WarmUnspentTxOutput(TxOutputKey txOutputKey);
 
-        IDataflowBlock UtxoApplierBlock { get; }
+        IDataflowBlock[] DataFlowBlocks { get; }
 
         Task ApplyChangesAsync();
     }

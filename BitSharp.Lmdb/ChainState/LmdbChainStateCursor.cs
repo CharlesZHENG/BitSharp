@@ -11,6 +11,7 @@ using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.IO;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace BitSharp.Lmdb
 {
@@ -303,6 +304,11 @@ namespace BitSharp.Lmdb
             }
         }
 
+        public void RemoveUnspentTx(UInt256 txHash)
+        {
+            TryRemoveUnspentTx(txHash);
+        }
+
         public bool TryUpdateUnspentTx(UnspentTx unspentTx)
         {
             CheckWriteTransaction();
@@ -492,6 +498,12 @@ namespace BitSharp.Lmdb
             this.txn = null;
         }
 
+        public Task CommitTransactionAsync()
+        {
+            CommitTransaction();
+            return Task.CompletedTask;
+        }
+
         public void RollbackTransaction()
         {
             CheckTransaction();
@@ -521,6 +533,31 @@ namespace BitSharp.Lmdb
         {
             if (this.txn == null || this.txn.IsReadOnly)
                 throw new InvalidOperationException();
+        }
+
+        public bool ContainsUnspentTxOutput(TxOutputKey txOutputKey)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool TryGetUnspentTxOutput(TxOutputKey txOutputKey, out TxOutput txOutput)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool TryAddUnspentTxOutput(TxOutputKey txOutputKey, TxOutput txOutput)
+        {
+            throw new NotImplementedException();
+        }
+
+        public bool TryRemoveUnspentTxOutput(TxOutputKey txOutputKey)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void RemoveUnspentTxOutput(TxOutputKey txOutputKey)
+        {
+            throw new NotImplementedException();
         }
     }
 }

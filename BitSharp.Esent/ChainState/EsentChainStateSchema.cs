@@ -23,6 +23,7 @@ namespace BitSharp.Esent.ChainState
                 CreateFlushTable(utxoDbId, jetSession);
                 CreateHeadersTable(utxoDbId, jetSession);
                 CreateUnspentTxTable(utxoDbId, jetSession);
+                CreateUnspentTxOutputTable(utxoDbId, jetSession);
                 CreateSpentTxTable(utxoDbId, jetSession);
                 CreateUnmintedTxTable(utxoDbId, jetSession);
             }
@@ -117,7 +118,6 @@ namespace BitSharp.Esent.ChainState
             JET_COLUMNID txVersionColumnId;
             JET_COLUMNID isCoinbaseColumnId;
             JET_COLUMNID outputStatesColumnId;
-            JET_COLUMNID txOutputBytesColumnId;
 
             Api.JetCreateTable(jetSession, utxoDbId, "UnspentTx", 0, 0, out unspentTxTableId);
             Api.JetAddColumn(jetSession, unspentTxTableId, "TxHash", new JET_COLUMNDEF { coltyp = JET_coltyp.Binary, cbMax = 32, grbit = ColumndefGrbit.ColumnNotNULL | ColumndefGrbit.ColumnFixed }, null, 0, out txHashColumnId);
@@ -126,7 +126,6 @@ namespace BitSharp.Esent.ChainState
             Api.JetAddColumn(jetSession, unspentTxTableId, "TxVersion", new JET_COLUMNDEF { coltyp = VistaColtyp.UnsignedLong, grbit = ColumndefGrbit.ColumnNotNULL }, null, 0, out txVersionColumnId);
             Api.JetAddColumn(jetSession, unspentTxTableId, "IsCoinbase", new JET_COLUMNDEF { coltyp = JET_coltyp.Bit, grbit = ColumndefGrbit.ColumnNotNULL }, null, 0, out isCoinbaseColumnId);
             Api.JetAddColumn(jetSession, unspentTxTableId, "OutputStates", new JET_COLUMNDEF { coltyp = JET_coltyp.LongBinary, grbit = ColumndefGrbit.ColumnNotNULL }, null, 0, out outputStatesColumnId);
-            Api.JetAddColumn(jetSession, unspentTxTableId, "TxOutputBytes", new JET_COLUMNDEF { coltyp = JET_coltyp.LongBinary }, null, 0, out txOutputBytesColumnId);
 
             Api.JetCreateIndex2(jetSession, unspentTxTableId,
                 new JET_INDEXCREATE[]
@@ -142,6 +141,32 @@ namespace BitSharp.Esent.ChainState
                     }, 1);
 
             Api.JetCloseTable(jetSession, unspentTxTableId);
+        }
+
+        private static void CreateUnspentTxOutputTable(JET_DBID utxoDbId, Session jetSession)
+        {
+            JET_TABLEID unspentTxOutputTableId;
+            JET_COLUMNID txOutputKeyColumnId;
+            JET_COLUMNID txOutputBytesColumnId;
+
+            Api.JetCreateTable(jetSession, utxoDbId, "UnspentTxOutput", 0, 0, out unspentTxOutputTableId);
+            Api.JetAddColumn(jetSession, unspentTxOutputTableId, "TxOutputKey", new JET_COLUMNDEF { coltyp = JET_coltyp.Binary, cbMax = 36, grbit = ColumndefGrbit.ColumnNotNULL | ColumndefGrbit.ColumnFixed }, null, 0, out txOutputKeyColumnId);
+            Api.JetAddColumn(jetSession, unspentTxOutputTableId, "TxOutputBytes", new JET_COLUMNDEF { coltyp = JET_coltyp.LongBinary }, null, 0, out txOutputBytesColumnId);
+
+            Api.JetCreateIndex2(jetSession, unspentTxOutputTableId,
+                new JET_INDEXCREATE[]
+                    {
+                        new JET_INDEXCREATE
+                        {
+                            cbKeyMost = 255,
+                            grbit = CreateIndexGrbit.IndexUnique | CreateIndexGrbit.IndexDisallowNull,
+                            szIndexName = "IX_TxOutputKey",
+                            szKey = "+TxOutputKey\0\0",
+                            cbKey = "+TxOutputKey\0\0".Length
+                        }
+                    }, 1);
+
+            Api.JetCloseTable(jetSession, unspentTxOutputTableId);
         }
 
         private static void CreateSpentTxTable(JET_DBID utxoDbId, Session jetSession)

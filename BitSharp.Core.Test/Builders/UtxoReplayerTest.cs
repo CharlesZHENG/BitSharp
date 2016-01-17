@@ -32,6 +32,7 @@ namespace BitSharp.Core.Test.Builders
             coreStorage.Setup(x => x.TryReadBlockTransactions(chainedHeader.Hash, out blockTxes)).Returns(true);
 
             // mock unspent tx lookup
+            var expectedValue = 50UL * (ulong)100.MILLION();
             for (var txIndex = 0; txIndex < block.Transactions.Length; txIndex++)
             {
                 var tx = block.Transactions[txIndex];
@@ -41,10 +42,11 @@ namespace BitSharp.Core.Test.Builders
 
                     // create a fake unspent tx, with enough outputs for this input
                     var unspentTx = new UnspentTx(input.PrevTxOutputKey.TxHash, blockIndex: 1, txIndex: txIndex * inputIndex, txVersion: 0, isCoinbase: false,
-                        outputStates: tx.IsCoinbase ? OutputStates.Empty : new OutputStates(input.PrevTxOutputKey.TxOutputIndex.ToIntChecked() + 1, OutputState.Unspent),
-                        txOutputs: tx.Outputs);
+                        outputStates: tx.IsCoinbase ? OutputStates.Empty : new OutputStates(input.PrevTxOutputKey.TxOutputIndex.ToIntChecked() + 1, OutputState.Unspent));
+                    var txOutput = new TxOutput(tx.Outputs[0].Value, tx.Outputs[0].ScriptPublicKey);
 
                     chainState.Setup(x => x.TryGetUnspentTx(unspentTx.TxHash, out unspentTx)).Returns(true);
+                    chainState.Setup(x => x.TryGetUnspentTxOutput(input.PrevTxOutputKey, out txOutput)).Returns(true);
                 }
             }
 
@@ -53,8 +55,7 @@ namespace BitSharp.Core.Test.Builders
             // verify correct number of transactions were replayed
             Assert.AreEqual(validatableTxes.Count, block.Transactions.Length);
 
-            var expectedValue = 50UL * (ulong)100.MILLION();
-
+            expectedValue = 50UL * (ulong)100.MILLION();
             foreach (var validatableTx in validatableTxes)
             {
                 // verify validatable tx matches original block tx

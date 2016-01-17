@@ -1,4 +1,5 @@
 ﻿using BitSharp.Common;
+using BitSharp.Core.Domain;
 using System;
 
 namespace BitSharp.Esent
@@ -51,5 +52,14 @@ namespace BitSharp.Esent
 
         //    return blockHashTxIndexBytes;
         //}
+
+        public static byte[] EncodeTxOutputKey(TxOutputKey txOutputKey)
+        {
+            var buffer = new byte[36];
+            txOutputKey.TxHash.ToByteArrayBE(buffer, 0);
+            Buffer.BlockCopy(EncodeInt32((int)txOutputKey.TxOutputIndex), 0, buffer, 32, 4);
+
+            return buffer;
+        }
     }
 }

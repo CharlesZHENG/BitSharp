@@ -24,7 +24,7 @@ namespace BitSharp.Core.Builders
         private readonly IStorageManager storageManager;
 
         // commitLock is used to ensure that the chain field and underlying storage are always seen in sync
-        private readonly ReaderWriterLockSlim commitLock = new ReaderWriterLockSlim();
+        private readonly SemaphoreSlim commitLock = new SemaphoreSlim(1);
         private Lazy<Chain> chain;
         private readonly UtxoBuilder utxoBuilder;
 
@@ -182,12 +182,13 @@ namespace BitSharp.Core.Builders
                     new[]
                     {
                         sendBlockTxes, applyChainState, blockValidator
-                    }.Concat(timingTasks).ToArray(),
+                    }
+                    .Concat(timingTasks).ToArray(),
                     new IDataflowBlock[]
                     {
-                        chainStateCursor.UtxoWorkQueue, chainStateCursor.UtxoApplierBlock, blockTxesBuffer,
-                        merkleBlockTxes, countBlockTxes, warmedBlockTxes, validatableTxes
-                    });
+                        blockTxesBuffer, merkleBlockTxes, countBlockTxes, warmedBlockTxes, validatableTxes
+                    }
+                    .Concat(chainStateCursor.DataFlowBlocks).ToArray());
                 await pipelineCompletion;
 
                 var totalTxCount = chainStateCursor.TotalTxCount;
@@ -196,11 +197,17 @@ namespace BitSharp.Core.Builders
                 var unspentOutputCount = chainStateCursor.UnspentOutputCount;
 
                 // only commit the utxo changes once block validation has completed
-                commitLock.DoWrite(() =>
+                await commitLock.WaitAsync();
+                try
                 {
-                    chainStateCursor.CommitTransaction();
+                    await chainStateCursor.CommitTransactionAsync();
                     chain = new Lazy<Chain>(() => newChain).Force();
-                });
+                }
+                finally
+                {
+                    commitLock.Release();
+                }
+
                 stats.commitUtxoDurationMeasure.Tick(stopwatch.Elapsed);
 
                 // update total count stats
@@ -259,7 +266,7 @@ namespace BitSharp.Core.Builders
                 chainStateCursor.TryAddBlockUnmintedTxes(chainedHeader.Hash, unmintedTxes.ToImmutable());
 
                 // commit the chain state
-                commitLock.DoWrite(() =>
+                commitLock.Do(() =>
                 {
                     chainStateCursor.CommitTransaction();
                     chain = new Lazy<Chain>(() => newChain).Force();
@@ -275,7 +282,7 @@ namespace BitSharp.Core.Builders
 
         public ChainState ToImmutable()
         {
-            return commitLock.DoRead(() =>
+            return commitLock.Do(() =>
                 new ChainState(chain.Value, storageManager));
         }
 

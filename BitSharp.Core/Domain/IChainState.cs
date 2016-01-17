@@ -54,6 +54,10 @@ namespace BitSharp.Core.Domain
         //TODO
         IEnumerable<UnspentTx> ReadUnspentTransactions();
 
+        bool ContainsUnspentTxOutput(TxOutputKey txOutputKey);
+
+        bool TryGetUnspentTxOutput(TxOutputKey txOutputKey, out TxOutput txOutput);
+
         /// <summary>
         /// Determine whether spent transactions are present for a block.
         /// </summary>
