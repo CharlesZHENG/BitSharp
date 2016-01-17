@@ -45,12 +45,12 @@ namespace BitSharp.Client
                 var useTestNet = false;
                 var connectToPeers = true;
 
-                var ignoreScripts = true;
+                var ignoreScripts = false;
 
                 var pruningMode = PruningMode.TxIndex | PruningMode.BlockSpentIndex | PruningMode.BlockTxesDelete;
                 var enableDummyWallet = true;
 
-                var useLevelDb = true;
+                var useLevelDb = false;
                 var useLmdb = false;
                 var runInMemory = false;
 
