@@ -157,7 +157,7 @@ namespace BitSharp.Core.Test
                     previousBlock: previousBlockHash,
                     merkleRoot: merkleRoot,
                     time: thisBlockTime,
-                    bits: DataCalculator.TargetToBits(target ?? UnitTestParams.Target0),
+                    bits: DataCalculator.ToCompact(target ?? UnitTestParams.Target0),
                     nonce: 0
                 ),
                 transactions: transactions
@@ -173,7 +173,7 @@ namespace BitSharp.Core.Test
 
         public Block MineBlock(Block block)
         {
-            var minedHeader = this.miner.MineBlockHeader(block.Header, DataCalculator.BitsToTarget(block.Header.Bits));
+            var minedHeader = this.miner.MineBlockHeader(block.Header, DataCalculator.FromCompact(block.Header.Bits));
             if (minedHeader == null)
                 Assert.Fail("No block could be mined for test data header.");
 

@@ -27,7 +27,7 @@ namespace BitSharp.Core
         {
             try
             {
-                return Max256BitTarget / (BigInteger)BitsToTarget(blockHeader.Bits);
+                return Max256BitTarget / (BigInteger)FromCompact(blockHeader.Bits);
             }
             catch (Exception)
             {
@@ -36,45 +36,87 @@ namespace BitSharp.Core
             }
         }
 
-        public static UInt256 BitsToTarget(UInt32 bits)
+        public static UInt256 FromCompact(uint compact)
         {
-            // last three bytes store the multiplicand
-            var multiplicand = (BigInteger)bits % 0x1000000;
-            if (multiplicand > 0x7fffff)
-                throw new ArgumentOutOfRangeException("bits");
-
-            // first byte stores the value to be used in the power
-            var powerPart = (int)(bits >> 24);
-            var multiplier = BigInteger.Pow(2, 8 * (powerPart - 3));
-
-            return new UInt256(multiplicand * multiplier);
+            bool negative, overflow;
+            return FromCompact(compact, out negative, out overflow);
         }
 
-        public static UInt32 TargetToBits(UInt256 target)
+        public static UInt256 FromCompact(uint compact, out bool negative, out bool overflow)
         {
-            // to get the powerPart: take the log in base 2, round up to 8 to respect byte boundaries, and then remove 24 to represent 3 bytes of precision
-            var log = Math.Ceiling(UInt256.Log(target, 2) / 8) * 8 - 24;
-            var powerPart = (byte)(log / 8 + 3);
+            var size = (int)(compact >> 24);
+            var word = compact & 0x007fffff;
 
-            // determine the multiplier based on the powerPart
-            var multiplier = BigInteger.Pow(2, 8 * (powerPart - 3));
-
-            // to get multiplicand: divide the target by the multiplier
-            //TODO
-            var multiplicandBytes = ((BigInteger)target / (BigInteger)multiplier).ToByteArray();
-            Debug.Assert(multiplicandBytes.Length == 3 || multiplicandBytes.Length == 4);
-
-            // this happens when multipicand would be greater than 0x7fffff
-            // TODO need a better explanation comment
-            if (multiplicandBytes.Last() == 0)
+            UInt256 value;
+            if (size <= 3)
             {
-                multiplicandBytes = multiplicandBytes.Skip(1).ToArray();
-                powerPart++;
+                word >>= 8 * (3 - size);
+                value = (UInt256)word;
+            }
+            else
+            {
+                value = (UInt256)word;
+                value <<= 8 * (size - 3);
             }
 
-            // construct the bits representing the powerPart and multiplicand
-            var bits = Bits.ToUInt32(multiplicandBytes.Concat(powerPart).ToArray());
-            return bits;
+            negative = word != 0 && (compact & 0x00800000) != 0;
+            overflow = word != 0 && ((size > 34) ||
+                                     (word > 0xff && size > 33) ||
+                                     (word > 0xffff && size > 32));
+
+            return value;
+        }
+
+        public static uint ToCompact(UInt256 value, bool negative = false)
+        {
+            var size = (HighBit(value) + 7) / 8;
+            var compact = 0U;
+
+            if (size <= 3)
+            {
+                compact = (uint)(value.Part4 << 8 * (3 - size));
+            }
+            else {
+                value >>= 8 * (size - 3);
+                compact = (uint)(value.Part4);
+            }
+
+            // The 0x00800000 bit denotes the sign.
+            // Thus, if it is already set, divide the mantissa by 256 and increase the exponent.
+            if ((compact & 0x00800000) != 0)
+            {
+                compact >>= 8;
+                size++;
+            }
+
+            Debug.Assert((compact & ~0x007fffff) == 0);
+            Debug.Assert(size < 256);
+
+            compact |= (uint)(size << 24);
+            if (negative && (compact & 0x007fffff) != 0)
+                compact |= 0x00800000;
+
+            return compact;
+        }
+
+        private static int HighBit(UInt256 value)
+        {
+            var parts = value.Parts;
+            for (var pos = 3; pos >= 0; pos--)
+            {
+                var part = parts[pos];
+                if (part != 0)
+                {
+                    for (var bits = 63; bits > 0; bits--)
+                    {
+                        if ((part & 1UL << bits) != 0)
+                            return 64 * pos + bits + 1;
+                    }
+                    return 64 * pos + 1;
+                }
+            }
+
+            return 0;
         }
     }
 }

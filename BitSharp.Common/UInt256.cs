@@ -88,6 +88,7 @@ namespace BitSharp.Common
                 throw new ArgumentOutOfRangeException();
         }
 
+        public UInt64[] Parts => new[] { part4, part3, part2, part1 };
         public UInt64 Part1 => part1;
         public UInt64 Part2 => part2;
         public UInt64 Part3 => part3;
@@ -331,6 +332,11 @@ namespace BitSharp.Common
         public static UInt256 operator *(UInt256 left, UInt256 right)
         {
             return new UInt256(left.ToBigInteger() * right.ToBigInteger());
+        }
+
+        public static UInt256 operator <<(UInt256 value, int shift)
+        {
+            return new UInt256(value.ToBigInteger() << shift);
         }
 
         public static UInt256 operator >>(UInt256 value, int shift)

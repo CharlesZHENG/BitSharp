@@ -360,7 +360,7 @@ namespace BitSharp.Core.Rules
 
         public uint GetRequiredNextBits(Chain chain)
         {
-            var powLimitCompact = DataCalculator.TargetToBits(ChainParams.HighestTarget);
+            var powLimitCompact = DataCalculator.ToCompact(ChainParams.HighestTarget);
 
             if (chain.Height == 0)
                 return powLimitCompact;
@@ -422,7 +422,7 @@ namespace BitSharp.Core.Rules
                 if (target > ChainParams.HighestTarget)
                     target = ChainParams.HighestTarget;
 
-                return DataCalculator.TargetToBits(target);
+                return DataCalculator.ToCompact(target);
             }
         }
 

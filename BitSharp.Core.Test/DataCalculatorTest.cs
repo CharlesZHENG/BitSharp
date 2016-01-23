@@ -11,41 +11,52 @@ namespace BitSharp.Core.Test
     public class DataCalculatorTest
     {
         [TestMethod]
-        public void TestBitsToTarget()
+        public void TestFromCompact()
         {
             var bits1 = 0x1b0404cbU;
             var expected1 = UInt256.ParseHex("404cb000000000000000000000000000000000000000000000000");
-            var actual1 = DataCalculator.BitsToTarget(bits1);
+            var actual1 = DataCalculator.FromCompact(bits1);
             Assert.AreEqual(expected1, actual1);
 
             // difficulty: 1
             var bits2 = 0x1d00ffffU;
             var expected2 = UInt256.ParseHex("ffff0000000000000000000000000000000000000000000000000000");
-            var actual2 = DataCalculator.BitsToTarget(bits2);
+            var actual2 = DataCalculator.FromCompact(bits2);
             Assert.AreEqual(expected2, actual2);
+
+            var bits3 = 0x030404cbU;
+            var expected3 = UInt256.ParseHex("000000000000000000000000000000000000000000000000404cb");
+            var actual3 = DataCalculator.FromCompact(bits3);
+            Assert.AreEqual(expected3, actual3);
         }
 
         [TestMethod]
-        public void TestTargetToBits()
+        public void TestToCompact()
         {
             var target1 = UInt256.ParseHex("404cb000000000000000000000000000000000000000000000000");
             var expected1 = 0x1b0404cbU;
-            var actual1 = DataCalculator.TargetToBits(target1);
+            var actual1 = DataCalculator.ToCompact(target1);
 
             Assert.AreEqual(expected1, actual1);
 
             // difficulty: 1
             var target2 = UInt256.ParseHex("ffff0000000000000000000000000000000000000000000000000000");
             var expected2 = 0x1d00ffffU;
-            var actual2 = DataCalculator.TargetToBits(target2);
+            var actual2 = DataCalculator.ToCompact(target2);
 
             Assert.AreEqual(expected2, actual2);
 
             var target3 = UInt256.ParseHex("7fff0000000000000000000000000000000000000000000000000000");
             var expected3 = 0x1c7fff00U;
-            var actual3 = DataCalculator.TargetToBits(target3);
+            var actual3 = DataCalculator.ToCompact(target3);
 
             Assert.AreEqual(expected3, actual3);
+
+            var target4 = UInt256.ParseHex("000000000000000000000000000000000000000000000000000404cb");
+            var expected4 = 0x030404cbU;
+            var actual4 = DataCalculator.ToCompact(target4);
+
+            Assert.AreEqual(expected4, actual4);
         }
 
         [TestMethod]

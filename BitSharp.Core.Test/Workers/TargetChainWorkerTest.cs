@@ -108,7 +108,7 @@ namespace BitSharp.Core.Test.Workers
 
             var fakeHeadersB = new FakeHeaders(fakeHeaders);
             var header3B = fakeHeadersB.Next();
-            var header4B = fakeHeadersB.Next(DataCalculator.TargetToBits(UnitTestParams.Target2));
+            var header4B = fakeHeadersB.Next(DataCalculator.ToCompact(UnitTestParams.Target2));
 
             // store genesis block
             var chainedHeader0 = ChainedHeader.CreateForGenesisBlock(header0);

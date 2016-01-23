@@ -51,7 +51,7 @@ namespace BitSharp.Core.Domain
 
         public UInt256 CalculateTarget()
         {
-            return DataCalculator.BitsToTarget(this.Bits);
+            return DataCalculator.FromCompact(this.Bits);
         }
 
         public override bool Equals(object obj)

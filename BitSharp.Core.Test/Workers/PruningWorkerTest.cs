@@ -162,7 +162,7 @@ namespace BitSharp.Core.Test.Workers
         private Block CreateFakeBlock(int txCount, UInt256 prevBlockHash = null)
         {
             var transactions = Enumerable.Range(0, txCount).Select(x => RandomData.RandomTransaction()).ToImmutableArray();
-            var blockHeader = RandomData.RandomBlockHeader().With(PreviousBlock: prevBlockHash, MerkleRoot: MerkleTree.CalculateMerkleRoot(transactions), Bits: DataCalculator.TargetToBits(UnitTestParams.Target0));
+            var blockHeader = RandomData.RandomBlockHeader().With(PreviousBlock: prevBlockHash, MerkleRoot: MerkleTree.CalculateMerkleRoot(transactions), Bits: DataCalculator.ToCompact(UnitTestParams.Target0));
             var block = Block.Create(blockHeader, transactions);
 
             return block;
