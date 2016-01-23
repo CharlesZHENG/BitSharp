@@ -1,4 +1,5 @@
 ﻿using BitSharp.Common;
+using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Domain;
 using NLog;
 using System;
@@ -36,8 +37,6 @@ namespace BitSharp.Core.Test
             var nonceIndex = 76;
             var minedNonce = (UInt32?)null;
 
-            logger.Debug($"Starting mining: {DateTime.Now:hh':'mm':'ss}");
-
             var stopwatch = Stopwatch.StartNew();
 
             Parallel.For(
@@ -66,18 +65,15 @@ namespace BitSharp.Core.Test
 
             stopwatch.Stop();
 
-            var hashRate = ((float)total / 1000 / 1000) / ((float)stopwatch.ElapsedMilliseconds / 1000);
+            var hashRate = total / stopwatch.Elapsed.TotalSeconds;
 
-            if (minedNonce != null)
-            {
-                logger.Debug($"Found block in {stopwatch.Elapsed:hh':'mm':'ss} hh:mm:ss at Nonce {minedNonce}, Hash Rate: {hashRate} mHash/s, Total Hash Attempts: {total:N0}, Found Hash: {blockHeader.With(Nonce: minedNonce).Hash}");
-                return blockHeader.With(Nonce: minedNonce);
-            }
-            else
-            {
-                logger.Debug($"No block found in {stopwatch.Elapsed:hh':'mm':'ss} hh:mm:ss, Hash Rate: {hashRate} mHash/s, Total Hash Attempts: {total:N0}, Found Hash: {blockHeader.With(Nonce: minedNonce).Hash}");
-                return null;
-            }
+            if (minedNonce == null)
+                throw new InvalidOperationException();
+
+            var minedHeader = blockHeader.With(Nonce: minedNonce);
+
+            logger.Debug($"Found block in {stopwatch.Elapsed.TotalMilliseconds:N3}ms at Nonce {minedNonce}, Hash Rate: {hashRate / 1.MILLION()} mHash/s, Total Hash Attempts: {total:N0}, Found Hash: {minedHeader.Hash}");
+            return minedHeader;
         }
 
         private static int BytesCompareLE(byte[] a, byte[] b)
