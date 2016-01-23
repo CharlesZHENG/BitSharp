@@ -44,10 +44,7 @@ namespace BitSharp.Core.Domain
             return (ChainedHeader)obj == this;
         }
 
-        public override int GetHashCode()
-        {
-            return this.BlockHeader.GetHashCode() ^ this.Height.GetHashCode() ^ this.TotalWork.GetHashCode() ^ this.DateSeen.GetHashCode();
-        }
+        public override int GetHashCode() => Hash.GetHashCode();
 
         public static bool operator ==(ChainedHeader left, ChainedHeader right)
         {

@@ -43,6 +43,7 @@ namespace BitSharp.Core.Domain
             return new MerkleTreeNode(index, depth, hash, pruned: true);
         }
 
+        //TODO only exists for tests
         public override bool Equals(object obj)
         {
             if (!(obj is MerkleTreeNode))
@@ -50,21 +51,6 @@ namespace BitSharp.Core.Domain
 
             var other = (MerkleTreeNode)obj;
             return other.Index == this.Index && other.Depth == this.Depth && other.Hash == this.Hash && other.Pruned == this.Pruned;
-        }
-
-        public override int GetHashCode()
-        {
-            return this.Index.GetHashCode() ^ this.Depth.GetHashCode() ^ this.Hash.GetHashCode();
-        }
-
-        public static bool operator ==(MerkleTreeNode left, MerkleTreeNode right)
-        {
-            return object.ReferenceEquals(left, right) || (!object.ReferenceEquals(left, null) && !object.ReferenceEquals(right, null) && left.Equals(right));
-        }
-
-        public static bool operator !=(MerkleTreeNode left, MerkleTreeNode right)
-        {
-            return !(left == right);
         }
     }
 }

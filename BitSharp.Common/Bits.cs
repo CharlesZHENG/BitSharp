@@ -81,5 +81,80 @@ namespace BitSharp.Common
         {
             return isLE ? value : value.Reverse().ToArray();
         }
+
+        public static void EncodeBool(bool value, byte[] buffer, int offset = 0)
+        {
+            buffer[offset++] = (byte)(value ? 1 : 0);
+        }
+
+        public static void EncodeInt16(short value, byte[] buffer, int offset = 0)
+        {
+            unchecked
+            {
+                buffer[offset++] = (byte)(value);
+                buffer[offset++] = (byte)(value >> 8);
+            }
+        }
+
+        public static void EncodeUInt16(ushort value, byte[] buffer, int offset = 0)
+        {
+            EncodeInt16(unchecked((short)value), buffer, offset);
+        }
+
+        public static void EncodeInt32(int value, byte[] buffer, int offset = 0)
+        {
+            unchecked
+            {
+                buffer[offset++] = (byte)(value);
+                buffer[offset++] = (byte)(value >> 8);
+                buffer[offset++] = (byte)(value >> 16);
+                buffer[offset++] = (byte)(value >> 24);
+            }
+        }
+
+        public static void EncodeUInt32(uint value, byte[] buffer, int offset = 0)
+        {
+            EncodeInt32(unchecked((int)value), buffer, offset);
+        }
+
+        public static void EncodeInt64(long value, byte[] buffer, int offset = 0)
+        {
+            unchecked
+            {
+                buffer[offset++] = (byte)(value);
+                buffer[offset++] = (byte)(value >> 8);
+                buffer[offset++] = (byte)(value >> 16);
+                buffer[offset++] = (byte)(value >> 24);
+                buffer[offset++] = (byte)(value >> 32);
+                buffer[offset++] = (byte)(value >> 40);
+                buffer[offset++] = (byte)(value >> 48);
+                buffer[offset++] = (byte)(value >> 56);
+            }
+        }
+
+        public static void EncodeUInt64(ulong value, byte[] buffer, int offset)
+        {
+            EncodeInt64(unchecked((long)value), buffer, offset);
+        }
+
+        public static void EncodeInt64BE(long value, byte[] buffer, int offset)
+        {
+            unchecked
+            {
+                buffer[offset++] = (byte)(value >> 56);
+                buffer[offset++] = (byte)(value >> 48);
+                buffer[offset++] = (byte)(value >> 40);
+                buffer[offset++] = (byte)(value >> 32);
+                buffer[offset++] = (byte)(value >> 24);
+                buffer[offset++] = (byte)(value >> 16);
+                buffer[offset++] = (byte)(value >> 8);
+                buffer[offset++] = (byte)(value);
+            }
+        }
+
+        public static void EncodeUInt64BE(ulong value, byte[] buffer, int offset)
+        {
+            EncodeInt64BE(unchecked((long)value), buffer, offset);
+        }
     }
 }

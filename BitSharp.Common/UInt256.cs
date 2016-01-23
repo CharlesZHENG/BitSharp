@@ -1,5 +1,6 @@
 ﻿using BitSharp.Common.ExtensionMethods;
 using System;
+using System.Data.HashFunction;
 using System.Globalization;
 using System.Net;
 using System.Numerics;
@@ -32,7 +33,7 @@ namespace BitSharp.Common
             this.part3 = Bits.ToUInt64(value, 8);
             this.part4 = Bits.ToUInt64(value, 0);
 
-            this.hashCode = this.part1.GetHashCode() ^ this.part2.GetHashCode() ^ this.part3.GetHashCode() ^ this.part4.GetHashCode();
+            this.hashCode = Bits.ToInt32(new xxHash(32).ComputeHash(value));
         }
 
         public UInt256(byte[] value, int offset)
@@ -43,7 +44,8 @@ namespace BitSharp.Common
             this.part3 = Bits.ToUInt64(value, offset + 8);
             this.part4 = Bits.ToUInt64(value, offset + 0);
 
-            this.hashCode = this.part1.GetHashCode() ^ this.part2.GetHashCode() ^ this.part3.GetHashCode() ^ this.part4.GetHashCode();
+            var hashBytes = ToByteArray();
+            this.hashCode = Bits.ToInt32(new xxHash(32).ComputeHash(hashBytes));
         }
 
         private UInt256(UInt64 part1, UInt64 part2, UInt64 part3, UInt64 part4)
@@ -53,7 +55,8 @@ namespace BitSharp.Common
             this.part3 = part3;
             this.part4 = part4;
 
-            this.hashCode = this.part1.GetHashCode() ^ this.part2.GetHashCode() ^ this.part3.GetHashCode() ^ this.part4.GetHashCode();
+            var hashBytes = ToByteArray();
+            this.hashCode = Bits.ToInt32(new xxHash(32).ComputeHash(hashBytes));
         }
 
         public UInt256(int value)
@@ -93,49 +96,31 @@ namespace BitSharp.Common
         public byte[] ToByteArray()
         {
             var buffer = new byte[32];
-            Buffer.BlockCopy(Bits.GetBytes(this.part4), 0, buffer, 0, 8);
-            Buffer.BlockCopy(Bits.GetBytes(this.part3), 0, buffer, 8, 8);
-            Buffer.BlockCopy(Bits.GetBytes(this.part2), 0, buffer, 16, 8);
-            Buffer.BlockCopy(Bits.GetBytes(this.part1), 0, buffer, 24, 8);
-
+            ToByteArray(buffer);
             return buffer;
         }
 
-        public void ToByteArray(byte[] buffer, int offset)
+        public void ToByteArray(byte[] buffer, int offset = 0)
         {
-            Buffer.BlockCopy(Bits.GetBytes(this.part4), 0, buffer, 0 + offset, 8);
-            Buffer.BlockCopy(Bits.GetBytes(this.part3), 0, buffer, 8 + offset, 8);
-            Buffer.BlockCopy(Bits.GetBytes(this.part2), 0, buffer, 16 + offset, 8);
-            Buffer.BlockCopy(Bits.GetBytes(this.part1), 0, buffer, 24 + offset, 8);
+            Bits.EncodeUInt64(part4, buffer, 0 + offset);
+            Bits.EncodeUInt64(part3, buffer, 8 + offset);
+            Bits.EncodeUInt64(part2, buffer, 16 + offset);
+            Bits.EncodeUInt64(part1, buffer, 24 + offset);
         }
 
-        //TODO properly taken into account host endianness
         public byte[] ToByteArrayBE()
         {
-            unchecked
-            {
-                var buffer = new byte[32];
-                Buffer.BlockCopy(BitConverter.GetBytes(IPAddress.HostToNetworkOrder((long)this.part1)), 0, buffer, 0, 8);
-                Buffer.BlockCopy(BitConverter.GetBytes(IPAddress.HostToNetworkOrder((long)this.part2)), 0, buffer, 8, 8);
-                Buffer.BlockCopy(BitConverter.GetBytes(IPAddress.HostToNetworkOrder((long)this.part3)), 0, buffer, 16, 8);
-                Buffer.BlockCopy(BitConverter.GetBytes(IPAddress.HostToNetworkOrder((long)this.part4)), 0, buffer, 24, 8);
-
-                return buffer;
-            }
+            var buffer = new byte[32];
+            ToByteArrayBE(buffer);
+            return buffer;
         }
 
-        //TODO properly taken into account host endianness
-        public byte[] ToByteArrayBE(byte[] buffer, int offset = 0)
+        public void ToByteArrayBE(byte[] buffer, int offset = 0)
         {
-            unchecked
-            {
-                Buffer.BlockCopy(BitConverter.GetBytes(IPAddress.HostToNetworkOrder((long)this.part1)), 0, buffer, 0 + offset, 8);
-                Buffer.BlockCopy(BitConverter.GetBytes(IPAddress.HostToNetworkOrder((long)this.part2)), 0, buffer, 8 + offset, 8);
-                Buffer.BlockCopy(BitConverter.GetBytes(IPAddress.HostToNetworkOrder((long)this.part3)), 0, buffer, 16 + offset, 8);
-                Buffer.BlockCopy(BitConverter.GetBytes(IPAddress.HostToNetworkOrder((long)this.part4)), 0, buffer, 24 + offset, 8);
-
-                return buffer;
-            }
+            Bits.EncodeUInt64BE(part1, buffer, 0 + offset);
+            Bits.EncodeUInt64BE(part2, buffer, 8 + offset);
+            Bits.EncodeUInt64BE(part3, buffer, 16 + offset);
+            Bits.EncodeUInt64BE(part4, buffer, 24 + offset);
         }
 
         //TODO properly taken into account host endianness
@@ -158,7 +143,9 @@ namespace BitSharp.Common
         public BigInteger ToBigInteger()
         {
             // add a trailing zero so that value is always positive
-            return new BigInteger(ToByteArray().Concat(0));
+            var buffer = new byte[33];
+            ToByteArray(buffer);
+            return new BigInteger(buffer);
         }
 
         public int CompareTo(UInt256 other)
@@ -294,10 +281,7 @@ namespace BitSharp.Common
             return other.part1 == this.part1 && other.part2 == this.part2 && other.part3 == this.part3 && other.part4 == this.part4;
         }
 
-        public override int GetHashCode()
-        {
-            return this.hashCode;
-        }
+        public override int GetHashCode() => hashCode;
 
         public override string ToString()
         {

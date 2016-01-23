@@ -1,5 +1,6 @@
 ﻿using BitSharp.Common;
 using System;
+using System.Data.HashFunction;
 
 namespace BitSharp.Core.Domain
 {
@@ -12,7 +13,10 @@ namespace BitSharp.Core.Domain
             TxHash = txHash;
             TxOutputIndex = txOutputIndex;
 
-            this.hashCode = txHash.GetHashCode() ^ txOutputIndex.GetHashCode();
+            var hashBytes = new byte[36];
+            txHash.ToByteArray(hashBytes);
+            Bits.EncodeUInt32(txOutputIndex, hashBytes, 32);
+            hashCode = Bits.ToInt32(new xxHash(32).ComputeHash(hashBytes));
         }
 
         public UInt256 TxHash { get; }
@@ -27,10 +31,7 @@ namespace BitSharp.Core.Domain
             return (TxOutputKey)obj == this;
         }
 
-        public override int GetHashCode()
-        {
-            return this.hashCode;
-        }
+        public override int GetHashCode() => hashCode;
 
         public int CompareTo(TxOutputKey other)
         {

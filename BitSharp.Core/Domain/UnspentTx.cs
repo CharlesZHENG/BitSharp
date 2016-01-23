@@ -80,10 +80,5 @@ namespace BitSharp.Core.Domain
             var other = (UnspentTx)obj;
             return other.TxHash == this.TxHash && other.BlockIndex == this.BlockIndex && other.TxIndex == this.TxIndex && other.TxVersion == this.TxVersion && other.IsCoinbase == this.IsCoinbase && other.OutputStates.Equals(this.OutputStates);
         }
-
-        public override int GetHashCode()
-        {
-            return this.TxHash.GetHashCode() ^ this.BlockIndex.GetHashCode() ^ this.TxIndex.GetHashCode() ^ this.TxVersion.GetHashCode() ^ this.IsCoinbase.GetHashCode() ^ this.OutputStates.GetHashCode();
-        }
     }
 }

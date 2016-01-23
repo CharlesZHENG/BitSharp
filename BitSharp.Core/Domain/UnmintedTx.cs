@@ -16,6 +16,7 @@ namespace BitSharp.Core.Domain
 
         public ImmutableArray<PrevTxOutput> PrevTxOutputs { get; }
 
+        //TODO only exists for tests
         public override bool Equals(object obj)
         {
             if (!(obj is UnmintedTx))
@@ -23,11 +24,6 @@ namespace BitSharp.Core.Domain
 
             var other = (UnmintedTx)obj;
             return other.TxHash == this.TxHash && other.PrevTxOutputs.SequenceEqual(this.PrevTxOutputs);
-        }
-
-        public override int GetHashCode()
-        {
-            return this.TxHash.GetHashCode(); //TODO ^ this.PrevTxOutputs.GetHashCode();
         }
     }
 }

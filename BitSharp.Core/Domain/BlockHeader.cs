@@ -6,8 +6,6 @@ namespace BitSharp.Core.Domain
 {
     public class BlockHeader
     {
-        private readonly int hashCode;
-
         public BlockHeader(UInt32 version, UInt256 previousBlock, UInt256 merkleRoot, DateTimeOffset time, UInt32 bits, UInt32 nonce, UInt256 hash)
         {
             Version = version;
@@ -17,8 +15,6 @@ namespace BitSharp.Core.Domain
             Bits = bits;
             Nonce = nonce;
             Hash = hash;
-
-            this.hashCode = this.Hash.GetHashCode();
         }
 
         public UInt32 Version { get; }
@@ -66,10 +62,7 @@ namespace BitSharp.Core.Domain
             return (BlockHeader)obj == this;
         }
 
-        public override int GetHashCode()
-        {
-            return this.hashCode;
-        }
+        public override int GetHashCode() => Hash.GetHashCode();
 
         public static bool operator ==(BlockHeader left, BlockHeader right)
         {

@@ -704,7 +704,9 @@ namespace BitSharp.Core.Test.Storage
 
                 // verify unspent txes
                 chainStateCursor.BeginTransaction(readOnly: true);
-                CollectionAssert.AreEquivalent(new[] { unspentTx0 }, chainStateCursor.ReadUnspentTransactions().ToList());
+                CollectionAssert.AreEqual
+                    (new[] { unspentTx0 },
+                    chainStateCursor.ReadUnspentTransactions().ToList());
                 chainStateCursor.RollbackTransaction();
 
                 // add unspent tx 1
@@ -714,7 +716,9 @@ namespace BitSharp.Core.Test.Storage
 
                 // verify unspent txes
                 chainStateCursor.BeginTransaction(readOnly: true);
-                CollectionAssert.AreEquivalent(new[] { unspentTx0, unspentTx1 }, chainStateCursor.ReadUnspentTransactions().ToList());
+                CollectionAssert.AreEqual(
+                    new[] { unspentTx0, unspentTx1 }.OrderBy(x => x.TxHash).ToArray(),
+                    chainStateCursor.ReadUnspentTransactions().ToList());
                 chainStateCursor.RollbackTransaction();
 
                 // add unspent tx 2
@@ -724,7 +728,9 @@ namespace BitSharp.Core.Test.Storage
 
                 // verify unspent txes
                 chainStateCursor.BeginTransaction(readOnly: true);
-                CollectionAssert.AreEquivalent(new[] { unspentTx0, unspentTx1, unspentTx2 }, chainStateCursor.ReadUnspentTransactions().ToList());
+                CollectionAssert.AreEqual(
+                    new[] { unspentTx0, unspentTx1, unspentTx2 }.OrderBy(x => x.TxHash).ToArray(),
+                    chainStateCursor.ReadUnspentTransactions().ToList());
                 chainStateCursor.RollbackTransaction();
 
                 // remove unspent tx 2
@@ -734,7 +740,9 @@ namespace BitSharp.Core.Test.Storage
 
                 // verify unspent txes
                 chainStateCursor.BeginTransaction(readOnly: true);
-                CollectionAssert.AreEquivalent(new[] { unspentTx0, unspentTx1 }, chainStateCursor.ReadUnspentTransactions().ToList());
+                CollectionAssert.AreEqual(
+                    new[] { unspentTx0, unspentTx1 }.OrderBy(x => x.TxHash).ToArray(),
+                    chainStateCursor.ReadUnspentTransactions().ToList());
                 chainStateCursor.RollbackTransaction();
 
                 // remove unspent tx 1
@@ -744,7 +752,9 @@ namespace BitSharp.Core.Test.Storage
 
                 // verify unspent txes
                 chainStateCursor.BeginTransaction(readOnly: true);
-                CollectionAssert.AreEquivalent(new[] { unspentTx0 }, chainStateCursor.ReadUnspentTransactions().ToList());
+                CollectionAssert.AreEqual(
+                    new[] { unspentTx0 },
+                    chainStateCursor.ReadUnspentTransactions().ToList());
                 chainStateCursor.RollbackTransaction();
 
                 // remove unspent tx 0

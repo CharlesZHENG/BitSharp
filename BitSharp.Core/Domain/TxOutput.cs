@@ -17,6 +17,7 @@ namespace BitSharp.Core.Domain
 
         public ImmutableArray<byte> ScriptPublicKey { get; }
 
+        //TODO only exists for tests
         public override bool Equals(object obj)
         {
             if (!(obj is TxOutput))
@@ -24,11 +25,6 @@ namespace BitSharp.Core.Domain
 
             var other = (TxOutput)obj;
             return other.Value == this.Value && other.ScriptPublicKey.SequenceEqual(this.ScriptPublicKey);
-        }
-
-        public override int GetHashCode()
-        {
-            return this.Value.GetHashCode() ^ new Binary(ScriptPublicKey.ToArray()).GetHashCode();
         }
     }
 }

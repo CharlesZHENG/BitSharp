@@ -34,6 +34,7 @@ namespace BitSharp.Core.Domain
 
         public int OutputCount { get; }
 
+        //TODO only exists for tests
         public override bool Equals(object obj)
         {
             if (!(obj is SpentTx))
@@ -41,11 +42,6 @@ namespace BitSharp.Core.Domain
 
             var other = (SpentTx)obj;
             return other.TxHash == this.TxHash && other.ConfirmedBlockIndex == this.ConfirmedBlockIndex && other.TxIndex == this.TxIndex;
-        }
-
-        public override int GetHashCode()
-        {
-            return this.TxHash.GetHashCode() ^ this.ConfirmedBlockIndex.GetHashCode() ^ this.TxIndex.GetHashCode();
         }
     }
 }

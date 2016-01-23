@@ -1,4 +1,6 @@
 ﻿using BitSharp.Common;
+using System;
+using System.Data.HashFunction;
 
 namespace BitSharp.Core.Domain
 {
@@ -7,6 +9,8 @@ namespace BitSharp.Core.Domain
     /// </summary>
     public class TxLookupKey
     {
+        private readonly int hashCode;
+
         /// <summary>
         /// Initializes a new instance of <see cref="TxLookupKey"/> with the specified block hash and transaction index.
         /// </summary>
@@ -16,6 +20,11 @@ namespace BitSharp.Core.Domain
         {
             BlockHash = blockHash;
             TxIndex = txIndex;
+
+            var hashBytes = new byte[36];
+            blockHash.ToByteArray(hashBytes);
+            Bits.EncodeInt32(txIndex, hashBytes, 32);
+            hashCode = Bits.ToInt32(new xxHash(32).ComputeHash(hashBytes));
         }
 
         /// <summary>
@@ -37,9 +46,6 @@ namespace BitSharp.Core.Domain
             return other.BlockHash == this.BlockHash && other.TxIndex == this.TxIndex;
         }
 
-        public override int GetHashCode()
-        {
-            return this.BlockHash.GetHashCode() ^ this.TxIndex.GetHashCode();
-        }
+        public override int GetHashCode() => hashCode;
     }
 }

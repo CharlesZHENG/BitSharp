@@ -56,6 +56,7 @@ namespace BitSharp.Core.Domain
             return new BlockTxNode(index, depth, hash, pruned: true, encodedTx: null);
         }
 
+        //TODO only exists for tests
         public override bool Equals(object obj)
         {
             if (!(obj is BlockTxNode))
@@ -63,21 +64,6 @@ namespace BitSharp.Core.Domain
 
             var other = (BlockTxNode)obj;
             return other.Index == this.Index && other.Depth == this.Depth && other.Hash == this.Hash && other.Pruned == this.Pruned;
-        }
-
-        public override int GetHashCode()
-        {
-            return this.Index.GetHashCode() ^ this.Depth.GetHashCode() ^ this.Hash.GetHashCode();
-        }
-
-        public static bool operator ==(BlockTxNode left, BlockTxNode right)
-        {
-            return object.ReferenceEquals(left, right) || (!object.ReferenceEquals(left, null) && !object.ReferenceEquals(right, null) && left.Equals(right));
-        }
-
-        public static bool operator !=(BlockTxNode left, BlockTxNode right)
-        {
-            return !(left == right);
         }
     }
 }

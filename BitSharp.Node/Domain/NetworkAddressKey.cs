@@ -1,5 +1,7 @@
-﻿using System;
+﻿using BitSharp.Common;
+using System;
 using System.Collections.Immutable;
+using System.Data.HashFunction;
 using System.Linq;
 using System.Numerics;
 
@@ -7,14 +9,17 @@ namespace BitSharp.Node.Domain
 {
     public class NetworkAddressKey
     {
-        private readonly int _hashCode;
+        private readonly int hashCode;
 
         public NetworkAddressKey(ImmutableArray<byte> IPv6Address, UInt16 Port)
         {
             this.IPv6Address = IPv6Address;
             this.Port = Port;
 
-            this._hashCode = Port.GetHashCode() ^ new BigInteger(IPv6Address.ToArray()).GetHashCode();
+            var hashBytes = new byte[2 + IPv6Address.Length];
+            Bits.EncodeUInt16(Port, hashBytes);
+            IPv6Address.CopyTo(hashBytes, 2);
+            hashCode = Bits.ToInt32(new xxHash(32).ComputeHash(hashBytes));
         }
 
         public ImmutableArray<byte> IPv6Address { get; }
@@ -30,10 +35,6 @@ namespace BitSharp.Node.Domain
             return other.IPv6Address.SequenceEqual(this.IPv6Address) && other.Port == this.Port;
         }
 
-        public override int GetHashCode()
-        {
-            return this._hashCode;
-        }
+        public override int GetHashCode() => hashCode;
     }
-
 }

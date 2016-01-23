@@ -68,6 +68,7 @@ namespace BitSharp.Core.Domain
             return value ? OutputState.Unspent : OutputState.Spent;
         }
 
+        //TODO only exists for tests
         public override bool Equals(object obj)
         {
             if (!(obj is OutputStates))
@@ -75,11 +76,6 @@ namespace BitSharp.Core.Domain
 
             var other = (OutputStates)obj;
             return other.bitArray.SequenceEqual(this.bitArray);
-        }
-
-        public override int GetHashCode()
-        {
-            return this.bitArray.Length.GetHashCode() ^ new Binary(this.bitArray.ToByteArray()).GetHashCode();
         }
     }
 }

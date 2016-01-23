@@ -631,10 +631,7 @@ namespace BitSharp.Node
             return other.IPEndPoint.Equals(this.IPEndPoint);
         }
 
-        public override int GetHashCode()
-        {
-            return this.IPEndPoint.GetHashCode();
-        }
+        public override int GetHashCode() => IPEndPoint.GetHashCode();
 
         // candidate peers are ordered with seeds last, and then by time
         public int CompareTo(CandidatePeer other)

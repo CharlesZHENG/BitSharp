@@ -47,6 +47,7 @@ namespace BitSharp.Core.Domain
                 && ScriptPublicKey[22] == (byte)ScriptOp.OP_EQUAL;
         }
 
+        //TODO only exists for tests
         public override bool Equals(object obj)
         {
             if (!(obj is PrevTxOutput))
@@ -54,11 +55,6 @@ namespace BitSharp.Core.Domain
 
             var other = (PrevTxOutput)obj;
             return other.Value == this.Value && other.ScriptPublicKey.SequenceEqual(this.ScriptPublicKey) && other.BlockHeight == this.BlockHeight && other.TxIndex == this.TxIndex && other.TxVersion == this.TxVersion;
-        }
-
-        public override int GetHashCode()
-        {
-            return this.Value.GetHashCode() ^ new Binary(ScriptPublicKey.ToArray()).GetHashCode() ^ this.BlockHeight.GetHashCode() ^ this.TxIndex.GetHashCode() ^ this.TxVersion.GetHashCode();
         }
 
         public static explicit operator TxOutput(PrevTxOutput prevTxOutput)
