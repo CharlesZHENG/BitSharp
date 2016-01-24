@@ -23,8 +23,6 @@ namespace BitSharp.Core.Test.Workers
         [TestMethod]
         public void TestPruneAllData()
         {
-            var logger = LogManager.CreateNullLogger();
-
             // create genesis block
             var genesisblock = CreateFakeBlock(1);
             var genesisHeader = new ChainedHeader(genesisblock.Header, height: 0, totalWork: genesisblock.Header.CalculateWork().ToBigInteger(), dateSeen: DateTimeOffset.Now);

@@ -1,4 +1,5 @@
-﻿using BitSharp.Common.Test;
+﻿using BitSharp.Common;
+using BitSharp.Common.Test;
 using BitSharp.Core.Builders;
 using BitSharp.Core.Domain;
 using BitSharp.Core.Script;
@@ -16,8 +17,6 @@ namespace BitSharp.Core.Test
         [Timeout(5 * /*minutes*/(60 * 1000))]
         public void TestReplayBlock()
         {
-            var logger = LogManager.CreateNullLogger();
-
             using (var simulator = new MainnetSimulator())
             {
                 simulator.AddBlockRange(0, 9999);
@@ -52,8 +51,6 @@ namespace BitSharp.Core.Test
         [TestMethod]
         public void TestReplayBlockRollback()
         {
-            var logger = LogManager.CreateNullLogger();
-
             using (var daemon = new TestDaemon())
             {
                 // create a new keypair to spend to

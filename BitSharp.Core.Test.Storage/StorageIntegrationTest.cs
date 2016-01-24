@@ -25,7 +25,8 @@ namespace BitSharp.Core.Test.Storage
 
         private void TestRollback(ITestStorageProvider provider)
         {
-            var logger = LogManager.CreateNullLogger();
+            ConsoleLoggingModule.Configure();
+            var logger = LogManager.GetCurrentClassLogger();
 
             var blockCount = 10.THOUSAND();
             var checkUtxoHashFrequencey = 1000;
@@ -62,7 +63,7 @@ namespace BitSharp.Core.Test.Storage
                 // calculate utxo forward and store its state at each step along the way
                 for (var blockIndex = 0; blockIndex < blocks.Count; blockIndex++)
                 {
-                    Debug.WriteLine($"Adding: {blockIndex:N0}");
+                    logger.Info($"Adding: {blockIndex:N0}");
 
                     var block = blocks[blockIndex];
                     var chainedHeader = new ChainedHeader(block.Header, blockIndex, 0, DateTimeOffset.Now);
@@ -83,7 +84,7 @@ namespace BitSharp.Core.Test.Storage
                 // roll utxo backwards and validate its state at each step along the way
                 for (var blockIndex = blocks.Count - 1; blockIndex >= 0; blockIndex--)
                 {
-                    Debug.WriteLine($"Rolling back: {blockIndex:N0}");
+                    logger.Info($"Rolling back: {blockIndex:N0}");
 
                     var block = blocks[blockIndex];
                     var chainedHeader = new ChainedHeader(block.Header, blockIndex, 0, DateTimeOffset.Now);
@@ -108,7 +109,7 @@ namespace BitSharp.Core.Test.Storage
                 // calculate utxo forward again
                 for (var blockIndex = 0; blockIndex < blocks.Count; blockIndex++)
                 {
-                    Debug.WriteLine($"Adding: {blockIndex:N0}");
+                    logger.Info($"Adding: {blockIndex:N0}");
 
                     var block = blocks[blockIndex];
                     var chainedHeader = new ChainedHeader(block.Header, blockIndex, 0, DateTimeOffset.Now);

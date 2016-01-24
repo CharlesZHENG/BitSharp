@@ -17,6 +17,13 @@ namespace BitSharp.Common
 
         public override void Load()
         {
+            Configure(logLevel);
+        }
+
+        public static void Configure(LogLevel logLevel = null)
+        {
+            logLevel = logLevel ?? LogLevel.Info;
+
             // log layout format
             var layout = "${date:format=hh\\:mm\\:ss tt} ${pad:padding=6:inner=${level:uppercase=true}} ${message} ${exception:separator=\r\n:format=message,type,method,stackTrace:maxInnerExceptionLevel=10:innerExceptionSeparator=\r\n:innerFormat=message,type,method,stackTrace}";
 
@@ -29,14 +36,14 @@ namespace BitSharp.Common
                 var consoleTarget = new ColoredConsoleTarget();
                 consoleTarget.Layout = layout;
                 config.AddTarget("console", consoleTarget);
-                config.LoggingRules.Add(new LoggingRule("*", this.logLevel, consoleTarget));
+                config.LoggingRules.Add(new LoggingRule("*", logLevel, consoleTarget));
             }
             else
             {
                 var consoleTarget = new DebuggerTarget();
                 consoleTarget.Layout = layout;
                 config.AddTarget("console", consoleTarget);
-                config.LoggingRules.Add(new LoggingRule("*", this.logLevel, consoleTarget));
+                config.LoggingRules.Add(new LoggingRule("*", logLevel, consoleTarget));
             }
 
             // activate configuration and bind
