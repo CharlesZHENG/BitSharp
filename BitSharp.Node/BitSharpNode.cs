@@ -8,13 +8,14 @@ using BitSharp.Network;
 using BitSharp.Network.Storage.Memory;
 using BitSharp.Network.Workers;
 using CommandLine;
+using IniParser;
 using Ninject;
 using Ninject.Modules;
 using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Threading;
+using System.Reflection;
 using System.Threading.Tasks;
 
 namespace BitSharp.Node
@@ -56,6 +57,25 @@ namespace BitSharp.Node
             }
 
             options.DataFolder = Environment.ExpandEnvironmentVariables(options.DataFolder);
+
+            // create data folder
+            Directory.CreateDirectory(options.DataFolder);
+
+            // write default ini file, if it doesn't exist
+            var iniFile = Path.Combine(options.DataFolder, "BitSharp.ini");
+            if (!File.Exists(iniFile))
+            {
+                var assembly = Assembly.GetAssembly(this.GetType());
+                using (var defaultIniStream = assembly.GetManifestResourceStream("BitSharp.Node.BitSharp.ini"))
+                using (var outputStream = File.Create(iniFile))
+                {
+                    defaultIniStream.CopyTo(outputStream);
+                }
+            }
+
+            // parse ini
+            var iniParser = new FileIniDataParser();
+            var iniData = iniParser.ReadFile(iniFile);
 
             //TODO
             //**************************************************************
