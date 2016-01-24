@@ -7,12 +7,14 @@ using BitSharp.LevelDb;
 using BitSharp.Network;
 using BitSharp.Network.Storage.Memory;
 using BitSharp.Network.Workers;
+using CommandLine;
 using Ninject;
 using Ninject.Modules;
 using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace BitSharp.Node
@@ -26,8 +28,35 @@ namespace BitSharp.Node
         //TODO use config
         private readonly bool connectToPeers = true;
 
-        public BitSharpNode()
+        public static void Main(string[] args)
         {
+            using (var bitSharpNode = new BitSharpNode(args, strictArgs: true))
+            {
+                bitSharpNode.StartAsync().Forget();
+
+                Console.WriteLine("Press enter to exit node.");
+                Console.ReadLine();
+                Console.WriteLine("Shutting down.");
+            }
+        }
+
+        public BitSharpNode(string[] args, bool strictArgs)
+        {
+            // parse command line options
+            var options = new NodeOptions();
+
+            if (strictArgs)
+            {
+                Parser.Default.ParseArgumentsStrict(args, options);
+            }
+            else
+            {
+                if (!Parser.Default.ParseArguments(args, options))
+                    throw new InvalidOperationException($"Invalid command line:\n {options.GetUsage()}");
+            }
+
+            options.DataFolder = Environment.ExpandEnvironmentVariables(options.DataFolder);
+
             //TODO
             //**************************************************************
             var useTestNet = false;
@@ -52,9 +81,7 @@ namespace BitSharp.Node
             long? cacheSizeMaxBytes = 512.MEBIBYTE();
 
             // directories
-            var baseDirectory = Config.LocalStoragePath;
-            //if (Debugger.IsAttached)
-            //    baseDirectory = Path.Combine(baseDirectory, "Debugger");
+            var dataFolder = options.DataFolder;
 
             var chainType = useTestNet ? ChainType.TestNet3 : ChainType.MainNet;
 
@@ -85,7 +112,7 @@ namespace BitSharp.Node
                 cacheSizeMaxBytes = (int)2.GIBIBYTE();
 
                 // location to store a copy of raw blocks to avoid redownload
-                BlockRequestWorker.SecondaryBlockFolder = Path.Combine(baseDirectory, "RawBlocks");
+                BlockRequestWorker.SecondaryBlockFolder = Path.Combine(dataFolder, "RawBlocks");
 
                 // split block txes storage across 2 dedicated SSDs, keep chain state on main SSD
                 //blockTxesStorageLocations = new[]
@@ -98,17 +125,17 @@ namespace BitSharp.Node
             //TODO
             if (cleanData)
             {
-                try { Directory.Delete(Path.Combine(baseDirectory, "Data", chainType.ToString()), recursive: true); }
+                try { Directory.Delete(Path.Combine(dataFolder, "Data", chainType.ToString()), recursive: true); }
                 catch (IOException) { }
             }
             if (cleanChainState)
             {
-                try { Directory.Delete(Path.Combine(baseDirectory, "Data", chainType.ToString(), "ChainState"), recursive: true); }
+                try { Directory.Delete(Path.Combine(dataFolder, "Data", chainType.ToString(), "ChainState"), recursive: true); }
                 catch (IOException) { }
             }
             if (cleanBlockTxes)
             {
-                try { Directory.Delete(Path.Combine(baseDirectory, "Data", chainType.ToString(), "BlockTxes"), recursive: true); }
+                try { Directory.Delete(Path.Combine(dataFolder, "Data", chainType.ToString(), "BlockTxes"), recursive: true); }
                 catch (IOException) { }
             }
 
@@ -116,11 +143,12 @@ namespace BitSharp.Node
             this.Kernel = new StandardKernel();
 
             // add logging module
-            this.Kernel.Load(new LoggingModule(baseDirectory, LogLevel.Info));
+            this.Kernel.Load(new LoggingModule(dataFolder, LogLevel.Info));
 
             // log startup
             this.logger = LogManager.GetCurrentClassLogger();
             this.logger.Info($"Starting up: {DateTime.Now}");
+            this.logger.Info($"Using data folder: {dataFolder}");
 
             var modules = new List<INinjectModule>();
 
@@ -136,7 +164,7 @@ namespace BitSharp.Node
                 ulong? chainStateCacheSize = null;
                 ulong? chainStateWriteCacheSize = null;
 
-                modules.Add(new LevelDbStorageModule(baseDirectory, chainType,
+                modules.Add(new LevelDbStorageModule(dataFolder, chainType,
                     blocksCacheSize, blocksWriteCacheSize,
                     blockTxesCacheSize, blockTxesWriteCacheSize,
                     chainStateCacheSize, chainStateWriteCacheSize));
@@ -151,7 +179,7 @@ namespace BitSharp.Node
             }
             else
             {
-                modules.Add(new EsentStorageModule(baseDirectory, chainType, cacheSizeMaxBytes: cacheSizeMaxBytes, blockTxesStorageLocations: blockTxesStorageLocations));
+                modules.Add(new EsentStorageModule(dataFolder, chainType, cacheSizeMaxBytes: cacheSizeMaxBytes, blockTxesStorageLocations: blockTxesStorageLocations));
             }
 
             // add rules module

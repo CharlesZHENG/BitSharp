@@ -3,6 +3,7 @@ using Ninject.Modules;
 using NLog;
 using NLog.Config;
 using NLog.Targets;
+using System.Diagnostics;
 using System.IO;
 
 namespace BitSharp.Node
@@ -26,11 +27,22 @@ namespace BitSharp.Node
             // initialize logging configuration
             var config = LogManager.Configuration ?? new LoggingConfiguration();
 
-            // create debugger target
-            var debuggerTarget = new DebuggerTarget();
-            debuggerTarget.Layout = layout;
-            config.AddTarget("console", debuggerTarget);
-            config.LoggingRules.Add(new LoggingRule("*", logLevel, debuggerTarget.WrapAsync()));
+            if (!Debugger.IsAttached)
+            {
+                // create console target
+                var consoleTarget = new ColoredConsoleTarget();
+                consoleTarget.Layout = layout;
+                config.AddTarget("console", consoleTarget);
+                config.LoggingRules.Add(new LoggingRule("*", logLevel, consoleTarget));
+            }
+            else
+            {
+                // create debugger target
+                var consoleTarget = new DebuggerTarget();
+                consoleTarget.Layout = layout;
+                config.AddTarget("console", consoleTarget);
+                config.LoggingRules.Add(new LoggingRule("*", logLevel, consoleTarget));
+            }
 
             // create file target
             var fileTarget = new FileTarget() { AutoFlush = false };

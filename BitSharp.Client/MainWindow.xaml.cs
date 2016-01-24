@@ -35,10 +35,10 @@ namespace BitSharp.Client
                 logger = LogManager.GetCurrentClassLogger();
 
                 // create node
-                bitSharpNode = new BitSharpNode();
+                bitSharpNode = new BitSharpNode(Environment.GetCommandLineArgs(), strictArgs: false);
 
                 // initialize dummy wallet monitor
-                this.dummyMonitor = new DummyMonitor(bitSharpNode.CoreDaemon);
+                dummyMonitor = new DummyMonitor(bitSharpNode.CoreDaemon);
 
                 // setup view model
                 viewModel = new MainWindowViewModel(bitSharpNode.Kernel, dummyMonitor);
@@ -55,7 +55,7 @@ namespace BitSharp.Client
             {
                 if (logger != null)
                 {
-                    logger.Fatal(ex, "Application failed");
+                    logger.Fatal(ex, "Application failed:");
                 }
                 else
                 {
