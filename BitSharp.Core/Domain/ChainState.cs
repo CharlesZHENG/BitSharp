@@ -15,7 +15,7 @@ namespace BitSharp.Core.Domain
 
         public ChainState(Chain chain, IStorageManager storageManager)
         {
-            CursorCount = 32;
+            CursorCount = Environment.ProcessorCount;
             Chain = chain;
 
             // create a cache of cursors that are in an open snapshot transaction with the current chain state
