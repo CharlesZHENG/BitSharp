@@ -225,8 +225,6 @@ namespace BitSharp.Client
                 {
                     Console.WriteLine(ex);
                 }
-
-                Environment.Exit(-1);
             }
         }
 
