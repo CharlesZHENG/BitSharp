@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:BitSharp.Client"
         DataContext="{Binding ViewModel}"
-        Title="BitSharp 0.0.0" Height="500" Width="536" WindowStartupLocation="CenterScreen">
+        Title="BitSharp 0.0.0" Height="500" Width="700" WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <Style TargetType="ListViewItem">
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
@@ -20,7 +20,7 @@
         <Label Content="Downloaded Blocks:" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="200,41,0,0"/>
         <Label Content="{Binding DownloadedBlockCount}" ContentStringFormat="#,##0" HorizontalAlignment="Left" Margin="322,41,0,0" VerticalAlignment="Top"/>
 
-        <ProgressBar HorizontalAlignment="Left" Height="26" VerticalAlignment="Top" Width="500" Margin="10,72,0,0" Minimum="0" Maximum="{Binding WinningBlockchainHeight}" Value="{Binding CurrentBlockchainHeight}"/>
+        <ProgressBar Height="26" VerticalAlignment="Top" Margin="10,72,18,0" Minimum="0" Maximum="{Binding WinningBlockchainHeight}" Value="{Binding CurrentBlockchainHeight}"/>
 
         <Label Content="Block Rate:" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="10,110,0,0"/>
         <Label Content="{Binding BlockRate}" ContentStringFormat="#,##0'/s'" HorizontalContentAlignment="Right" HorizontalAlignment="Left" Margin="106,110,0,0" VerticalAlignment="Top" Width="75"/>
