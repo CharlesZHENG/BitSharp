@@ -1,4 +1,6 @@
-﻿using System;
+﻿using NLog.Targets;
+using NLog.Targets.Wrappers;
+using System;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -521,6 +523,20 @@ namespace BitSharp.Common.ExtensionMethods
                 list[k] = list[n];
                 list[n] = value;
             }
+        }
+
+        public static Target WrapAsync(this Target target)
+        {
+            // don't use async logging during debugging so logging is in sync when execution is paused
+            if (Debugger.IsAttached)
+                return target;
+
+            return new AsyncTargetWrapper
+            {
+                WrappedTarget = target,
+                QueueLimit = 5.THOUSAND(),
+                OverflowAction = AsyncTargetWrapperOverflowAction.Block
+            };
         }
     }
 }

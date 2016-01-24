@@ -1,4 +1,5 @@
-﻿using BitSharp.Common.ExtensionMethods;
+﻿using BitSharp.Client.Helper;
+using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core;
 using BitSharp.Core.Rules;
 using BitSharp.Core.Storage.Memory;
@@ -12,6 +13,7 @@ using BitSharp.Wallet.Address;
 using Ninject;
 using Ninject.Modules;
 using NLog;
+using NLog.Config;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -27,7 +29,7 @@ namespace BitSharp.Client
     /// </summary>
     public sealed partial class MainWindow : Window, IDisposable
     {
-        private readonly Logger logger;
+        private Logger logger;
 
         private IKernel kernel;
         private CoreDaemon coreDaemon;
@@ -35,7 +37,7 @@ namespace BitSharp.Client
         private LocalClient localClient;
         private MainWindowViewModel viewModel;
 
-        public MainWindow()
+        protected override void OnInitialized(EventArgs e)
         {
             try
             {
@@ -130,6 +132,8 @@ namespace BitSharp.Client
                 // add logging module
                 this.kernel.Load(new LoggingModule(baseDirectory, LogLevel.Info));
 
+                InitUILogging(LogLevel.Info);
+
                 // log startup
                 this.logger = LogManager.GetCurrentClassLogger();
                 this.logger.Info($"Starting up: {DateTime.Now}");
@@ -199,7 +203,6 @@ namespace BitSharp.Client
 
                 // setup view model
                 this.viewModel = new MainWindowViewModel(this.kernel, this.dummyMonitor);
-                InitializeComponent();
 
                 // start the blockchain daemon
                 Task.Run(() => this.coreDaemon.Start());
@@ -208,6 +211,8 @@ namespace BitSharp.Client
                 Task.Run(() => this.localClient.Start(connectToPeers));
 
                 this.DataContext = this.viewModel;
+
+                base.OnInitialized(e);
             }
             catch (Exception ex)
             {
@@ -249,6 +254,29 @@ namespace BitSharp.Client
             Dispose();
 
             base.OnClosing(e);
+        }
+
+        private void InitUILogging(LogLevel logLevel)
+        {
+            // log layout format
+            var layout = "${message} ${exception:separator=\r\n:format=message,type,method,stackTrace:maxInnerExceptionLevel=10:innerExceptionSeparator=\r\n:innerFormat=message,type,method,stackTrace}";
+
+            // create rich text box target
+            var uiTarget = new WpfRichTextBoxTarget
+            {
+                Layout = layout,
+                TargetRichTextBox = loggerTextBox,
+                UseDefaultRowColoringRules = true,
+                AutoScroll = true,
+                MaxLines = 250,
+            };
+
+            var config = LogManager.Configuration ?? new LoggingConfiguration();
+
+            config.AddTarget("UI", uiTarget);
+            config.LoggingRules.Add(new LoggingRule("*", logLevel, uiTarget.WrapAsync()));
+
+            LogManager.Configuration = config;
         }
 
         private sealed class DummyMonitor : WalletMonitor

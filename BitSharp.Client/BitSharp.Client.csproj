@@ -128,6 +128,9 @@
       <DependentUpon>App.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Helper\WpfRichTextBoxRowColoringRule.cs" />
+    <Compile Include="Helper\WpfRichTextBoxTarget.cs" />
+    <Compile Include="Helper\WpfRichTextBoxWordColoringRule.cs" />
     <Compile Include="MainWindowViewModel.cs" />
     <Compile Include="MainWindow.xaml.cs">
       <DependentUpon>MainWindow.xaml</DependentUpon>

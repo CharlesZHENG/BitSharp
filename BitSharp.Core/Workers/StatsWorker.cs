@@ -88,7 +88,7 @@ namespace BitSharp.Core.Workers
                                 });
                             statsString.AppendLine(blockJsonStats);
 
-                            logger.Info(statsString);
+                            //logger.Info(statsString);
                         }
 
                         confirmedBlockStatsByHeight.Remove(nextLogHeight);

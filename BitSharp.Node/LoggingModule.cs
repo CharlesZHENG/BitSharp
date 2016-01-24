@@ -32,7 +32,7 @@ namespace BitSharp.Node
             var debuggerTarget = new DebuggerTarget();
             debuggerTarget.Layout = layout;
             config.AddTarget("console", debuggerTarget);
-            config.LoggingRules.Add(new LoggingRule("*", logLevel, WrapAsync(debuggerTarget)));
+            config.LoggingRules.Add(new LoggingRule("*", logLevel, debuggerTarget.WrapAsync()));
 
             // create file target
             var fileTarget = new FileTarget() { AutoFlush = false };
@@ -40,24 +40,10 @@ namespace BitSharp.Node
             fileTarget.FileName = Path.Combine(this.directory, "BitSharp.log");
             fileTarget.DeleteOldFileOnStartup = true;
             config.AddTarget("file", fileTarget);
-            config.LoggingRules.Add(new LoggingRule("*", logLevel, WrapAsync(fileTarget)));
+            config.LoggingRules.Add(new LoggingRule("*", logLevel, fileTarget.WrapAsync()));
 
             // activate configuration and bind
             LogManager.Configuration = config;
-        }
-
-        private Target WrapAsync(Target target)
-        {
-            // don't use async logging during debugging so logging is in sync when execution is paused
-            if (Debugger.IsAttached)
-                return target;
-
-            return new AsyncTargetWrapper
-            {
-                WrappedTarget = target,
-                QueueLimit = 5.THOUSAND(),
-                OverflowAction = AsyncTargetWrapperOverflowAction.Block
-            };
         }
     }
 }
