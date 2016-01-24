@@ -9,6 +9,7 @@ using NLog.Config;
 using System;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Threading.Tasks;
 using System.Windows;
 
 namespace BitSharp.Client
@@ -46,6 +47,9 @@ namespace BitSharp.Client
 
                 // start node
                 bitSharpNode.StartAsync().Forget();
+
+                // start wallet monitor
+                Task.Run(() => dummyMonitor.Start());
             }
             catch (Exception ex)
             {
