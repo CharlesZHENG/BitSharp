@@ -1,10 +1,7 @@
 ﻿using BitSharp.Common;
-using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Domain;
 using System;
-using System.Collections.Immutable;
 using System.Diagnostics;
-using System.Linq;
 using System.Numerics;
 
 namespace BitSharp.Core

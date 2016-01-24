@@ -1,6 +1,4 @@
 using BitSharp.Common;
-using BitSharp.Common.ExtensionMethods;
-using BitSharp.Core.Builders;
 using BitSharp.Core.Domain;
 using BitSharp.Core.ExtensionMethods;
 using NLog;

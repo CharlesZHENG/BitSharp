@@ -3,7 +3,6 @@ using BitSharp.Common.ExtensionMethods;
 using BitSharp.Core.Domain;
 using System;
 using System.Collections.Immutable;
-using System.Diagnostics;
 
 namespace BitSharp.Core.Rules
 {

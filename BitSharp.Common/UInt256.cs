@@ -2,7 +2,6 @@
 using System;
 using System.Data.HashFunction;
 using System.Globalization;
-using System.Net;
 using System.Numerics;
 
 namespace BitSharp.Common

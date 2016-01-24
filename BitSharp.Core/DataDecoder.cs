@@ -6,7 +6,6 @@ using BitSharp.Core.ExtensionMethods;
 using NLog;
 using System;
 using System.Collections.Immutable;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Numerics;

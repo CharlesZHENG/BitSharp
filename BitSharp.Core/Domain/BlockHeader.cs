@@ -1,6 +1,5 @@
 ﻿using BitSharp.Common;
 using System;
-using System.Numerics;
 
 namespace BitSharp.Core.Domain
 {

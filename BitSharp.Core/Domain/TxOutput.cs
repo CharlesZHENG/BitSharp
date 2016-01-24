@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Immutable;
-using System.Data.Linq;
 using System.Linq;
 
 namespace BitSharp.Core.Domain

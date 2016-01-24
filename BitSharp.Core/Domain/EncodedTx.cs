@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Immutable;
 using System.Linq;
-using System.IO;
 
 namespace BitSharp.Core.Domain
 {

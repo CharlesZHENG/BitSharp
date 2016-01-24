@@ -1,9 +1,4 @@
-﻿using BitSharp.Common;
-using System;
-using System.Collections.Immutable;
-using System.Linq;
-
-namespace BitSharp.Core.Domain
+﻿namespace BitSharp.Core.Domain
 {
     public class DecodedBlockTx : BlockTx
     {

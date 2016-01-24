@@ -2,7 +2,6 @@
 using BitSharp.Core.Domain;
 using BitSharp.Core.Rules;
 using System;
-using System.Collections.Immutable;
 
 namespace BitSharp.Core.Test.Rules
 {

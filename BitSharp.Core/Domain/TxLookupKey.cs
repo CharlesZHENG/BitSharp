@@ -1,5 +1,4 @@
 ﻿using BitSharp.Common;
-using System;
 using System.Data.HashFunction;
 
 namespace BitSharp.Core.Domain

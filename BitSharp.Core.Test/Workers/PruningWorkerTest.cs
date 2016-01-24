@@ -8,7 +8,6 @@ using BitSharp.Core.Test.Rules;
 using BitSharp.Core.Workers;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
-using NLog;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;

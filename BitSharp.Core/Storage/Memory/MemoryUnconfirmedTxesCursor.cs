@@ -1,7 +1,6 @@
 ﻿using BitSharp.Common;
 using BitSharp.Core.Domain;
 using System;
-using System.Collections.Generic;
 using System.Collections.Immutable;
 
 namespace BitSharp.Core.Storage.Memory

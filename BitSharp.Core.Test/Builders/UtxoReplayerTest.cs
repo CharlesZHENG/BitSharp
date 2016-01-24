@@ -5,7 +5,6 @@ using BitSharp.Core.Domain;
 using BitSharp.Core.Storage;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Moq;
-using System.Collections.Immutable;
 using System.Linq;
 
 namespace BitSharp.Core.Test.Builders
