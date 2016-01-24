@@ -50,7 +50,7 @@ namespace BitSharp.Common.ExtensionMethods
 
         public static string ToHexNumberString(this UInt256 value)
         {
-            return ToHexNumberString(value.ToByteArray());
+            return Bits.ToString(value.ToByteArrayBE()).Replace("-", "").ToLower();
         }
 
         public static string ToHexNumberString(this BigInteger value)

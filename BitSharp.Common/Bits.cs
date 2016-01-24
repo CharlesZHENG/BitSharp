@@ -72,6 +72,27 @@ namespace BitSharp.Common
             return BitConverter.ToUInt64(Order(value), startIndex);
         }
 
+        public static long ToInt64BE(byte[] buffer, int offset = 0)
+        {
+            var value = 0L;
+
+            value |= (long)buffer[offset++] << 56;
+            value |= (long)buffer[offset++] << 48;
+            value |= (long)buffer[offset++] << 40;
+            value |= (long)buffer[offset++] << 32;
+            value |= (long)buffer[offset++] << 24;
+            value |= (long)buffer[offset++] << 16;
+            value |= (long)buffer[offset++] << 8;
+            value |= (long)buffer[offset++];
+
+            return value;
+        }
+
+        public static ulong ToUInt64BE(byte[] buffer, int offset = 0)
+        {
+            return unchecked((ulong)ToInt64BE(buffer, offset));
+        }
+
         public static UInt256 ToUInt256(byte[] value, int startIndex = 0)
         {
             return new UInt256(value, startIndex);
@@ -115,6 +136,22 @@ namespace BitSharp.Common
         public static void EncodeUInt32(uint value, byte[] buffer, int offset = 0)
         {
             EncodeInt32(unchecked((int)value), buffer, offset);
+        }
+
+        public static void EncodeInt32BE(int value, byte[] buffer, int offset = 0)
+        {
+            unchecked
+            {
+                buffer[offset++] = (byte)(value >> 24);
+                buffer[offset++] = (byte)(value >> 16);
+                buffer[offset++] = (byte)(value >> 8);
+                buffer[offset++] = (byte)(value);
+            }
+        }
+
+        public static void EncodeUInt32BE(uint value, byte[] buffer, int offset = 0)
+        {
+            EncodeInt32BE(unchecked((int)value), buffer, offset);
         }
 
         public static void EncodeInt64(long value, byte[] buffer, int offset = 0)

@@ -11,6 +11,8 @@ namespace BitSharp.Core
 {
     public static class DataCalculator
     {
+        private static readonly BigInteger _2Pow256 = BigInteger.Pow(2, 256);
+
         public static UInt256 CalculateBlockHash(BlockHeader blockHeader)
         {
             return new UInt256(SHA256Static.ComputeDoubleHash(DataEncoder.EncodeBlockHeader(blockHeader)));
@@ -21,19 +23,15 @@ namespace BitSharp.Core
             return new UInt256(SHA256Static.ComputeDoubleHash(DataEncoder.EncodeBlockHeader(Version, PreviousBlock, MerkleRoot, Time, Bits, Nonce)));
         }
 
-        //TDOO name...
-        private static readonly BigInteger Max256BitTarget = BigInteger.Pow(2, 256);
-        public static BigInteger CalculateWork(BlockHeader blockHeader)
+        public static UInt256 CalculateWork(BlockHeader blockHeader)
         {
-            try
-            {
-                return Max256BitTarget / (BigInteger)FromCompact(blockHeader.Bits);
-            }
-            catch (Exception)
-            {
-                Debug.WriteLine($"Corrupt block header bits: {blockHeader:X}, block {blockHeader.Hash}");
-                return -1;
-            }
+            bool negative, overflow;
+            var target = FromCompact(blockHeader.Bits, out negative, out overflow);
+
+            if (negative || overflow || target == UInt256.Zero)
+                return UInt256.Zero;
+
+            return new UInt256(_2Pow256 / (target.ToBigInteger() + 1));
         }
 
         public static UInt256 FromCompact(uint compact)
@@ -76,7 +74,8 @@ namespace BitSharp.Core
             {
                 compact = (uint)(value.Part4 << 8 * (3 - size));
             }
-            else {
+            else
+            {
                 value >>= 8 * (size - 3);
                 compact = (uint)(value.Part4);
             }
@@ -102,7 +101,7 @@ namespace BitSharp.Core
         private static int HighBit(UInt256 value)
         {
             var parts = value.Parts;
-            for (var pos = 3; pos >= 0; pos--)
+            for (var pos = parts.Length - 1; pos >= 0; pos--)
             {
                 var part = parts[pos];
                 if (part != 0)

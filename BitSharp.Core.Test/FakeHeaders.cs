@@ -34,7 +34,7 @@ namespace BitSharp.Core.Test
             this.blockHeaders = ImmutableList.CreateRange(blockHeaders).ToBuilder();
             this.bits = DataCalculator.ToCompact(UnitTestParams.Target0);
             this.nonce = (UInt32)Interlocked.Increment(ref staticNonce);
-            this.totalWork = this.blockHeaders.Sum(x => x.BlockHeader.CalculateWork());
+            this.totalWork = blockHeaders.LastOrDefault()?.TotalWork ?? 0;
         }
 
         public FakeHeaders(FakeHeaders parent)
@@ -55,7 +55,7 @@ namespace BitSharp.Core.Test
                 throw new InvalidOperationException();
 
             var blockHeader = BlockHeader.Create(0, UInt256.Zero, UInt256.Zero, DateTimeOffset.FromUnixTimeSeconds(0), this.bits, this.nonce);
-            this.totalWork = blockHeader.CalculateWork();
+            this.totalWork = blockHeader.CalculateWork().ToBigInteger();
 
             var chainedHeader = new ChainedHeader(blockHeader, 0, this.totalWork, DateTimeOffset.MinValue);
             this.blockHeaders.Add(chainedHeader);
@@ -76,7 +76,7 @@ namespace BitSharp.Core.Test
             var prevBlockHeader = this.blockHeaders.Last();
 
             var blockHeader = BlockHeader.Create(0, prevBlockHeader.Hash, UInt256.Zero, DateTimeOffset.FromUnixTimeSeconds(0), bits ?? this.bits, this.nonce);
-            this.totalWork += blockHeader.CalculateWork();
+            this.totalWork += blockHeader.CalculateWork().ToBigInteger();
 
             var chainedHeader = new ChainedHeader(blockHeader, this.blockHeaders.Count, this.totalWork, DateTimeOffset.Now);
             this.blockHeaders.Add(chainedHeader);

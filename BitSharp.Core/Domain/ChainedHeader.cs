@@ -67,7 +67,7 @@ namespace BitSharp.Core.Domain
             (
                 blockHeader: genesisBlockHeader,
                 height: 0,
-                totalWork: genesisBlockHeader.CalculateWork(),
+                totalWork: genesisBlockHeader.CalculateWork().ToBigInteger(),
                 dateSeen: DateTimeOffset.MinValue
             );
         }
@@ -75,12 +75,10 @@ namespace BitSharp.Core.Domain
         public static ChainedHeader CreateFromPrev(ChainedHeader prevChainedHeader, BlockHeader blockHeader, DateTimeOffset dateSeen)
         {
             var headerWork = blockHeader.CalculateWork();
-            if (headerWork < 0)
-                return null;
 
             return new ChainedHeader(blockHeader,
                 prevChainedHeader.Height + 1,
-                prevChainedHeader.TotalWork + headerWork,
+                prevChainedHeader.TotalWork + headerWork.ToBigInteger(),
                 dateSeen);
         }
     }

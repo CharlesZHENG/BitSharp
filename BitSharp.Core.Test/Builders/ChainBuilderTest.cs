@@ -135,11 +135,11 @@ namespace BitSharp.Core.Test.Builders
 
             // verify total work with 1 block
             chainBuilder.AddBlock(header0);
-            Assert.AreEqual(totalWork0, chainBuilder.TotalWork);
+            Assert.AreEqual(totalWork0.ToBigInteger(), chainBuilder.TotalWork);
 
             // verify total work with 2 blocks
             chainBuilder.AddBlock(header1);
-            Assert.AreEqual(totalWork1, chainBuilder.TotalWork);
+            Assert.AreEqual(totalWork1.ToBigInteger(), chainBuilder.TotalWork);
         }
 
         [TestMethod]

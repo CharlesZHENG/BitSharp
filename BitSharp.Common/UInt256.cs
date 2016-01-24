@@ -13,50 +13,56 @@ namespace BitSharp.Common
         public static UInt256 One { get; } = (UInt256)1;
 
         // parts are big-endian
-        private readonly UInt64 part1;
-        private readonly UInt64 part2;
-        private readonly UInt64 part3;
-        private readonly UInt64 part4;
+        private const int width = 4;
+        private readonly ulong[] parts;
         private readonly int hashCode;
 
         public UInt256(byte[] value)
         {
+            // length must be <= 32, or 33 with the last byte set to 0 to indicate the number is positive
             if (value.Length > 32 && !(value.Length == 33 && value[32] == 0))
-                throw new ArgumentOutOfRangeException();
+                throw new ArgumentOutOfRangeException(nameof(value));
 
             if (value.Length < 32)
-                value = value.Concat(new byte[32 - value.Length]);
+                Array.Resize(ref value, 32);
 
-            // convert parts and store
-            this.part1 = Bits.ToUInt64(value, 24);
-            this.part2 = Bits.ToUInt64(value, 16);
-            this.part3 = Bits.ToUInt64(value, 8);
-            this.part4 = Bits.ToUInt64(value, 0);
-
-            this.hashCode = Bits.ToInt32(new xxHash(32).ComputeHash(value));
+            InnerInit(value, 0, out parts, out hashCode);
         }
 
         public UInt256(byte[] value, int offset)
         {
-            // convert parts and store
-            this.part1 = Bits.ToUInt64(value, offset + 24);
-            this.part2 = Bits.ToUInt64(value, offset + 16);
-            this.part3 = Bits.ToUInt64(value, offset + 8);
-            this.part4 = Bits.ToUInt64(value, offset + 0);
+            if (value.Length < offset + 32)
+                throw new ArgumentOutOfRangeException(nameof(offset));
 
-            var hashBytes = ToByteArray();
-            this.hashCode = Bits.ToInt32(new xxHash(32).ComputeHash(hashBytes));
+            InnerInit(value, offset, out parts, out hashCode);
         }
 
-        private UInt256(UInt64 part1, UInt64 part2, UInt64 part3, UInt64 part4)
+        private UInt256(ulong[] parts)
         {
-            this.part1 = part1;
-            this.part2 = part2;
-            this.part3 = part3;
-            this.part4 = part4;
+            this.parts = parts;
 
+            InnerInit(out hashCode);
+        }
+
+        private void InnerInit(byte[] buffer, int offset, out ulong[] parts, out int hashCode)
+        {
+            // convert parts and store
+            parts = new ulong[width];
+            offset += 32;
+            for (var i = 0; i < width; i++)
+            {
+                offset -= 8;
+                parts[i] = Bits.ToUInt64(buffer, offset);
+            }
+
+
+            InnerInit(out hashCode);
+        }
+
+        private void InnerInit(out int hashCode)
+        {
             var hashBytes = ToByteArray();
-            this.hashCode = Bits.ToInt32(new xxHash(32).ComputeHash(hashBytes));
+            hashCode = Bits.ToInt32(new xxHash(32).ComputeHash(hashBytes));
         }
 
         public UInt256(int value)
@@ -88,11 +94,11 @@ namespace BitSharp.Common
                 throw new ArgumentOutOfRangeException();
         }
 
-        public UInt64[] Parts => new[] { part4, part3, part2, part1 };
-        public UInt64 Part1 => part1;
-        public UInt64 Part2 => part2;
-        public UInt64 Part3 => part3;
-        public UInt64 Part4 => part4;
+        public ulong[] Parts => new ulong[] { parts[3], parts[2], parts[1], parts[0] };
+        public ulong Part1 => parts[0];
+        public ulong Part2 => parts[1];
+        public ulong Part3 => parts[2];
+        public ulong Part4 => parts[3];
 
         public byte[] ToByteArray()
         {
@@ -103,10 +109,11 @@ namespace BitSharp.Common
 
         public void ToByteArray(byte[] buffer, int offset = 0)
         {
-            Bits.EncodeUInt64(part4, buffer, 0 + offset);
-            Bits.EncodeUInt64(part3, buffer, 8 + offset);
-            Bits.EncodeUInt64(part2, buffer, 16 + offset);
-            Bits.EncodeUInt64(part1, buffer, 24 + offset);
+            for (var i = width - 1; i >= 0; i--)
+            {
+                Bits.EncodeUInt64(parts[i], buffer, offset);
+                offset += 8;
+            }
         }
 
         public byte[] ToByteArrayBE()
@@ -118,13 +125,13 @@ namespace BitSharp.Common
 
         public void ToByteArrayBE(byte[] buffer, int offset = 0)
         {
-            Bits.EncodeUInt64BE(part1, buffer, 0 + offset);
-            Bits.EncodeUInt64BE(part2, buffer, 8 + offset);
-            Bits.EncodeUInt64BE(part3, buffer, 16 + offset);
-            Bits.EncodeUInt64BE(part4, buffer, 24 + offset);
+            for (var i = 0; i < width; i++)
+            {
+                Bits.EncodeUInt64BE(parts[i], buffer, offset);
+                offset += 8;
+            }
         }
 
-        //TODO properly taken into account host endianness
         public static UInt256 FromByteArrayBE(byte[] buffer, int offset = 0)
         {
             unchecked
@@ -132,12 +139,14 @@ namespace BitSharp.Common
                 if (buffer.Length < offset + 32)
                     throw new ArgumentException();
 
-                var part1 = (ulong)IPAddress.HostToNetworkOrder(BitConverter.ToInt64(buffer, 0 + offset));
-                var part2 = (ulong)IPAddress.HostToNetworkOrder(BitConverter.ToInt64(buffer, 8 + offset));
-                var part3 = (ulong)IPAddress.HostToNetworkOrder(BitConverter.ToInt64(buffer, 16 + offset));
-                var part4 = (ulong)IPAddress.HostToNetworkOrder(BitConverter.ToInt64(buffer, 24 + offset));
+                var parts = new ulong[width];
+                for (var i = 0; i < width; i++)
+                {
+                    parts[i] = Bits.ToUInt64BE(buffer, offset);
+                    offset += 8;
+                }
 
-                return new UInt256(part1, part2, part3, part4);
+                return new UInt256(parts);
             }
         }
 
@@ -151,14 +160,32 @@ namespace BitSharp.Common
 
         public int CompareTo(UInt256 other)
         {
-            if (this == other)
-                return 0;
-            else if (this < other)
-                return -1;
-            else if (this > other)
-                return +1;
+            for (var i = 0; i < width; i++)
+            {
+                if (parts[i] < other.parts[i])
+                    return -1;
+                else if (parts[i] > other.parts[i])
+                    return +1;
+            }
 
-            throw new Exception();
+            return 0;
+        }
+
+        // TODO doesn't compare against other numerics
+        public override bool Equals(object obj)
+        {
+            if (!(obj is UInt256))
+                return false;
+
+            var other = (UInt256)obj;
+            return this == other;
+        }
+
+        public override int GetHashCode() => hashCode;
+
+        public override string ToString()
+        {
+            return this.ToHexNumberString();
         }
 
         public static explicit operator BigInteger(UInt256 value)
@@ -208,7 +235,12 @@ namespace BitSharp.Common
 
         public static bool operator ==(UInt256 left, UInt256 right)
         {
-            return object.ReferenceEquals(left, right) || (!object.ReferenceEquals(left, null) && !object.ReferenceEquals(right, null) && left.part1 == right.part1 && left.part2 == right.part2 && left.part3 == right.part3 && left.part4 == right.part4);
+            if (ReferenceEquals(left, right))
+                return true;
+            else if (ReferenceEquals(left, null) != ReferenceEquals(right, null))
+                return false;
+
+            return left.CompareTo(right) == 0;
         }
 
         public static bool operator !=(UInt256 left, UInt256 right)
@@ -218,75 +250,22 @@ namespace BitSharp.Common
 
         public static bool operator <(UInt256 left, UInt256 right)
         {
-            if (left.part1 < right.part1)
-                return true;
-            else if (left.part1 == right.part1 && left.part2 < right.part2)
-                return true;
-            else if (left.part1 == right.part1 && left.part2 == right.part2 && left.part3 < right.part3)
-                return true;
-            else if (left.part1 == right.part1 && left.part2 == right.part2 && left.part3 == right.part3 && left.part4 < right.part4)
-                return true;
-
-            return false;
+            return left.CompareTo(right) < 0;
         }
 
         public static bool operator <=(UInt256 left, UInt256 right)
         {
-            if (left.part1 < right.part1)
-                return true;
-            else if (left.part1 == right.part1 && left.part2 < right.part2)
-                return true;
-            else if (left.part1 == right.part1 && left.part2 == right.part2 && left.part3 < right.part3)
-                return true;
-            else if (left.part1 == right.part1 && left.part2 == right.part2 && left.part3 == right.part3 && left.part4 < right.part4)
-                return true;
-
-            return left == right;
+            return left.CompareTo(right) <= 0;
         }
 
         public static bool operator >(UInt256 left, UInt256 right)
         {
-            if (left.part1 > right.part1)
-                return true;
-            else if (left.part1 == right.part1 && left.part2 > right.part2)
-                return true;
-            else if (left.part1 == right.part1 && left.part2 == right.part2 && left.part3 > right.part3)
-                return true;
-            else if (left.part1 == right.part1 && left.part2 == right.part2 && left.part3 == right.part3 && left.part4 > right.part4)
-                return true;
-
-            return false;
+            return left.CompareTo(right) > 0;
         }
 
         public static bool operator >=(UInt256 left, UInt256 right)
         {
-            if (left.part1 > right.part1)
-                return true;
-            else if (left.part1 == right.part1 && left.part2 > right.part2)
-                return true;
-            else if (left.part1 == right.part1 && left.part2 == right.part2 && left.part3 > right.part3)
-                return true;
-            else if (left.part1 == right.part1 && left.part2 == right.part2 && left.part3 == right.part3 && left.part4 > right.part4)
-                return true;
-
-            return left == right;
-        }
-
-        // TODO doesn't compare against other numerics
-        public override bool Equals(object obj)
-        {
-            if (!(obj is UInt256))
-                return false;
-
-            var other = (UInt256)obj;
-            return other.part1 == this.part1 && other.part2 == this.part2 && other.part3 == this.part3 && other.part4 == this.part4;
-        }
-
-        public override int GetHashCode() => hashCode;
-
-        public override string ToString()
-        {
-            return this.ToHexNumberString();
+            return left.CompareTo(right) >= 0;
         }
 
         public static UInt256 Parse(string value)
@@ -314,24 +293,24 @@ namespace BitSharp.Common
             return new UInt256(BigInteger.Parse("0" + value, NumberStyles.HexNumber).ToByteArray());
         }
 
-        public static double Log(UInt256 value, double baseValue)
+        public static UInt256 operator +(UInt256 left, UInt256 right)
         {
-            return BigInteger.Log(value.ToBigInteger(), baseValue);
+            return new UInt256(left.ToBigInteger() + right.ToBigInteger());
         }
 
-        public static UInt256 operator %(UInt256 dividend, UInt256 divisor)
+        public static UInt256 operator -(UInt256 left, UInt256 right)
         {
-            return new UInt256(dividend.ToBigInteger() % divisor.ToBigInteger());
+            return new UInt256(left.ToBigInteger() - right.ToBigInteger());
         }
 
-        public static UInt256 Pow(UInt256 value, int exponent)
+        public static UInt256 operator *(UInt256 left, uint right)
         {
-            return new UInt256(BigInteger.Pow(value.ToBigInteger(), exponent));
+            return new UInt256(left.ToBigInteger() * right);
         }
 
-        public static UInt256 operator *(UInt256 left, UInt256 right)
+        public static UInt256 operator /(UInt256 dividend, uint divisor)
         {
-            return new UInt256(left.ToBigInteger() * right.ToBigInteger());
+            return new UInt256(dividend.ToBigInteger() / divisor);
         }
 
         public static UInt256 operator <<(UInt256 value, int shift)
@@ -344,27 +323,13 @@ namespace BitSharp.Common
             return new UInt256(value.ToBigInteger() >> shift);
         }
 
-        public static UInt256 operator /(UInt256 dividend, UInt256 divisor)
-        {
-            return new UInt256(dividend.ToBigInteger() / divisor.ToBigInteger());
-        }
-
         public static UInt256 operator ~(UInt256 value)
         {
-            return new UInt256(~value.part1, ~value.part2, ~value.part3, ~value.part4);
-        }
+            var parts = new ulong[width];
+            for (var i = 0; i < width; i++)
+                parts[i] = ~value.parts[i];
 
-        public static UInt256 DivRem(UInt256 dividend, UInt256 divisor, out UInt256 remainder)
-        {
-            BigInteger remainderBigInt;
-            var result = new UInt256(BigInteger.DivRem(dividend.ToBigInteger(), divisor.ToBigInteger(), out remainderBigInt));
-            remainder = new UInt256(remainderBigInt);
-            return result;
-        }
-
-        public static explicit operator double(UInt256 value)
-        {
-            return (double)value.ToBigInteger();
+            return new UInt256(parts);
         }
     }
 }

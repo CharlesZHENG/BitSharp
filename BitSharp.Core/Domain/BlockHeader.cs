@@ -44,7 +44,7 @@ namespace BitSharp.Core.Domain
             );
         }
 
-        public BigInteger CalculateWork()
+        public UInt256 CalculateWork()
         {
             return DataCalculator.CalculateWork(this);
         }

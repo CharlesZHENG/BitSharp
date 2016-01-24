@@ -102,12 +102,12 @@ namespace BitSharp.Core.Test.Domain
             // verify total work with 1 block
             chainBuilder.AddBlock(header0);
             var chain0 = chainBuilder.ToImmutable();
-            Assert.AreEqual(totalWork0, chain0.TotalWork);
+            Assert.AreEqual(totalWork0.ToBigInteger(), chain0.TotalWork);
 
             // verify total work with 2 blocks
             chainBuilder.AddBlock(header1);
             var chain1 = chainBuilder.ToImmutable();
-            Assert.AreEqual(totalWork1, chain1.TotalWork);
+            Assert.AreEqual(totalWork1.ToBigInteger(), chain1.TotalWork);
         }
 
         [TestMethod]

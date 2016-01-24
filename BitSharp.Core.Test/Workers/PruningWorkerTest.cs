@@ -27,7 +27,7 @@ namespace BitSharp.Core.Test.Workers
 
             // create genesis block
             var genesisblock = CreateFakeBlock(1);
-            var genesisHeader = new ChainedHeader(genesisblock.Header, height: 0, totalWork: genesisblock.Header.CalculateWork(), dateSeen: DateTimeOffset.Now);
+            var genesisHeader = new ChainedHeader(genesisblock.Header, height: 0, totalWork: genesisblock.Header.CalculateWork().ToBigInteger(), dateSeen: DateTimeOffset.Now);
 
             // create a block
             var txCount = 100;

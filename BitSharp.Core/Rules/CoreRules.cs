@@ -415,8 +415,8 @@ namespace BitSharp.Core.Rules
 
                 // calculate the new target
                 var target = prevHeader.BlockHeader.CalculateTarget();
-                target *= (UInt256)actualTimespan;
-                target /= (UInt256)targetTimespan;
+                target *= actualTimespan;
+                target /= targetTimespan;
 
                 // make sure target isn't too high (too low difficulty)
                 if (target > ChainParams.HighestTarget)
