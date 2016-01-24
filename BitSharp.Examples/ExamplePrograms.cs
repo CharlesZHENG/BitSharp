@@ -44,7 +44,7 @@ namespace BitSharp.Examples
             var layout = "${message} ${exception:separator=\r\n:format=message,type,method,stackTrace:maxInnerExceptionLevel=10:innerExceptionSeparator=\r\n:innerFormat=message,type,method,stackTrace}";
 
             // initialize logging configuration
-            var config = new LoggingConfiguration();
+            var config = LogManager.Configuration ?? new LoggingConfiguration();
 
             // create console target
             var consoleTarget = new ColoredConsoleTarget();

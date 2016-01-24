@@ -4,8 +4,8 @@ using BitSharp.Core;
 using BitSharp.Core.Domain;
 using BitSharp.Core.Rules;
 using BitSharp.Core.Storage.Memory;
-using BitSharp.Node;
-using BitSharp.Node.Storage.Memory;
+using BitSharp.Network;
+using BitSharp.Network.Storage.Memory;
 using Ninject;
 using NLog;
 using System;
@@ -47,7 +47,7 @@ namespace BitSharp.BlockHelper
 
                 // add storage module
                 kernel.Load(new MemoryStorageModule());
-                kernel.Load(new NodeMemoryStorageModule());
+                kernel.Load(new NetworkMemoryStorageModule());
 
                 // add rules module
                 var chainType = ChainType.TestNet3;

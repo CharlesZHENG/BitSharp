@@ -1,7 +1,7 @@
 ﻿using BitSharp.Core.Rules;
-using BitSharp.Node;
-using BitSharp.Node.Domain;
-using BitSharp.Node.Storage;
+using BitSharp.Network;
+using BitSharp.Network.Domain;
+using BitSharp.Network.Storage;
 using System.IO;
 
 namespace BitSharp.LevelDb
@@ -10,10 +10,10 @@ namespace BitSharp.LevelDb
     {
         public NetworkPeerStorage(string baseDirectory, ChainType chainType)
             : base(Path.Combine(baseDirectory, "KnownAddresses"),
-                keyEncoder: key => NodeEncoder.EncodeNetworkAddressKey(key),
-                keyDecoder: key => NodeEncoder.DecodeNetworkAddressKey(key),
-                valueEncoder: value => NodeEncoder.EncodeNetworkAddressWithTime(value),
-                valueDecoder: value => NodeEncoder.DecodeNetworkAddressWithTime(value))
+                keyEncoder: key => NetworkEncoder.EncodeNetworkAddressKey(key),
+                keyDecoder: key => NetworkEncoder.DecodeNetworkAddressKey(key),
+                valueEncoder: value => NetworkEncoder.EncodeNetworkAddressWithTime(value),
+                valueDecoder: value => NetworkEncoder.DecodeNetworkAddressWithTime(value))
         {
         }
     }

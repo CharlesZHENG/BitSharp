@@ -32,7 +32,6 @@
 // 
 
 using System.Diagnostics;
-using System.Security.AccessControl;
 using System.Windows.Controls;
 using NLog;
 using NLog.Targets;
@@ -74,9 +73,9 @@ namespace BitSharp.Client.Helper
 
         public WpfRichTextBoxTarget()
         {
-            this.WordColoringRules = new List<WpfRichTextBoxWordColoringRule>();
-            this.RowColoringRules = new List<WpfRichTextBoxRowColoringRule>();
-            this.ToolWindow = true;
+            WordColoringRules = new List<WpfRichTextBoxWordColoringRule>();
+            RowColoringRules = new List<WpfRichTextBoxRowColoringRule>();
+            ToolWindow = true;
         }
 
         private delegate void DelSendTheMessageToRichTextBox(string logMessage, WpfRichTextBoxRowColoringRule rule);
@@ -137,7 +136,7 @@ namespace BitSharp.Client.Helper
             if (openFormByName != null)
             {
                 TargetForm = openFormByName;
-                if (string.IsNullOrEmpty(this.ControlName))
+                if (string.IsNullOrEmpty(ControlName))
                 {
                     // throw new NLogConfigurationException("Rich text box control name must be specified for " + GetType().Name + ".");
                     Trace.WriteLine("Rich text box control name must be specified for " + GetType().Name + ".");
@@ -146,7 +145,7 @@ namespace BitSharp.Client.Helper
                 CreatedForm = false;
                 TargetRichTextBox = TargetForm.FindName(ControlName) as System.Windows.Controls.RichTextBox;
 
-                if (this.TargetRichTextBox == null)
+                if (TargetRichTextBox == null)
                 {
                     // throw new NLogConfigurationException("Rich text box control '" + ControlName + "' cannot be found on form '" + FormName + "'.");
                     Trace.WriteLine("Rich text box control '" + ControlName + "' cannot be found on form '" + FormName + "'.");
@@ -256,7 +255,7 @@ namespace BitSharp.Client.Helper
             System.Windows.Controls.RichTextBox rtbx = TargetRichTextBox;
 
             var scrolledToEnd =
-                this.AutoScroll
+                AutoScroll
                 && (TargetRichTextBox.VerticalOffset + TargetRichTextBox.ViewportHeight) >= (TargetRichTextBox.ExtentHeight - .1);
 
             var tr = new TextRange(rtbx.Document.ContentEnd, rtbx.Document.ContentEnd);
@@ -270,7 +269,7 @@ namespace BitSharp.Client.Helper
             tr.ApplyPropertyValue(TextElement.FontStyleProperty, rule.Style);
             tr.ApplyPropertyValue(TextElement.FontWeightProperty, rule.Weight);
 
-            if (this.MaxLines > 0)
+            if (MaxLines > 0)
             {
                 while (rtbx.Document.Blocks.Count - 1 > MaxLines)
                 {
@@ -278,7 +277,7 @@ namespace BitSharp.Client.Helper
                 }
             }
 
-            if (this.AutoScroll && scrolledToEnd)
+            if (AutoScroll && scrolledToEnd)
             {
                 rtbx.ScrollToEnd();
             }

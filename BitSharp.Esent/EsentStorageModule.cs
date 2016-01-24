@@ -1,6 +1,6 @@
 ﻿using BitSharp.Core.Rules;
 using BitSharp.Core.Storage;
-using BitSharp.Node.Storage;
+using BitSharp.Network.Storage;
 using Ninject;
 using Ninject.Modules;
 using System.IO;

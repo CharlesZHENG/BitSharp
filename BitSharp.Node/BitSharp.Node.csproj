@@ -121,32 +121,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Domain\AddressPayload.cs" />
-    <Compile Include="Domain\AlertPayload.cs" />
-    <Compile Include="Domain\GetBlocksPayload.cs" />
-    <Compile Include="Domain\InventoryPayload.cs" />
-    <Compile Include="Domain\InventoryVector.cs" />
-    <Compile Include="Domain\Message.cs" />
-    <Compile Include="Domain\NetworkAddress.cs" />
-    <Compile Include="Domain\NetworkAddressKey.cs" />
-    <Compile Include="Domain\NetworkAddressWithTime.cs" />
-    <Compile Include="Domain\VersionPayload.cs" />
-    <Compile Include="Network\Messaging.cs" />
-    <Compile Include="Network\Peer.cs" />
-    <Compile Include="Network\RemoteReceiver.cs" />
-    <Compile Include="Network\RemoteSender.cs" />
-    <Compile Include="NodeEncoder.cs" />
+    <Compile Include="BitSharpNode.cs" />
     <Compile Include="NodeRpcServer.cs" />
-    <Compile Include="Storage\Memory\MemoryNetworkPeerStorage.cs" />
-    <Compile Include="Storage\Memory\NodeMemoryStorageModule.cs" />
-    <Compile Include="Storage\StorageInterfaces.cs" />
-    <Compile Include="Workers\ListenWorker.cs" />
-    <Compile Include="Workers\PeerWorker.cs" />
-    <Compile Include="Workers\HeadersRequestWorker.cs" />
-    <Compile Include="Workers\BlockRequestWorker.cs" />
     <Compile Include="Config.cs" />
-    <Compile Include="ExtensionMethods.cs" />
-    <Compile Include="LocalClient.cs" />
     <Compile Include="LoggingModule.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
@@ -158,6 +135,18 @@
     <ProjectReference Include="..\BitSharp.Core\BitSharp.Core.csproj">
       <Project>{2ecfa6c0-46b6-4587-a662-3f61c7efbc44}</Project>
       <Name>BitSharp.Core</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\BitSharp.Esent\BitSharp.Esent.csproj">
+      <Project>{6d4d2210-a54f-41f0-bca4-727b7ddb27c2}</Project>
+      <Name>BitSharp.Esent</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\BitSharp.LevelDb\BitSharp.LevelDb.csproj">
+      <Project>{5f7c08ad-ad61-416c-9a45-462347633059}</Project>
+      <Name>BitSharp.LevelDb</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\BitSharp.Network\BitSharp.Network.csproj">
+      <Project>{db0d7995-1f30-40d1-8539-a737fa956af2}</Project>
+      <Name>BitSharp.Network</Name>
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>

@@ -1,7 +1,7 @@
 ﻿using BitSharp.Common;
 using BitSharp.Core;
 using BitSharp.Core.Storage;
-using BitSharp.Node;
+using BitSharp.Network;
 using BitSharp.Wallet;
 using Ninject;
 using System;
@@ -48,53 +48,53 @@ namespace BitSharp.Client
         public MainWindowViewModel(IKernel kernel, WalletMonitor walletMonitor = null)
         {
             this.kernel = kernel;
-            this.coreDaemon = kernel.Get<CoreDaemon>();
-            this.coreStorage = this.coreDaemon.CoreStorage;
-            this.localClient = kernel.Get<LocalClient>();
+            coreDaemon = kernel.Get<CoreDaemon>();
+            coreStorage = coreDaemon.CoreStorage;
+            localClient = kernel.Get<LocalClient>();
             this.walletMonitor = walletMonitor;
 
-            this.startTime = DateTimeOffset.Now;
-            this.runningTimeTimer = new DispatcherTimer();
+            startTime = DateTimeOffset.Now;
+            runningTimeTimer = new DispatcherTimer();
             runningTimeTimer.Tick += (sender, e) =>
             {
-                var runningTime = (DateTimeOffset.Now - this.startTime);
-                this.RunningTime = $"{Math.Floor(runningTime.TotalHours):#,#00}:{runningTime:mm':'ss}";
+                var runningTime = (DateTimeOffset.Now - startTime);
+                RunningTime = $"{Math.Floor(runningTime.TotalHours):#,#00}:{runningTime:mm':'ss}";
             };
             runningTimeTimer.Interval = TimeSpan.FromMilliseconds(100);
             runningTimeTimer.Start();
 
-            this.WinningBlockchainHeight = -1;
-            this.CurrentBlockchainHeight = -1;
-            this.DownloadedBlockCount = -1;
-            this.WalletHeight = -1;
+            WinningBlockchainHeight = -1;
+            CurrentBlockchainHeight = -1;
+            DownloadedBlockCount = -1;
+            WalletHeight = -1;
 
-            this.updateWorker = new WorkerMethod("",
+            updateWorker = new WorkerMethod("",
                 _ =>
                 {
-                    this.WinningBlockchainHeight = this.coreDaemon.TargetChainHeight;
-                    this.CurrentBlockchainHeight = this.coreDaemon.CurrentChain.Height;
-                    this.DownloadedBlockCount = this.coreStorage.BlockWithTxesCount;
+                    WinningBlockchainHeight = coreDaemon.TargetChainHeight;
+                    CurrentBlockchainHeight = coreDaemon.CurrentChain.Height;
+                    DownloadedBlockCount = coreStorage.BlockWithTxesCount;
 
-                    this.BlockRate = this.coreDaemon.GetBlockRate();
-                    this.TransactionRate = this.coreDaemon.GetTxRate();
-                    this.InputRate = this.coreDaemon.GetInputRate();
+                    BlockRate = coreDaemon.GetBlockRate();
+                    TransactionRate = coreDaemon.GetTxRate();
+                    InputRate = coreDaemon.GetInputRate();
 
-                    this.BlockDownloadRate = this.localClient.GetBlockDownloadRate();
-                    this.DuplicateBlockDownloadCount = this.localClient.GetDuplicateBlockDownloadCount();
-                    this.BlockMissCount = this.localClient.GetBlockMissCount();
+                    BlockDownloadRate = localClient.GetBlockDownloadRate();
+                    DuplicateBlockDownloadCount = localClient.GetDuplicateBlockDownloadCount();
+                    BlockMissCount = localClient.GetBlockMissCount();
 
                     if (walletMonitor != null)
                     {
-                        this.WalletHeight = this.walletMonitor.WalletHeight;
-                        this.WalletEntriesCount = this.walletMonitor.EntriesCount;
-                        this.BitBalance = this.walletMonitor.BitBalance;
-                        this.BtcBalance = this.walletMonitor.BtcBalance;
+                        WalletHeight = this.walletMonitor.WalletHeight;
+                        WalletEntriesCount = this.walletMonitor.EntriesCount;
+                        BitBalance = this.walletMonitor.BitBalance;
+                        BtcBalance = this.walletMonitor.BtcBalance;
                     }
 
                     return Task.CompletedTask;
                 },
                 initialNotify: true, minIdleTime: TimeSpan.FromSeconds(1), maxIdleTime: TimeSpan.FromSeconds(1));
-            this.updateWorker.Start();
+            updateWorker.Start();
         }
 
         public void Dispose()
@@ -107,7 +107,7 @@ namespace BitSharp.Client
         {
             if (!disposed && disposing)
             {
-                this.updateWorker.Dispose();
+                updateWorker.Dispose();
 
                 disposed = true;
             }
@@ -115,86 +115,86 @@ namespace BitSharp.Client
 
         public string RunningTime
         {
-            get { return this.runningTime; }
-            set { SetValue(ref this.runningTime, value); }
+            get { return runningTime; }
+            set { SetValue(ref runningTime, value); }
         }
 
         public long WinningBlockchainHeight
         {
-            get { return this._winningBlockchainHeight; }
-            set { SetValue(ref this._winningBlockchainHeight, value); }
+            get { return _winningBlockchainHeight; }
+            set { SetValue(ref _winningBlockchainHeight, value); }
         }
 
         public long CurrentBlockchainHeight
         {
-            get { return this._currentBlockchainHeight; }
-            set { SetValue(ref this._currentBlockchainHeight, value); }
+            get { return _currentBlockchainHeight; }
+            set { SetValue(ref _currentBlockchainHeight, value); }
         }
 
         public long DownloadedBlockCount
         {
-            get { return this._downloadedBlockCount; }
-            set { SetValue(ref this._downloadedBlockCount, value); }
+            get { return _downloadedBlockCount; }
+            set { SetValue(ref _downloadedBlockCount, value); }
         }
 
         public float BlockRate
         {
-            get { return this.blockRate; }
-            set { SetValue(ref this.blockRate, value); }
+            get { return blockRate; }
+            set { SetValue(ref blockRate, value); }
         }
 
         public float TransactionRate
         {
-            get { return this.transactionRate; }
-            set { SetValue(ref this.transactionRate, value); }
+            get { return transactionRate; }
+            set { SetValue(ref transactionRate, value); }
         }
 
         public float InputRate
         {
-            get { return this.inputRate; }
-            set { SetValue(ref this.inputRate, value); }
+            get { return inputRate; }
+            set { SetValue(ref inputRate, value); }
         }
 
         public float BlockDownloadRate
         {
-            get { return this.blockDownloadRate; }
-            set { SetValue(ref this.blockDownloadRate, value); }
+            get { return blockDownloadRate; }
+            set { SetValue(ref blockDownloadRate, value); }
         }
 
         public int DuplicateBlockDownloadCount
         {
-            get { return this.duplicateBlockDownloadCount; }
-            set { SetValue(ref this.duplicateBlockDownloadCount, value); }
+            get { return duplicateBlockDownloadCount; }
+            set { SetValue(ref duplicateBlockDownloadCount, value); }
         }
 
         public int BlockMissCount
         {
-            get { return this.blockMissCount; }
-            set { SetValue(ref this.blockMissCount, value); }
+            get { return blockMissCount; }
+            set { SetValue(ref blockMissCount, value); }
         }
 
         public int WalletHeight
         {
-            get { return this.walletHeight; }
-            set { SetValue(ref this.walletHeight, value); }
+            get { return walletHeight; }
+            set { SetValue(ref walletHeight, value); }
         }
 
         public int WalletEntriesCount
         {
-            get { return this.walletEntriesCount; }
-            set { SetValue(ref this.walletEntriesCount, value); }
+            get { return walletEntriesCount; }
+            set { SetValue(ref walletEntriesCount, value); }
         }
 
         public decimal BitBalance
         {
-            get { return this.bitBalance; }
-            set { SetValue(ref this.bitBalance, value); }
+            get { return bitBalance; }
+            set { SetValue(ref bitBalance, value); }
         }
 
         public decimal BtcBalance
         {
-            get { return this.btcBalance; }
-            set { SetValue(ref this.btcBalance, value); }
+            get { return btcBalance; }
+            set { SetValue(ref btcBalance, value); }
         }
 
         private void SetValue<T>(ref T currentValue, T newValue, [CallerMemberName] string propertyName = "") where T : IEquatable<T>
@@ -203,7 +203,7 @@ namespace BitSharp.Client
             {
                 currentValue = newValue;
 
-                this.PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+                PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
             }
         }
     }

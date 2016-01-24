@@ -28,7 +28,7 @@ namespace BitSharp.Common
             var layout = "${date:format=hh\\:mm\\:ss tt} ${pad:padding=6:inner=${level:uppercase=true}} ${message} ${exception:separator=\r\n:format=message,type,method,stackTrace:maxInnerExceptionLevel=10:innerExceptionSeparator=\r\n:innerFormat=message,type,method,stackTrace}";
 
             // initialize logging configuration
-            var config = new LoggingConfiguration();
+            var config = LogManager.Configuration ?? new LoggingConfiguration();
 
             // create console target
             if (!Debugger.IsAttached)

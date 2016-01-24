@@ -123,8 +123,6 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
-    <Compile Include="NodeEncoderTest.cs" />
-    <Compile Include="NodeEncoderTest.Data.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>

@@ -3,9 +3,8 @@ using BitSharp.Core;
 using BitSharp.Core.Rules;
 using BitSharp.Core.Storage.Memory;
 using BitSharp.Core.Test;
-using BitSharp.Node;
-using BitSharp.Node.Network;
-using BitSharp.Node.Storage.Memory;
+using BitSharp.Network;
+using BitSharp.Network.Storage.Memory;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Ninject;
 using NLog;
@@ -57,7 +56,7 @@ namespace BitSharp.IntegrationTest
 
                 // add storage module
                 kernel.Load(new MemoryStorageModule());
-                kernel.Load(new NodeMemoryStorageModule());
+                kernel.Load(new NetworkMemoryStorageModule());
 
                 // initialize the blockchain daemon
                 using (var coreDaemon = kernel.Get<CoreDaemon>())

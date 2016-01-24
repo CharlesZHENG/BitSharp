@@ -150,6 +150,10 @@
       <Project>{6d4d2210-a54f-41f0-bca4-727b7ddb27c2}</Project>
       <Name>BitSharp.Esent</Name>
     </ProjectReference>
+    <ProjectReference Include="..\BitSharp.Network\BitSharp.Network.csproj">
+      <Project>{db0d7995-1f30-40d1-8539-a737fa956af2}</Project>
+      <Name>BitSharp.Network</Name>
+    </ProjectReference>
     <ProjectReference Include="..\BitSharp.Node\BitSharp.Node.csproj">
       <Project>{b76235bf-6037-45b8-9341-957e6407f8e1}</Project>
       <Name>BitSharp.Node</Name>
