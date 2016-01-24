@@ -53,7 +53,6 @@ namespace BitSharp.Client.Helper
     [Target("RichTextBox")]
     public sealed class WpfRichTextBoxTarget : TargetWithLayout
     {
-        private int lineCount;
         private int _width = 500;
         private int _height = 500;
         private static readonly TypeConverter colorConverter = new ColorConverter();
@@ -271,18 +270,13 @@ namespace BitSharp.Client.Helper
             tr.ApplyPropertyValue(TextElement.FontStyleProperty, rule.Style);
             tr.ApplyPropertyValue(TextElement.FontWeightProperty, rule.Weight);
 
-
             if (this.MaxLines > 0)
             {
-                this.lineCount++;
-                if (this.lineCount > MaxLines)
+                while (rtbx.Document.Blocks.Count - 1 > MaxLines)
                 {
-                    tr = new TextRange(rtbx.Document.ContentStart, rtbx.Document.ContentEnd);
-                    tr.Text.Remove(0, tr.Text.IndexOf('\n'));
-                    this.lineCount--;
+                    rtbx.Document.Blocks.Remove(rtbx.Document.Blocks.FirstBlock);
                 }
             }
-
 
             if (this.AutoScroll && scrolledToEnd)
             {
