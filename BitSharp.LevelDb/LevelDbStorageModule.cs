@@ -23,9 +23,9 @@ namespace BitSharp.LevelDb
         private readonly ulong? chainStateWriteCacheSize;
 
         public LevelDbStorageModule(string baseDirectory, ChainType rulesType,
-            ulong? blocksCacheSize, ulong? blocksWriteCacheSize,
-            ulong? blockTxesCacheSize, ulong? blockTxesWriteCacheSize,
-            ulong? chainStateCacheSize, ulong? chainStateWriteCacheSize,
+            ulong? blocksCacheSize = null, ulong? blocksWriteCacheSize = null,
+            ulong? blockTxesCacheSize = null, ulong? blockTxesWriteCacheSize = null,
+            ulong? chainStateCacheSize = null, ulong? chainStateWriteCacheSize = null,
             string[] blockTxesStorageLocations = null)
         {
             this.baseDirectory = baseDirectory;

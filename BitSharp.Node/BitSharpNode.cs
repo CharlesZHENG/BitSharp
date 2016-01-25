@@ -8,12 +8,10 @@ using BitSharp.Network;
 using BitSharp.Network.Storage.Memory;
 using BitSharp.Network.Workers;
 using CommandLine;
-using IniParser;
 using Ninject;
-using Ninject.Modules;
 using NLog;
+using SharpConfig;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -24,20 +22,27 @@ namespace BitSharp.Node
     {
         private readonly Logger logger;
 
-        private bool disposed;
+        private readonly NodeConfig nodeConfig;
 
-        //TODO use config
-        private readonly bool connectToPeers = true;
+        private bool disposed;
 
         public static void Main(string[] args)
         {
-            using (var bitSharpNode = new BitSharpNode(args, strictArgs: true))
+            try
             {
-                bitSharpNode.StartAsync().Forget();
+                using (var bitSharpNode = new BitSharpNode(args, strictArgs: true))
+                {
+                    bitSharpNode.StartAsync().Forget();
 
-                Console.WriteLine("Press enter to exit node.");
-                Console.ReadLine();
-                Console.WriteLine("Shutting down.");
+                    Console.WriteLine("Press enter to exit node.");
+                    Console.ReadLine();
+                    Console.WriteLine("Shutting down.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
+                Environment.Exit(-1);
             }
         }
 
@@ -46,180 +51,149 @@ namespace BitSharp.Node
             // parse command line options
             var options = new NodeOptions();
 
+            var parser = new Parser(settings =>
+            {
+                settings.HelpWriter = Parser.Default.Settings.HelpWriter;
+                settings.MutuallyExclusive = true;
+            });
+
             if (strictArgs)
             {
-                Parser.Default.ParseArgumentsStrict(args, options);
+                parser.ParseArgumentsStrict(args, options);
             }
             else
             {
-                if (!Parser.Default.ParseArguments(args, options))
+                if (!parser.ParseArguments(args, options))
                     throw new InvalidOperationException($"Invalid command line:\n {options.GetUsage()}");
             }
 
             options.DataFolder = Environment.ExpandEnvironmentVariables(options.DataFolder);
 
-            // create data folder
-            Directory.CreateDirectory(options.DataFolder);
-
-            // write default ini file, if it doesn't exist
-            var iniFile = Path.Combine(options.DataFolder, "BitSharp.ini");
-            if (!File.Exists(iniFile))
+            // clean data folder, depending on options
+            if (Directory.Exists(options.DataFolder))
             {
-                var assembly = Assembly.GetAssembly(this.GetType());
-                using (var defaultIniStream = assembly.GetManifestResourceStream("BitSharp.Node.BitSharp.ini"))
-                using (var outputStream = File.Create(iniFile))
+                if (options.Clean || options.CleanAll)
                 {
-                    defaultIniStream.CopyTo(outputStream);
+                    var dataPath = Path.Combine(options.DataFolder, "Data");
+                    var peerPath = Path.Combine(options.DataFolder, "Peer");
+
+                    if (Directory.Exists(dataPath))
+                        Directory.Delete(dataPath, recursive: true);
+                    if (Directory.Exists(peerPath))
+                        Directory.Delete(peerPath, recursive: true);
+                }
+
+                if (options.CleanAll)
+                {
+                    var iniPath = Path.Combine(options.DataFolder, "BitSharp.ini");
+                    var logPath = Path.Combine(options.DataFolder, "BitSharp.log");
+
+                    if (File.Exists(iniPath))
+                        File.Delete(iniPath);
+                    if (File.Exists(logPath))
+                        File.Delete(logPath);
                 }
             }
 
-            // parse ini
-            var iniParser = new FileIniDataParser();
-            var iniData = iniParser.ReadFile(iniFile);
-
-            //TODO
-            //**************************************************************
-            var useTestNet = false;
-            var connectToPeers = true;
-
-            var ignoreScripts = false;
-
-            var pruningMode = PruningMode.TxIndex | PruningMode.BlockSpentIndex | PruningMode.BlockTxesDelete;
-
-            var useLevelDb = false;
-            var runInMemory = false;
-
-            var cleanData = false;
-            var cleanChainState = false;
-            var cleanBlockTxes = false
-                // clean block txes if the chain state is being cleaned and block txes have been pruned, the new chain state will require intact blocks to validate
-                || (cleanChainState && (pruningMode.HasFlag(PruningMode.BlockTxesPreserveMerkle) || pruningMode.HasFlag(PruningMode.BlockTxesDestroyMerkle)));
-            //NOTE: Running with a cleaned chained state against a pruned blockchain does not work.
-            //      It will see the data is missing, but won't redownload the blocks.
-            //**************************************************************
-
-            long? cacheSizeMaxBytes = 512.MEBIBYTE();
-
-            // directories
-            var dataFolder = options.DataFolder;
-
-            var chainType = useTestNet ? ChainType.TestNet3 : ChainType.MainNet;
-
-            string[] blockTxesStorageLocations = null;
-
-            // detect local dev machine - TODO proper configuration
-            var isAzureVM = (Environment.MachineName == "BITSHARP");
-            var isLocalDev = (Environment.MachineName == "SKIPPY");
-
-            if (isAzureVM)
-            {
-                cacheSizeMaxBytes = null;
-                BlockRequestWorker.SecondaryBlockFolder = @"E:\BitSharp.Blocks\RawBlocks";
-                PeerWorker.ConnectedMax = 15;
-
-                blockTxesStorageLocations = new[]
-                {
-                        @"E:\Blocks1",
-                        @"E:\Blocks2",
-                        @"E:\Blocks3",
-                        @"E:\Blocks4",
-                    };
-            }
-            else if (isLocalDev)
-            {
-                //Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.BelowNormal;
-
-                cacheSizeMaxBytes = (int)2.GIBIBYTE();
-
-                // location to store a copy of raw blocks to avoid redownload
-                BlockRequestWorker.SecondaryBlockFolder = Path.Combine(dataFolder, "RawBlocks");
-
-                // split block txes storage across 2 dedicated SSDs, keep chain state on main SSD
-                //blockTxesStorageLocations = new[]
-                //{
-                //    @"Y:\BitSharp",
-                //    @"Z:\BitSharp",
-                //};
-            }
-
-            //TODO
-            if (cleanData)
-            {
-                try { Directory.Delete(Path.Combine(dataFolder, "Data", chainType.ToString()), recursive: true); }
-                catch (IOException) { }
-            }
-            if (cleanChainState)
-            {
-                try { Directory.Delete(Path.Combine(dataFolder, "Data", chainType.ToString(), "ChainState"), recursive: true); }
-                catch (IOException) { }
-            }
-            if (cleanBlockTxes)
-            {
-                try { Directory.Delete(Path.Combine(dataFolder, "Data", chainType.ToString(), "BlockTxes"), recursive: true); }
-                catch (IOException) { }
-            }
+            // create data folder
+            Directory.CreateDirectory(options.DataFolder);
 
             // initialize kernel
-            this.Kernel = new StandardKernel();
-
-            // add logging module
-            this.Kernel.Load(new LoggingModule(dataFolder, LogLevel.Info));
-
-            // log startup
-            this.logger = LogManager.GetCurrentClassLogger();
-            this.logger.Info($"Starting up: {DateTime.Now}");
-            this.logger.Info($"Using data folder: {dataFolder}");
-
-            var modules = new List<INinjectModule>();
-
-            // add storage module
-            if (useLevelDb)
+            Kernel = new StandardKernel();
+            try
             {
-                ulong? blocksCacheSize = null;
-                ulong? blocksWriteCacheSize = null;
+                // add logging module
+                Kernel.Load(new LoggingModule(options.DataFolder, LogLevel.Info));
 
-                ulong? blockTxesCacheSize = null;
-                ulong? blockTxesWriteCacheSize = null;
+                // log startup
+                logger = LogManager.GetCurrentClassLogger();
+                logger.Info($"Starting up: {DateTime.Now}");
+                logger.Info($"Using data folder: {options.DataFolder}");
 
-                ulong? chainStateCacheSize = null;
-                ulong? chainStateWriteCacheSize = null;
+                // write default ini file, if it doesn't exist
+                var iniFile = Path.Combine(options.DataFolder, "BitSharp.ini");
+                if (!File.Exists(iniFile))
+                {
+                    var assembly = Assembly.GetAssembly(GetType());
+                    using (var defaultIniStream = assembly.GetManifestResourceStream("BitSharp.Node.BitSharp.ini"))
+                    using (var outputStream = File.Create(iniFile))
+                    {
+                        defaultIniStream.CopyTo(outputStream);
+                    }
+                }
 
-                modules.Add(new LevelDbStorageModule(dataFolder, chainType,
-                    blocksCacheSize, blocksWriteCacheSize,
-                    blockTxesCacheSize, blockTxesWriteCacheSize,
-                    chainStateCacheSize, chainStateWriteCacheSize));
+                logger.Info($"Loading configuration: {iniFile}");
 
-                long? writeCacheSizeMaxBytes = 128.MEBIBYTE();
+                // parse ini
+                var iniConfig = Configuration.LoadFromFile(iniFile);
 
+                // parse node config
+                if (!iniConfig.Contains("Node"))
+                    throw new ApplicationException("INI is missing [Node] section");
+
+                nodeConfig = iniConfig["Node"].CreateObject<NodeConfig>();
+
+                // parse dev config
+                if (iniConfig.Contains("Dev"))
+                {
+                    var devConfig = iniConfig["Dev"].CreateObject<DevConfig>();
+
+                    if (devConfig.SecondaryBlockFolder != null)
+                    {
+                        BlockRequestWorker.SecondaryBlockFolder =
+                            Environment.ExpandEnvironmentVariables(devConfig.SecondaryBlockFolder);
+                    }
+                }
+
+                // add storage module
+                switch (nodeConfig.StorageType)
+                {
+                    case StorageType.Esent:
+                        if (!iniConfig.Contains("Esent"))
+                            throw new ApplicationException("INI is missing [Esent] section");
+
+                        var esentConfig = iniConfig["Esent"].CreateObject<EsentConfig>();
+
+                        var cacheSizeMaxBytes = esentConfig.CacheSizeMaxMebiBytes != null
+                            ? esentConfig.CacheSizeMaxMebiBytes * 1.MEBIBYTE() : null;
+
+                        Kernel.Load(new EsentStorageModule(options.DataFolder, nodeConfig.ChainType, cacheSizeMaxBytes));
+                        break;
+
+                    case StorageType.LevelDb:
+                        Kernel.Load(new LevelDbStorageModule(options.DataFolder, nodeConfig.ChainType));
+                        break;
+
+                    case StorageType.Memory:
+                        Kernel.Load(new MemoryStorageModule());
+                        Kernel.Load(new NetworkMemoryStorageModule());
+                        break;
+
+                    default:
+                        throw new ApplicationException($"INI has unrecognized storage type: {nodeConfig.StorageType}");
+                }
+
+                // add rules module
+                Kernel.Load(new RulesModule(nodeConfig.ChainType));
+
+                // initialize rules
+                var rules = Kernel.Get<ICoreRules>();
+                rules.IgnoreScripts = !nodeConfig.ExecuteScripts;
+
+                // initialize the blockchain daemon
+                CoreDaemon = Kernel.Get<CoreDaemon>();
+                CoreDaemon.PruningMode = nodeConfig.PruningMode;
+                Kernel.Bind<CoreDaemon>().ToConstant(CoreDaemon).InTransientScope();
+
+                // initialize p2p client
+                LocalClient = Kernel.Get<LocalClient>();
+                Kernel.Bind<LocalClient>().ToConstant(LocalClient).InTransientScope();
             }
-            else if (runInMemory)
+            catch (Exception)
             {
-                modules.Add(new MemoryStorageModule());
-                modules.Add(new NetworkMemoryStorageModule());
+                Kernel.Dispose();
+                throw;
             }
-            else
-            {
-                modules.Add(new EsentStorageModule(dataFolder, chainType, cacheSizeMaxBytes: cacheSizeMaxBytes, blockTxesStorageLocations: blockTxesStorageLocations));
-            }
-
-            // add rules module
-            modules.Add(new RulesModule(chainType));
-
-            // load modules
-            this.Kernel.Load(modules.ToArray());
-
-            // initialize rules
-            var rules = this.Kernel.Get<ICoreRules>();
-            rules.IgnoreScripts = ignoreScripts;
-
-            // initialize the blockchain daemon
-            this.CoreDaemon = this.Kernel.Get<CoreDaemon>();
-            this.CoreDaemon.PruningMode = pruningMode;
-            this.Kernel.Bind<CoreDaemon>().ToConstant(this.CoreDaemon).InTransientScope();
-
-            // initialize p2p client
-            this.LocalClient = this.Kernel.Get<LocalClient>();
-            this.Kernel.Bind<LocalClient>().ToConstant(this.LocalClient).InTransientScope();
         }
 
         public void Dispose()
@@ -251,9 +225,9 @@ namespace BitSharp.Node
         {
             await Task.WhenAll(
                 // start the blockchain daemon
-                Task.Run(() => this.CoreDaemon.Start()),
+                Task.Run(() => CoreDaemon.Start()),
                 // start p2p client
-                Task.Run(() => this.LocalClient.Start(connectToPeers)));
+                Task.Run(() => LocalClient.Start(nodeConfig.ConnectToPeers)));
         }
     }
 }
